@@ -12,8 +12,44 @@
  * z punktu widzenia Vercela, a runtime Node ma globalny fetch.
  */
 
-const URL_REDIS = process.env.UPSTASH_REDIS_REST_URL;
-const TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN;
+/* Integracje Vercela nadaja zmiennym rozne nazwy zaleznie od tego, ktora
+   baze podepniesz i jaki prefiks wpiszesz w kreatorze. Zamiast wymuszac
+   jedna konkretna, znajdujemy pasujaca pare sami. */
+function znajdzKonfiguracje() {
+  const env = process.env;
+
+  const znaneParty = [
+    ['UPSTASH_REDIS_REST_URL', 'UPSTASH_REDIS_REST_TOKEN'],
+    ['KV_REST_API_URL', 'KV_REST_API_TOKEN'],
+    ['REDIS_REST_URL', 'REDIS_REST_TOKEN']
+  ];
+  for (const [u, t] of znaneParty) {
+    if (env[u] && env[t]) return { url: env[u], token: env[t], para: u + ' + ' + t };
+  }
+
+  // Dowolny wlasny prefiks: <COS>_REST_API_URL / _TOKEN albo <COS>_REDIS_REST_URL / _TOKEN
+  const koncowki = [
+    ['_REST_API_URL', '_REST_API_TOKEN'],
+    ['_REDIS_REST_URL', '_REDIS_REST_TOKEN']
+  ];
+  for (const klucz of Object.keys(env)) {
+    for (const [konU, konT] of koncowki) {
+      if (!klucz.endsWith(konU)) continue;
+      const klucztokenu = klucz.slice(0, -konU.length) + konT;
+      if (env[klucz] && env[klucztokenu]) {
+        return { url: env[klucz], token: env[klucztokenu], para: klucz + ' + ' + klucztokenu };
+      }
+    }
+  }
+  return null;
+}
+
+/* Do komunikatu diagnostycznego: same NAZWY zmiennych, nigdy wartosci. */
+function nazwyPodobnychZmiennych() {
+  return Object.keys(process.env)
+    .filter((k) => /REDIS|UPSTASH|\bKV_|_REST_API_/i.test(k))
+    .sort();
+}
 
 const KLUCZ_LOG = 'arena:log';
 const KLUCZ_OBECNI = 'arena:obecni';
@@ -23,14 +59,15 @@ const OKNO_LIMITU = 10;          // sekund
 const LIMIT_NA_OKNO = 40;        // zapytań POST na IP
 
 async function pipeline(komendy) {
-  if (!URL_REDIS || !TOKEN) {
+  const cfg = znajdzKonfiguracje();
+  if (!cfg) {
     const e = new Error('brak-konfiguracji');
     e.brakKonfiguracji = true;
     throw e;
   }
-  const odp = await fetch(URL_REDIS + '/pipeline', {
+  const odp = await fetch(cfg.url.replace(/\/+$/, '') + '/pipeline', {
     method: 'POST',
-    headers: { Authorization: 'Bearer ' + TOKEN, 'Content-Type': 'application/json' },
+    headers: { Authorization: 'Bearer ' + cfg.token, 'Content-Type': 'application/json' },
     body: JSON.stringify(komendy)
   });
   if (!odp.ok) throw new Error('redis ' + odp.status + ' ' + (await odp.text()).slice(0, 200));
@@ -129,8 +166,11 @@ module.exports = async function handler(req, res) {
     if (e && e.brakKonfiguracji) {
       return res.status(503).json({
         blad: 'brak-konfiguracji',
-        opis: 'Nie ustawiono UPSTASH_REDIS_REST_URL / UPSTASH_REDIS_REST_TOKEN. ' +
-              'Dodaj Upstash z Vercel Marketplace — integracja ustawi je sama.'
+        opis: 'Nie znaleziono pary zmiennych z adresem i tokenem Redisa. ' +
+              'Podepnij bazę z Vercel Marketplace do tego projektu (Production + Preview).',
+        // same nazwy, zeby dalo sie zdiagnozowac literowke w prefiksie —
+        // wartosci nie wychodza nigdy poza serwer
+        widzianeZmienne: nazwyPodobnychZmiennych()
       });
     }
     return res.status(500).json({ blad: 'serwer', opis: String((e && e.message) || e).slice(0, 200) });
