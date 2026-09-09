@@ -27,11 +27,19 @@ let dpr = 1, akumulator = 0, ostatniCzas = 0, petlaDziala = false;
 let obserwator = false;
 let gospodarz = false;
 let startWToku = false;
+/* Seed partii, ktora swiadomie opuscilem. Bez tego kolejne odpytanie
+   wciagaloby mnie z powrotem na plansze, bo gra obiektywnie trwa dalej. */
+let opuszczonySeed = null;
 /* odswiezLobby() chodzi co 500 ms, a stan z sieci przychodzi co ~3 s.
    Bez tych blokad kazda "samoleczaca" wysylka (zgloszenie siebie, publikacja
    odliczania) powtarzalaby sie kilkanascie razy, zanim odpowiedz zdazy wrocic
    — czyli zalew POST-ow i limit zapytan. */
 const PONOW_PO = 6000;
+/* Zywa partia produkuje zdarzenie co najwyzej co TURN_TIME + osiadanie +
+   publikacja (~37 s), bo tura przeterminowuje sie sama. Dluzsza cisza znaczy,
+   ze nikt juz w nia nie gra. Prog wyprowadzony z dlugosci tury, zeby zostal
+   poprawny, gdyby ta sie zmienila. */
+const PORZUCONA_PO = (S.TURN_TIME + 20) * 1000;
 let ostatnieZgloszenie = 0;
 let ostatnieOdliczanie = 0;
 let turaOdkad = 0;              // czas serwera, gdy zauwazylismy biezaca ture
@@ -154,8 +162,14 @@ function naResetLogu() {
    porzucona gra zostaje w logu na zawsze i blokuje zakladanie nowych. */
 function partiaWToku() {
   if (!pokoj || pokoj.faza !== 'gra' || !pokoj.gracze.length) return false;
-  const zywi = net.zywi();
-  return pokoj.gracze.some((g) => zywi.has(g.id) || g.id === mojeId);
+
+  // O tym, czy partia zyje, decyduje WYLACZNIE jej aktywnosc. Sprawdzanie
+  // "czy ktos z uczestnikow jest online" nie dziala: uczestnik moze siedziec
+  // w lobby, a mimo to podtrzymywac ducha poprzedniej rundy.
+  if (!pokoj.ostatniaAktywnosc) return false;
+  if (net.czas() - pokoj.ostatniaAktywnosc > PORZUCONA_PO) return false;
+
+  return pokoj.gracze.some((g) => net.zywi().has(g.id));
 }
 
 function naStanSieci() {
@@ -163,7 +177,7 @@ function naStanSieci() {
   const baner = el('baner-blad');
   if (baner && net.polaczony) baner.hidden = true;
 
-  if (partiaWToku() && !state) zbudujGre();
+  if (partiaWToku() && !state && pokoj.seed !== opuszczonySeed) zbudujGre();
   if (!partiaWToku() && state && pokoj.faza !== 'gra') zakonczDoLobby();
   odswiezLobby();
 }
@@ -172,7 +186,10 @@ function naZdarzenie(z) {
   if (z.t === 'nowa') {
     naResetLogu();
     pokoj = zloz(net.zdarzenia);
-    zbudujGre();
+    // Wracajacy klient czyta log od poczatku, wiec trafia tu takze na 'nowa'
+    // z dawno porzuconej partii. Bez tego sprawdzenia wchodzil prosto w ducha,
+    // omijajac cala logike rozpoznawania porzucenia.
+    if (partiaWToku() && pokoj.seed !== opuszczonySeed) zbudujGre();
     return;
   }
   if (!state) return;
@@ -289,6 +306,21 @@ el('btn-start').addEventListener('click', async () => {
   await net.wyslij({ t: 'odliczanie', do: net.czas() + 800 });
   await net.pobierz();
   odswiezLobby();
+});
+
+/* Gwarantowana furtka: cokolwiek pojdzie nie tak ze stanem pokoju,
+   gracz zawsze moze wyjsc z planszy sam. */
+el('btn-do-lobby').addEventListener('click', async () => {
+  opuszczonySeed = pokoj ? pokoj.seed : null;
+  await net.wyslij({ t: 'wyjdz', id: mojeId });
+  state = null;
+  hud.hidden = true;
+  el('ekran-koniec').hidden = true;
+  el('ekran-lobby').hidden = false;
+  net.ustawTryb('lobby');
+  ostatnieZgloszenie = 0;
+  await net.wyslij({ t: 'dolacz', id: mojeId, name: mojaNazwa, color: mojKolor });
+  await net.pobierz();
 });
 
 el('btn-znowu').addEventListener('click', () => {

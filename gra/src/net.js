@@ -11,7 +11,7 @@ const ADRES = '/api/room';
 
 const INTERWAL = {
   lobby: 3000,
-  cudzaTura: 1500,
+  cudzaTura: 1200,
   mojaTura: 6000,     // jesteśmy źródłem prawdy, wystarczy pilnować dołączeń
   bezczynne: 15000
 };
@@ -197,7 +197,8 @@ export function zloz(zdarzenia) {
     gracze: [],          // uczestnicy bieżącej partii
     wLobby: [],          // zgłoszeni, czekają na start
     tury: new Map(),     // nr tury -> { strzal, pas, stan }
-    odliczanieDo: null,  // termin startu w czasie SERWERA
+    odliczanieDo: null,     // termin startu w czasie SERWERA
+    ostatniaAktywnosc: 0,   // czas serwera ostatniego zdarzenia partii
     zwyciezca: null
   };
 
@@ -225,6 +226,7 @@ export function zloz(zdarzenia) {
       case 'nowa':
         pokoj.faza = 'gra';
         pokoj.odliczanieDo = null;
+        pokoj.ostatniaAktywnosc = z.st || 0;
         pokoj.seed = z.seed;
         pokoj.gracze = z.gracze || [];
         pokoj.tury = new Map();
@@ -232,6 +234,7 @@ export function zloz(zdarzenia) {
         break;
 
       case 'strzal': {
+        pokoj.ostatniaAktywnosc = Math.max(pokoj.ostatniaAktywnosc, z.st || 0);
         const t = pokoj.tury.get(z.nr) || {};
         if (!t.strzal) t.strzal = z;      // pierwszy wpis dla danej tury wygrywa
         pokoj.tury.set(z.nr, t);
@@ -239,6 +242,7 @@ export function zloz(zdarzenia) {
       }
 
       case 'pas': {
+        pokoj.ostatniaAktywnosc = Math.max(pokoj.ostatniaAktywnosc, z.st || 0);
         const t = pokoj.tury.get(z.nr) || {};
         if (!t.strzal && !t.pas) t.pas = z;
         pokoj.tury.set(z.nr, t);
@@ -246,6 +250,7 @@ export function zloz(zdarzenia) {
       }
 
       case 'stan': {
+        pokoj.ostatniaAktywnosc = Math.max(pokoj.ostatniaAktywnosc, z.st || 0);
         const t = pokoj.tury.get(z.nr) || {};
         t.stan = z.snap;
         pokoj.tury.set(z.nr, t);

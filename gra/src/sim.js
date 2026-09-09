@@ -190,7 +190,9 @@ export function step(state) {
       if (state.turnTimeLeft <= 0) {
         state.turnTimeLeft = 0;
         state.phase = 'settle';
-        state.settleTime = 0;
+        // Gdy nic nie leci, nie ma na co czekac: faza osiadania odliczalaby
+        // do SETTLE_MAX i tura przechodzila z kilkusekundowym opoznieniem.
+        state.settleTime = state.projectiles.length ? 0 : SETTLE_MAX;
       }
     }
   }

@@ -246,3 +246,17 @@ button:disabled { opacity: 0.35; cursor: not-allowed; }
 }
 .stan-polaczenia .kropka { width: 8px; height: 8px; border-radius: 50%; background: #5ec26a; }
 .stan-polaczenia.zle .kropka { background: #ff3b23; }
+
+/* HUD ma pointer-events: none, wiec klikalny element musi je wlaczyc sam. */
+.panel-wyjscie {
+  pointer-events: auto;
+  align-self: flex-start;
+  font-family: inherit;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  padding: 8px 12px;
+  cursor: pointer;
+  color: var(--tekst);
+  opacity: 0.75;
+}
+.panel-wyjscie:hover { opacity: 1; border-color: var(--zar-jasny); }
