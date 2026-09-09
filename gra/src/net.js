@@ -26,6 +26,7 @@ export function createNet(opts = {}) {
     obecnosc: {},
     zdarzenia: [],
     polaczony: false,
+    przesuniecieZegara: 0,   // ile dodac do Date.now(), zeby dostac czas serwera
     ostatniBlad: null,
     brakKonfiguracji: false,
     _timer: null,
@@ -82,6 +83,9 @@ export function createNet(opts = {}) {
         return net.pobierz();
       }
 
+      if (typeof dane.teraz === 'number') {
+        net.przesuniecieZegara = dane.teraz - Date.now();
+      }
       net.obecnosc = dane.obecnosc || {};
       net.polaczony = true;
       net.ostatniBlad = null;
@@ -145,6 +149,28 @@ export function createNet(opts = {}) {
     clearInterval(net._pulsTimer);
   };
 
+  /* Wspolny zegar: to samo odliczanie u kazdego, niezaleznie od tego,
+     jak ustawiony jest zegar systemowy gracza. */
+  net.czas = function () {
+    return Date.now() + net.przesuniecieZegara;
+  };
+
+  /* Zamkniecie karty. sendBeacon dowozi zadanie nawet przy zamykaniu,
+     kiedy zwykly fetch bywa anulowany. */
+  net.opusc = function () {
+    const tresc = JSON.stringify({ zdarzenie: { t: 'wyjdz', id: net.id } });
+    try {
+      if (navigator.sendBeacon) {
+        navigator.sendBeacon(ADRES, new Blob([tresc], { type: 'application/json' }));
+        return;
+      }
+    } catch { /* spadamy do fetch */ }
+    fetch(ADRES, { method: 'POST', headers: { 'Content-Type': 'application/json' },
+                   body: tresc, keepalive: true }).catch(() => {});
+  };
+
+  window.addEventListener('pagehide', net.opusc);
+
   net.zywi = function () {
     const teraz = Date.now();
     const zbior = new Set();
@@ -171,6 +197,7 @@ export function zloz(zdarzenia) {
     gracze: [],          // uczestnicy bieżącej partii
     wLobby: [],          // zgłoszeni, czekają na start
     tury: new Map(),     // nr tury -> { strzal, pas, stan }
+    odliczanieDo: null,  // termin startu w czasie SERWERA
     zwyciezca: null
   };
 
@@ -186,8 +213,18 @@ export function zloz(zdarzenia) {
         pokoj.wLobby = pokoj.wLobby.filter((g) => g.id !== z.id);
         break;
 
+      case 'odliczanie':
+        // Wygrywa OSTATNI opublikowany termin. Wariant "najwczesniejszy
+        // wygrywa" wygladal bezpieczniej, ale zakleszczal sie: przeterminowany
+        // wpis z poprzedniej sesji zostawal w logu na zawsze i zadnego
+        // nowszego terminu nie dalo sie juz wstawic.
+        if (z.anuluj) pokoj.odliczanieDo = null;
+        else if (typeof z.do === 'number') pokoj.odliczanieDo = z.do;
+        break;
+
       case 'nowa':
         pokoj.faza = 'gra';
+        pokoj.odliczanieDo = null;
         pokoj.seed = z.seed;
         pokoj.gracze = z.gracze || [];
         pokoj.tury = new Map();

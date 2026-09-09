@@ -53,10 +53,15 @@ function nazwyPodobnychZmiennych() {
 
 const KLUCZ_LOG = 'arena:log';
 const KLUCZ_OBECNI = 'arena:obecni';
+const KLUCZ_ZAMEK = 'arena:zamek-startu';
 const MAX_ZDARZEN = 3000;        // po tylu log jest kasowany razem z partią
 const MAX_BODY = 8 * 1024;
 const OKNO_LIMITU = 10;          // sekund
-const LIMIT_NA_OKNO = 40;        // zapytań POST na IP
+/* Limit jest na IP, a gracze siedzacy przy jednym WiFi maja wspolny adres
+   publiczny — stad zapas. Jeden klient wysyla ~2-3 POST-y na 10 s (puls plus
+   zdarzenia tury), wiec 150 obsluzy kilkunastu graczy za jednym NAT-em,
+   a i tak zatrzyma zalew. */
+const LIMIT_NA_OKNO = 150;
 
 async function pipeline(komendy) {
   const cfg = znajdzKonfiguracje();
@@ -92,7 +97,9 @@ async function przekroczonyLimit(req) {
 function czysteZdarzenie(z) {
   if (!z || typeof z !== 'object' || typeof z.t !== 'string') return null;
   if (z.t.length > 24) return null;
-  const s = JSON.stringify(z);
+  // Znacznik czasu stawia serwer, nie klient — inaczej odliczanie liczone
+  // z lokalnego Date.now() rozjezdza sie miedzy graczami.
+  const s = JSON.stringify({ ...z, st: Date.now() });
   if (s.length > MAX_BODY) return null;
   return s;
 }
@@ -145,11 +152,24 @@ module.exports = async function handler(req, res) {
       // Nowa partia zaczyna log od zera; klienci wykryją to po skróceniu
       // długości i przewiną swój kursor.
       if (zdarzenie.t === 'nowa') {
+        const [zamek] = await pipeline([
+          ['SET', KLUCZ_ZAMEK, String(Date.now()), 'NX', 'EX', '8']
+        ]);
+        if (zamek === null) {
+          // Ktos inny wlasnie startuje partie — nie robimy drugiej.
+          return res.status(200).json({ ok: false, powod: 'juz-startuje' });
+        }
         const [, dlugosc] = await pipeline([
           ['DEL', KLUCZ_LOG],
           ['RPUSH', KLUCZ_LOG, serializowane]
         ]);
         return res.status(200).json({ ok: true, dlugosc });
+      }
+
+      // Wyjscie gracza kasuje go tez z listy obecnych, zeby lobby
+      // odswiezalo sie od razu, a nie dopiero po wygasnieciu pulsu.
+      if (zdarzenie.t === 'wyjdz' && zdarzenie.id) {
+        await pipeline([['HDEL', KLUCZ_OBECNI, String(zdarzenie.id)]]);
       }
 
       const [dlugosc] = await pipeline([['RPUSH', KLUCZ_LOG, serializowane]]);

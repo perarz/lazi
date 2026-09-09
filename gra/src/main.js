@@ -26,7 +26,17 @@ let dpr = 1, akumulator = 0, ostatniCzas = 0, petlaDziala = false;
 
 let obserwator = false;
 let gospodarz = false;
-let odliczanieDo = null;
+let startWToku = false;
+/* odswiezLobby() chodzi co 500 ms, a stan z sieci przychodzi co ~3 s.
+   Bez tych blokad kazda "samoleczaca" wysylka (zgloszenie siebie, publikacja
+   odliczania) powtarzalaby sie kilkanascie razy, zanim odpowiedz zdazy wrocic
+   — czyli zalew POST-ow i limit zapytan. */
+const PONOW_PO = 6000;
+let ostatnieZgloszenie = 0;
+let ostatnieOdliczanie = 0;
+let turaOdkad = 0;              // czas serwera, gdy zauwazylismy biezaca ture
+let ostatniNrPilnowanej = -1;
+const LIMIT_TURY_MS = (S.TURN_TIME + 12) * 1000;
 let oczekujaceStany = new Map();   // nr tury -> { snap, hash }
 let skorygowane = new Set();
 let opublikowaneStany = new Set();
@@ -107,7 +117,9 @@ async function wejdz() {
   await net.pobierz();
 
   el('ekran-nazwa').hidden = true;
-  el('ekran-lobby').hidden = false;
+  // Jesli wlasnie dolaczylismy do trwajacej partii, zbudujGre() juz pokazalo
+  // plansze — nie zaslaniamy jej lobby.
+  if (!state) el('ekran-lobby').hidden = false;
 }
 
 function hashTekstu(s) {
@@ -138,13 +150,21 @@ function naResetLogu() {
   opublikowaneStany.clear();
 }
 
+/* Czy trwajaca partia ma jeszcze zywego uczestnika. Bez tego sprawdzenia
+   porzucona gra zostaje w logu na zawsze i blokuje zakladanie nowych. */
+function partiaWToku() {
+  if (!pokoj || pokoj.faza !== 'gra' || !pokoj.gracze.length) return false;
+  const zywi = net.zywi();
+  return pokoj.gracze.some((g) => zywi.has(g.id) || g.id === mojeId);
+}
+
 function naStanSieci() {
   pokoj = zloz(net.zdarzenia);
   const baner = el('baner-blad');
   if (baner && net.polaczony) baner.hidden = true;
 
-  if (pokoj.faza === 'gra' && !state) zbudujGre();
-  if (pokoj.faza !== 'gra' && state && pokoj.faza === 'lobby') zakonczDoLobby();
+  if (partiaWToku() && !state) zbudujGre();
+  if (!partiaWToku() && state && pokoj.faza !== 'gra') zakonczDoLobby();
   odswiezLobby();
 }
 
@@ -155,7 +175,6 @@ function naZdarzenie(z) {
     zbudujGre();
     return;
   }
-  if (z.t === 'chce-start' && gospodarz && odliczanieDo) odliczanieDo = Date.now();
   if (!state) return;
 
   if (z.t === 'strzal' && z.nr === state.turnNumber && !zastosowaneTury.has(z.nr)) {
@@ -180,8 +199,12 @@ function odswiezLobby() {
   const zywi = net.zywi();
   const obecni = pokoj.wLobby.filter((g) => zywi.has(g.id) || g.id === mojeId);
 
-  // Samoleczenie: jeśli po resecie logu nie ma nas na liście, zgłaszamy się ponownie.
-  if (!pokoj.wLobby.some((g) => g.id === mojeId)) {
+  // Samoleczenie: jeśli po resecie logu nie ma nas na liście, zgłaszamy się
+  // ponownie — ale nie częściej niż raz na PONOW_PO, bo odpowiedź i tak
+  // dotrze dopiero przy kolejnym odpytaniu.
+  const teraz = Date.now();
+  if (!pokoj.wLobby.some((g) => g.id === mojeId) && teraz - ostatnieZgloszenie > PONOW_PO) {
+    ostatnieZgloszenie = teraz;
     net.wyslij({ t: 'dolacz', id: mojeId, name: mojaNazwa, color: mojKolor });
   }
 
@@ -224,31 +247,47 @@ function odswiezLobby() {
     ? 'Czekamy na drugiego gracza…'
     : obecni.length + ' graczy w lobby.';
 
-  if (obecni.length >= 2) {
-    if (odliczanieDo === null) odliczanieDo = Date.now() + ODLICZANIE * 1000;
-  } else {
-    odliczanieDo = null;
+  // Termin startu zyje we wspolnym logu i w czasie SERWERA. Wczesniej kazdy
+  // klient odliczal wlasne 20 s od chwili, w ktorej SAM zauwazyl drugiego
+  // gracza — stad rozne odliczania na kazdym ekranie.
+  const wToku = partiaWToku();
+  // Termin z dawno zamknietej sesji lobby zignoruj — inaczej gra startuje
+  // natychmiast po wejsciu, bo licznik "juz doszedl do zera".
+  let termin = pokoj.odliczanieDo;
+  if (termin !== null && net.czas() - termin > 60000) termin = null;
+  if (gospodarz && !startWToku && !wToku && teraz - ostatnieOdliczanie > PONOW_PO) {
+    // Po publikacji dociagamy log od razu — inaczej gospodarz przez cale
+    // odpytanie (~3 s) nie widzi wlasnego odliczania, choc reszta juz je ma.
+    if (obecni.length >= 2 && termin === null) {
+      ostatnieOdliczanie = teraz;
+      net.wyslij({ t: 'odliczanie', do: net.czas() + ODLICZANIE * 1000 })
+        .then(() => net.pobierz());
+    } else if (obecni.length < 2 && termin !== null) {
+      ostatnieOdliczanie = teraz;
+      net.wyslij({ t: 'odliczanie', anuluj: true }).then(() => net.pobierz());
+    }
   }
 
   const box = el('odliczanie');
-  if (odliczanieDo !== null) {
+  if (termin !== null && obecni.length >= 2) {
     box.hidden = false;
-    const sek = Math.max(0, Math.ceil((odliczanieDo - Date.now()) / 1000));
+    const sek = Math.max(0, Math.ceil((termin - net.czas()) / 1000));
     el('odliczanie-sek').textContent = sek;
-    if (sek === 0 && gospodarz && pokoj.faza !== 'gra') startPartii(obecni);
+    // Probowac moze kazdy — o tym, kto faktycznie zaklada partie,
+    // rozstrzyga zamek po stronie serwera.
+    if (sek === 0 && !wToku) startPartii(obecni);
   } else {
     box.hidden = true;
   }
 
   el('btn-start').disabled = obecni.length < 2;
-  el('info-lobby').textContent = gospodarz
-    ? 'Jesteś gospodarzem — możesz zacząć od razu.'
-    : 'Partię zaczyna gospodarz. Możesz go ponaglić przyciskiem.';
+  el('info-lobby').textContent = 'Każdy może przyspieszyć start.';
 }
 
-el('btn-start').addEventListener('click', () => {
-  if (gospodarz) odliczanieDo = Date.now();
-  else net.wyslij({ t: 'chce-start', id: mojeId });
+el('btn-start').addEventListener('click', async () => {
+  el('btn-start').disabled = true;
+  await net.wyslij({ t: 'odliczanie', do: net.czas() + 800 });
+  await net.pobierz();
   odswiezLobby();
 });
 
@@ -262,15 +301,21 @@ el('btn-znowu').addEventListener('click', () => {
 });
 
 async function startPartii(obecni) {
-  odliczanieDo = null;
-  const seed = (Math.random() * 0xffffffff) >>> 0;
-  await net.wyslij({
-    t: 'nowa',
-    seed,
-    gracze: obecni.slice(0, 6).map((g) => ({ id: g.id, name: g.name, color: g.color })),
-    ts: Date.now()
-  });
-  await net.pobierz();
+  if (startWToku) return;
+  startWToku = true;
+  try {
+    const seed = (Math.random() * 0xffffffff) >>> 0;
+    // Jesli ktos nas ubiegl, serwer odpowie { ok: false } i niczego nie zaklada —
+    // partie i tak dostaniemy zdarzeniem 'nowa'.
+    await net.wyslij({
+      t: 'nowa',
+      seed,
+      gracze: obecni.slice(0, 6).map((g) => ({ id: g.id, name: g.name, color: g.color }))
+    });
+    await net.pobierz();
+  } finally {
+    setTimeout(function () { startWToku = false; }, 4000);
+  }
 }
 
 /* ---------- gra ---------- */
@@ -377,6 +422,7 @@ function petla(teraz) {
 
   obsluzZdarzenia();
   obsluzPrzejscieTury(mojaTura);
+  pilnujTury(mojaTura);
 
   for (const p of state.projectiles) {
     if (WEAPONS[p.weapon].kind === 'pocisk') emitTrail(fx, p.x, p.y);
@@ -389,6 +435,25 @@ function petla(teraz) {
   renderer.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   R.draw(renderer, state, kamera, fx, dt);
   odswiezHud(akt, mojaTura);
+}
+
+/* Gracz prowadzacy ture moze zamknac karte albo stracic siec. Bez tego
+   reszta czekalaby na jego zdarzenie w nieskonczonosc, bo ma zamrozony
+   wlasny licznik tury. Po przekroczeniu terminu ture oddaje ktokolwiek —
+   skladanie logu i tak bierze pierwszy 'pas'. */
+function pilnujTury(mojaTura) {
+  if (state.turnNumber !== ostatniNrPilnowanej) {
+    ostatniNrPilnowanej = state.turnNumber;
+    turaOdkad = net.czas();
+    return;
+  }
+  if (mojaTura || state.phase !== 'aim') return;
+  if (zastosowaneTury.has(state.turnNumber)) return;
+  if (net.czas() - turaOdkad < LIMIT_TURY_MS) return;
+
+  zastosowaneTury.add(state.turnNumber);
+  net.wyslij({ t: 'pas', nr: state.turnNumber, id: mojeId, powod: 'brak-odpowiedzi' });
+  S.applyPas(state);
 }
 
 /* Po zamknięciu tury: gracz, który ją prowadził, publikuje stan końcowy;
@@ -509,10 +574,14 @@ function odswiezHud(akt, mojaTura) {
   }
 
   el('tura-kto').textContent = akt ? (mojaTura ? 'TWOJA TURA' : akt.name) : '—';
-  const sek = Math.max(0, Math.ceil(state.turnTimeLeft));
+  // Przy cudzej turze licznik w symulacji jest zamrozony, wiec czas liczymy
+  // od chwili jej zaobserwowania — inaczej wszyscy widzieliby '…'.
+  const sek = mojaTura
+    ? Math.max(0, Math.ceil(state.turnTimeLeft))
+    : Math.max(0, Math.ceil(S.TURN_TIME - (net.czas() - turaOdkad) / 1000));
   const zegar = el('tura-czas');
-  zegar.textContent = state.phase !== 'aim' ? '–' : (mojaTura ? sek : '…');
-  zegar.classList.toggle('malo', mojaTura && state.phase === 'aim' && sek <= 5);
+  zegar.textContent = state.phase !== 'aim' ? '–' : sek;
+  zegar.classList.toggle('malo', state.phase === 'aim' && sek <= 5);
 
   const slup = el('wiatr-slup');
   const proc = Math.min(50, (Math.abs(state.wind) / 130) * 50);
@@ -524,3 +593,18 @@ function odswiezHud(akt, mojaTura) {
 }
 
 setInterval(() => { if (!el('ekran-lobby').hidden) odswiezLobby(); }, 500);
+
+/* Podglad stanu do diagnostyki (konsola przegladarki: __arena()).
+   Tylko do odczytu — nic tu nie zmienia przebiegu gry. */
+window.__arena = () => ({
+  mojeId, gospodarz, obserwator, startWToku,
+  faza: pokoj && pokoj.faza,
+  odliczanieDo: pokoj && pokoj.odliczanieDo,
+  wLobby: pokoj ? pokoj.wLobby.map((g) => g.name) : null,
+  gracze: pokoj ? pokoj.gracze.map((g) => g.name) : null,
+  kursor: net && net.kursor,
+  dlugoscLogu: net && net.dlugosc,
+  obecnosc: net && Object.keys(net.obecnosc || {}),
+  przesuniecieZegara: net && net.przesuniecieZegara,
+  czasSerwera: net && net.czas()
+});
