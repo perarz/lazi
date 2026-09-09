@@ -3,9 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#0a0a0a">
   <meta http-equiv="X-Content-Type-Options" content="nosniff">
-  <meta http-equiv="X-Frame-Options" content="DENY">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; script-src 'none';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; script-src 'self'; base-uri 'none'; form-action 'none';">
   <meta name="referrer" content="no-referrer">
   <title>LAZI</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -14,9 +14,45 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <div class="container">
+  <!-- filtry: falowanie płomienia + ziarno -->
+  <svg class="defs" aria-hidden="true" focusable="false">
+    <!-- statyczny szum: animowany feTurbulence przeliczałby się w każdej klatce -->
+    <filter id="wobble" x="-60%" y="-60%" width="220%" height="220%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.012 0.05" numOctaves="2" seed="7" result="n"></feTurbulence>
+      <feDisplacementMap in="SourceGraphic" in2="n" scale="22"
+                         xChannelSelector="R" yChannelSelector="G"></feDisplacementMap>
+    </filter>
+    <filter id="wobble2" x="-60%" y="-60%" width="220%" height="220%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.02 0.035" numOctaves="2" seed="19" result="n"></feTurbulence>
+      <feDisplacementMap in="SourceGraphic" in2="n" scale="30"
+                         xChannelSelector="R" yChannelSelector="G"></feDisplacementMap>
+    </filter>
+    <filter id="grain">
+      <feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="3" stitchTiles="stitch"></feTurbulence>
+    </filter>
+  </svg>
+
+  <div class="floor" aria-hidden="true"></div>
+  <canvas id="fx" aria-hidden="true"></canvas>
+  <div class="heat" aria-hidden="true"></div>
+
+  <main class="container">
     <p class="text-lazi">ŁAZI TO</p>
-    <p class="text-goat">GOAT</p>
-  </div>
+
+    <div class="goat-wrap">
+      <span class="goat goat-glow" aria-hidden="true">GOAT</span>
+      <span class="goat goat-flame goat-flame-b" aria-hidden="true">GOAT</span>
+      <span class="goat goat-flame" aria-hidden="true">GOAT</span>
+      <span class="goat goat-core">GOAT</span>
+      <span class="goat-reflection" aria-hidden="true">GOAT</span>
+    </div>
+  </main>
+
+  <svg class="grain" aria-hidden="true" focusable="false">
+    <rect width="100%" height="100%" filter="url(#grain)"></rect>
+  </svg>
+  <div class="vignette" aria-hidden="true"></div>
+
+  <script src="fire.js" defer></script>
 </body>
 </html>

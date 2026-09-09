@@ -1,3 +1,18 @@
+/* ============================================================
+   ŁAZI TO GOAT — ognista strona
+   ============================================================ */
+
+:root {
+  --mx: 50vw;          /* pozycja kursora X (nadpisywana z JS na .heat) */
+  --my: 60vh;          /* pozycja kursora Y */
+  --ember-1: #fff6cf;
+  --ember-2: #ffd93b;
+  --ember-3: #ffa000;
+  --ember-4: #ff6a00;
+  --ember-5: #ff2e00;
+  --ember-6: #8a0500;
+}
+
 *, *::before, *::after {
   margin: 0;
   padding: 0;
@@ -13,61 +28,363 @@ html, body {
 
 body {
   background:
-    radial-gradient(ellipse at 50% 110%, #ff4500 0%, #b22000 25%, #1a0000 55%, #0a0a0a 80%),
+    radial-gradient(ellipse 120% 70% at 50% 118%, #ff4500 0%, #b22000 22%, #2a0400 52%, #0a0a0a 78%),
     #0a0a0a;
+  cursor: crosshair;
 }
 
+/* ------------------------------------------------------------
+   Warstwy tła
+   ------------------------------------------------------------ */
+
+.defs {
+  position: absolute;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+
+/* Rozżarzona "podłoga" u dołu ekranu */
+.floor {
+  position: fixed;
+  left: -10%;
+  right: -10%;
+  bottom: -16vh;
+  height: 46vh;
+  z-index: 1;
+  pointer-events: none;
+  background: radial-gradient(60% 100% at 50% 100%,
+    rgba(255, 150, 20, 0.55) 0%,
+    rgba(255, 60, 0, 0.30) 42%,
+    rgba(120, 10, 0, 0.12) 66%,
+    transparent 80%);
+  filter: blur(30px);
+  animation: breathe 5.5s ease-in-out infinite alternate;
+  transition: opacity 0.45s ease, transform 0.45s ease;
+}
+
+/* tylko opacity/transform — skalowanie rozmytego elementu
+   przeliczałoby blur w każdej klatce, więc transform zostaje statyczny */
+@keyframes breathe {
+  0%   { opacity: 0.72; }
+  100% { opacity: 1; }
+}
+
+/* Canvas z żarem / iskrami — nad tekstem, tryb "lighter" tylko rozjaśnia */
+#fx {
+  position: fixed;
+  inset: 0;
+  z-index: 5;
+  pointer-events: none;
+}
+
+/* Światło ciepła podążające za kursorem */
+.heat {
+  position: fixed;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+  mix-blend-mode: screen;
+  background: radial-gradient(circle 26vmax at var(--mx) var(--my),
+    rgba(255, 150, 40, 0.20) 0%,
+    rgba(255, 70, 0, 0.09) 36%,
+    transparent 68%);
+}
+
+.heat::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  transition: opacity 0.5s ease;
+  background: radial-gradient(circle 34vmax at var(--mx) var(--my),
+    rgba(255, 190, 90, 0.26) 0%,
+    rgba(255, 90, 0, 0.16) 32%,
+    transparent 66%);
+}
+
+body.ignite .heat::after { opacity: 1; }
+body.ignite .floor { opacity: 1; transform: scaleY(1.18); }
+
+/* ------------------------------------------------------------
+   Treść
+   ------------------------------------------------------------ */
+
 .container {
+  position: relative;
+  z-index: 4;
   width: 100vw;
   height: 100vh;
+  height: 100dvh;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 0.1em;
+  gap: 0.05em;
   user-select: none;
+  will-change: transform;   /* paralaksa ustawiana z JS */
 }
+
+/* --- ŁAZI TO --- */
 
 .text-lazi {
+  position: relative;
+  z-index: 2;                    /* nad poświatą płomienia */
   font-family: 'Russo One', sans-serif;
-  font-size: clamp(3rem, 10vw, 9rem);
+  font-size: clamp(2.2rem, 8vw, 7rem);
   color: #ffffff;
   letter-spacing: 0.15em;
-  text-shadow:
-    0 0 20px rgba(255, 255, 255, 0.3),
-    0 0 40px rgba(255, 100, 0, 0.2);
+  text-indent: 0.15em;           /* kompensacja letter-spacing */
   line-height: 1;
+  text-shadow:
+    0 2px 22px rgba(0, 0, 0, 0.55),
+    0 0 18px rgba(255, 255, 255, 0.35),
+    0 0 44px rgba(255, 120, 0, 0.30);
+  transition: letter-spacing 0.5s cubic-bezier(.2,.8,.2,1),
+              color 0.5s ease,
+              text-shadow 0.5s ease;
+  cursor: default;
 }
 
-.text-goat {
+.text-lazi:hover {
+  letter-spacing: 0.34em;
+  text-indent: 0.34em;
+  color: #fff6e0;
+  text-shadow:
+    0 2px 22px rgba(0, 0, 0, 0.45),
+    0 0 14px rgba(255, 255, 255, 0.75),
+    0 0 36px rgba(255, 180, 60, 0.70),
+    0 0 70px rgba(255, 90, 0, 0.55),
+    0 0 120px rgba(255, 40, 0, 0.40);
+}
+
+/* --- GOAT --- */
+
+.goat-wrap {
+  position: relative;
+  display: inline-block;
+  isolation: isolate;
+  transform-origin: 50% 85%;
+  transition: transform 0.45s cubic-bezier(.2,.9,.2,1);
+}
+
+.goat {
+  display: block;
   font-family: 'Creepster', cursive;
-  font-size: clamp(7rem, 28vw, 24rem);
+  font-size: clamp(6.5rem, 30vw, 28rem);
   line-height: 0.85;
-  background: linear-gradient(
-    180deg,
-    #fff7a1 0%,
-    #ffdd00 10%,
-    #ff9500 28%,
-    #ff4500 48%,
-    #cc1500 68%,
-    #7a0000 100%
-  );
+  letter-spacing: 0.02em;
   -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
   background-clip: text;
-  filter:
-    drop-shadow(0 0 8px #ff6600)
-    drop-shadow(0 0 20px #ff3300)
-    drop-shadow(0 0 45px #ff1100)
-    drop-shadow(0 0 80px #cc0000);
-  animation: flicker 3s ease-in-out infinite alternate;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
 }
 
-@keyframes flicker {
-  0%   { filter: drop-shadow(0 0 8px #ff6600) drop-shadow(0 0 20px #ff3300) drop-shadow(0 0 45px #ff1100) drop-shadow(0 0 80px #cc0000); }
-  20%  { filter: drop-shadow(0 0 10px #ffaa00) drop-shadow(0 0 25px #ff5500) drop-shadow(0 0 55px #ff2200) drop-shadow(0 0 100px #dd0000); }
-  40%  { filter: drop-shadow(0 0 6px #ff4400)  drop-shadow(0 0 15px #cc2200) drop-shadow(0 0 35px #aa0000) drop-shadow(0 0 60px #880000); }
-  60%  { filter: drop-shadow(0 0 12px #ffbb00) drop-shadow(0 0 30px #ff6600) drop-shadow(0 0 60px #ff2200) drop-shadow(0 0 110px #ee0000); }
-  80%  { filter: drop-shadow(0 0 7px #ff5500)  drop-shadow(0 0 18px #dd3300) drop-shadow(0 0 40px #bb1100) drop-shadow(0 0 70px #990000); }
-  100% { filter: drop-shadow(0 0 11px #ffcc00) drop-shadow(0 0 28px #ff5500) drop-shadow(0 0 50px #ff1500) drop-shadow(0 0 95px #cc0000); }
+/* Wszystkie warstwy ognia siedzą dokładnie na literach.
+   WAŻNE dla płynności: filtry są STATYCZNE, animujemy wyłącznie
+   opacity/transform — to obsługuje kompozytor, bez przerysowywania
+   rozmyć w każdej klatce. */
+.goat-flame,
+.goat-glow {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  z-index: -1;
+  pointer-events: none;
+}
+
+/* Migoczący blask — animujemy tylko opacity, więc rozmycie
+   rasteryzuje się raz. Promień celowo umiarkowany: przy dużym
+   blur widać krawędź tekstury warstwy. */
+.goat-glow {
+  -webkit-text-fill-color: #ff7300;
+  color: #ff7300;
+  filter: blur(24px);
+  transform: scale(1.04) translateY(-1%);
+  transform-origin: 50% 90%;
+  opacity: 0.85;
+  animation: pulse 3s ease-in-out infinite alternate;
+  transition: opacity 0.4s ease;
+  /* UWAGA: na warstwach z filtrem nie ruszamy ani will-change,
+     ani transform — jedno i drugie wymusza osobną teksturę, która
+     obcina rozmycie widoczną krawędzią i tnie wydajność. */
+}
+
+@keyframes pulse {
+  0%   { opacity: 0.6; }
+  35%  { opacity: 0.95; }
+  60%  { opacity: 0.7; }
+  100% { opacity: 1; }
+}
+
+/* Języki płomienia — zniekształcone i rozmyte kopie liter */
+.goat-flame {
+  background-image: linear-gradient(180deg,
+    #ffffff 0%,
+    #ffe36a 14%,
+    #ffab00 34%,
+    #ff5c00 58%,
+    #ff1500 76%,
+    #6e0300 100%);
+  filter: url(#wobble) blur(11px) saturate(1.5);
+  transform: scale(1.03) translateY(-2%);
+  transform-origin: 50% 92%;
+  opacity: 0.8;
+  animation: lick 2.4s ease-in-out infinite alternate;
+  transition: opacity 0.4s ease;
+}
+
+.goat-flame-b {
+  filter: url(#wobble2) blur(13px) saturate(1.6);
+  transform: scale(1.05) translateY(-4%);
+  opacity: 0.32;
+  animation: lick-b 3.1s ease-in-out infinite alternate;
+}
+
+/* Migotanie to przenikanie dwóch różnie zniekształconych warstw
+   płomienia — w przeciwfazie, więc kształt ognia faluje. */
+@keyframes lick {
+  0%   { opacity: 0.55; }
+  40%  { opacity: 0.9; }
+  70%  { opacity: 0.65; }
+  100% { opacity: 0.88; }
+}
+
+@keyframes lick-b {
+  0%   { opacity: 0.42; }
+  45%  { opacity: 0.14; }
+  75%  { opacity: 0.5; }
+  100% { opacity: 0.2; }
+}
+
+/* Warstwa główna — ostre litery z płynącym gradientem */
+.goat-core {
+  position: relative;
+  background-image: linear-gradient(180deg,
+    var(--ember-1) 0%,
+    var(--ember-2) 13%,
+    var(--ember-3) 28%,
+    var(--ember-4) 45%,
+    var(--ember-5) 63%,
+    #c81000 79%,
+    var(--ember-6) 100%);
+  background-size: 100% 135%;
+  background-position: 50% 60%;
+  /* statyczne cienie — rasteryzują się raz, w przeciwieństwie
+     do animowanego stosu drop-shadow, który dławił renderowanie */
+  filter:
+    drop-shadow(0 0 8px rgba(255, 150, 20, 0.95))
+    drop-shadow(0 0 26px rgba(255, 70, 0, 0.6))
+    drop-shadow(0 0 60px rgba(220, 20, 0, 0.35));
+}
+
+/* Rozpalenie przy najechaniu — tylko transform/opacity */
+.goat-wrap:hover { transform: scale(1.07); }
+
+.goat-wrap:hover .goat-glow {
+  opacity: 1;
+  animation-duration: 0.9s;
+}
+
+.goat-wrap:hover .goat-flame {
+  opacity: 1;
+  animation-duration: 0.85s;
+}
+
+.goat-wrap:hover .goat-flame-b {
+  opacity: 0.8;
+  animation-duration: 1.15s;
+}
+
+/* Odbicie w rozgrzanej podłodze */
+.goat-reflection {
+  position: absolute;
+  left: 0;
+  top: 100%;
+  width: 100%;
+  display: block;
+  font-family: 'Creepster', cursive;
+  font-size: clamp(6.5rem, 30vw, 28rem);
+  line-height: 0.85;
+  letter-spacing: 0.02em;
+  transform: scaleY(-1) translateY(0.06em);
+  transform-origin: top center;
+  opacity: 0.16;
+  filter: blur(4px);
+  background-image: linear-gradient(180deg, #ff8a00 0%, #ff2200 45%, transparent 85%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+  -webkit-mask-image: linear-gradient(to bottom, rgba(0,0,0,0.85) 0%, transparent 62%);
+  mask-image: linear-gradient(to bottom, rgba(0,0,0,0.85) 0%, transparent 62%);
+  pointer-events: none;
+  transition: opacity 0.45s ease;
+}
+
+body.ignite .goat-reflection { opacity: 0.3; }
+
+/* ------------------------------------------------------------
+   Nakładki
+   ------------------------------------------------------------ */
+
+.grain {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 6;
+  pointer-events: none;
+  opacity: 0.05;
+  mix-blend-mode: overlay;
+}
+
+.vignette {
+  position: fixed;
+  inset: 0;
+  z-index: 7;
+  pointer-events: none;
+  background: radial-gradient(ellipse 78% 70% at 50% 55%,
+    transparent 38%,
+    rgba(0, 0, 0, 0.45) 78%,
+    rgba(0, 0, 0, 0.72) 100%);
+}
+
+/* ------------------------------------------------------------
+   Dostępność / mniejsze ekrany
+   ------------------------------------------------------------ */
+
+/* Na wąskich/pionowych ekranach vw jest małe — powiększamy napis */
+@media (orientation: portrait) {
+  .goat,
+  .goat-reflection { font-size: clamp(5rem, 35vw, 28rem); }
+  .text-lazi { font-size: clamp(1.7rem, 9.5vw, 7rem); }
+}
+
+/* Na małych ekranach lżejsze rozmycia i jedna warstwa płomienia mniej */
+@media (max-width: 600px) {
+  .goat-flame   { filter: url(#wobble) blur(8px) saturate(1.4); }
+  .goat-flame-b { display: none; }
+  .goat-glow    { filter: blur(30px); }
+  .floor        { filter: blur(22px); }
+  .grain        { display: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .floor,
+  .goat-glow,
+  .goat-flame,
+  .goat-wrap:hover .goat-glow,
+  .goat-wrap:hover .goat-flame,
+  .goat-wrap:hover .goat-flame-b {
+    animation: none;
+  }
+  .goat-glow { opacity: 0.85; }
+  #fx { display: none; }
+  .text-lazi,
+  .goat-wrap,
+  .goat-glow,
+  .goat-flame { transition: none; }
+  .container { transform: none; }
 }
