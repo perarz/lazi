@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#0a0a0a">
+  <meta http-equiv="X-Content-Type-Options" content="nosniff">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; script-src 'self'; connect-src 'self'; img-src 'self' data:; base-uri 'none'; form-action 'none';">
+  <meta name="referrer" content="no-referrer">
+  <title>Arena GOATów</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Creepster&family=Russo+One&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <canvas id="plotno"></canvas>
+
+  <!-- HUD nad płótnem -->
+  <div id="hud" hidden>
+    <div class="hud-gora">
+      <div class="panel" id="panel-gracze"></div>
+      <div class="panel panel-tura">
+        <div class="tura-kto" id="tura-kto">—</div>
+        <div class="tura-czas" id="tura-czas">30</div>
+      </div>
+      <div class="panel panel-wiatr">
+        <div class="etykieta">WIATR</div>
+        <div class="wiatr-tor"><div class="wiatr-slup" id="wiatr-slup"></div></div>
+        <div class="wiatr-txt" id="wiatr-txt">0</div>
+      </div>
+    </div>
+
+    <div class="hud-dol">
+      <div class="bronie" id="bronie"></div>
+      <div class="moc"><div class="moc-wypelnienie" id="moc-wypelnienie"></div></div>
+      <div class="pomoc">
+        <b>A</b>/<b>D</b> ruch &nbsp; <b>W</b>/<b>S</b> celowanie &nbsp;
+        <b>Enter</b> skok &nbsp; <b>1-3</b> broń &nbsp; <b>Spacja</b> (przytrzymaj) strzał
+      </div>
+    </div>
+  </div>
+
+  <!-- Ekran startowy -->
+  <div class="ekran" id="ekran-start">
+    <div class="karta">
+      <h1>ARENA <span class="plonie">GOAT</span>ÓW</h1>
+      <p class="podtytul">Turowa strzelanka z terenem, który da się rozwalić do zera.</p>
+
+      <div class="pole">
+        <input id="input-nazwa" type="text" maxlength="14" placeholder="Twoja nazwa" autocomplete="off">
+        <button id="btn-dodaj">Dodaj</button>
+      </div>
+      <ul class="lista-graczy" id="lista-graczy"></ul>
+      <p class="info" id="info-start">Dodaj od 2 do 4 graczy (na razie na jednym ekranie).</p>
+      <button id="btn-start" class="glowny" disabled>Zaczynamy</button>
+    </div>
+  </div>
+
+  <!-- Ekran końca -->
+  <div class="ekran" id="ekran-koniec" hidden>
+    <div class="karta">
+      <h1 id="koniec-tytul">KONIEC</h1>
+      <p class="podtytul" id="koniec-opis"></p>
+      <button id="btn-znowu" class="glowny">Jeszcze raz</button>
+    </div>
+  </div>
+
+  <script type="module" src="src/main.js"></script>
+</body>
+</html>

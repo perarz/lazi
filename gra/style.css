@@ -1,0 +1,203 @@
+/* Arena GOATów — paleta spójna z landing page'em (ogień na czerni) */
+
+:root {
+  --tlo: #0a0a0a;
+  --zar: #ff6a00;
+  --zar-jasny: #ffd93b;
+  --tekst: #ffe9c8;
+  --panel: rgba(18, 10, 7, 0.82);
+  --obwodka: rgba(255, 120, 40, 0.35);
+}
+
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+/* Bez tego .ekran { display: flex } wygrywa z atrybutem hidden i ukryty
+   ekran dalej wisi nad grą, przechwytując kliknięcia. */
+[hidden] { display: none !important; }
+
+html, body {
+  width: 100%; height: 100%;
+  overflow: hidden;
+  background: var(--tlo);
+  color: var(--tekst);
+  font-family: 'Russo One', system-ui, sans-serif;
+}
+
+#plotno { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+
+/* ---------- HUD ---------- */
+
+#hud {
+  position: fixed; inset: 0;
+  pointer-events: none;
+  display: flex; flex-direction: column; justify-content: space-between;
+  padding: 14px;
+}
+
+.hud-gora { display: flex; gap: 12px; align-items: flex-start; }
+.hud-dol { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--obwodka);
+  border-radius: 10px;
+  padding: 10px 14px;
+  backdrop-filter: blur(6px);
+}
+
+#panel-gracze { display: flex; flex-direction: column; gap: 6px; min-width: 170px; }
+
+.gracz { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+.gracz .kropka { width: 10px; height: 10px; border-radius: 50%; flex: none; }
+.gracz .imie { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gracz .hp { font-variant-numeric: tabular-nums; opacity: 0.85; }
+.gracz.trup { opacity: 0.35; text-decoration: line-through; }
+.gracz.aktywny { color: var(--zar-jasny); text-shadow: 0 0 12px rgba(255, 150, 0, 0.7); }
+
+.panel-tura { text-align: center; margin-inline: auto; }
+.tura-kto { font-size: 14px; letter-spacing: 0.06em; }
+.tura-czas {
+  font-size: 32px; line-height: 1.1;
+  color: var(--zar-jasny);
+  text-shadow: 0 0 18px rgba(255, 140, 0, 0.6);
+  font-variant-numeric: tabular-nums;
+}
+.tura-czas.malo { color: #ff3b23; animation: puls 0.6s ease-in-out infinite alternate; }
+@keyframes puls { to { opacity: 0.45; } }
+
+.panel-wiatr { text-align: center; min-width: 130px; }
+.etykieta { font-size: 10px; letter-spacing: 0.22em; opacity: 0.7; }
+.wiatr-tor {
+  position: relative; height: 8px; margin: 7px 0 4px;
+  background: rgba(255, 255, 255, 0.08); border-radius: 4px;
+}
+.wiatr-tor::after {
+  content: ""; position: absolute; left: 50%; top: -3px;
+  width: 1px; height: 14px; background: rgba(255, 255, 255, 0.35);
+}
+.wiatr-slup {
+  position: absolute; top: 0; height: 100%;
+  background: linear-gradient(90deg, var(--zar), var(--zar-jasny));
+  border-radius: 4px;
+}
+.wiatr-txt { font-size: 11px; opacity: 0.8; font-variant-numeric: tabular-nums; }
+
+.bronie { display: flex; gap: 8px; }
+.bron {
+  background: var(--panel);
+  border: 1px solid var(--obwodka);
+  border-radius: 10px;
+  padding: 7px 13px;
+  font-size: 12px;
+  display: flex; align-items: center; gap: 7px;
+}
+.bron .klawisz {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4px; padding: 1px 6px; font-size: 10px;
+}
+.bron.wybrana {
+  border-color: var(--zar-jasny);
+  color: var(--zar-jasny);
+  box-shadow: 0 0 22px rgba(255, 140, 0, 0.35);
+}
+
+.moc {
+  width: min(420px, 60vw); height: 9px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 5px; overflow: hidden;
+}
+.moc-wypelnienie {
+  height: 100%; width: 0%;
+  background: linear-gradient(90deg, #ffd93b, #ff6a00, #ff2200);
+  transition: width 0.03s linear;
+}
+
+.pomoc { font-size: 11px; opacity: 0.55; font-family: system-ui, sans-serif; }
+.pomoc b { color: var(--zar-jasny); font-weight: 600; }
+
+/* ---------- ekrany ---------- */
+
+.ekran {
+  position: fixed; inset: 0; z-index: 10;
+  display: flex; align-items: center; justify-content: center;
+  background: radial-gradient(ellipse 120% 80% at 50% 120%, #ff4500 0%, #b22000 18%, #1a0300 48%, #0a0a0a 75%);
+  padding: 20px;
+}
+
+.karta {
+  background: var(--panel);
+  border: 1px solid var(--obwodka);
+  border-radius: 16px;
+  padding: 30px 34px;
+  width: min(460px, 100%);
+  text-align: center;
+  box-shadow: 0 30px 90px rgba(0, 0, 0, 0.6);
+}
+
+.karta h1 { font-size: 30px; letter-spacing: 0.05em; margin-bottom: 6px; }
+
+.plonie {
+  font-family: 'Creepster', cursive;
+  font-size: 1.35em;
+  background-image: linear-gradient(180deg, #fff6cf 0%, #ffd93b 25%, #ff6a00 60%, #c81000 100%);
+  -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent; color: transparent;
+  filter: drop-shadow(0 0 12px rgba(255, 110, 0, 0.75));
+}
+
+.podtytul { font-size: 12px; opacity: 0.7; margin-bottom: 22px; font-family: system-ui, sans-serif; }
+
+.pole { display: flex; gap: 8px; margin-bottom: 14px; }
+
+input[type="text"] {
+  flex: 1; min-width: 0;
+  background: rgba(0, 0, 0, 0.45);
+  border: 1px solid var(--obwodka);
+  border-radius: 9px;
+  padding: 11px 13px;
+  color: var(--tekst);
+  font-family: inherit; font-size: 14px;
+}
+input[type="text"]:focus { outline: 2px solid var(--zar); outline-offset: 1px; }
+
+button {
+  background: rgba(255, 106, 0, 0.16);
+  border: 1px solid var(--obwodka);
+  border-radius: 9px;
+  padding: 11px 18px;
+  color: var(--tekst);
+  font-family: inherit; font-size: 13px;
+  cursor: pointer;
+  transition: background 0.18s, border-color 0.18s, transform 0.12s;
+}
+button:hover:not(:disabled) { background: rgba(255, 106, 0, 0.3); border-color: var(--zar-jasny); }
+button:active:not(:disabled) { transform: translateY(1px); }
+button:disabled { opacity: 0.35; cursor: not-allowed; }
+
+.glowny {
+  width: 100%; margin-top: 18px; padding: 14px;
+  font-size: 15px; letter-spacing: 0.06em;
+  background: linear-gradient(180deg, rgba(255, 150, 0, 0.28), rgba(255, 60, 0, 0.22));
+}
+
+.lista-graczy { list-style: none; display: flex; flex-direction: column; gap: 7px; }
+
+.lista-graczy li {
+  display: flex; align-items: center; gap: 10px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 9px;
+  padding: 9px 12px;
+  font-size: 13px;
+}
+.lista-graczy .kropka { width: 12px; height: 12px; border-radius: 50%; flex: none; }
+.lista-graczy .imie { flex: 1; text-align: left; }
+.lista-graczy button { padding: 3px 9px; font-size: 11px; }
+
+.info { font-size: 11px; opacity: 0.6; margin-top: 12px; font-family: system-ui, sans-serif; }
+
+@media (max-width: 720px) {
+  .hud-gora { flex-direction: column; align-items: stretch; }
+  .panel-tura { margin-inline: 0; }
+  .pomoc { display: none; }
+}
