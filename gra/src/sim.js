@@ -68,6 +68,7 @@ export function createGame(seed, players) {
     power: 0,
     charging: false,
     firedThisTurn: false,
+    zdalna: false,          // true = turę prowadzi ktoś inny, czekamy na sieć
     events: [],
     winner: null,
     tick: 0,
@@ -120,6 +121,14 @@ export function releaseFire(state) {
   };
   applyFire(state, action);
   return action;
+}
+
+/* Tura oddana bez strzału — u pozostałych graczy wywoływane po
+   otrzymaniu zdarzenia 'pas' od gracza, który ją prowadził. */
+export function applyPas(state) {
+  if (state.phase === 'over') return;
+  state.phase = 'settle';
+  state.settleTime = SETTLE_MAX;
 }
 
 export function applyFire(state, action) {
@@ -176,11 +185,13 @@ export function step(state) {
       state.power = Math.min(1, state.power + DT / MAX_POWER_TIME);
       if (state.power >= 1) releaseFire(state);
     }
-    state.turnTimeLeft -= DT;
-    if (state.turnTimeLeft <= 0) {
-      state.turnTimeLeft = 0;
-      state.phase = 'settle';
-      state.settleTime = 0;
+    if (!state.zdalna) {
+      state.turnTimeLeft -= DT;
+      if (state.turnTimeLeft <= 0) {
+        state.turnTimeLeft = 0;
+        state.phase = 'settle';
+        state.settleTime = 0;
+      }
     }
   }
 

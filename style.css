@@ -388,3 +388,52 @@ body.ignite .goat-reflection { opacity: 0.3; }
   .goat-flame { transition: none; }
   .container { transform: none; }
 }
+
+/* ------------------------------------------------------------
+   Przycisk do gry
+   ------------------------------------------------------------ */
+
+.do-areny {
+  position: relative;
+  z-index: 3;                 /* nad odbiciem napisu, które sięga niżej */
+  margin-top: clamp(1.6rem, 5vh, 3.4rem);
+  display: inline-block;
+  padding: 0.85em 2.1em;
+  font-family: 'Russo One', sans-serif;
+  font-size: clamp(0.85rem, 1.6vw, 1.15rem);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  text-decoration: none;
+  color: #fff3d6;
+  cursor: pointer;
+  border: 1px solid rgba(255, 140, 40, 0.55);
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgba(255, 150, 0, 0.22), rgba(255, 50, 0, 0.16));
+  box-shadow:
+    0 0 22px rgba(255, 90, 0, 0.28),
+    inset 0 1px 0 rgba(255, 220, 160, 0.22);
+  text-shadow: 0 2px 14px rgba(0, 0, 0, 0.55);
+  transition: transform 0.25s cubic-bezier(.2,.9,.2,1),
+              box-shadow 0.35s ease,
+              border-color 0.35s ease,
+              background 0.35s ease;
+}
+
+.do-areny:hover,
+.do-areny:focus-visible {
+  transform: translateY(-2px) scale(1.04);
+  border-color: rgba(255, 210, 120, 0.9);
+  background: linear-gradient(180deg, rgba(255, 180, 30, 0.34), rgba(255, 70, 0, 0.26));
+  box-shadow:
+    0 0 34px rgba(255, 130, 0, 0.55),
+    0 0 70px rgba(255, 60, 0, 0.35),
+    inset 0 1px 0 rgba(255, 235, 190, 0.3);
+}
+
+.do-areny:focus-visible { outline: 2px solid #ffd93b; outline-offset: 3px; }
+.do-areny:active { transform: translateY(0) scale(1.01); }
+
+@media (prefers-reduced-motion: reduce) {
+  .do-areny { transition: none; }
+  .do-areny:hover { transform: none; }
+}

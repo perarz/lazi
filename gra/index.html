@@ -31,6 +31,9 @@
       </div>
     </div>
 
+    <div class="baner" id="baner-obserwator" hidden>Dołączyłeś w trakcie — oglądasz. Grasz w następnej rundzie.</div>
+    <div class="baner baner-blad" id="baner-blad" hidden></div>
+
     <div class="hud-dol">
       <div class="bronie" id="bronie"></div>
       <div class="moc"><div class="moc-wypelnienie" id="moc-wypelnienie"></div></div>
@@ -41,19 +44,34 @@
     </div>
   </div>
 
-  <!-- Ekran startowy -->
-  <div class="ekran" id="ekran-start">
+  <!-- Wejście: nazwa -->
+  <div class="ekran" id="ekran-nazwa">
     <div class="karta">
       <h1>ARENA <span class="plonie">GOAT</span>ÓW</h1>
-      <p class="podtytul">Turowa strzelanka z terenem, który da się rozwalić do zera.</p>
+      <p class="podtytul">Turowa strzelanka z terenem, który da się rozwalić do zera.<br>Jedno wspólne lobby — kto wejdzie, ten gra.</p>
 
       <div class="pole">
         <input id="input-nazwa" type="text" maxlength="14" placeholder="Twoja nazwa" autocomplete="off">
-        <button id="btn-dodaj">Dodaj</button>
       </div>
+      <button id="btn-wejdz" class="glowny" disabled>Wchodzę</button>
+      <p class="info" id="info-nazwa"></p>
+    </div>
+  </div>
+
+  <!-- Lobby -->
+  <div class="ekran" id="ekran-lobby" hidden>
+    <div class="karta">
+      <h1>LOBBY</h1>
+      <p class="podtytul" id="lobby-podtytul">Czekamy na graczy…</p>
+
       <ul class="lista-graczy" id="lista-graczy"></ul>
-      <p class="info" id="info-start">Dodaj od 2 do 4 graczy (na razie na jednym ekranie).</p>
+
+      <div class="odliczanie" id="odliczanie" hidden>
+        Start za <b id="odliczanie-sek">20</b> s
+      </div>
+
       <button id="btn-start" class="glowny" disabled>Zaczynamy</button>
+      <p class="info" id="info-lobby"></p>
     </div>
   </div>
 
@@ -62,7 +80,7 @@
     <div class="karta">
       <h1 id="koniec-tytul">KONIEC</h1>
       <p class="podtytul" id="koniec-opis"></p>
-      <button id="btn-znowu" class="glowny">Jeszcze raz</button>
+      <button id="btn-znowu" class="glowny">Wracam do lobby</button>
     </div>
   </div>
 

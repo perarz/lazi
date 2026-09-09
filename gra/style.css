@@ -201,3 +201,48 @@ button:disabled { opacity: 0.35; cursor: not-allowed; }
   .panel-tura { margin-inline: 0; }
   .pomoc { display: none; }
 }
+
+/* ---------- lobby i banery ---------- */
+
+.odliczanie {
+  margin-top: 16px;
+  font-size: 13px;
+  opacity: 0.85;
+}
+.odliczanie b {
+  color: var(--zar-jasny);
+  font-size: 20px;
+  font-variant-numeric: tabular-nums;
+}
+
+.lista-graczy .znacznik {
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  opacity: 0.6;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 4px;
+  padding: 2px 6px;
+}
+.lista-graczy li.ja { border-color: var(--obwodka); }
+.lista-graczy li.rozlaczony { opacity: 0.4; }
+
+.baner {
+  align-self: center;
+  background: var(--panel);
+  border: 1px solid var(--obwodka);
+  border-radius: 9px;
+  padding: 8px 16px;
+  font-size: 12px;
+  font-family: system-ui, sans-serif;
+}
+.baner-blad { border-color: rgba(255, 60, 40, 0.6); color: #ffb3a6; }
+
+.stan-polaczenia {
+  display: flex; align-items: center; gap: 7px;
+  justify-content: center;
+  font-size: 11px; opacity: 0.7;
+  font-family: system-ui, sans-serif;
+  margin-top: 10px;
+}
+.stan-polaczenia .kropka { width: 8px; height: 8px; border-radius: 50%; background: #5ec26a; }
+.stan-polaczenia.zle .kropka { background: #ff3b23; }
