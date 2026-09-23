@@ -126,6 +126,10 @@ export function attachInput(opts) {
   const wskazniki = new Map();       // pointerId -> {x, y}
   let tryb = null;                    // 'celuj' | 'kamera' | 'szczypanie'
   let szczypanieOd = 0;
+  // Zwykłe stuknięcie nie może przejmować kamery — przesuwamy dopiero,
+  // gdy palec (albo mysz) odjedzie kawałek od miejsca dotknięcia.
+  const PROG_PRZESUNIECIA = 10;
+  let startKamery = null;             // {x, y} dotknięcia; null = już przesuwamy
 
   function punkt(e) {
     const r = plotno.getBoundingClientRect();
@@ -165,7 +169,7 @@ export function attachInput(opts) {
     }
     if (wskazniki.size > 2) return;
     if (opts.mogeGrac()) { tryb = 'celuj'; celuj(p); }
-    else tryb = 'kamera';
+    else { tryb = 'kamera'; startKamery = p; }
   });
 
   plotno.addEventListener('pointermove', (e) => {
@@ -180,14 +184,20 @@ export function attachInput(opts) {
     } else if (tryb === 'celuj') {
       celuj(p);
     } else if (tryb === 'kamera') {
-      opts.onPrzesun?.(p.x - poprz.x, p.y - poprz.y);
+      if (startKamery) {
+        if (Math.hypot(p.x - startKamery.x, p.y - startKamery.y) < PROG_PRZESUNIECIA) return;
+        opts.onPrzesun?.(p.x - startKamery.x, p.y - startKamery.y);
+        startKamery = null;
+      } else {
+        opts.onPrzesun?.(p.x - poprz.x, p.y - poprz.y);
+      }
     }
   });
 
   const koniecWskaznika = (e) => {
     wskazniki.delete(e.pointerId);
     if (wskazniki.size === 0) tryb = null;
-    else if (tryb === 'szczypanie') tryb = 'kamera';
+    else if (tryb === 'szczypanie') { tryb = 'kamera'; startKamery = [...wskazniki.values()][0]; }
   };
   plotno.addEventListener('pointerup', koniecWskaznika);
   plotno.addEventListener('pointercancel', koniecWskaznika);

@@ -580,6 +580,15 @@
       return;
     }
 
+    // Apollo w 0 A.D.: po kilku zaczepkach wreszcie wychodzi armia z 20. minuty
+    if (g.armiaPo && k.zaczepkiRazem % g.armiaPo === 0) {
+      pokazDymek(k, 'Dobra, 20. minuta. ARMIA, NAPRZÓD!', 3600);
+      odpal(k.el, 'armia');
+      clearTimeout(k.armiaTimer);
+      k.armiaTimer = setTimeout(function () { k.el.classList.remove('armia'); }, 3000);
+      return;
+    }
+
     var nr = losujInny(g.zaczepki, k.ostatniaZaczepka);
     k.ostatniaZaczepka = nr;
     pokazDymek(k, g.zaczepki[nr], 2600);
@@ -717,6 +726,9 @@
     if (sumaMoje('fortnite') >= 50000) odblokuj('wieloryb');
     if (za.kozak > 0) odblokuj('haracz');
     if (za.lazi > 0) odblokuj('weteran');
+    if (fn.apollo > 0) odblokuj('earningsy');
+    if (za.apollo > 0) odblokuj('spichlerz');
+    if (za.froxy > 0) odblokuj('nauczyciel');
     if (w && w.kat === 'zeroad' && w.komu === 'stozhinio' && w.ile === 300) odblokuj('sparta');
     if (wszyscy(za)) odblokuj('skarbnik');
     if (sumaMoje('fortnite') > 0 && sumaMoje('zeroad') > 0) odblokuj('dwa-swiaty');

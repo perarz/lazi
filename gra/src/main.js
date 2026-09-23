@@ -94,25 +94,35 @@ window.addEventListener('resize', dopasujPlotno, { passive: true });
 
 const bazowyZoom = () => Math.max(0.42, Math.min(1.5, Math.min(renderer.viewW / 1150, renderer.viewH / 560)));
 
-/* Ile px od dołu zasłania HUD (bronie, moc, przyciski dotykowe) — kamera
-   trzyma dno świata nad tym pasem. Pomiar co pół sekundy (to odczyt
-   układu strony), a wynik dochodzi płynnie, żeby świat nie skakał, gdy
-   przyciski pojawiają się na początku tury. */
-let dolnyHud = 0, dolnyHudGladki = 0, dolnyHudPomiar = -1e9;
-function dolnyPasHud(teraz, dt) {
-  if (teraz - dolnyHudPomiar > 500) {
-    dolnyHudPomiar = teraz;
-    let gora = renderer.viewH;
+/* Pasy ekranu zasłonięte przez HUD: u góry panele, u dołu bronie, moc
+   i przyciski dotykowe. Kamera trzyma robala w wolnym pasie pomiędzy.
+   Pomiar co pół sekundy (to odczyt układu strony), a wynik dochodzi
+   płynnie, żeby świat nie skakał, gdy przyciski pojawiają się w turze. */
+const pasy = { gora: 0, dol: 0, cel: { gora: 0, dol: 0 }, pomiar: -1e9, swieze: true };
+function pasyHud(teraz, dt) {
+  if (teraz - pasy.pomiar > 500) {
+    pasy.pomiar = teraz;
+    const H = renderer.viewH;
+    let gora = H;
     for (const e of [el('dotyk'), hud.querySelector('.hud-dol')]) {
       if (!e || e.hidden) continue;
       const r = e.getBoundingClientRect();
       if (r.height > 0) gora = Math.min(gora, r.top);
     }
-    dolnyHud = Math.max(0, Math.min(renderer.viewH * 0.5, renderer.viewH - gora));
+    pasy.cel.dol = Math.max(0, Math.min(H * 0.5, H - gora));
+    const g = hud.querySelector('.hud-gora').getBoundingClientRect();
+    pasy.cel.gora = Math.max(0, Math.min(H * 0.35, g.bottom));
   }
-  if (dolnyHudGladki < 0) dolnyHudGladki = dolnyHud;     // pierwsza klatka partii: bez dojazdu
-  else dolnyHudGladki += (dolnyHud - dolnyHudGladki) * Math.min(1, dt * 4);
-  return dolnyHudGladki;
+  if (pasy.swieze) {                     // pierwsza klatka partii: bez dojazdu
+    pasy.swieze = false;
+    pasy.gora = pasy.cel.gora;
+    pasy.dol = pasy.cel.dol;
+  } else {
+    const k = Math.min(1, dt * 4);
+    pasy.gora += (pasy.cel.gora - pasy.gora) * k;
+    pasy.dol += (pasy.cel.dol - pasy.dol) * k;
+  }
+  return pasy;
 }
 
 /* ---------- ekran nazwy ---------- */
@@ -383,8 +393,8 @@ function zbudujGre() {
   pokazTure();
   rysujBronie();
   odswiezPelnyEkran();
-  dolnyHudPomiar = -1e9;
-  dolnyHudGladki = -1;
+  pasy.pomiar = -1e9;
+  pasy.swieze = true;
   if (dotykowy() && window.innerHeight > window.innerWidth * 1.2) {
     pokazInfo('Obróć telefon poziomo — zobaczysz więcej areny.');
   }
@@ -482,8 +492,10 @@ function petla(teraz) {
     if (WEAPONS[p.weapon].kind === 'pocisk') emitTrail(fx, p.x, p.y);
   }
 
+  pasyHud(teraz, dt);
   ustawKamere(teraz);
-  R.updateCamera(kamera, dt, renderer.viewW, renderer.viewH, dolnyPasHud(teraz, dt));
+  R.updateCamera(kamera, dt, renderer.viewW, renderer.viewH, pasy.dol);
+  trzymajWKadrze();
   stepFx(fx, dt);
 
   renderer.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -630,7 +642,34 @@ function ustawKamere(teraz) {
   const w = S.activeWorm(st);
   if (w) {
     const v = w.widok || w;
-    R.focusCamera(kamera, v.x, v.y - 40, z);
+    // Robal stoi w wolnym pasie między panelami a dolnym HUD-em, trochę
+    // poniżej jego połowy — nad nim zostaje miejsce na tor lotu.
+    const H = renderer.viewH;
+    const celY = pasy.gora + (H - pasy.dol - pasy.gora) * 0.58;
+    R.focusCamera(kamera, v.x, v.y - (celY - H / 2) / z, z);
+  }
+}
+
+/* Twarde zabezpieczenie: kiedy kamera śledzi robala, ten nigdy nie wypada
+   z wolnej części ekranu — przy szybkim spadaniu albo odrzucie wybuchem
+   płynny dojazd nie nadąża, więc dociągamy kamerę od razu. */
+function trzymajWKadrze() {
+  const st = rg.state;
+  if (performance.now() < recznaKameraDo || st.projectiles.length > 0) return;
+  const w = S.activeWorm(st);
+  if (!w || !w.alive) return;
+  const v = w.widok || w;
+  const z = kamera.zoom, W = renderer.viewW, H = renderer.viewH;
+  const sx = (v.x - kamera.x) * z + W / 2;
+  const sy = (v.y - kamera.y) * z + H / 2;
+  const bok = Math.min(W * 0.2, 150);
+  const gora = pasy.gora + 34 * z;         // nad stopami robal ma jeszcze głowę i podpis
+  const dol = H - pasy.dol - 6;
+  if (sx < bok) kamera.x -= (bok - sx) / z;
+  else if (sx > W - bok) kamera.x += (sx - (W - bok)) / z;
+  if (gora < dol) {
+    if (sy < gora) kamera.y -= (gora - sy) / z;
+    else if (sy > dol) kamera.y += (sy - dol) / z;
   }
 }
 
@@ -790,5 +829,15 @@ window.__arena = () => ({
   epoka: net && net.epoka,
   obecnosc: net && Object.keys(net.obecnosc || {}),
   przesuniecieZegara: net && Math.round(net.przesuniecieZegara),
-  hash: rg && S.stateHash(rg.state)
+  hash: rg && S.stateHash(rg.state),
+  kamera: kamera && renderer && (() => {
+    const w = rg && S.activeWorm(rg.state);
+    const v = w && (w.widok || w);
+    return {
+      x: kamera.x, y: kamera.y, zoom: kamera.zoom, recznie: performance.now() < recznaKameraDo,
+      // gdzie na ekranie (px CSS) jest robal, który ma turę
+      robal: v ? { x: (v.x - kamera.x) * kamera.zoom + renderer.viewW / 2, y: (v.y - kamera.y) * kamera.zoom + renderer.viewH / 2 } : null,
+      ekran: { w: renderer.viewW, h: renderer.viewH, gora: pasy.gora, dol: pasy.dol }
+    };
+  })()
 });

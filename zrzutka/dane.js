@@ -111,6 +111,28 @@ window.ZRZUTKA_DANE = {
             'Wnuczek, podgłośnij!',
             'Śliski jestem, nie złapiesz.'
           ]
+        },
+        apollo: {
+          nick: 'Apollo',
+          cele: [
+            { kwota: 1000, nazwa: 'Zapas energetyków na tydzień grindu' },
+            { kwota: 5000, nazwa: 'Wpisowe na cash cupa' },
+            { kwota: 20000, nazwa: 'Pierwsze earningsy (już prawie!)' }
+          ],
+          reakcje: [
+            'Dzięki. Wracam na grind.',
+            'To idzie na wpisowe. Earningsy już blisko.',
+            'gg, nawet nie poczułem, kiedy wpadły.',
+            'Za każdego V-dolca jedna eliminacja. PowPow, uważaj.',
+            'Zapisuję cię na listę podziękowań do pierwszej wygranej.'
+          ],
+          zaczepki: [
+            'Nie teraz, gram cash cupa.',
+            'Jeszcze jeden turniej i earningsy.',
+            'Edytuję szybciej, niż ty klikasz.',
+            'Śpię, jak skończę grinda. Czyli nigdy.',
+            'Krayo, wyjdź z lobby, psujesz mi statystyki.'
+          ]
         }
       }
     },
@@ -252,6 +274,50 @@ window.ZRZUTKA_DANE = {
             'Idę, idę… powoli.',
             'Babcia też kiedyś wygrała. Chyba.'
           ]
+        },
+        apollo: {
+          nick: 'Apollo',
+          cele: [
+            { kwota: 200, nazwa: 'Kolejne 50 obywatelek (przecież to za mało)' },
+            { kwota: 700, nazwa: 'Spichlerz tak wielki, że widać go z drugiego końca mapy' },
+            { kwota: 2000, nazwa: 'Armia z 20. minuty — tym razem już w 12.' }
+          ],
+          reakcje: [
+            'Dzięki! Wyszkolę za to jeszcze dziesięć obywatelek.',
+            'Do spichlerza. Armia będzie… później.',
+            'Jedzenia mam dość, metal zawsze się przyda.',
+            'Poczekaj do dwudziestej minuty. Zobaczysz.'
+          ],
+          zaczepki: [
+            'Jeszcze tylko dziesięć obywatelek.',
+            'Atak? W dwudziestej minucie.',
+            'Ile mam kobiet? Tak.',
+            'Jedzenia starczy do końca gry. I na następną.',
+            'Nie budź armii, jeszcze śpi w koszarach.'
+          ],
+          // po tylu zaczepkach z koszar wychodzi wreszcie armia
+          armiaPo: 6
+        },
+        froxy: {
+          nick: 'Froxy',
+          cele: [
+            { kwota: 100, nazwa: 'Poradnik 0 A.D. — wydanie dla Hanów' },
+            { kwota: 400, nazwa: 'Lekcje mikro u Kozaka (jeśli go nie wkurzy)' },
+            { kwota: 1200, nazwa: 'Wielki Mur wokół bazy, żeby zdążyć wszystko ogarnąć' }
+          ],
+          reakcje: [
+            'Dzięki! Wydam na… o, to już faza miasta? Super!',
+            'Kupiłem za to kuszników. Stoją w lesie, ale są.',
+            'Zapisałem w poradniku: srebrniki = dobrze.',
+            'Dziękuję! A który budynek robi metal?'
+          ],
+          zaczepki: [
+            'Który budynek robi kuszników?',
+            'Czemu moje farmy są tak daleko?',
+            'Hanowie. Zawsze Hanowie.',
+            'Chwila, gdzie moja armia?',
+            'Uczę się! Serio.'
+          ]
         }
       }
     }
@@ -265,7 +331,10 @@ window.ZRZUTKA_DANE = {
     { id: 'krayo', ikona: '🤡', nazwa: 'Litość dla Krayo', opis: 'Wesprzyj gracza, który nie umie grać.' },
     { id: 'mecenas-fn', ikona: '🎮', nazwa: 'Mecenas noobów', opis: 'Wesprzyj wszystkich graczy Fortnite.' },
     { id: 'wieloryb', ikona: '🐋', nazwa: 'Wieloryb', opis: 'Łącznie 50 000 V-dolców.' },
+    { id: 'earningsy', ikona: '💸', nazwa: 'Inwestor w earningsy', opis: 'Wesprzyj grind Apolla w Fortnite.' },
     { id: 'haracz', ikona: '⚔️', nazwa: 'Haracz dla Kozaka', opis: 'Zapłać Kozakowi za święty spokój.' },
+    { id: 'nauczyciel', ikona: '📜', nazwa: 'Nauczyciel Hanów', opis: 'Wesprzyj Froxy\'ego w nauce 0 A.D.' },
+    { id: 'spichlerz', ikona: '🌾', nazwa: 'Pełny spichlerz', opis: 'Wesprzyj boom Apolla w 0 A.D.' },
     { id: 'weteran', ikona: '🎖️', nazwa: 'Emerytura dla weterana', opis: 'Wesprzyj Laziego.' },
     { id: 'sparta', ikona: '🛡️', nazwa: 'This is Sparta', opis: 'Wpłać Stozhiniowi bardzo spartańską kwotę.', ukryta: true },
     { id: 'skarbnik', ikona: '👑', nazwa: 'Królewski skarbnik', opis: 'Wesprzyj wszystkich wojowników 0 A.D.' },

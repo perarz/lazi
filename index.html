@@ -105,6 +105,15 @@
         <ellipse cx="14.7" cy="18.3" rx="1.7" ry="2.7" transform="rotate(30 14.7 18.3)"></ellipse>
       </g>
     </symbol>
+    <!-- obywatelka z koszem — tłum u Apolla (kolor sukni przez color=) -->
+    <symbol id="obywatelka" viewBox="0 0 20 34">
+      <path d="M10 12.5L2.5 34h15z" fill="currentColor" stroke="rgba(0,0,0,0.35)" stroke-width="0.8" stroke-linejoin="round"></path>
+      <path d="M6 20.5h8" stroke="rgba(0,0,0,0.25)" stroke-width="1.4"></path>
+      <circle cx="10" cy="8" r="4.3" fill="#d9a276"></circle>
+      <path d="M5.4 9C5 3.4 7.4 2 10 2s5 1.4 4.6 7c-1.2-2.4-2.8-3.4-4.6-3.4S6.6 6.6 5.4 9z" fill="#f1ead8"></path>
+      <path d="M13.5 17.5h6l-1.2 5.5h-3.6z" fill="#a0763a" stroke="#5e4220" stroke-width="0.7"></path>
+      <path d="M14 17.3q2.8-3.4 5.5 0" fill="none" stroke="#5e4220" stroke-width="0.8"></path>
+    </symbol>
     <symbol id="ikona-drewno" viewBox="0 0 24 24">
       <rect x="2" y="7.5" width="18" height="10" rx="5" fill="#8a5a2b" stroke="#50320f" stroke-width="1"></rect>
       <path d="M5 10.5h9M6 14.5h8" stroke="#6b4420" stroke-width="1" stroke-linecap="round"></path>
@@ -210,14 +219,14 @@
         <button class="tytul-pill" type="button" data-do-profilu>
           Twój tytuł: <b data-tytul="fortnite">Bot</b>
           <span class="tytul-kropka">·</span>
-          odznaki <b data-odznaki-licznik>0/15</b>
+          odznaki <b data-odznaki-licznik>0/18</b>
         </button>
         <svg class="hero-moneta hero-moneta-1" aria-hidden="true"><use href="#vbuck"></use></svg>
         <svg class="hero-moneta hero-moneta-2" aria-hidden="true"><use href="#vbuck"></use></svg>
         <svg class="hero-moneta hero-moneta-3" aria-hidden="true"><use href="#vbuck"></use></svg>
       </div>
 
-      <div class="gracze">
+      <div class="gracze gracze-4">
 
         <!-- ================= PowPow ================= -->
         <article class="karta" data-gracz="powpow" data-kolor="epicki">
@@ -507,6 +516,116 @@
             </div>
           </div>
         </article>
+        <!-- ================= Apollo ================= -->
+        <article class="karta" data-gracz="apollo" data-kolor="mityczny">
+          <div class="karta-obraz">
+            <div class="promienie" aria-hidden="true"></div>
+            <svg class="awatar" viewBox="0 0 160 160" role="img" aria-label="Apollo w słuchawkach z mikrofonem, skupiony na grindzie, z energetykiem w ręce">
+              <!-- pasek do earningsów: prawie pełny, od tygodni -->
+              <g class="earningsy">
+                <rect x="30" y="4" width="100" height="16" rx="8" fill="#0b0e2a" stroke="#ffd23f" stroke-width="2"></rect>
+                <rect class="earningsy-pasek" x="33" y="7" width="89" height="10" rx="5" fill="#ffd23f"></rect>
+                <text x="78" y="15.6" class="awatar-napis" font-size="8" fill="#0b0e2a" text-anchor="middle" letter-spacing="0.5">EARNINGS 97%</text>
+              </g>
+              <g class="postac">
+                <path d="M28 160c3-28 22-43 52-43s49 15 52 43z" fill="#1b1f3f"></path>
+                <path d="M55 121q25 20 50 0l-3 11q-22 14-44 0z" fill="#2a3068"></path>
+                <path d="M72 129v17M88 129v17" stroke="#2de2ff" stroke-width="2.4" stroke-linecap="round"></path>
+                <circle cx="72" cy="147.5" r="2.2" fill="#2de2ff"></circle>
+                <circle cx="88" cy="147.5" r="2.2" fill="#2de2ff"></circle>
+                <rect x="71" y="100" width="18" height="22" rx="6" fill="#d19a72"></rect>
+                <ellipse cx="80" cy="84" rx="25" ry="27" fill="#e9b68e"></ellipse>
+                <path d="M55 84C51 62 62 52 80 52s30 10 25 32c-3-9-9-14-16-16c2 4 2 7 0 10c-4-7-11-10-19-10c3 3 3 6 1 9c-6-5-13-6-21-2z" fill="#2b1a10"></path>
+                <!-- słuchawki -->
+                <path d="M51 86C50 58 63 46 80 46s30 12 29 40" fill="none" stroke="#12142b" stroke-width="7" stroke-linecap="round"></path>
+                <path d="M60 60q20-16 40 0" fill="none" stroke="#2de2ff" stroke-width="1.8" opacity="0.85"></path>
+                <rect x="43" y="75" width="14" height="24" rx="6.5" fill="#12142b"></rect>
+                <rect x="103" y="75" width="14" height="24" rx="6.5" fill="#12142b"></rect>
+                <path d="M47.5 80v14M112.5 80v14" stroke="#2de2ff" stroke-width="2.6" stroke-linecap="round"></path>
+                <path d="M50 98c0 12 6 16 18 13.5" fill="none" stroke="#12142b" stroke-width="3.2" stroke-linecap="round"></path>
+                <circle cx="69.5" cy="111" r="3.6" fill="#12142b"></circle>
+                <!-- skupienie: brwi w dół, worki pod oczami, pot na czole -->
+                <path d="M62 80.5l12 4M98 80.5l-12 4" stroke="#2b1a10" stroke-width="3.4" stroke-linecap="round"></path>
+                <g class="oko"><ellipse cx="70" cy="90.5" rx="4.4" ry="3.1" fill="#ffffff"></ellipse><circle cx="71" cy="90.8" r="2.3" fill="#1d1d1d"></circle></g>
+                <g class="oko"><ellipse cx="90" cy="90.5" rx="4.4" ry="3.1" fill="#ffffff"></ellipse><circle cx="89" cy="90.8" r="2.3" fill="#1d1d1d"></circle></g>
+                <path d="M65 95.5q5 2.4 10 0M85 95.5q5 2.4 10 0" fill="none" stroke="#9b6f8f" stroke-width="1.4" opacity="0.8"></path>
+                <path d="M81 92q-2 5 1 7" fill="none" stroke="#b77c56" stroke-width="1.6" stroke-linecap="round"></path>
+                <path d="M72 104.5q8 3.5 15-2" fill="none" stroke="#7a2e1c" stroke-width="2.6" stroke-linecap="round"></path>
+                <path class="pot" d="M99 67c-3 4.4-4 7.2-1 8.8s5.2-2 1-8.8z" fill="#9fe6ff"></path>
+              </g>
+              <g class="energetyk">
+                <rect x="28" y="116" width="16" height="30" rx="3" fill="#1fd26b" stroke="#0a5a2c" stroke-width="1.6"></rect>
+                <rect x="28" y="116" width="16" height="4.5" rx="1.5" fill="#cfd8d4" stroke="#0a5a2c" stroke-width="1.2"></rect>
+                <path d="M38.5 124l-6 9h4.5l-2.5 8 7-10h-4.5l2.5-7z" fill="#0b0e2a"></path>
+                <ellipse cx="36" cy="141" rx="10.5" ry="6.5" fill="#e9b68e"></ellipse>
+              </g>
+              <g class="eliminacje">
+                <rect x="112" y="119" width="44" height="19" rx="4" fill="#0b0e2a" stroke="#ff4d6d" stroke-width="1.8"></rect>
+                <circle cx="121.5" cy="128.5" r="4.6" fill="none" stroke="#ff4d6d" stroke-width="1.7"></circle>
+                <path d="M121.5 121.8v3.2M121.5 132v3.2M114.8 128.5h3.2M125 128.5h3.2" stroke="#ff4d6d" stroke-width="1.7" stroke-linecap="round"></path>
+                <text x="141" y="133" class="awatar-napis" font-size="12" fill="#ffffff" text-anchor="middle">17</text>
+              </g>
+            </svg>
+            <span class="ranga">Mityczny</span>
+            <span class="korona" hidden>Ulubieniec sponsorów</span>
+            <div class="dymek" aria-live="polite"></div>
+          </div>
+
+          <div class="karta-tresc">
+            <h2 class="nick">Apollo</h2>
+            <p class="aka">grinder na earningsy</p>
+            <ul class="metryka">
+              <li><span>Poziom</span><b>200+ (w tym sezonie)</b></li>
+              <li><span>Earningsy</span><b>0 $ (jeszcze!)</b></li>
+              <li><span>Ulubiony tryb</span><b>arena, cash cupy, scrimy</b></li>
+            </ul>
+            <p class="haslo">Grind nie śpi. Apollo też nie.</p>
+
+            <div class="opis">
+              <p>
+                Jedyny w ekipie, który nie potrzebuje dofinansowania, żeby wygrywać — tylko żeby
+                grindować dalej. Arena, cash cupy, scrimy, znowu arena. Z każdym tygodniem
+                jest bliżej <b>earningsów</b> i każdy w lobby to czuje.
+              </p>
+              <p>
+                Niszczy każdego. W jednej grze z PowPowem, Krayo i Śliskim Karpiem to już nie jest
+                mecz, tylko rozgrzewka celowania. PowPow stawia full boxa, Apollo edytuje go
+                w pół sekundy i wychodzi z eliminacją, zanim box skończy się budować.
+              </p>
+              <p>
+                Za V-dolce kupi wpisowe na kolejne turnieje, nową myszkę i zapas energetyków
+                na następną noc grindu. Earningsy to tylko kwestia czasu.
+              </p>
+            </div>
+
+            <ul class="staty">
+              <li><span class="stat-nazwa">Mechanika</span><span class="pasek-stat" data-v="10"><i></i></span><span class="stat-wart">10/10</span></li>
+              <li><span class="stat-nazwa">Grind</span><span class="pasek-stat" data-v="11"><i></i></span><span class="stat-wart stat-ponad">11/10</span></li>
+              <li><span class="stat-nazwa">Litość dla noobów</span><span class="pasek-stat" data-v="0"><i></i></span><span class="stat-wart">0/10</span></li>
+              <li><span class="stat-nazwa">Sen</span><span class="pasek-stat" data-v="1"><i></i></span><span class="stat-wart">1/10</span></li>
+            </ul>
+
+            <div class="zbiorka">
+              <div class="zebrano">
+                <span class="zebrano-opis">Zebrano</span>
+                <span class="zebrano-kwota"><svg class="vb" aria-hidden="true"><use href="#vbuck"></use></svg><span data-kwota>0</span></span>
+              </div>
+              <div class="cel">
+                <div class="cel-gora">
+                  <span class="cel-etap" data-cel-etap>Cel 1/3</span>
+                  <span class="cel-kwota"><svg class="vb" aria-hidden="true"><use href="#vbuck"></use></svg><span data-cel-kwota>1000</span></span>
+                </div>
+                <div class="cel-nazwa" data-cel-nazwa>Zapas energetyków na tydzień grindu</div>
+                <div class="cel-pasek"><div class="cel-wypelnienie" data-cel-pasek></div></div>
+                <div class="cel-brakuje" data-cel-brakuje></div>
+              </div>
+              <button class="btn-wesprzyj" type="button">
+                <svg class="vb" aria-hidden="true"><use href="#vbuck"></use></svg>
+                Dofinansuj
+              </button>
+            </div>
+          </div>
+        </article>
       </div>
     </section>
 
@@ -521,13 +640,13 @@
           <span class="h1-b">dla wojowników</span>
         </h1>
         <p class="hero-pod">
-          Czterech wojowników z lobby <b>0 A.D.</b> i cztery zupełnie różne powody, żeby im pomóc.
+          Sześciu wojowników z lobby <b>0 A.D.</b> i sześć zupełnie różnych powodów, żeby im pomóc.
           Wybierz wojownika, kliknij <b>Wesprzyj</b> i przypieczętuj darowiznę srebrnikami.
           Każdy srebrnik trafia prosto do jego zasobu metalu.
         </p>
 
         <div class="surowce" role="list" aria-label="Stan skarbca fundacji">
-          <span class="surowiec" role="listitem" title="Żywność — wszystko z farm Nolliego">
+          <span class="surowiec" role="listitem" title="Żywność — farmy Nolliego i spichlerze Apolla">
             <svg aria-hidden="true"><use href="#ikona-zywnosc"></use></svg><b>9&nbsp;999</b><small>żywność</small>
           </span>
           <span class="surowiec" role="listitem" title="Drewno — Lazi zużył wszystko na taran">
@@ -539,22 +658,22 @@
           <span class="surowiec surowiec-metal" role="listitem" title="Metal — srebrniki zebrane przez fundację">
             <svg aria-hidden="true"><use href="#srebrnik"></use></svg><b id="metal">0</b><small>metal</small>
           </span>
-          <span class="surowiec" role="listitem" title="Populacja — czterech wojowników, Stozhinio ma plan na 300">
-            <svg aria-hidden="true"><use href="#ikona-populacja"></use></svg><b>4/300</b><small>populacja</small>
+          <span class="surowiec" role="listitem" title="Populacja — sześciu wojowników i obywatelki Apolla, Stozhinio ma plan na 300">
+            <svg aria-hidden="true"><use href="#ikona-populacja"></use></svg><b>156/300</b><small>populacja</small>
           </span>
         </div>
 
         <button class="tytul-pill" type="button" data-do-profilu>
           Twój tytuł: <b data-tytul="zeroad">Obywatelka przy farmie</b>
           <span class="tytul-kropka">·</span>
-          odznaki <b data-odznaki-licznik>0/15</b>
+          odznaki <b data-odznaki-licznik>0/18</b>
         </button>
         <svg class="hero-moneta hero-moneta-1" aria-hidden="true"><use href="#srebrnik"></use></svg>
         <svg class="hero-moneta hero-moneta-2" aria-hidden="true"><use href="#srebrnik"></use></svg>
         <svg class="hero-moneta hero-moneta-3" aria-hidden="true"><use href="#srebrnik"></use></svg>
       </div>
 
-      <div class="gracze gracze-4">
+      <div class="gracze gracze-6">
 
         <!-- ================= Kozak ================= -->
         <article class="karta" data-gracz="kozak" data-kolor="zloty">
@@ -859,39 +978,61 @@
         <article class="karta" data-gracz="nolli" data-kolor="szmaragdowy">
           <div class="karta-obraz">
             <div class="promienie" aria-hidden="true"></div>
-            <svg class="awatar" viewBox="0 0 160 160" role="img" aria-label="Nolli w babcinej chuście, z workiem srebrników">
+            <svg class="awatar" viewBox="0 0 160 160" role="img" aria-label="Nolli w skrzydlatym kapeluszu kupca i okularach rachmistrza, podrzuca srebrnika, obok worek pełen monet">
               <g class="postac">
-                <path d="M30 160c3-28 22-42 50-42s47 14 50 42z" fill="#1f7a4d"></path>
-                <path d="M60 124l20 36 20-36" fill="none" stroke="#e0b53a" stroke-width="4"></path>
-                <path d="M58 128q22 18 44 0" fill="none" stroke="#e0b53a" stroke-width="2" stroke-dasharray="3 2"></path>
+                <path d="M30 160c3-28 22-42 50-42s47 14 50 42z" fill="#1f6b45"></path>
+                <!-- płaszcz kupca ze złotym obszyciem -->
+                <path d="M96 118c16 6 30 20 34 42H98z" fill="#17553a"></path>
+                <path d="M96 118c16 6 30 20 34 42" fill="none" stroke="#e0b53a" stroke-width="2.6"></path>
+                <path d="M62 121q18 14 36 0" fill="none" stroke="#e0b53a" stroke-width="3"></path>
+                <path d="M66 126q14 30 28 0" fill="none" stroke="#e0b53a" stroke-width="1.6" stroke-dasharray="2.5 2"></path>
+                <circle cx="80" cy="143" r="5" fill="url(#laur-zloto)" stroke="#8a6a1a" stroke-width="1.2"></circle>
                 <rect x="71" y="100" width="18" height="24" rx="6" fill="#c98d63"></rect>
+                <circle cx="55" cy="88" r="5.5" fill="#cf9469"></circle>
+                <circle cx="105" cy="88" r="5.5" fill="#cf9469"></circle>
                 <ellipse cx="80" cy="85" rx="25" ry="27" fill="#d9a276"></ellipse>
-                <!-- babcina chusta: atakuje jak babcia, to i wygląda -->
-                <path d="M50 90C45 56 62 44 80 44s35 12 30 46c-2 12-8 22-14 26l-4-8c6-6 8-14 8-24c0-14-8-25-20-25s-20 11-20 25c0 10 2 18 8 24l-4 8c-6-4-12-14-14-26z" fill="#c0392b" stroke="#8e2519" stroke-width="1.6"></path>
-                <path d="M72 114l8 6 8-6-2 11-6-4-6 4z" fill="#a93226" stroke="#8e2519" stroke-width="1.2"></path>
-                <g fill="#fff4e0">
-                  <circle cx="62" cy="58" r="2.3"></circle><circle cx="72" cy="50" r="2.3"></circle><circle cx="88" cy="50" r="2.3"></circle>
-                  <circle cx="98" cy="58" r="2.3"></circle><circle cx="55" cy="74" r="2.3"></circle><circle cx="105" cy="74" r="2.3"></circle>
-                  <circle cx="80" cy="47" r="2"></circle><circle cx="54" cy="92" r="2"></circle><circle cx="106" cy="92" r="2"></circle>
-                </g>
-                <path d="M64 82q7-5 14-1M84 80q7-4 13 1" fill="none" stroke="#2c1c10" stroke-width="2.6" stroke-linecap="round"></path>
+                <path d="M56 84q-3-12 3-19M104 84q3-12-3-19" fill="none" stroke="#2c1c10" stroke-width="5" stroke-linecap="round"></path>
+                <!-- kapelusz podróżnego kupca ze skrzydełkami (jak u Hermesa, boga handlu i sprytu) -->
+                <path d="M57 58c-9-7-20-9-27-5c7 1 11 3 13 6c-6 0-10 1.5-13 5c8 0 16-1.5 25-4z" fill="#fffaf0" stroke="#b8ad96" stroke-width="1.2" stroke-linejoin="round"></path>
+                <path d="M103 58c9-7 20-9 27-5c-7 1-11 3-13 6c6 0 10 1.5 13 5c-8 0-16-1.5-25-4z" fill="#fffaf0" stroke="#b8ad96" stroke-width="1.2" stroke-linejoin="round"></path>
+                <ellipse cx="80" cy="65" rx="37" ry="8" fill="#8a6a3a" stroke="#4e3818" stroke-width="1.6"></ellipse>
+                <path d="M60 65c0-16 9-25 20-25s20 9 20 25z" fill="#9c7a44" stroke="#4e3818" stroke-width="1.6"></path>
+                <path d="M60.4 58.5h39.2v5.5H60.4z" fill="#e0b53a"></path>
+                <!-- chytre spojrzenie znad okularów -->
+                <path d="M63 81q6-3 12 0M85 77.5q7-4.5 13 0" fill="none" stroke="#2c1c10" stroke-width="2.6" stroke-linecap="round"></path>
                 <g class="oko oczy-chytre">
-                  <ellipse cx="71" cy="90" rx="4.8" ry="3.2" fill="#ffffff"></ellipse>
-                  <ellipse cx="91" cy="90" rx="4.8" ry="3.2" fill="#ffffff"></ellipse>
+                  <ellipse cx="70" cy="89" rx="4.8" ry="3.2" fill="#ffffff"></ellipse>
+                  <ellipse cx="90" cy="89" rx="4.8" ry="3.2" fill="#ffffff"></ellipse>
                   <g class="zrenice">
-                    <circle cx="73.6" cy="90.3" r="2.2" fill="#1d1d1d"></circle>
-                    <circle cx="93.6" cy="90.3" r="2.2" fill="#1d1d1d"></circle>
+                    <circle cx="72.6" cy="89.3" r="2.2" fill="#1d1d1d"></circle>
+                    <circle cx="92.6" cy="89.3" r="2.2" fill="#1d1d1d"></circle>
                   </g>
-                  <path d="M66 88.5q5-3.5 10 0M86 88.5q5-3.5 10 0" fill="#d9a276" stroke="#a8704c" stroke-width="1.3"></path>
+                  <path d="M65 87.5q5-3.5 10 0M85 87.5q5-3.5 10 0" fill="#d9a276" stroke="#a8704c" stroke-width="1.3"></path>
                 </g>
-                <path d="M70 99q5-3 10 0q5-3 10 0" fill="none" stroke="#2c1c10" stroke-width="2.2" stroke-linecap="round"></path>
-                <path d="M72 104q7 4 15-2" fill="none" stroke="#6b2a1a" stroke-width="2.4" stroke-linecap="round"></path>
+                <g fill="rgba(255,255,255,0.14)" stroke="#e0b53a" stroke-width="1.7">
+                  <circle cx="70" cy="91" r="7.2"></circle>
+                  <circle cx="90" cy="91" r="7.2"></circle>
+                </g>
+                <path d="M77 90q3-2 6 0M62.8 90l-7-2.5M97.2 90l7-2.5" fill="none" stroke="#e0b53a" stroke-width="1.6"></path>
+                <path d="M80.5 94q-3 5 1 7" fill="none" stroke="#a8704c" stroke-width="1.6" stroke-linecap="round"></path>
+                <!-- wąsik i uśmieszek kogoś, kto wie więcej niż mówi -->
+                <path d="M80 102c-4-3-9-3-12 0c-1.5 1.5-4 1-4.5-1M80 102c4-3 9-3 12 0c1.5 1.5 4 1 4.5-1" fill="none" stroke="#2c1c10" stroke-width="2.4" stroke-linecap="round"></path>
+                <path d="M72 107q9 4 16-3" fill="none" stroke="#6b2a1a" stroke-width="2.4" stroke-linecap="round"></path>
+                <path d="M78 112q2 4 4 0" fill="#2c1c10" stroke="#2c1c10" stroke-width="1.6" stroke-linejoin="round"></path>
+              </g>
+              <!-- podrzucany srebrnik -->
+              <g class="rzut">
+                <g class="moneta-rzut"><use href="#srebrnik" x="31" y="92" width="18" height="18"></use></g>
+                <path d="M34 114q6-3 12 0" fill="none" stroke="#fff4d0" stroke-width="1.4" stroke-linecap="round" opacity="0.7"></path>
+                <ellipse cx="40" cy="126" rx="8.5" ry="6.5" fill="#d9a276"></ellipse>
+                <path d="M34 124q6-3 12 0" fill="none" stroke="#a8704c" stroke-width="1.2"></path>
               </g>
               <g class="worek">
-                <path d="M110 122c-9 6-14 17-12 27c2 9 34 9 36 0c2-10-3-21-12-27z" fill="#a0763a" stroke="#5e4220" stroke-width="2"></path>
-                <path d="M109 122q7 5 14 0" fill="none" stroke="#5e4220" stroke-width="3" stroke-linecap="round"></path>
-                <use href="#srebrnik" x="107" y="131" width="20" height="20"></use>
-                <use href="#srebrnik" x="126" y="148" width="12" height="12"></use>
+                <path d="M134 118c-9 6-14 17-12 27c2 9 34 9 36 0c2-10-3-21-12-27z" fill="#a0763a" stroke="#5e4220" stroke-width="2"></path>
+                <path d="M133 118q7 5 14 0" fill="none" stroke="#5e4220" stroke-width="3" stroke-linecap="round"></path>
+                <use href="#srebrnik" x="131" y="125" width="20" height="20"></use>
+                <use href="#srebrnik" x="150" y="142" width="13" height="13"></use>
+                <use href="#srebrnik" x="119" y="146" width="11" height="11"></use>
               </g>
             </svg>
             <span class="ranga">Kupiec</span>
@@ -943,6 +1084,259 @@
                   <span class="cel-kwota"><svg class="vb" aria-hidden="true"><use href="#srebrnik"></use></svg><span data-cel-kwota>250</span></span>
                 </div>
                 <div class="cel-nazwa" data-cel-nazwa>Kurs ataku dla początkujących babć</div>
+                <div class="cel-pasek"><div class="cel-wypelnienie" data-cel-pasek></div></div>
+                <div class="cel-brakuje" data-cel-brakuje></div>
+              </div>
+              <button class="btn-wesprzyj" type="button">
+                <svg class="vb" aria-hidden="true"><use href="#srebrnik"></use></svg>
+                Wesprzyj
+              </button>
+            </div>
+          </div>
+        </article>
+        <!-- ================= Apollo ================= -->
+        <article class="karta" data-gracz="apollo" data-kolor="blekitny">
+          <div class="karta-obraz">
+            <div class="promienie" aria-hidden="true"></div>
+            <svg class="awatar" viewBox="0 0 160 160" role="img" aria-label="Apollo w laurowym wieńcu z bochenkiem chleba, a wokół niego tłum obywatelek">
+              <!-- tłum obywatelek: w 0 A.D. u Apolla zawsze jest ich pełno -->
+              <g class="tlum">
+                <use href="#obywatelka" x="-40" y="104" width="20" height="34" color="#b5553a"></use>
+                <use href="#obywatelka" x="-20" y="112" width="20" height="34" color="#7a8f3a"></use>
+                <use href="#obywatelka" x="-34" y="126" width="20" height="34" color="#3f6fa8"></use>
+                <use href="#obywatelka" x="-4" y="122" width="20" height="34" color="#a8456b"></use>
+                <use href="#obywatelka" x="146" y="106" width="20" height="34" color="#3f6fa8"></use>
+                <use href="#obywatelka" x="166" y="112" width="20" height="34" color="#b5553a"></use>
+                <use href="#obywatelka" x="184" y="104" width="20" height="34" color="#7a8f3a"></use>
+                <use href="#obywatelka" x="176" y="126" width="20" height="34" color="#a8456b"></use>
+                <use href="#obywatelka" x="146" y="126" width="20" height="34" color="#c98a2a"></use>
+                <text x="180" y="98" class="awatar-napis" font-size="13" fill="#fff4d0" stroke="#2a1a08" stroke-width="3" paint-order="stroke" text-anchor="middle">×150</text>
+                <g class="wlocznie" stroke="#5e4220" stroke-width="1.6" stroke-linecap="round">
+                  <path d="M-23 134V100"></path><path d="M-23 93l-2.6 7h5.2z" fill="#cfd6dc" stroke="#6a7278" stroke-width="0.8"></path>
+                  <path d="M-3 142V108"></path><path d="M-3 101l-2.6 7h5.2z" fill="#cfd6dc" stroke="#6a7278" stroke-width="0.8"></path>
+                  <path d="M-17 156V122"></path><path d="M-17 115l-2.6 7h5.2z" fill="#cfd6dc" stroke="#6a7278" stroke-width="0.8"></path>
+                  <path d="M13 152V118"></path><path d="M13 111l-2.6 7h5.2z" fill="#cfd6dc" stroke="#6a7278" stroke-width="0.8"></path>
+                  <path d="M163 136V102"></path><path d="M163 95l-2.6 7h5.2z" fill="#cfd6dc" stroke="#6a7278" stroke-width="0.8"></path>
+                  <path d="M183 142V108"></path><path d="M183 101l-2.6 7h5.2z" fill="#cfd6dc" stroke="#6a7278" stroke-width="0.8"></path>
+                  <path d="M201 134V100"></path><path d="M201 93l-2.6 7h5.2z" fill="#cfd6dc" stroke="#6a7278" stroke-width="0.8"></path>
+                  <path d="M193 156V122"></path><path d="M193 115l-2.6 7h5.2z" fill="#cfd6dc" stroke="#6a7278" stroke-width="0.8"></path>
+                  <path d="M163 156V122"></path><path d="M163 115l-2.6 7h5.2z" fill="#cfd6dc" stroke="#6a7278" stroke-width="0.8"></path>
+                </g>
+              </g>
+              <g class="postac">
+                <!-- włosy z tyłu głowy -->
+                <path d="M53 94c-7-12-5-32 8-41c11-8 27-8 38 0c13 9 15 29 8 41z" fill="#c9922e"></path>
+                <path d="M30 160c3-28 22-42 50-42s47 14 50 42z" fill="#f1ead8"></path>
+                <path d="M63 121q17 12 34 0" fill="none" stroke="#2f6fb5" stroke-width="3"></path>
+                <path d="M30 160c3-26 15-38 33-42l21 42z" fill="#2f6fb5"></path>
+                <path d="M63 118l21 42" stroke="#e8b93a" stroke-width="2.4"></path>
+                <circle cx="62" cy="121" r="4.2" fill="url(#laur-zloto)" stroke="#8a6a1a" stroke-width="1.2"></circle>
+                <rect x="71" y="100" width="18" height="24" rx="6" fill="#cf9a70"></rect>
+                <circle cx="55" cy="88" r="5.5" fill="#dca57b"></circle>
+                <circle cx="105" cy="88" r="5.5" fill="#dca57b"></circle>
+                <ellipse cx="80" cy="85" rx="25" ry="27" fill="#e7b48b"></ellipse>
+                <!-- złote loki -->
+                <g fill="#e6b54c" stroke="#b07f22" stroke-width="1">
+                  <circle cx="58" cy="72" r="6"></circle>
+                  <circle cx="63" cy="64" r="6.5"></circle>
+                  <circle cx="72" cy="59.5" r="7"></circle>
+                  <circle cx="82" cy="58" r="7"></circle>
+                  <circle cx="92" cy="60" r="7"></circle>
+                  <circle cx="99" cy="66" r="6.5"></circle>
+                  <circle cx="103" cy="74" r="5.5"></circle>
+                </g>
+                <!-- wieniec laurowy -->
+                <path d="M55 70q25-19 50 0" fill="none" stroke="#3f6b22" stroke-width="2"></path>
+                <g fill="#5fa032" stroke="#2f5a16" stroke-width="0.8">
+                  <path d="M0 0Q5-4 11 0Q5 4 0 0Z" transform="translate(57 68) rotate(-130)"></path>
+                  <path d="M0 0Q5-4 11 0Q5 4 0 0Z" transform="translate(62 63.5) rotate(-118)"></path>
+                  <path d="M0 0Q5-4 11 0Q5 4 0 0Z" transform="translate(68.5 60) rotate(-106)"></path>
+                  <path d="M0 0Q5-4 11 0Q5 4 0 0Z" transform="translate(75.5 58) rotate(-96)"></path>
+                  <path d="M0 0Q5-4 11 0Q5 4 0 0Z" transform="translate(84.5 58) rotate(-84)"></path>
+                  <path d="M0 0Q5-4 11 0Q5 4 0 0Z" transform="translate(91.5 60) rotate(-74)"></path>
+                  <path d="M0 0Q5-4 11 0Q5 4 0 0Z" transform="translate(98 63.5) rotate(-62)"></path>
+                  <path d="M0 0Q5-4 11 0Q5 4 0 0Z" transform="translate(103 68) rotate(-50)"></path>
+                  <path d="M0 0Q5-4 10 0Q5 4 0 0Z" transform="translate(59 66) rotate(170)"></path>
+                  <path d="M0 0Q5-4 10 0Q5 4 0 0Z" transform="translate(101 66) rotate(10)"></path>
+                </g>
+                <path d="M63 81q6-4 12-1M85 80q6-3 12 1" fill="none" stroke="#9a6a22" stroke-width="2.6" stroke-linecap="round"></path>
+                <g class="oko"><ellipse cx="70" cy="90" rx="3.2" ry="3.8" fill="#1d1d1d"></ellipse></g>
+                <g class="oko"><ellipse cx="90" cy="90" rx="3.2" ry="3.8" fill="#1d1d1d"></ellipse></g>
+                <circle cx="63" cy="99" r="4" fill="#f59a8a" opacity="0.45"></circle>
+                <circle cx="97" cy="99" r="4" fill="#f59a8a" opacity="0.45"></circle>
+                <path d="M71 102q9 8 18 0" fill="none" stroke="#7a2e1c" stroke-width="2.8" stroke-linecap="round"></path>
+              </g>
+              <g class="chleb">
+                <ellipse cx="122" cy="116" rx="18" ry="9.5" fill="#c98a3a" stroke="#7a4a1a" stroke-width="1.6" class="bez-pudla" transform="rotate(-14 122 116)"></ellipse>
+                <path d="M111 115l3 7M119 111l3 8M127 108l3 7" stroke="#7a4a1a" stroke-width="1.6" stroke-linecap="round"></path>
+                <ellipse cx="107" cy="124" rx="7.5" ry="6" fill="#e7b48b"></ellipse>
+              </g>
+            </svg>
+            <span class="ranga">Strateg</span>
+            <span class="korona" hidden>Ulubieniec mecenasów</span>
+            <div class="dymek" aria-live="polite"></div>
+          </div>
+
+          <div class="karta-tresc">
+            <h2 class="nick">Apollo</h2>
+            <p class="aka">pan spichlerzy i obywatelek</p>
+            <ul class="metryka">
+              <li><span>Taktyka</span><b>najpierw boom, potem wojna</b></li>
+              <li><span>Obywatelek na mapie</span><b>w chuj</b></li>
+              <li><span>Ranking w lobby</span><b>1500 ▲ (rośnie z każdą farmą)</b></li>
+            </ul>
+            <p class="haslo">Najpierw sto kobiet i góra jedzenia. Potem wojna.</p>
+
+            <div class="opis">
+              <p>
+                Jego taktyka jest prosta: najpierw tłum <b>obywatelek</b> i tyle jedzenia, że mógłby
+                wykarmić Rzym, Kartaginę i całe lobby Laziego. Kiedy inni wysyłają pierwszy atak,
+                Apollo klika kolejne kobiety przy farmach, a przeciwnik patrzy na wynik i myśli,
+                że on w ogóle nie gra.
+              </p>
+              <p>
+                A potem przychodzi dwudziesta minuta. Koszary zaczynają pluć wojskiem bez przerwy
+                i armia wylewa się z miasta jak zboże z pękniętego spichlerza. Wtedy okazuje się,
+                że Apollo jest całkiem dobry — trzeba tylko przeżyć do jego armii.
+              </p>
+              <p>
+                Srebrniki pójdą na metal dla wojska, bo jedzenia ma już aż za dużo.
+              </p>
+            </div>
+
+            <ul class="staty">
+              <li><span class="stat-nazwa">Gospodarka</span><span class="pasek-stat" data-v="9"><i></i></span><span class="stat-wart">IX/X</span></li>
+              <li><span class="stat-nazwa">Obywatelki</span><span class="pasek-stat" data-v="11"><i></i></span><span class="stat-wart stat-ponad">XI/X</span></li>
+              <li><span class="stat-nazwa">Cierpliwość</span><span class="pasek-stat" data-v="9"><i></i></span><span class="stat-wart">IX/X</span></li>
+              <li><span class="stat-nazwa">Armia (po 20. minucie)</span><span class="pasek-stat" data-v="8"><i></i></span><span class="stat-wart">VIII/X</span></li>
+            </ul>
+
+            <div class="zbiorka">
+              <div class="zebrano">
+                <span class="zebrano-opis">Metal w skarbcu</span>
+                <span class="zebrano-kwota"><svg class="vb" aria-hidden="true"><use href="#srebrnik"></use></svg><span data-kwota>0</span></span>
+              </div>
+              <div class="cel">
+                <div class="cel-gora">
+                  <span class="cel-etap" data-cel-etap>Faza miasteczka</span>
+                  <span class="cel-kwota"><svg class="vb" aria-hidden="true"><use href="#srebrnik"></use></svg><span data-cel-kwota>200</span></span>
+                </div>
+                <div class="cel-nazwa" data-cel-nazwa>Kolejne 50 obywatelek (przecież to za mało)</div>
+                <div class="cel-pasek"><div class="cel-wypelnienie" data-cel-pasek></div></div>
+                <div class="cel-brakuje" data-cel-brakuje></div>
+              </div>
+              <button class="btn-wesprzyj" type="button">
+                <svg class="vb" aria-hidden="true"><use href="#srebrnik"></use></svg>
+                Wesprzyj
+              </button>
+            </div>
+          </div>
+        </article>
+
+        <!-- ================= Froxy ================= -->
+        <article class="karta" data-gracz="froxy" data-kolor="jadeitowy">
+          <div class="karta-obraz">
+            <div class="promienie" aria-hidden="true"></div>
+            <svg class="awatar" viewBox="0 0 160 160" role="img" aria-label="Froxy w stroju z czasów dynastii Han, z plakietką L na piersi i poradnikiem trzymanym do góry nogami">
+              <g class="lampion">
+                <path d="M140 0v16" stroke="#3a2a10" stroke-width="1.4"></path>
+                <rect x="133" y="14" width="14" height="4" rx="1" fill="#e8b93a"></rect>
+                <ellipse cx="140" cy="30" rx="13" ry="12" fill="#d42a1f"></ellipse>
+                <path d="M140 18v24M133 20q-4 10 0 20M147 20q4 10 0 20" fill="none" stroke="#9e1a12" stroke-width="1.2"></path>
+                <rect x="133" y="41" width="14" height="4" rx="1" fill="#e8b93a"></rect>
+                <path d="M140 45v13" stroke="#e8b93a" stroke-width="2.6" stroke-linecap="round"></path>
+              </g>
+              <text class="awatar-znak znak-pytania" x="26" y="58" font-size="30" fill="#fff4d0" transform="rotate(-12 26 58)">?</text>
+              <g class="postac">
+                <path d="M30 160c3-28 22-42 50-42s47 14 50 42z" fill="#a3241c"></path>
+                <!-- skrzyżowany kołnierz szaty -->
+                <path d="M65 119l15 18 15-18z" fill="#f1ead8"></path>
+                <path d="M62 119l19 23" stroke="#1d1a1a" stroke-width="6.5" stroke-linecap="round"></path>
+                <path d="M98 119L68 160" stroke="#1d1a1a" stroke-width="6.5" stroke-linecap="round"></path>
+                <path d="M36 152h88" stroke="#1d1a1a" stroke-width="8"></path>
+                <circle cx="100" cy="152" r="3.6" fill="#3fbf9a" stroke="#1d5a48" stroke-width="1"></circle>
+                <rect x="71" y="100" width="18" height="24" rx="6" fill="#cf9a70"></rect>
+                <circle cx="55" cy="88" r="5.5" fill="#dca57b"></circle>
+                <circle cx="105" cy="88" r="5.5" fill="#dca57b"></circle>
+                <ellipse cx="80" cy="85" rx="25" ry="27" fill="#e7b48b"></ellipse>
+                <!-- włosy związane w kok i mała czapeczka z szpilą -->
+                <path d="M55 83C54 61 65 52 80 52s26 9 25 31c-5-9-13-14-25-14s-20 5-25 14z" fill="#1d1a1a"></path>
+                <ellipse cx="80" cy="47" rx="8.5" ry="7.5" fill="#1d1a1a"></ellipse>
+                <path d="M72.5 49l2-11h11l2 11z" fill="#2b2b2b" stroke="#c9a23a" stroke-width="1.3"></path>
+                <path d="M66 44h28" stroke="#c9a23a" stroke-width="2.2" stroke-linecap="round"></path>
+                <!-- zagubione spojrzenie -->
+                <path d="M63 81q6-4 12-1M86 78q6 1 11 5" fill="none" stroke="#1d1a1a" stroke-width="2.6" stroke-linecap="round"></path>
+                <g class="oko"><circle cx="70" cy="90" r="5" fill="#ffffff"></circle><circle cx="68.6" cy="89" r="2.4" fill="#1d1d1d"></circle></g>
+                <g class="oko"><circle cx="91" cy="90" r="5" fill="#ffffff"></circle><circle cx="92.6" cy="91.6" r="2.4" fill="#1d1d1d"></circle></g>
+                <path d="M80.5 92q-2 5 1 7" fill="none" stroke="#b77c56" stroke-width="1.6" stroke-linecap="round"></path>
+                <path d="M71 106q3-3 6 0t6 0t6 0" fill="none" stroke="#6b2a1a" stroke-width="2.4" stroke-linecap="round"></path>
+                <path class="pot" d="M104 70c-3 4.4-4 7.2-1 8.8s5.2-2 1-8.8z" fill="#9fe6ff"></path>
+              </g>
+              <g class="poradnik">
+                <g class="bez-pudla" transform="rotate(180 125 112)">
+                  <rect x="106" y="98" width="38" height="28" rx="2.5" fill="#1d6b58" stroke="#0d3a2f" stroke-width="1.8"></rect>
+                  <rect x="106" y="98" width="5" height="28" fill="#0d3a2f"></rect>
+                  <text x="128" y="110" class="awatar-napis" font-size="8" fill="#ffe08a" text-anchor="middle">0 A.D.</text>
+                  <text x="128" y="119" class="awatar-napis" font-size="5.6" fill="#ffe08a" text-anchor="middle">DLA OPORNYCH</text>
+                </g>
+                <!-- naklejka L: dopiero się uczy -->
+                <g class="bez-pudla" transform="rotate(-10 136 101)">
+                  <rect x="128" y="93" width="16" height="16" rx="2.2" fill="#1f5fbf" stroke="#ffffff" stroke-width="1.4"></rect>
+                  <path d="M133 96.5v9h6.5" fill="none" stroke="#ffffff" stroke-width="2.5"></path>
+                </g>
+                <ellipse cx="106" cy="121" rx="6.2" ry="5.3" fill="#e7b48b"></ellipse>
+                <ellipse cx="144" cy="121" rx="6.2" ry="5.3" fill="#e7b48b"></ellipse>
+              </g>
+            </svg>
+            <span class="ranga">Rekrut</span>
+            <span class="korona" hidden>Ulubieniec mecenasów</span>
+            <div class="dymek" aria-live="polite"></div>
+          </div>
+
+          <div class="karta-tresc">
+            <h2 class="nick">Froxy</h2>
+            <p class="aka">wierny uczeń dynastii Han</p>
+            <ul class="metryka">
+              <li><span>Cywilizacja</span><b>Hanowie. Zawsze Hanowie.</b></li>
+              <li><span>Doświadczenie</span><b>początkujący, ale ambitny</b></li>
+              <li><span>Ranking w lobby</span><b>900 (i rośnie!)</b></li>
+            </ul>
+            <p class="haslo">Zawsze Hanowie. Jeszcze nie zawsze wie, co dalej.</p>
+
+            <div class="opis">
+              <p>
+                Gra tylko <b>Hanami</b>. Zawsze. Losowa cywilizacja? Nie słyszał. Wybiera Chińczyków,
+                bo mają piękne dachy, kuszników i masę budynków — i właśnie w tych budynkach
+                najczęściej się gubi.
+              </p>
+              <p>
+                Jest jeszcze trochę początkujący i to widać: kusznicy stoją w lesie, dziesięciu
+                obywateli rąbie jedno drzewo, a faza miasteczka przychodzi, kiedy Kozak już
+                kończy mecz. Ale uczy się szybko, pyta o wszystko i nigdy nie wychodzi z gry pierwszy.
+              </p>
+              <p>
+                Srebrniki pójdą na naukę: poradnik, lekcje mikro i mapę z zaznaczonym „tu buduj farmy”.
+              </p>
+            </div>
+
+            <ul class="staty">
+              <li><span class="stat-nazwa">Wierność Hanom</span><span class="pasek-stat" data-v="11"><i></i></span><span class="stat-wart stat-ponad">XI/X</span></li>
+              <li><span class="stat-nazwa">Chęci</span><span class="pasek-stat" data-v="10"><i></i></span><span class="stat-wart">X/X</span></li>
+              <li><span class="stat-nazwa">Ogarnianie</span><span class="pasek-stat" data-v="3"><i></i></span><span class="stat-wart">III/X</span></li>
+              <li><span class="stat-nazwa">Mikro</span><span class="pasek-stat" data-v="2"><i></i></span><span class="stat-wart">II/X</span></li>
+            </ul>
+
+            <div class="zbiorka">
+              <div class="zebrano">
+                <span class="zebrano-opis">Metal w skarbcu</span>
+                <span class="zebrano-kwota"><svg class="vb" aria-hidden="true"><use href="#srebrnik"></use></svg><span data-kwota>0</span></span>
+              </div>
+              <div class="cel">
+                <div class="cel-gora">
+                  <span class="cel-etap" data-cel-etap>Faza miasteczka</span>
+                  <span class="cel-kwota"><svg class="vb" aria-hidden="true"><use href="#srebrnik"></use></svg><span data-cel-kwota>100</span></span>
+                </div>
+                <div class="cel-nazwa" data-cel-nazwa>Poradnik 0 A.D. — wydanie dla Hanów</div>
                 <div class="cel-pasek"><div class="cel-wypelnienie" data-cel-pasek></div></div>
                 <div class="cel-brakuje" data-cel-brakuje></div>
               </div>
@@ -1005,7 +1399,7 @@
         </div>
       </div>
 
-      <h3 class="odznaki-tytul">Odznaki <span id="odznaki-licznik">0/15</span></h3>
+      <h3 class="odznaki-tytul">Odznaki <span id="odznaki-licznik">0/18</span></h3>
       <ul class="odznaki" id="odznaki"></ul>
     </section>
   </main>
