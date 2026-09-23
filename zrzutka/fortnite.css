@@ -1,0 +1,273 @@
+/* ============================================================
+   Motyw Fortnite — sklep z przedmiotami, niebieskie niebo,
+   żółte przyciski, V-dolce
+   ============================================================ */
+
+[data-motyw="fortnite"] {
+  --f-display: 'Anton', 'Impact', 'Arial Narrow', sans-serif;
+  --f-liczby: 'Anton', 'Impact', 'Arial Narrow', sans-serif;
+  --f-tekst: 'Rubik', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --f-etykieta: 'Rubik', system-ui, -apple-system, 'Segoe UI', sans-serif;
+
+  --c-tekst: #ffffff;
+  --c-tekst-2: #c3d2ff;
+  --c-tekst-3: #8ea3e0;
+  --c-akcent: #ffe34d;
+  --c-blad: #ff8a7a;
+  --c-iskra: radial-gradient(circle, #ffffff 0%, #bff0ff 45%, rgba(60, 182, 247, 0) 70%);
+
+  --c-pasek: linear-gradient(180deg, rgba(8, 22, 80, 0.94), rgba(8, 22, 80, 0.76));
+  --c-pasek-ramka: rgba(120, 180, 255, 0.28);
+  --c-kat-aktywna: linear-gradient(180deg, #fff38a, #ffd400);
+  --c-kat-aktywna-tekst: #1c1400;
+  --r-kat: 10px;
+
+  --c-panel: rgba(8, 22, 80, 0.6);
+  --c-panel-ramka: rgba(140, 180, 255, 0.25);
+  --c-popup: linear-gradient(180deg, rgba(22, 51, 143, 0.97), rgba(12, 29, 92, 0.97));
+  --r-panel: 10px;
+
+  --c-karta-tekst: #ffffff;
+  --c-karta-tekst-2: #c3d2ff;
+  --c-karta-tekst-3: #8ea3e0;
+  --c-karta-linia: rgba(140, 170, 255, 0.35);
+  --c-stat-tlo: rgba(255, 255, 255, 0.1);
+  --c-postep: linear-gradient(90deg, #1a7ff0, #3cb6f7 70%, #bff0ff);
+
+  --c-okno-tekst: #ffffff;
+  --c-okno-tekst-2: #c3d2ff;
+  --c-okno-tekst-3: #8ea3e0;
+  --c-okno-akcent: #3cb6f7;
+  --c-pole: rgba(0, 0, 0, 0.35);
+  --c-pole-ramka: rgba(140, 200, 255, 0.35);
+  --c-wybrany: #ffe34d;
+  --c-wybrany-tekst: #0a1646;
+
+  background:
+    radial-gradient(ellipse 90% 55% at 50% 0%, rgba(110, 190, 255, 0.55), transparent 70%),
+    linear-gradient(180deg, #1f58e0 0%, #133a9f 38%, #0c2170 70%, #0a1646 100%);
+  background-attachment: fixed;
+  background-color: #0a1646;
+}
+
+/* ukośne pasy jak w sklepie */
+.tlo-fortnite {
+  background: repeating-linear-gradient(115deg,
+    rgba(255, 255, 255, 0.035) 0 26px,
+    transparent 26px 52px);
+}
+
+.tlo-fortnite::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse 120% 80% at 50% 50%, transparent 55%, rgba(4, 10, 40, 0.55));
+}
+
+/* ------------------------------------------------------------ nagłówek */
+
+[data-motyw="fortnite"] .logo { letter-spacing: 0.03em; }
+
+[data-motyw="fortnite"] .kat { font-family: var(--f-display); font-weight: 400; font-size: 1.05rem; letter-spacing: 0.04em; }
+[data-motyw="fortnite"] .kat[aria-current="page"] { transform: skewX(-8deg); }
+
+[data-motyw="fortnite"] .hero-nad {
+  color: #0a1646;
+  background: #ffe34d;
+  transform: skewX(-10deg);
+  box-shadow: 4px 4px 0 rgba(5, 15, 60, 0.6);
+}
+
+[data-motyw="fortnite"] h1 {
+  text-transform: uppercase;
+  letter-spacing: 0.01em;
+  line-height: 0.92;
+  transform: rotate(-3deg);
+}
+
+[data-motyw="fortnite"] .h1-a {
+  font-size: clamp(3.6rem, 15vw, 9rem);
+  color: #ffffff;
+  text-shadow:
+    0 5px 0 #0b2a8c,
+    0 10px 0 #06174f,
+    0 18px 30px rgba(0, 0, 0, 0.45);
+}
+
+[data-motyw="fortnite"] .h1-b {
+  font-size: clamp(2.4rem, 9.5vw, 5.6rem);
+  color: #ffe34d;
+  text-shadow:
+    0 4px 0 #b86f00,
+    0 8px 0 #06174f,
+    0 16px 26px rgba(0, 0, 0, 0.45);
+}
+
+/* ------------------------------------------------------------ karty */
+
+[data-motyw="fortnite"] .karta {
+  background: linear-gradient(180deg, #102672, #0b1a52);
+  border: 3px solid var(--rz);
+  border-radius: 8px;
+  box-shadow:
+    0 14px 34px rgba(3, 10, 40, 0.5),
+    0 0 0 1px rgba(255, 255, 255, 0.06) inset;
+  transition: transform 0.25s cubic-bezier(.2, .9, .2, 1), box-shadow 0.25s;
+}
+
+[data-motyw="fortnite"] .karta:hover {
+  transform: translateY(-4px);
+  box-shadow:
+    0 22px 44px rgba(3, 10, 40, 0.6),
+    0 0 28px color-mix(in srgb, var(--rz) 45%, transparent);
+}
+
+[data-motyw="fortnite"] .karta-obraz {
+  background: radial-gradient(circle at 50% 42%, var(--r1) 0%, var(--r2) 52%, var(--r3) 100%);
+}
+
+[data-motyw="fortnite"] .ranga { transform: skewX(-10deg); }
+
+[data-motyw="fortnite"] .dymek {
+  font-weight: 700;
+  color: #0a1646;
+  background: #ffffff;
+  border: 3px solid #0a1646;
+  border-radius: 14px;
+  box-shadow: 4px 5px 0 rgba(5, 15, 60, 0.45);
+}
+
+[data-motyw="fortnite"] .dymek a { color: #1b4fd6; }
+
+[data-motyw="fortnite"] .karta-tresc { border-top: 4px solid var(--rz); }
+
+[data-motyw="fortnite"] .nick {
+  font-size: clamp(2rem, 6vw, 2.5rem);
+  text-transform: uppercase;
+  letter-spacing: 0.01em;
+}
+
+[data-motyw="fortnite"] .haslo { color: #ffe34d; }
+
+[data-motyw="fortnite"] .staty { background: rgba(0, 0, 0, 0.22); }
+[data-motyw="fortnite"] .pasek-stat { transform: skewX(-14deg); }
+
+[data-motyw="fortnite"] .pasek-stat[data-v="11"] i {
+  background: linear-gradient(90deg, #f5c400, #ffe34d, #fff6b8);
+  box-shadow: 0 0 12px rgba(255, 220, 60, 0.7);
+}
+
+[data-motyw="fortnite"] .stat-ponad { color: #ffe34d; }
+
+[data-motyw="fortnite"] .cel {
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(140, 190, 255, 0.18);
+}
+
+[data-motyw="fortnite"] .cel-etap { color: #3cb6f7; }
+[data-motyw="fortnite"] .cel-pasek { background: rgba(255, 255, 255, 0.1); transform: skewX(-12deg); }
+[data-motyw="fortnite"] .cel-wypelnienie { box-shadow: 0 0 14px rgba(60, 182, 247, 0.6); }
+
+/* żółte skośne przyciski */
+[data-motyw="fortnite"] .btn-wesprzyj,
+[data-motyw="fortnite"] .btn-wyslij {
+  font-family: var(--f-display);
+  font-size: 1.55rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #1c1400;
+  background: linear-gradient(180deg, #fff38a 0%, #ffe031 45%, #f5c400 100%);
+  border: 0;
+  border-bottom: 5px solid #c08a00;
+  clip-path: polygon(2.5% 0, 100% 0, 97.5% 100%, 0 100%);
+}
+
+[data-motyw="fortnite"] .btn-wesprzyj:active,
+[data-motyw="fortnite"] .btn-wyslij:active { border-bottom-width: 2px; }
+
+[data-motyw="fortnite"] .btn-wesprzyj:focus-visible,
+[data-motyw="fortnite"] .btn-wyslij:focus-visible {
+  outline: none;
+  filter: brightness(1.1);
+  box-shadow: inset 0 0 0 3px #0a1646;
+}
+
+/* ------------------------------------------------------------ panele */
+
+[data-motyw="fortnite"] .panel-kroniki h2,
+[data-motyw="fortnite"] .profil h2 {
+  text-transform: uppercase;
+  text-shadow: 0 4px 0 #0b2a8c;
+}
+
+[data-motyw="fortnite"] .profil-wartosc { text-transform: uppercase; }
+
+/* ------------------------------------------------------------ okno */
+
+[data-motyw="fortnite"] .okno {
+  background: linear-gradient(180deg, #16338f, #0c1d5c);
+}
+
+[data-motyw="fortnite"] .okno-tytul { text-transform: uppercase; }
+
+/* ------------------------------------------------------------ efekty */
+
+[data-motyw="fortnite"] .plus,
+[data-motyw="fortnite"] .combo {
+  text-shadow:
+    0 3px 0 #b86f00,
+    0 6px 0 #06174f,
+    0 10px 20px rgba(0, 0, 0, 0.5);
+}
+
+[data-motyw="fortnite"] .zwyciestwo {
+  background: radial-gradient(ellipse at 50% 45%, rgba(40, 110, 255, 0.55), rgba(3, 8, 35, 0.85) 70%);
+}
+
+[data-motyw="fortnite"] .zw-blask {
+  background: repeating-conic-gradient(from 0deg,
+    rgba(255, 230, 90, 0.16) 0deg 6deg,
+    transparent 6deg 18deg);
+}
+
+[data-motyw="fortnite"] .zw-numer {
+  font-family: var(--f-display);
+  font-size: clamp(5rem, 26vw, 12rem);
+  line-height: 0.9;
+  color: #ffe34d;
+  text-shadow:
+    0 6px 0 #b86f00,
+    0 12px 0 #06174f,
+    0 24px 50px rgba(0, 0, 0, 0.55);
+}
+
+[data-motyw="fortnite"] .zw-tytul {
+  font-family: var(--f-display);
+  font-size: clamp(2.4rem, 11vw, 5rem);
+  line-height: 1;
+  text-transform: uppercase;
+  color: #ffffff;
+  text-shadow: 0 5px 0 #0b2a8c, 0 10px 0 #06174f;
+}
+
+[data-motyw="fortnite"] .zw-opis {
+  color: #0a1646;
+  background: #ffe34d;
+  transform: skewX(-8deg);
+  box-shadow: 5px 5px 0 rgba(5, 15, 60, 0.7);
+}
+
+/* kurtyna w drodze DO Fortnite */
+.kurtyna[data-cel="fortnite"] {
+  background:
+    repeating-linear-gradient(115deg, rgba(255, 255, 255, 0.05) 0 26px, transparent 26px 52px),
+    radial-gradient(ellipse at 50% 40%, #3f7dff, #133a9f 60%, #0a1646);
+}
+
+.kurtyna[data-cel="fortnite"] .kurtyna-napis {
+  font-family: 'Anton', 'Impact', sans-serif;
+  text-transform: uppercase;
+  color: #ffe34d;
+  text-shadow: 0 5px 0 #b86f00, 0 10px 0 #06174f;
+  transform: rotate(-3deg);
+}

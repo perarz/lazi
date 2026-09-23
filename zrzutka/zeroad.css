@@ -1,0 +1,529 @@
+/* ============================================================
+   Motyw 0 A.D. — kamień, pochodnie, pergamin, złoto i srebrniki
+   ============================================================ */
+
+[data-motyw="zeroad"] {
+  --f-display: 'Cinzel Decorative', 'Cinzel', Georgia, 'Times New Roman', serif;
+  --f-liczby: 'Cinzel', Georgia, 'Times New Roman', serif;
+  --f-tekst: 'EB Garamond', Georgia, 'Times New Roman', serif;
+  --f-etykieta: 'Cinzel', Georgia, 'Times New Roman', serif;
+
+  --c-tekst: #f3e6c4;
+  --c-tekst-2: #d8c49a;
+  --c-tekst-3: #a8916a;
+  --c-akcent: #f0c75e;
+  --c-blad: #ffb09a;
+  --c-iskra: radial-gradient(circle, #fff6d8 0%, #ffc85e 45%, rgba(255, 140, 30, 0) 70%);
+
+  --c-pasek: linear-gradient(180deg, rgba(40, 26, 14, 0.96), rgba(24, 15, 8, 0.88));
+  --c-pasek-ramka: rgba(212, 168, 84, 0.4);
+  --c-kat-aktywna: linear-gradient(180deg, #f8dc85, #c8962e);
+  --c-kat-aktywna-tekst: #2a1a08;
+  --r-kat: 6px;
+
+  --c-panel: linear-gradient(180deg, rgba(42, 28, 15, 0.9), rgba(26, 17, 9, 0.9));
+  --c-panel-ramka: rgba(212, 168, 84, 0.35);
+  --c-popup: linear-gradient(180deg, rgba(58, 38, 20, 0.98), rgba(30, 19, 10, 0.98));
+  --r-panel: 6px;
+
+  --c-postep: linear-gradient(90deg, #8a5a14, #d4a53e 60%, #fff0a8);
+
+  --c-okno-tekst: #f3e6c4;
+  --c-okno-tekst-2: #d8c49a;
+  --c-okno-tekst-3: #a8916a;
+  --c-okno-akcent: #f0c75e;
+
+  background:
+    radial-gradient(ellipse 70% 45% at 50% 0%, rgba(255, 170, 70, 0.2), transparent 70%),
+    linear-gradient(180deg, #2c1c10 0%, #1b120a 45%, #0e0905 100%);
+  background-attachment: fixed;
+  background-color: #0e0905;
+}
+
+/* kamienne płyty, pochodnie i ziarno */
+.tlo-zeroad {
+  background-image:
+    linear-gradient(rgba(0, 0, 0, 0.28) 2px, transparent 2px),
+    linear-gradient(90deg, rgba(0, 0, 0, 0.22) 2px, transparent 2px);
+  background-size: 140px 70px;
+}
+
+.tlo-zeroad::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse 110% 80% at 50% 45%, transparent 45%, rgba(0, 0, 0, 0.7));
+}
+
+.pochodnia {
+  position: absolute;
+  top: 18vh;
+  width: 70vmax;
+  height: 70vmax;
+  margin: -35vmax 0 0 -35vmax;
+  background: radial-gradient(circle, rgba(255, 150, 50, 0.24), rgba(255, 100, 20, 0.08) 35%, transparent 65%);
+  mix-blend-mode: screen;
+  animation: plomien 3.2s ease-in-out infinite alternate;
+}
+
+.pochodnia-l { left: 0; }
+.pochodnia-p { left: 100%; animation-delay: -1.4s; animation-duration: 2.7s; }
+
+@keyframes plomien {
+  0%   { opacity: 0.7; transform: scale(1); }
+  30%  { opacity: 1; transform: scale(1.05); }
+  55%  { opacity: 0.8; transform: scale(0.99); }
+  80%  { opacity: 0.95; transform: scale(1.03); }
+  100% { opacity: 0.85; transform: scale(1); }
+}
+
+.ziarno {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0.1;
+  mix-blend-mode: overlay;
+}
+
+/* iskry z pochodni */
+.iskra-tlo {
+  border-radius: 50%;
+  background: radial-gradient(circle, #fff1c2 0%, #ffab3a 45%, rgba(255, 90, 0, 0) 70%);
+}
+
+/* ------------------------------------------------------------ nagłówek */
+
+[data-motyw="zeroad"] .logo {
+  font-weight: 900;
+  font-size: 1.35rem;
+  letter-spacing: 0.04em;
+  color: #f0c75e;
+}
+
+[data-motyw="zeroad"] .kat { font-weight: 700; }
+
+[data-motyw="zeroad"] .hero-nad {
+  padding: 6px 30px;
+  color: #f8dc85;
+  background: linear-gradient(180deg, #9a1c14, #6e0f0a);
+  clip-path: polygon(0 0, 100% 0, 96% 50%, 100% 100%, 0 100%, 4% 50%);
+  text-shadow: 0 1px 0 #2a0604;
+}
+
+[data-motyw="zeroad"] h1 { margin-top: 22px; }
+
+[data-motyw="zeroad"] .h1-a {
+  font-weight: 900;
+  font-size: clamp(3rem, 12.5vw, 7.4rem);
+  line-height: 1;
+  background: linear-gradient(180deg, #ffffff 0%, #e2e7ec 38%, #8e98a4 52%, #f1f3f6 68%, #a3acb6 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 3px 0 #2a1a0a) drop-shadow(0 12px 20px rgba(0, 0, 0, 0.6));
+}
+
+[data-motyw="zeroad"] .h1-b {
+  margin-top: 6px;
+  font-family: 'Cinzel', Georgia, serif;
+  font-weight: 700;
+  font-size: clamp(1.3rem, 5vw, 2.5rem);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #f0c75e;
+  text-shadow: 0 2px 0 #3a2208, 0 8px 20px rgba(0, 0, 0, 0.6);
+}
+
+/* ornament pod tytułem */
+[data-motyw="zeroad"] h1::after {
+  content: "";
+  display: block;
+  width: min(260px, 70%);
+  height: 12px;
+  margin: 16px auto 0;
+  background:
+    radial-gradient(circle, #f0c75e 3.5px, transparent 4.5px) center / 12px 12px no-repeat,
+    linear-gradient(90deg, transparent, #b8893a 25%, #b8893a 75%, transparent) center / 100% 2px no-repeat;
+}
+
+[data-motyw="zeroad"] .hero-pod { font-size: clamp(1.08rem, 2.8vw, 1.22rem); }
+
+/* pasek surowców jak w grze */
+.surowce {
+  display: inline-flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px 18px;
+  margin: 22px auto 0;
+  padding: 8px 18px;
+  background: linear-gradient(180deg, rgba(46, 30, 16, 0.95), rgba(22, 14, 7, 0.95));
+  border: 2px solid #b8893a;
+  border-radius: 6px;
+  box-shadow: inset 0 0 0 1px #3a2412, 0 8px 22px rgba(0, 0, 0, 0.45);
+}
+
+.surowiec {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: help;
+}
+
+.surowiec svg { width: 24px; height: 24px; flex: none; }
+
+.surowiec b {
+  font-family: 'Cinzel', Georgia, serif;
+  font-weight: 700;
+  font-size: 1.05rem;
+  font-variant-numeric: tabular-nums;
+  color: #f3e6c4;
+}
+
+.surowiec small {
+  font-family: 'Cinzel', Georgia, serif;
+  font-size: 0.66rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #a8916a;
+}
+
+.surowiec-metal b { color: #f0c75e; }
+
+@media (max-width: 560px) {
+  .surowce { gap: 6px 12px; padding: 8px 12px; }
+  .surowiec small { display: none; }
+}
+
+[data-motyw="zeroad"] .tytul-pill {
+  font-family: var(--f-tekst);
+  font-size: 0.98rem;
+  border-color: rgba(212, 168, 84, 0.45);
+}
+
+/* ------------------------------------------------------------ karty z pergaminu */
+
+[data-motyw="zeroad"] .gracze { gap: clamp(26px, 4vw, 36px); }
+
+[data-motyw="zeroad"] .karta {
+  --c-karta-tekst: #2b1b0c;
+  --c-karta-tekst-2: #4a3520;
+  --c-karta-tekst-3: #7a5f3e;
+  --c-karta-linia: rgba(90, 60, 30, 0.4);
+  --c-stat-tlo: rgba(90, 60, 30, 0.18);
+  --c-akcent: #8a1c12;
+  margin: 7px;
+  color: #2b1b0c;
+  background:
+    radial-gradient(ellipse at 50% 25%, rgba(255, 250, 235, 0.65), transparent 60%),
+    radial-gradient(ellipse at 50% 50%, #f1e2bd 0%, #e3cc98 65%, #c9a767 100%);
+  border-radius: 4px;
+  box-shadow:
+    0 0 0 2px #3a2412,
+    0 0 0 5px #b8893a,
+    0 0 0 7px #3a2412,
+    0 22px 44px rgba(0, 0, 0, 0.6),
+    inset 0 0 50px rgba(120, 70, 20, 0.45);
+  transition: transform 0.25s cubic-bezier(.2, .9, .2, 1);
+}
+
+[data-motyw="zeroad"] .karta:hover { transform: translateY(-4px) rotate(-0.3deg); }
+
+/* łukowe okno z portretem */
+[data-motyw="zeroad"] .karta-obraz {
+  margin: 16px 16px 0;
+  border: 4px solid #3a2412;
+  border-radius: 50% 50% 6px 6px / 30% 30% 6px 6px;
+  background:
+    radial-gradient(ellipse at 50% 100%, rgba(255, 170, 70, 0.35), transparent 60%),
+    radial-gradient(circle at 50% 42%, var(--r1) 0%, var(--r2) 50%, var(--r3) 100%);
+  box-shadow: 0 0 0 3px #b8893a, inset 0 0 36px rgba(0, 0, 0, 0.6);
+}
+
+[data-motyw="zeroad"] .promienie {
+  background: repeating-conic-gradient(from 0deg at 50% 50%,
+    rgba(255, 230, 160, 0.14) 0deg 6deg,
+    transparent 6deg 18deg);
+}
+
+/* wstęga z rangą */
+[data-motyw="zeroad"] .ranga {
+  left: 50%;
+  bottom: 8px;
+  padding: 3px 26px;
+  font-family: 'Cinzel', Georgia, serif;
+  font-weight: 700;
+  font-size: 0.78rem;
+  color: #fbe7b0;
+  background: linear-gradient(180deg, var(--r2), var(--r3));
+  border: 0;
+  clip-path: polygon(0 0, 100% 0, 93% 50%, 100% 100%, 0 100%, 7% 50%);
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.6);
+  transform: translateX(-50%);
+}
+
+[data-motyw="zeroad"] .korona {
+  top: auto;
+  bottom: 40px;
+  right: 50%;
+  transform: translateX(50%);
+  font-family: 'Cinzel', Georgia, serif;
+  white-space: nowrap;
+}
+
+[data-motyw="zeroad"] .korona { animation: none; }
+
+/* dymek jak zwój */
+[data-motyw="zeroad"] .dymek {
+  top: 16%;
+  font-family: 'EB Garamond', Georgia, serif;
+  font-style: italic;
+  font-weight: 500;
+  font-size: 1.02rem;
+  color: #2b1b0c;
+  background: #f6ecd2;
+  border: 2px solid #5a3a18;
+  border-radius: 6px;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.45), inset 0 0 12px rgba(150, 100, 40, 0.3);
+}
+
+[data-motyw="zeroad"] .dymek a { color: #8a1c12; font-style: normal; }
+
+[data-motyw="zeroad"] .karta-tresc { padding: 14px 22px 22px; }
+
+[data-motyw="zeroad"] .nick {
+  font-weight: 900;
+  font-size: clamp(1.8rem, 5.5vw, 2.3rem);
+  color: #3b1f0a;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.55);
+}
+
+[data-motyw="zeroad"] .aka { font-style: italic; font-size: 1rem; }
+
+[data-motyw="zeroad"] .metryka { font-size: 0.92rem; }
+[data-motyw="zeroad"] .metryka span { font-size: 0.7rem; }
+
+[data-motyw="zeroad"] .haslo {
+  font-size: 1.08rem;
+  font-weight: 700;
+  color: #8a1c12;
+}
+
+[data-motyw="zeroad"] .opis { font-size: 1.04rem; line-height: 1.45; }
+
+/* inicjał jak w kronice */
+[data-motyw="zeroad"] .opis p:first-child::first-letter {
+  float: left;
+  margin: 4px 8px 0 0;
+  font-family: 'Cinzel Decorative', Georgia, serif;
+  font-weight: 900;
+  font-size: 3.3em;
+  line-height: 0.8;
+  color: #8a1c12;
+  text-shadow: 1px 1px 0 #d4a53e;
+}
+
+[data-motyw="zeroad"] .staty {
+  background: rgba(90, 60, 30, 0.1);
+  border: 1px solid rgba(90, 60, 30, 0.25);
+}
+
+[data-motyw="zeroad"] .stat-nazwa { font-size: 0.72rem; }
+[data-motyw="zeroad"] .stat-wart { font-weight: 700; font-size: 0.88rem; color: #3b1f0a; }
+[data-motyw="zeroad"] .stat-ponad { color: #8a1c12; }
+
+[data-motyw="zeroad"] .pasek-stat {
+  height: 9px;
+  border-radius: 5px;
+  overflow: visible;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.25);
+}
+
+[data-motyw="zeroad"] .pasek-stat i {
+  border-radius: 5px;
+  background: linear-gradient(90deg, #7a4f12, #c8962e 60%, #f0c75e);
+}
+
+[data-motyw="zeroad"] .pasek-stat[data-v="11"] i {
+  background: linear-gradient(90deg, #8a1c12, #d9382e 60%, #ff9a6a);
+  box-shadow: 0 0 10px rgba(217, 56, 46, 0.6);
+}
+
+[data-motyw="zeroad"] .zebrano-kwota { font-weight: 700; color: #2b1b0c; }
+
+[data-motyw="zeroad"] .cel {
+  background: rgba(90, 60, 30, 0.1);
+  border: 1px solid rgba(90, 60, 30, 0.3);
+}
+
+[data-motyw="zeroad"] .cel-etap { color: #8a1c12; }
+[data-motyw="zeroad"] .cel-kwota { font-weight: 700; }
+[data-motyw="zeroad"] .cel-nazwa { font-size: 1.02rem; }
+
+[data-motyw="zeroad"] .cel-pasek {
+  background: rgba(60, 40, 20, 0.2);
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+[data-motyw="zeroad"] .cel-brakuje { font-size: 0.9rem; }
+
+/* przycisk z czerwonej skóry ze złotym obszyciem */
+[data-motyw="zeroad"] .btn-wesprzyj,
+[data-motyw="zeroad"] .btn-wyslij {
+  font-family: 'Cinzel', Georgia, serif;
+  font-weight: 900;
+  font-size: 1.15rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #fbe7b0;
+  background: linear-gradient(180deg, #b3261e, #7d1410 60%, #5e0d0a);
+  border: 2px solid #3a0a06;
+  border-radius: 6px;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 200, 160, 0.35),
+    inset 0 0 0 3px rgba(240, 199, 94, 0.5),
+    0 4px 0 #3a0a06,
+    0 8px 16px rgba(0, 0, 0, 0.35);
+  text-shadow: 0 1px 0 #3a0a06;
+}
+
+[data-motyw="zeroad"] .btn-wesprzyj:active,
+[data-motyw="zeroad"] .btn-wyslij:active {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 200, 160, 0.35),
+    inset 0 0 0 3px rgba(240, 199, 94, 0.5),
+    0 1px 0 #3a0a06;
+}
+
+[data-motyw="zeroad"] .btn-wesprzyj:focus-visible,
+[data-motyw="zeroad"] .btn-wyslij:focus-visible {
+  outline: 3px solid #f0c75e;
+  outline-offset: 2px;
+}
+
+/* ------------------------------------------------------------ panele */
+
+[data-motyw="zeroad"] .panel-kroniki,
+[data-motyw="zeroad"] .profil-karta,
+[data-motyw="zeroad"] .odznaka {
+  box-shadow: inset 0 0 0 1px #1a0f06, 0 10px 24px rgba(0, 0, 0, 0.35);
+}
+
+[data-motyw="zeroad"] .panel-kroniki h2,
+[data-motyw="zeroad"] .profil h2 {
+  font-weight: 900;
+  color: #f0c75e;
+  text-shadow: 0 2px 0 #2a1a0a;
+}
+
+[data-motyw="zeroad"] .wp-msg { font-size: 1.02rem; }
+
+/* ------------------------------------------------------------ okno jako akt darowizny */
+
+[data-motyw="zeroad"] .okno {
+  --c-okno-tekst: #2b1b0c;
+  --c-okno-tekst-2: #4a3520;
+  --c-okno-tekst-3: #7a5f3e;
+  --c-okno-akcent: #8a1c12;
+  --c-pole: rgba(255, 250, 235, 0.55);
+  --c-pole-ramka: rgba(90, 60, 30, 0.45);
+  --c-wybrany: #7d1410;
+  --c-wybrany-tekst: #fbe7b0;
+  --c-postep: linear-gradient(90deg, #8a5a14, #d4a53e 60%, #fff0a8);
+  --c-blad: #a3161a;
+  background: radial-gradient(ellipse at 50% 30%, #f6ead0, #e3cc98 70%, #cfae70);
+  border: 3px solid #3a2412;
+  border-radius: 6px;
+  box-shadow:
+    0 0 0 4px #b8893a,
+    0 0 0 6px #3a2412,
+    0 30px 80px rgba(0, 0, 0, 0.7),
+    inset 0 0 60px rgba(120, 70, 20, 0.4);
+}
+
+[data-motyw="zeroad"] .okno::backdrop { background: rgba(10, 6, 3, 0.78); }
+
+[data-motyw="zeroad"] .okno-tytul { font-weight: 900; font-size: 1.8rem; color: #3b1f0a; }
+[data-motyw="zeroad"] .okno-cel { font-size: 0.98rem; }
+[data-motyw="zeroad"] .okno-awatar { border-radius: 50% 50% 6px 6px / 35% 35% 6px 6px; border-color: #3a2412; }
+[data-motyw="zeroad"] .szybkie button { font-weight: 700; font-size: 1.05rem; }
+[data-motyw="zeroad"] .pole-kwota input { font-weight: 700; font-size: 1.6rem; }
+[data-motyw="zeroad"] .pole-tekst { font-size: 1.08rem; }
+[data-motyw="zeroad"] .podglad-tekst { font-size: 0.92rem; }
+
+/* ------------------------------------------------------------ efekty */
+
+[data-motyw="zeroad"] .plus,
+[data-motyw="zeroad"] .combo {
+  font-weight: 900;
+  color: #f0c75e;
+  text-shadow: 0 3px 0 #3a2208, 0 8px 18px rgba(0, 0, 0, 0.7);
+}
+
+[data-motyw="zeroad"] .zwyciestwo {
+  background: radial-gradient(ellipse at 50% 45%, rgba(255, 190, 90, 0.35), rgba(10, 6, 3, 0.9) 70%);
+}
+
+[data-motyw="zeroad"] .zw-blask {
+  background: repeating-conic-gradient(from 0deg,
+    rgba(255, 215, 120, 0.12) 0deg 5deg,
+    transparent 5deg 15deg);
+}
+
+[data-motyw="zeroad"] .zw-tresc { padding: clamp(40px, 10vw, 90px) 0; }
+
+.zw-laur {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: min(560px, 96vw);
+  height: min(560px, 96vw);
+  transform: translate(-50%, -50%);
+  filter: drop-shadow(0 6px 10px rgba(0, 0, 0, 0.5));
+  z-index: -1;
+}
+
+[data-motyw="zeroad"] .zw-tytul {
+  font-family: 'Cinzel Decorative', Georgia, serif;
+  font-weight: 900;
+  font-size: clamp(2.4rem, 10vw, 5rem);
+  line-height: 1;
+  background: linear-gradient(180deg, #fff6c8, #f0c75e 45%, #a8761a);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 3px 0 #2a1a0a) drop-shadow(0 14px 24px rgba(0, 0, 0, 0.6));
+}
+
+[data-motyw="zeroad"] .zw-opis {
+  font-family: 'EB Garamond', Georgia, serif;
+  font-style: italic;
+  font-size: clamp(1.1rem, 3.8vw, 1.4rem);
+  color: #2b1b0c;
+  background: #f1e2bd;
+  border: 2px solid #5a3a18;
+  border-radius: 4px;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.5), inset 0 0 18px rgba(150, 100, 40, 0.35);
+}
+
+/* kurtyna w drodze DO 0 A.D. */
+.kurtyna[data-cel="zeroad"] {
+  background:
+    radial-gradient(ellipse at 50% 45%, rgba(255, 170, 70, 0.3), transparent 60%),
+    radial-gradient(ellipse at 50% 40%, #4a3018, #22160b 60%, #0e0905);
+}
+
+.kurtyna[data-cel="zeroad"] .kurtyna-napis {
+  font-family: 'Cinzel Decorative', Georgia, serif;
+  font-weight: 900;
+  color: #f0c75e;
+  text-shadow: 0 3px 0 #2a1a0a, 0 12px 30px rgba(0, 0, 0, 0.6);
+}
+
+/* „SREBRNIKI” jest szerokie — monety ozdobne odsuwamy od tytułu */
+[data-motyw="zeroad"] .hero-moneta-1 { top: 42%; }
+[data-motyw="zeroad"] .hero-moneta-3 { bottom: auto; top: 58%; left: clamp(4px, 3vw, 40px); }
+
+@media (max-width: 640px) {
+  [data-motyw="zeroad"] .hero-moneta-1 { top: 44%; }
+}
