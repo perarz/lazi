@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="pl">
+<html lang="pl" data-motyw="fortnite">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,15 +7,18 @@
   <meta http-equiv="X-Content-Type-Options" content="nosniff">
   <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; script-src 'self'; img-src 'self' data:; base-uri 'none'; form-action 'none';">
   <meta name="referrer" content="no-referrer">
-  <meta name="description" content="Zrzutka na V-dolce dla początkujących graczy Fortnite. Oni nie umieją grać, Ty możesz pomóc.">
-  <title>V-dolce dla noobów</title>
+  <meta name="description" content="Zrzutka dla graczy: V-dolce dla noobów z Fortnite i srebrniki dla wojowników z 0 A.D.">
+  <title>Zrzutka dla graczy</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Anton&family=Rubik:ital,wght@0,400;0,500;0,700;0,800;1,500&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="vdolce.css">
+  <link href="https://fonts.googleapis.com/css2?family=Anton&family=Cinzel:wght@500;700;900&family=Cinzel+Decorative:wght@700;900&family=EB+Garamond:ital,wght@0,400;0,500;0,700;1,400;1,500&family=Rubik:ital,wght@0,400;0,500;0,700;0,800;1,500&display=swap" rel="stylesheet">
+  <script src="zrzutka/motyw.js"></script>
+  <link rel="stylesheet" href="zrzutka/baza.css">
+  <link rel="stylesheet" href="zrzutka/fortnite.css">
+  <link rel="stylesheet" href="zrzutka/zeroad.css">
 </head>
 <body>
-  <!-- Ikona V-dolca: jeden symbol, używany wszędzie przez <use href="#vbuck">.
+  <!-- Ikony i ozdoby używane w wielu miejscach przez <use href="#…">.
        Nie display:none — Firefox nie rysuje wtedy gradientów. -->
   <svg class="sprite" aria-hidden="true" focusable="false">
     <defs>
@@ -32,7 +35,41 @@
         <stop offset="0" stop-color="#ffffff"></stop>
         <stop offset="1" stop-color="#cdeeff"></stop>
       </linearGradient>
+
+      <linearGradient id="sr-rant" x1="0" y1="0" x2="0.3" y2="1">
+        <stop offset="0" stop-color="#fbfcfd"></stop>
+        <stop offset="0.55" stop-color="#b9c1ca"></stop>
+        <stop offset="1" stop-color="#5f6874"></stop>
+      </linearGradient>
+      <radialGradient id="sr-lico" cx="0.36" cy="0.3" r="0.85">
+        <stop offset="0" stop-color="#ffffff"></stop>
+        <stop offset="0.5" stop-color="#d2d8df"></stop>
+        <stop offset="1" stop-color="#8b95a1"></stop>
+      </radialGradient>
+
+      <linearGradient id="laur-zloto" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#fff0a8"></stop>
+        <stop offset="0.5" stop-color="#e8b93a"></stop>
+        <stop offset="1" stop-color="#a8761a"></stop>
+      </linearGradient>
+      <radialGradient id="wosk" cx="0.4" cy="0.35" r="0.75">
+        <stop offset="0" stop-color="#e0413a"></stop>
+        <stop offset="0.6" stop-color="#a3161a"></stop>
+        <stop offset="1" stop-color="#6a0a0d"></stop>
+      </radialGradient>
+      <radialGradient id="aura-furii">
+        <stop offset="0" stop-color="#ff5a1f" stop-opacity="0.75"></stop>
+        <stop offset="0.6" stop-color="#ff2a00" stop-opacity="0.3"></stop>
+        <stop offset="1" stop-color="#ff2a00" stop-opacity="0"></stop>
+      </radialGradient>
+
+      <filter id="ziarno">
+        <feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="3" stitchTiles="stitch"></feTurbulence>
+        <feColorMatrix type="saturate" values="0"></feColorMatrix>
+      </filter>
     </defs>
+
+    <!-- V-dolec -->
     <symbol id="vbuck" viewBox="0 0 64 64">
       <circle cx="32" cy="32" r="31" fill="#072f7a"></circle>
       <circle cx="32" cy="32" r="28.5" fill="url(#vb-obwodka)"></circle>
@@ -40,23 +77,105 @@
       <ellipse cx="23" cy="19" rx="11" ry="5" fill="#ffffff" opacity="0.35" transform="rotate(-32 23 19)"></ellipse>
       <path d="M16 17h11.5L32 33l4.5-16H48L37.5 47h-11z" fill="url(#vb-litera)" stroke="#0a47a6" stroke-width="2.6" stroke-linejoin="round"></path>
     </symbol>
+
+    <!-- srebrnik z hełmem korynckim -->
+    <symbol id="srebrnik" viewBox="0 0 64 64">
+      <circle cx="32" cy="32" r="31" fill="#454d57"></circle>
+      <circle cx="32" cy="32" r="28.5" fill="url(#sr-rant)"></circle>
+      <circle cx="32" cy="32" r="23.5" fill="url(#sr-lico)"></circle>
+      <circle cx="32" cy="32" r="20.5" fill="none" stroke="#8a939e" stroke-width="1.5" stroke-dasharray="1.4 2.4"></circle>
+      <path d="M17 29C16 17 29 10 40 14l-1 3c-9-3-19 2-19 12z" fill="#6f7984"></path>
+      <path d="M21 31c0-10 7-15 14-15c7 0 11 6 11 13v5l-4 1 1 9c-4 3-10 3-14 1l-2-7c-4-1-6-4-6-7z" fill="#838d98"></path>
+      <path d="M35 28h10v3l-9 1z" fill="#4d5560"></path>
+      <path d="M42 35l-5 1 1 8" fill="none" stroke="#5c6570" stroke-width="1.4"></path>
+      <path d="M24 27c1-5 5-8 10-8" fill="none" stroke="#f4f6f8" stroke-width="1.6" stroke-linecap="round" opacity="0.8"></path>
+      <ellipse cx="24" cy="18" rx="9" ry="4" fill="#ffffff" opacity="0.4" transform="rotate(-32 24 18)"></ellipse>
+    </symbol>
+
+    <!-- surowce z 0 A.D. -->
+    <symbol id="ikona-zywnosc" viewBox="0 0 24 24">
+      <path d="M12 23V8" stroke="#9a7420" stroke-width="1.8" stroke-linecap="round"></path>
+      <g fill="#f0c95a" stroke="#9a7420" stroke-width="0.9">
+        <ellipse cx="12" cy="5" rx="2" ry="3.2"></ellipse>
+        <ellipse cx="9" cy="9.5" rx="1.9" ry="3" transform="rotate(-30 9 9.5)"></ellipse>
+        <ellipse cx="15" cy="9.5" rx="1.9" ry="3" transform="rotate(30 15 9.5)"></ellipse>
+        <ellipse cx="9" cy="14" rx="1.9" ry="3" transform="rotate(-30 9 14)"></ellipse>
+        <ellipse cx="15" cy="14" rx="1.9" ry="3" transform="rotate(30 15 14)"></ellipse>
+        <ellipse cx="9.3" cy="18.3" rx="1.7" ry="2.7" transform="rotate(-30 9.3 18.3)"></ellipse>
+        <ellipse cx="14.7" cy="18.3" rx="1.7" ry="2.7" transform="rotate(30 14.7 18.3)"></ellipse>
+      </g>
+    </symbol>
+    <symbol id="ikona-drewno" viewBox="0 0 24 24">
+      <rect x="2" y="7.5" width="18" height="10" rx="5" fill="#8a5a2b" stroke="#50320f" stroke-width="1"></rect>
+      <path d="M5 10.5h9M6 14.5h8" stroke="#6b4420" stroke-width="1" stroke-linecap="round"></path>
+      <ellipse cx="18.5" cy="12.5" rx="3.5" ry="5" fill="#e0b074" stroke="#50320f" stroke-width="1"></ellipse>
+      <ellipse cx="18.5" cy="12.5" rx="1.8" ry="2.6" fill="none" stroke="#a8763a" stroke-width="0.9"></ellipse>
+    </symbol>
+    <symbol id="ikona-kamien" viewBox="0 0 24 24">
+      <path d="M3 17l3-8 6-4 7 3 3 8-5 4H8z" fill="#9aa0a6" stroke="#4f555c" stroke-width="1"></path>
+      <path d="M6 9l5 4 8-5M11 13l-1 7M11 13l6 7" fill="none" stroke="#6d737a" stroke-width="0.9"></path>
+      <path d="M12 5l-1 8-5-4z" fill="#c3c8cd"></path>
+    </symbol>
+    <symbol id="ikona-populacja" viewBox="0 0 24 24">
+      <circle cx="12" cy="7" r="4" fill="#e8d6b0" stroke="#6b5530" stroke-width="1"></circle>
+      <path d="M4 22c0-6 3.5-9 8-9s8 3 8 9z" fill="#b08a4a" stroke="#6b5530" stroke-width="1"></path>
+    </symbol>
+
+    <!-- złoty wieniec laurowy -->
+    <symbol id="laur" viewBox="0 0 200 200">
+      <g fill="url(#laur-zloto)" stroke="#8a6a1a" stroke-width="0.8"><path d="M111.1 183.2 L116.6 182.3 L122.1 180.9 L127.4 179.2 L132.5 177.1 L137.6 174.6 L142.4 171.8 L147.0 168.7 L151.4 165.3 L155.6 161.5 L159.5 157.5 L163.0 153.3 L166.3 148.7 L169.3 144.0 L171.9 139.1 L174.2 134.0 L176.1 128.7 L177.6 123.4 L178.8 117.9 L179.6 112.4 L180.0 106.8 L180.0 101.2 L179.6 95.6 L178.8 90.1 L177.6 84.6 L176.1 79.3 L174.2 74.0 L171.9 68.9 L169.3 64.0 L166.3 59.3 L163.0 54.7 L159.5 50.5 L155.6 46.5 L151.4 42.7 L147.0 39.3 L142.4 36.2 L137.6 33.4 L132.5 30.9" fill="none" stroke="#8a6a1a" stroke-width="3" stroke-linecap="round"></path><path d="M0 0Q7-5.5 16 0Q7 5.5 0 0Z" transform="translate(119.4 181.6) rotate(-54) scale(1.05)"></path><path d="M0 0Q7-5.5 16 0Q7 5.5 0 0Z" transform="translate(119.4 181.6) rotate(26) scale(1.05)"></path><path d="M0 0Q7-5.5 16 0Q7 5.5 0 0Z" transform="translate(136.3 175.3) rotate(-67) scale(1.02)"></path><path d="M0 0Q7-5.5 16 0Q7 5.5 0 0Z" transform="translate(136.3 175.3) rotate(13) scale(1.02)"></path><path d="M0 0Q7-5.5 16 0Q7 5.5 0 0Z" transform="translate(151.4 165.3) rotate(-80) scale(0.98)"></path><path d="M0 0Q7-5.5 16 0Q7 5.5 0 0Z" transform="translate(151.4 165.3) rotate(0) scale(0.98)"></path><path d="M0 0Q7-5.5 16 0Q7 5.5 0 0Z" transform="translate(163.9 152.1) rotate(-93) scale(0.95)"></path><path d="M0 0Q7-5.5 16 0Q7 5.5 0 0Z" transform="translate(163.9 152.1) rotate(-13) scale(0.95)"></path><path d="M0 0Q7-5.5 16 0Q7 5.5 0 0Z" transform="translate(173.1 136.5) rotate(-106) scale(0.91)"></path><path d="M0 0Q7-5.5 16 0Q7 5.5 0 0Z" transform="translate(173.1 136.5) rotate(-26) scale(0.91)"></path><path d="M0 0Q7-5.5 16 0Q7 5.5 0 0Z" transform="translate(178.5 119.3) rotate(-119) scale(0.88)"></path><path d="M0 0Q7-5.5 16 0Q7 5.5 0 0Z" transform="translate(178.5 119.3) rotate(-39) scale(0.88)"></path><path d="M0 0Q7-5.5 16 0Q7 5.5 0 0Z" transform="translate(180.0 101.2) rotate(-132) scale(0.84)"></path><path d="M0 0Q7-5.5 16 0Q7 5.5 0 0Z" transform="translate(180.0 101.2) rotate(-52) scale(0.84)"></path><path d="M0 0Q7-5.5 16 0Q7 5.5 0 0Z" transform="translate(177.3 83.3) rotate(-145) scale(0.81)"></path><path d="M0 0Q7-5.5 16 0Q7 5.5 0 0Z" transform="translate(177.3 83.3) rotate(-65) scale(0.81)"></path><path d="M0 0Q7-5.5 16 0Q7 5.5 0 0Z" transform="translate(170.6 66.4) rotate(-158) scale(0.77)"></path><path d="M0 0Q7-5.5 16 0Q7 5.5 0 0Z" transform="translate(170.6 66.4) rotate(-78) scale(0.77)"></path><path d="M0 0Q7-5.5 16 0Q7 5.5 0 0Z" transform="translate(160.4 51.5) rotate(-171) scale(0.73)"></path><path d="M0 0Q7-5.5 16 0Q7 5.5 0 0Z" transform="translate(160.4 51.5) rotate(-91) scale(0.73)"></path><path d="M0 0Q7-5.5 16 0Q7 5.5 0 0Z" transform="translate(147.0 39.3) rotate(-184) scale(0.70)"></path><path d="M0 0Q7-5.5 16 0Q7 5.5 0 0Z" transform="translate(147.0 39.3) rotate(-104) scale(0.70)"></path><path d="M0 0Q7-5.5 16 0Q7 5.5 0 0Z" transform="translate(131.3 30.4) rotate(-197) scale(0.67)"></path><path d="M0 0Q7-5.5 16 0Q7 5.5 0 0Z" transform="translate(131.3 30.4) rotate(-117) scale(0.67)"></path><path d="M88.9 183.2 L83.4 182.3 L77.9 180.9 L72.6 179.2 L67.5 177.1 L62.4 174.6 L57.6 171.8 L53.0 168.7 L48.6 165.3 L44.4 161.5 L40.5 157.5 L37.0 153.3 L33.7 148.7 L30.7 144.0 L28.1 139.1 L25.8 134.0 L23.9 128.7 L22.4 123.4 L21.2 117.9 L20.4 112.4 L20.0 106.8 L20.0 101.2 L20.4 95.6 L21.2 90.1 L22.4 84.6 L23.9 79.3 L25.8 74.0 L28.1 68.9 L30.7 64.0 L33.7 59.3 L37.0 54.7 L40.5 50.5 L44.4 46.5 L48.6 42.7 L53.0 39.3 L57.6 36.2 L62.4 33.4 L67.5 30.9" fill="none" stroke="#8a6a1a" stroke-width="3" stroke-linecap="round"></path><path d="M0 0Q7-5.5 16 0Q7 5.5 0 0Z" transform="translate(80.6 181.6) rotate(154) scale(1.05)"></path><path d="M0 0Q7-5.5 16 0Q7 5.5 0 0Z" transform="translate(80.6 181.6) rotate(234) scale(1.05)"></path><path d="M0 0Q7-5.5 16 0Q7 5.5 0 0Z" transform="translate(63.7 175.3) rotate(167) scale(1.02)"></path><path d="M0 0Q7-5.5 16 0Q7 5.5 0 0Z" transform="translate(63.7 175.3) rotate(247) scale(1.02)"></path><path d="M0 0Q7-5.5 16 0Q7 5.5 0 0Z" transform="translate(48.6 165.3) rotate(180) scale(0.98)"></path><path d="M0 0Q7-5.5 16 0Q7 5.5 0 0Z" transform="translate(48.6 165.3) rotate(260) scale(0.98)"></path><path d="M0 0Q7-5.5 16 0Q7 5.5 0 0Z" transform="translate(36.1 152.1) rotate(193) scale(0.95)"></path><path d="M0 0Q7-5.5 16 0Q7 5.5 0 0Z" transform="translate(36.1 152.1) rotate(273) scale(0.95)"></path><path d="M0 0Q7-5.5 16 0Q7 5.5 0 0Z" transform="translate(26.9 136.5) rotate(206) scale(0.91)"></path><path d="M0 0Q7-5.5 16 0Q7 5.5 0 0Z" transform="translate(26.9 136.5) rotate(286) scale(0.91)"></path><path d="M0 0Q7-5.5 16 0Q7 5.5 0 0Z" transform="translate(21.5 119.3) rotate(219) scale(0.88)"></path><path d="M0 0Q7-5.5 16 0Q7 5.5 0 0Z" transform="translate(21.5 119.3) rotate(299) scale(0.88)"></path><path d="M0 0Q7-5.5 16 0Q7 5.5 0 0Z" transform="translate(20.0 101.2) rotate(232) scale(0.84)"></path><path d="M0 0Q7-5.5 16 0Q7 5.5 0 0Z" transform="translate(20.0 101.2) rotate(312) scale(0.84)"></path><path d="M0 0Q7-5.5 16 0Q7 5.5 0 0Z" transform="translate(22.7 83.3) rotate(245) scale(0.81)"></path><path d="M0 0Q7-5.5 16 0Q7 5.5 0 0Z" transform="translate(22.7 83.3) rotate(325) scale(0.81)"></path><path d="M0 0Q7-5.5 16 0Q7 5.5 0 0Z" transform="translate(29.4 66.4) rotate(258) scale(0.77)"></path><path d="M0 0Q7-5.5 16 0Q7 5.5 0 0Z" transform="translate(29.4 66.4) rotate(338) scale(0.77)"></path><path d="M0 0Q7-5.5 16 0Q7 5.5 0 0Z" transform="translate(39.6 51.5) rotate(271) scale(0.73)"></path><path d="M0 0Q7-5.5 16 0Q7 5.5 0 0Z" transform="translate(39.6 51.5) rotate(351) scale(0.73)"></path><path d="M0 0Q7-5.5 16 0Q7 5.5 0 0Z" transform="translate(53.0 39.3) rotate(284) scale(0.70)"></path><path d="M0 0Q7-5.5 16 0Q7 5.5 0 0Z" transform="translate(53.0 39.3) rotate(364) scale(0.70)"></path><path d="M0 0Q7-5.5 16 0Q7 5.5 0 0Z" transform="translate(68.7 30.4) rotate(297) scale(0.67)"></path><path d="M0 0Q7-5.5 16 0Q7 5.5 0 0Z" transform="translate(68.7 30.4) rotate(377) scale(0.67)"></path></g>
+    </symbol>
+
+    <!-- pieczęć lakowa z koroną -->
+    <symbol id="pieczec" viewBox="-40 -40 80 80">
+      <path d="M32.2 3.6Q31.4 7.2 31.4 11.1Q31.3 15.1 28.1 17.5Q24.8 19.8 23.1 23.3Q21.3 26.7 17.9 28.4Q14.4 30.0 10.8 30.5Q7.1 30.9 3.5 32.5Q0.0 34.0 -3.5 32.4Q-7.0 30.8 -10.8 30.6Q-14.6 30.3 -17.2 27.6Q-19.8 24.8 -22.4 22.4Q-24.9 19.9 -27.6 17.2Q-30.3 14.6 -32.5 11.3Q-34.8 7.9 -33.4 4.0Q-32.0 0.0 -31.9 -3.6Q-31.7 -7.2 -31.5 -11.1Q-31.2 -15.0 -29.8 -18.8Q-28.4 -22.7 -24.9 -24.8Q-21.4 -26.9 -18.0 -28.5Q-14.5 -30.1 -11.3 -32.9Q-8.1 -35.6 -4.1 -33.6Q-0.0 -31.6 4.0 -33.3Q8.0 -35.0 11.1 -32.3Q14.3 -29.6 17.2 -27.4Q20.0 -25.1 22.5 -22.5Q25.0 -20.0 27.4 -17.1Q29.7 -14.3 32.2 -11.1Q34.8 -7.9 33.9 -4.0Q33.1 0.0 32.2 3.6Z" fill="url(#wosk)"></path>
+      <circle r="23" fill="none" stroke="#6a0a0d" stroke-width="2.5" opacity="0.8"></circle>
+      <circle r="19" fill="#9c1418"></circle>
+      <path d="M-13 8V-5l6.5 6L0-10l6.5 11L13-5V8z" fill="#6a0a0d"></path>
+      <path d="M-13 8V-5l6.5 6L0-10" fill="none" stroke="#e0615a" stroke-width="1.2" opacity="0.7"></path>
+      <ellipse cx="-12" cy="-18" rx="10" ry="4" fill="#ffffff" opacity="0.18" transform="rotate(-30 -12 -18)"></ellipse>
+    </symbol>
   </svg>
 
-  <div class="tlo" aria-hidden="true"></div>
-  <div class="tlo-monety" aria-hidden="true"></div>
+  <!-- tła obu kategorii -->
+  <div class="tlo" aria-hidden="true">
+    <div class="tlo-fortnite" data-dla="fortnite"></div>
+    <div class="tlo-zeroad" data-dla="zeroad">
+      <div class="pochodnia pochodnia-l"></div>
+      <div class="pochodnia pochodnia-p"></div>
+      <svg class="ziarno" focusable="false"><rect width="100%" height="100%" filter="url(#ziarno)"></rect></svg>
+    </div>
+    <div class="tlo-monety" data-dla="fortnite" data-ikona="vbuck"></div>
+    <div class="tlo-monety" data-dla="zeroad" data-ikona="srebrnik"></div>
+  </div>
 
   <header class="pasek">
-    <a class="logo" href="#gracze">
-      <svg class="vb" aria-hidden="true"><use href="#vbuck"></use></svg>
-      <span>Zrzutka</span>
+    <a class="logo" href="#fortnite" id="logo">
+      <svg class="vb" data-dla="fortnite" aria-hidden="true"><use href="#vbuck"></use></svg>
+      <svg class="vb" data-dla="zeroad" aria-hidden="true"><use href="#srebrnik"></use></svg>
+      <span data-dla="fortnite">Zrzutka</span>
+      <span data-dla="zeroad">Skarbiec</span>
     </a>
-    <div class="pasek-prawo">
-      <div class="saldo" title="Tyle V-dolców zebrała cała zrzutka">
+
+    <nav class="kategorie" aria-label="Kategorie zrzutki">
+      <a class="kat" href="#fortnite" data-kat="fortnite">
         <svg class="vb" aria-hidden="true"><use href="#vbuck"></use></svg>
+        <span>Fortnite</span>
+      </a>
+      <a class="kat" href="#0ad" data-kat="zeroad">
+        <svg class="vb" aria-hidden="true"><use href="#srebrnik"></use></svg>
+        <span>0 A.D.</span>
+      </a>
+    </nav>
+
+    <div class="pasek-prawo">
+      <div class="saldo" title="Tyle zebrała ta kategoria">
+        <svg class="vb" data-dla="fortnite" aria-hidden="true"><use href="#vbuck"></use></svg>
+        <svg class="vb" data-dla="zeroad" aria-hidden="true"><use href="#srebrnik"></use></svg>
         <span class="saldo-liczba" id="suma">0</span>
         <span class="saldo-opis">zebrano</span>
       </div>
-      <button class="btn-dzwiek" id="btn-dzwiek" type="button" aria-pressed="true" aria-label="Dźwięk monet">
+      <button class="btn-dzwiek" id="btn-dzwiek" type="button" aria-pressed="true" aria-label="Dźwięk">
         <svg viewBox="0 0 24 24" aria-hidden="true">
           <path d="M4 9h4l5-4v14l-5-4H4z" fill="currentColor"></path>
           <g class="fale" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
@@ -72,360 +191,879 @@
   </header>
 
   <main>
-    <section class="hero">
-      <p class="hero-nad">Fundacja Pomocy Początkującym Graczom</p>
-      <h1>
-        <span class="h1-a">V-dolce</span>
-        <span class="h1-b">dla noobów</span>
-      </h1>
-      <p class="hero-pod">
-        Oni nie umieją grać. Ty możesz pomóc. Wybierz gracza, kliknij
-        <b>Dofinansuj</b> i wrzuć mu trochę V-dolców — każdy się liczy
-        (dosłownie, liczymy je).
-      </p>
-      <svg class="hero-moneta hero-moneta-1" aria-hidden="true"><use href="#vbuck"></use></svg>
-      <svg class="hero-moneta hero-moneta-2" aria-hidden="true"><use href="#vbuck"></use></svg>
-      <svg class="hero-moneta hero-moneta-3" aria-hidden="true"><use href="#vbuck"></use></svg>
+
+    <!-- =====================================================
+         FORTNITE
+         ===================================================== -->
+    <section class="kategoria" data-kategoria="fortnite" data-dla="fortnite" aria-label="Fortnite: V-dolce dla noobów">
+      <div class="hero">
+        <p class="hero-nad">Fundacja Pomocy Początkującym Graczom</p>
+        <h1>
+          <span class="h1-a">V-dolce</span>
+          <span class="h1-b">dla noobów</span>
+        </h1>
+        <p class="hero-pod">
+          Oni nie umieją grać. Ty możesz pomóc. Wybierz gracza, kliknij <b>Dofinansuj</b>
+          i wrzuć mu trochę V-dolców — każdy się liczy (dosłownie, liczymy je).
+          Kliknij też w portret, to gracz coś powie.
+        </p>
+        <button class="tytul-pill" type="button" data-do-profilu>
+          Twój tytuł: <b data-tytul="fortnite">Bot</b>
+          <span class="tytul-kropka">·</span>
+          odznaki <b data-odznaki-licznik>0/15</b>
+        </button>
+        <svg class="hero-moneta hero-moneta-1" aria-hidden="true"><use href="#vbuck"></use></svg>
+        <svg class="hero-moneta hero-moneta-2" aria-hidden="true"><use href="#vbuck"></use></svg>
+        <svg class="hero-moneta hero-moneta-3" aria-hidden="true"><use href="#vbuck"></use></svg>
+      </div>
+
+      <div class="gracze">
+
+        <!-- ================= PowPow ================= -->
+        <article class="karta" data-gracz="powpow" data-kolor="epicki">
+          <div class="karta-obraz">
+            <div class="promienie" aria-hidden="true"></div>
+            <svg class="awatar" viewBox="0 0 160 160" role="img" aria-label="PowPow w swoim full boxie">
+              <g class="sciana sciana-l" stroke="#5a3210" stroke-width="2" stroke-linejoin="round">
+                <polygon points="6,4 40,30 40,122 6,158" fill="#a8672c"></polygon>
+                <path d="M6 42l34 11M6 81l34-5M6 120l34-21" stroke="#86501f" opacity="0.85"></path>
+              </g>
+              <g class="sciana sciana-p" stroke="#5a3210" stroke-width="2" stroke-linejoin="round">
+                <polygon points="154,4 120,30 120,122 154,158" fill="#a8672c"></polygon>
+                <path d="M154 42l-34 11M154 81l-34-5M154 120l-34-21" stroke="#86501f" opacity="0.85"></path>
+              </g>
+              <g stroke="#5a3210" stroke-width="2">
+                <rect x="40" y="30" width="80" height="92" fill="#c98543"></rect>
+                <path d="M40 53h80M40 76h80M40 99h80" stroke="#86501f" opacity="0.85"></path>
+              </g>
+              <g class="postac">
+                <path d="M34 160c3-26 20-40 46-40s43 14 46 40z" fill="#2c2a7a"></path>
+                <path d="M58 128l22 16 22-16" fill="none" stroke="#1d1b5a" stroke-width="3"></path>
+                <path d="M74 134l-2 18M86 134l2 18" stroke="#e6e6ff" stroke-width="2.5" stroke-linecap="round"></path>
+                <rect x="71" y="102" width="18" height="22" rx="6" fill="#dca07a"></rect>
+                <circle cx="55" cy="87" r="5.5" fill="#eab48f"></circle>
+                <circle cx="105" cy="87" r="5.5" fill="#eab48f"></circle>
+                <ellipse cx="80" cy="84" rx="25" ry="27" fill="#f2c29b"></ellipse>
+                <path d="M54 80C50 63 58 53 66 50l0-8 8 7 6-11 6 11 8-7v9c10 5 14 15 12 26l-6-8-6 5-6-9-7 8-7-9-7 9-6-6z" fill="#4a2c17"></path>
+                <path d="M55 71q25-9 50 0v8q-25-9-50 0z" fill="#e8322e"></path>
+                <path class="opaska" d="M103 72l16-6-4 8 9 5-18 1z" fill="#c9221f"></path>
+                <path d="M63 83l11 3M97 83l-11 3" stroke="#3a2210" stroke-width="3.5" stroke-linecap="round"></path>
+                <g class="oko"><ellipse cx="70" cy="91" rx="3" ry="3.6" fill="#1d1d1d"></ellipse></g>
+                <g class="oko"><ellipse cx="90" cy="91" rx="3" ry="3.6" fill="#1d1d1d"></ellipse></g>
+                <circle cx="63" cy="99" r="4" fill="#f59a8a" opacity="0.5"></circle>
+                <circle cx="97" cy="99" r="4" fill="#f59a8a" opacity="0.5"></circle>
+                <path d="M70 102q9 7 20-2" fill="none" stroke="#7a2e1c" stroke-width="3" stroke-linecap="round"></path>
+              </g>
+            </svg>
+            <span class="ranga">Epicki</span>
+            <span class="korona" hidden>Ulubieniec sponsorów</span>
+            <div class="dymek" aria-live="polite"></div>
+          </div>
+
+          <div class="karta-tresc">
+            <h2 class="nick">PowPow</h2>
+            <p class="aka">aka <b>Konradek</b></p>
+            <ul class="metryka">
+              <li><span>Poziom</span><b>87</b></li>
+              <li><span>Victory Royale</span><b>2 (jedno z botami)</b></li>
+              <li><span>Ulubiona broń</span><b>ściana</b></li>
+            </ul>
+            <p class="haslo">Odważny gracz z ambicjami</p>
+
+            <div class="opis">
+              <p>
+                Jedyny w ekipie, który umie postawić <b>full boxa</b> — i stawia go przy
+                każdej okazji: przy walce, przy lądowaniu, przy otwieraniu skrzynki,
+                a raz nawet w lobby, zanim gra się zaczęła. Kokot, ale kokot z ambicjami.
+              </p>
+              <p>
+                Ogląda poradniki pro graczy do trzeciej w nocy i co wieczór obiecuje, że
+                „od jutra gra rankedy na serio”. Jego firmowy tekst to „spokojnie, mam boxa” —
+                zwykle sekundę przed tym, jak ktoś wbija mu do boxa z pompą.
+              </p>
+              <p>
+                Za zebrane V-dolce kupi Karnet Bojowy, a potem już tylko turnieje
+                i Fortnite World Cup. Tak twierdzi.
+              </p>
+            </div>
+
+            <ul class="staty">
+              <li><span class="stat-nazwa">Budowanie</span><span class="pasek-stat" data-v="9"><i></i></span><span class="stat-wart">9/10</span></li>
+              <li><span class="stat-nazwa">Celowanie</span><span class="pasek-stat" data-v="5"><i></i></span><span class="stat-wart">5/10</span></li>
+              <li><span class="stat-nazwa">Odwaga</span><span class="pasek-stat" data-v="10"><i></i></span><span class="stat-wart">10/10</span></li>
+              <li><span class="stat-nazwa">Ambicje</span><span class="pasek-stat" data-v="11"><i></i></span><span class="stat-wart stat-ponad">11/10</span></li>
+            </ul>
+
+            <div class="zbiorka">
+              <div class="zebrano">
+                <span class="zebrano-opis">Zebrano</span>
+                <span class="zebrano-kwota"><svg class="vb" aria-hidden="true"><use href="#vbuck"></use></svg><span data-kwota>0</span></span>
+              </div>
+              <div class="cel">
+                <div class="cel-gora">
+                  <span class="cel-etap" data-cel-etap>Cel 1/3</span>
+                  <span class="cel-kwota"><svg class="vb" aria-hidden="true"><use href="#vbuck"></use></svg><span data-cel-kwota>950</span></span>
+                </div>
+                <div class="cel-nazwa" data-cel-nazwa>Karnet Bojowy</div>
+                <div class="cel-pasek"><div class="cel-wypelnienie" data-cel-pasek></div></div>
+                <div class="cel-brakuje" data-cel-brakuje></div>
+              </div>
+              <button class="btn-wesprzyj" type="button">
+                <svg class="vb" aria-hidden="true"><use href="#vbuck"></use></svg>
+                Dofinansuj
+              </button>
+            </div>
+          </div>
+        </article>
+
+        <!-- ================= Krayo ================= -->
+        <article class="karta" data-gracz="krayo" data-kolor="pospolity">
+          <div class="karta-obraz">
+            <div class="promienie" aria-hidden="true"></div>
+            <svg class="awatar" viewBox="0 0 160 160" role="img" aria-label="Krayo, zagubiony jak zawsze">
+              <g class="pytajniki">
+                <text x="118" y="50" class="awatar-znak" font-size="34" fill="#ffffff" transform="rotate(14 118 50)">?</text>
+                <text x="26" y="56" class="awatar-znak" font-size="24" fill="#ffffff" opacity="0.8" transform="rotate(-16 26 56)">?</text>
+                <text x="134" y="92" class="awatar-znak" font-size="18" fill="#ffffff" opacity="0.6" transform="rotate(20 134 92)">?</text>
+              </g>
+              <g class="postac">
+                <path d="M34 160c3-26 20-40 46-40s43 14 46 40z" fill="#5d6b4b"></path>
+                <text x="80" y="150" class="awatar-znak" font-size="13" fill="#e9eedc" text-anchor="middle" letter-spacing="1">NOOB</text>
+                <rect x="71" y="102" width="18" height="22" rx="6" fill="#dca07a"></rect>
+                <circle cx="55" cy="87" r="5.5" fill="#eab48f"></circle>
+                <circle cx="105" cy="87" r="5.5" fill="#eab48f"></circle>
+                <ellipse cx="80" cy="84" rx="25" ry="27" fill="#f2c29b"></ellipse>
+                <path d="M55 80C52 62 64 55 80 55s28 7 25 25c-4-9-12-13-25-13s-21 4-25 13z" fill="#6b4423"></path>
+                <path d="M63 79q7-6 13 0M86 81q6-5 11 1" fill="none" stroke="#4a2c17" stroke-width="3" stroke-linecap="round"></path>
+                <g class="oko"><circle cx="70" cy="89" r="6.5" fill="#ffffff"></circle><circle cx="67.5" cy="86.5" r="2.8" fill="#161616"></circle></g>
+                <g class="oko"><circle cx="91" cy="90" r="4.6" fill="#ffffff"></circle><circle cx="93" cy="92" r="2.3" fill="#161616"></circle></g>
+                <path d="M69 105q4-4 8 0t8 0 7-1" fill="none" stroke="#6b2a1a" stroke-width="2.6" stroke-linecap="round"></path>
+                <path d="M109 66q6 9 0 13q-6-4 0-13z" fill="#8fd6ff" stroke="#4aa6e0" stroke-width="1"></path>
+              </g>
+            </svg>
+            <span class="ranga">Pospolity</span>
+            <span class="korona" hidden>Ulubieniec sponsorów</span>
+            <div class="dymek" aria-live="polite"></div>
+          </div>
+
+          <div class="karta-tresc">
+            <h2 class="nick">Krayo</h2>
+            <p class="aka">status: <b>kokot, nie umie grać</b></p>
+            <ul class="metryka">
+              <li><span>Poziom</span><b>4</b></li>
+              <li><span>Victory Royale</span><b>0</b></li>
+              <li><span>Ulubiona broń</span><b>„ten duży pistolet”</b></li>
+            </ul>
+            <p class="haslo">Pierwszy z autobusu, pierwszy do lobby</p>
+
+            <div class="opis">
+              <p>
+                Wyskakuje z autobusu jako pierwszy i jako pierwszy odpada — zwykle zanim
+                reszta ekipy w ogóle wyląduje. Budowanie? Postawił kiedyś jedną ścianę.
+                Tyłem do przeciwnika.
+              </p>
+              <p>
+                Na strzelbę mówi „ten duży pistolet”, a apteczki trzyma „na później”,
+                czyli do śmierci. Gra w domyślnej skórce, więc wszyscy biorą go za bota —
+                i szczerze, nikt nie zauważa różnicy.
+              </p>
+              <p>
+                Po każdej przegranej ma ten sam argument: <i>„lagowało mi”</i>. Lagowało mu
+                też, jak grał offline w trybie kreatywnym.
+              </p>
+            </div>
+
+            <ul class="staty">
+              <li><span class="stat-nazwa">Budowanie</span><span class="pasek-stat" data-v="1"><i></i></span><span class="stat-wart">1/10</span></li>
+              <li><span class="stat-nazwa">Celowanie</span><span class="pasek-stat" data-v="2"><i></i></span><span class="stat-wart">2/10</span></li>
+              <li><span class="stat-nazwa">Wymówki</span><span class="pasek-stat" data-v="10"><i></i></span><span class="stat-wart">10/10</span></li>
+              <li><span class="stat-nazwa">Pewność siebie</span><span class="pasek-stat" data-v="10"><i></i></span><span class="stat-wart">10/10</span></li>
+            </ul>
+
+            <div class="zbiorka">
+              <div class="zebrano">
+                <span class="zebrano-opis">Zebrano</span>
+                <span class="zebrano-kwota"><svg class="vb" aria-hidden="true"><use href="#vbuck"></use></svg><span data-kwota>0</span></span>
+              </div>
+              <div class="cel">
+                <div class="cel-gora">
+                  <span class="cel-etap" data-cel-etap>Cel 1/3</span>
+                  <span class="cel-kwota"><svg class="vb" aria-hidden="true"><use href="#vbuck"></use></svg><span data-cel-kwota>800</span></span>
+                </div>
+                <div class="cel-nazwa" data-cel-nazwa>Jakakolwiek skórka, żeby nie brali go za bota</div>
+                <div class="cel-pasek"><div class="cel-wypelnienie" data-cel-pasek></div></div>
+                <div class="cel-brakuje" data-cel-brakuje></div>
+              </div>
+              <button class="btn-wesprzyj" type="button">
+                <svg class="vb" aria-hidden="true"><use href="#vbuck"></use></svg>
+                Dofinansuj
+              </button>
+            </div>
+          </div>
+        </article>
+
+        <!-- ================= Śliski Karp ================= -->
+        <article class="karta" data-gracz="karp" data-kolor="legendarny">
+          <div class="karta-obraz">
+            <div class="promienie" aria-hidden="true"></div>
+            <svg class="awatar" viewBox="0 0 160 160" role="img" aria-label="Dziadek Piotr w słuchawkach i z karpiem na głowie">
+              <g class="postac">
+                <path d="M34 160c3-26 20-40 46-40s43 14 46 40z" fill="#7b5a36"></path>
+                <path d="M66 122l14 26 14-26z" fill="#ece5d2"></path>
+                <path d="M66 122l14 26 14-26" fill="none" stroke="#5e4226" stroke-width="3"></path>
+                <circle cx="80" cy="152" r="2.4" fill="#3f2a15"></circle>
+                <rect x="71" y="102" width="18" height="20" rx="6" fill="#d9a07e"></rect>
+                <circle cx="55" cy="88" r="5.5" fill="#e8b08f"></circle>
+                <circle cx="105" cy="88" r="5.5" fill="#e8b08f"></circle>
+                <ellipse cx="80" cy="84" rx="25" ry="28" fill="#f0c3a2"></ellipse>
+                <path d="M57 88q-6-12 3-20q-1 11 4 16zM103 88q6-12-3-20q1 11-4 16z" fill="#eeeeee"></path>
+                <path d="M70 68q10-3 20 0M72 74q8-2 16 0" fill="none" stroke="#d49b7b" stroke-width="1.6" stroke-linecap="round"></path>
+                <path d="M52 88C48 50 112 50 108 88" fill="none" stroke="#1f1f24" stroke-width="6" stroke-linecap="round"></path>
+                <rect x="45" y="79" width="13" height="21" rx="5" fill="#2b2b33"></rect>
+                <rect x="102" y="79" width="13" height="21" rx="5" fill="#2b2b33"></rect>
+                <path d="M52 98q2 16 17 16" fill="none" stroke="#1f1f24" stroke-width="3" stroke-linecap="round"></path>
+                <circle cx="70" cy="114" r="3.6" fill="#1f1f24"></circle>
+                <path d="M60 80q8-6 15-1M85 79q7-5 15 1" fill="none" stroke="#f4f4f4" stroke-width="4" stroke-linecap="round"></path>
+                <g class="oko"><circle cx="69" cy="90" r="4" fill="#1d1d1d"></circle></g>
+                <g class="oko"><circle cx="91" cy="90" r="4" fill="#1d1d1d"></circle></g>
+                <g fill="#cdeaff" fill-opacity="0.28" stroke="#3a3a3a" stroke-width="2.6">
+                  <circle cx="69" cy="90" r="9.5"></circle>
+                  <circle cx="91" cy="90" r="9.5"></circle>
+                </g>
+                <path d="M78.5 89q1.5-2 3 0" fill="none" stroke="#3a3a3a" stroke-width="2.4"></path>
+                <ellipse cx="80" cy="99" rx="4.5" ry="5" fill="#e79c83"></ellipse>
+                <path d="M62 105q9-9 18-3q9-6 18 3q-7 7-18 2q-11 5-18-2z" fill="#f6f6f6" stroke="#dcdcdc" stroke-width="1"></path>
+              </g>
+              <g class="ryba">
+                <path d="M104 44l20-15-5 15 5 15z" fill="#b0802a" stroke="#6e4d12" stroke-width="2" stroke-linejoin="round"></path>
+                <path d="M78 31q8-9 18-2" fill="#b0802a" stroke="#6e4d12" stroke-width="2"></path>
+                <ellipse cx="80" cy="44" rx="29" ry="13" fill="#d4a53e" stroke="#6e4d12" stroke-width="2"></ellipse>
+                <path d="M68 38q4 4 0 8M78 36q4 5 0 10M88 36q4 5 0 10M98 38q3 4 0 8" fill="none" stroke="#8a6419" stroke-width="1.6" opacity="0.7"></path>
+                <circle cx="60" cy="42" r="4" fill="#ffffff"></circle>
+                <circle cx="59" cy="42" r="2" fill="#1d1d1d"></circle>
+                <path d="M52 48q3 2 6 0" fill="none" stroke="#6e4d12" stroke-width="1.6" stroke-linecap="round"></path>
+                <ellipse cx="74" cy="38" rx="11" ry="3" fill="#ffffff" opacity="0.45"></ellipse>
+              </g>
+              <path d="M44 34q3 5 0 7q-3-2 0-7zM118 64q3 5 0 7q-3-2 0-7z" fill="#9fe0ff" opacity="0.9"></path>
+            </svg>
+            <span class="ranga">Legendarny</span>
+            <span class="korona" hidden>Ulubieniec sponsorów</span>
+            <div class="dymek" aria-live="polite"></div>
+          </div>
+
+          <div class="karta-tresc">
+            <h2 class="nick">Śliski Karp</h2>
+            <p class="aka">aka <b>dziadek Piotr</b></p>
+            <ul class="metryka">
+              <li><span>Poziom</span><b>31</b></li>
+              <li><span>Victory Royale</span><b>1 (przespane)</b></li>
+              <li><span>Ulubiona broń</span><b>krzak</b></li>
+            </ul>
+            <p class="haslo">Senior serwera, król krzaków</p>
+
+            <div class="opis">
+              <p>
+                Najstarszy aktywny gracz Fortnite w całym powiecie. Gra na telewizorze
+                w salonie, z dźwiękiem na maksa i okularami na czubku nosa. Na mikrofonie
+                mówi do wszystkich „synku”, nawet do przeciwników.
+              </p>
+              <p>
+                Zamiast budować — kuca w krzaku i czeka, aż młodzi się pozabijają. Tak właśnie
+                wygrał swoją jedyną rundę: zasnął w krzaku w ostatniej strefie i obudził się
+                na ekranie zwycięstwa.
+              </p>
+              <p>
+                Śliski jak karp w wannie przed Wigilią — nikt go nie może złapać, bo nikt go
+                nie może znaleźć. Powtarza: <i>„za moich czasów nie było budowania i jakoś
+                żyliśmy”</i>.
+              </p>
+            </div>
+
+            <ul class="staty">
+              <li><span class="stat-nazwa">Cierpliwość</span><span class="pasek-stat" data-v="10"><i></i></span><span class="stat-wart">10/10</span></li>
+              <li><span class="stat-nazwa">Refleks</span><span class="pasek-stat" data-v="2"><i></i></span><span class="stat-wart">2/10</span></li>
+              <li><span class="stat-nazwa">Krzakowanie</span><span class="pasek-stat" data-v="10"><i></i></span><span class="stat-wart">10/10</span></li>
+              <li><span class="stat-nazwa">Obsługa pada</span><span class="pasek-stat" data-v="3"><i></i></span><span class="stat-wart">3/10</span></li>
+            </ul>
+
+            <div class="zbiorka">
+              <div class="zebrano">
+                <span class="zebrano-opis">Zebrano</span>
+                <span class="zebrano-kwota"><svg class="vb" aria-hidden="true"><use href="#vbuck"></use></svg><span data-kwota>0</span></span>
+              </div>
+              <div class="cel">
+                <div class="cel-gora">
+                  <span class="cel-etap" data-cel-etap>Cel 1/3</span>
+                  <span class="cel-kwota"><svg class="vb" aria-hidden="true"><use href="#vbuck"></use></svg><span data-cel-kwota>950</span></span>
+                </div>
+                <div class="cel-nazwa" data-cel-nazwa>Karnet Bojowy (wnuczek pomoże kliknąć)</div>
+                <div class="cel-pasek"><div class="cel-wypelnienie" data-cel-pasek></div></div>
+                <div class="cel-brakuje" data-cel-brakuje></div>
+              </div>
+              <button class="btn-wesprzyj" type="button">
+                <svg class="vb" aria-hidden="true"><use href="#vbuck"></use></svg>
+                Dofinansuj
+              </button>
+            </div>
+          </div>
+        </article>
+      </div>
     </section>
 
-    <section class="gracze" id="gracze" aria-label="Gracze do dofinansowania">
+    <!-- =====================================================
+         0 A.D.
+         ===================================================== -->
+    <section class="kategoria" data-kategoria="zeroad" data-dla="zeroad" aria-label="0 A.D.: srebrniki dla wojowników">
+      <div class="hero">
+        <p class="hero-nad">Królewska Fundacja Wspierania Wojowników 0&nbsp;A.D.</p>
+        <h1>
+          <span class="h1-a">Srebrniki</span>
+          <span class="h1-b">dla wojowników</span>
+        </h1>
+        <p class="hero-pod">
+          Czterech wojowników z lobby <b>0 A.D.</b> i cztery zupełnie różne powody, żeby im pomóc.
+          Wybierz wojownika, kliknij <b>Wesprzyj</b> i przypieczętuj darowiznę srebrnikami.
+          Każdy srebrnik trafia prosto do jego zasobu metalu.
+        </p>
 
-      <!-- ================= PowPow ================= -->
-      <article class="karta" data-gracz="powpow" data-rzadkosc="epicki">
-        <div class="karta-obraz">
-          <div class="promienie" aria-hidden="true"></div>
-          <svg class="awatar" viewBox="0 0 160 160" role="img" aria-label="PowPow w swoim full boxie">
-            <!-- full box z drewna -->
-            <g stroke="#5a3210" stroke-width="2" stroke-linejoin="round">
-              <polygon points="6,4 40,30 40,122 6,158" fill="#a8672c"></polygon>
-              <polygon points="154,4 120,30 120,122 154,158" fill="#a8672c"></polygon>
-              <rect x="40" y="30" width="80" height="92" fill="#c98543"></rect>
-            </g>
-            <g stroke="#86501f" stroke-width="2" opacity="0.85">
-              <line x1="40" y1="53" x2="120" y2="53"></line>
-              <line x1="40" y1="76" x2="120" y2="76"></line>
-              <line x1="40" y1="99" x2="120" y2="99"></line>
-              <line x1="6" y1="42" x2="40" y2="53"></line>
-              <line x1="6" y1="81" x2="40" y2="76"></line>
-              <line x1="6" y1="120" x2="40" y2="99"></line>
-              <line x1="154" y1="42" x2="120" y2="53"></line>
-              <line x1="154" y1="81" x2="120" y2="76"></line>
-              <line x1="154" y1="120" x2="120" y2="99"></line>
-            </g>
-            <!-- postać -->
-            <path d="M34 160c3-26 20-40 46-40s43 14 46 40z" fill="#2c2a7a"></path>
-            <path d="M58 128l22 16 22-16" fill="none" stroke="#1d1b5a" stroke-width="3"></path>
-            <line x1="74" y1="134" x2="72" y2="152" stroke="#e6e6ff" stroke-width="2.5" stroke-linecap="round"></line>
-            <line x1="86" y1="134" x2="88" y2="152" stroke="#e6e6ff" stroke-width="2.5" stroke-linecap="round"></line>
-            <rect x="71" y="102" width="18" height="22" rx="6" fill="#dca07a"></rect>
-            <circle cx="55" cy="87" r="5.5" fill="#eab48f"></circle>
-            <circle cx="105" cy="87" r="5.5" fill="#eab48f"></circle>
-            <ellipse cx="80" cy="84" rx="25" ry="27" fill="#f2c29b"></ellipse>
-            <path d="M54 80C50 63 58 53 66 50l0-8 8 7 6-11 6 11 8-7v9c10 5 14 15 12 26l-6-8-6 5-6-9-7 8-7-9-7 9-6-6z" fill="#4a2c17"></path>
-            <path d="M55 71q25-9 50 0v8q-25-9-50 0z" fill="#e8322e"></path>
-            <path d="M103 72l16-6-4 8 9 5-18 1z" fill="#c9221f"></path>
-            <path d="M63 83l11 3M97 83l-11 3" stroke="#3a2210" stroke-width="3.5" stroke-linecap="round"></path>
-            <ellipse cx="70" cy="91" rx="3" ry="3.6" fill="#1d1d1d"></ellipse>
-            <ellipse cx="90" cy="91" rx="3" ry="3.6" fill="#1d1d1d"></ellipse>
-            <circle cx="63" cy="99" r="4" fill="#f59a8a" opacity="0.5"></circle>
-            <circle cx="97" cy="99" r="4" fill="#f59a8a" opacity="0.5"></circle>
-            <path d="M70 102q9 7 20-2" fill="none" stroke="#7a2e1c" stroke-width="3" stroke-linecap="round"></path>
-          </svg>
-          <span class="rzadkosc">Epicki</span>
+        <div class="surowce" role="list" aria-label="Stan skarbca fundacji">
+          <span class="surowiec" role="listitem" title="Żywność — wszystko z farm Nolliego">
+            <svg aria-hidden="true"><use href="#ikona-zywnosc"></use></svg><b>9&nbsp;999</b><small>żywność</small>
+          </span>
+          <span class="surowiec" role="listitem" title="Drewno — Lazi zużył wszystko na taran">
+            <svg aria-hidden="true"><use href="#ikona-drewno"></use></svg><b>0</b><small>drewno</small>
+          </span>
+          <span class="surowiec" role="listitem" title="Kamień — odłożony na pomnik Kozaka">
+            <svg aria-hidden="true"><use href="#ikona-kamien"></use></svg><b>300</b><small>kamień</small>
+          </span>
+          <span class="surowiec surowiec-metal" role="listitem" title="Metal — srebrniki zebrane przez fundację">
+            <svg aria-hidden="true"><use href="#srebrnik"></use></svg><b id="metal">0</b><small>metal</small>
+          </span>
+          <span class="surowiec" role="listitem" title="Populacja — czterech wojowników, Stozhinio ma plan na 300">
+            <svg aria-hidden="true"><use href="#ikona-populacja"></use></svg><b>4/300</b><small>populacja</small>
+          </span>
         </div>
 
-        <div class="karta-tresc">
-          <h2 class="nick">PowPow</h2>
-          <p class="aka">aka <b>Konradek</b></p>
-          <p class="haslo">Odważny gracz z ambicjami</p>
+        <button class="tytul-pill" type="button" data-do-profilu>
+          Twój tytuł: <b data-tytul="zeroad">Obywatelka przy farmie</b>
+          <span class="tytul-kropka">·</span>
+          odznaki <b data-odznaki-licznik>0/15</b>
+        </button>
+        <svg class="hero-moneta hero-moneta-1" aria-hidden="true"><use href="#srebrnik"></use></svg>
+        <svg class="hero-moneta hero-moneta-2" aria-hidden="true"><use href="#srebrnik"></use></svg>
+        <svg class="hero-moneta hero-moneta-3" aria-hidden="true"><use href="#srebrnik"></use></svg>
+      </div>
 
-          <div class="opis">
-            <p>
-              Jedyny w ekipie, który umie postawić <b>full boxa</b> — i stawia go przy
-              każdej okazji: przy walce, przy lądowaniu, przy otwieraniu skrzynki,
-              a raz nawet w lobby, zanim gra się zaczęła. Kokot, ale kokot z ambicjami.
-            </p>
-            <p>
-              Ogląda poradniki pro graczy do trzeciej w nocy i co wieczór obiecuje, że
-              „od jutra gra rankedy na serio”. Jego firmowy tekst to „spokojnie, mam boxa” —
-              zwykle sekundę przed tym, jak ktoś wbija mu do boxa z pompą.
-            </p>
-            <p>
-              Za zebrane V-dolce kupi Karnet Bojowy, a potem już tylko turnieje
-              i Fortnite World Cup. Tak twierdzi.
-            </p>
+      <div class="gracze gracze-4">
+
+        <!-- ================= Kozak ================= -->
+        <article class="karta" data-gracz="kozak" data-kolor="zloty">
+          <div class="karta-obraz">
+            <div class="promienie" aria-hidden="true"></div>
+            <svg class="awatar" viewBox="0 0 160 160" role="img" aria-label="Kozak w hełmie z kozimi rogami, spokojny jak zawsze">
+              <circle class="furia" cx="80" cy="86" r="76" fill="url(#aura-furii)"></circle>
+              <g class="postac">
+                <path d="M24 160c2-30 20-44 56-44s54 14 56 44z" fill="#1f3f8a"></path>
+                <path d="M44 160c2-22 14-34 36-34s34 12 36 34z" fill="#c8923a" stroke="#7a5418" stroke-width="2"></path>
+                <path d="M62 140q9 6 18 0q9 6 18 0M80 134v26" fill="none" stroke="#8a611f" stroke-width="2"></path>
+                <rect x="71" y="100" width="18" height="24" rx="6" fill="#c98d63"></rect>
+                <circle cx="55" cy="88" r="5.5" fill="#cf9469"></circle>
+                <circle cx="105" cy="88" r="5.5" fill="#cf9469"></circle>
+                <ellipse cx="80" cy="85" rx="25" ry="27" fill="#d9a276"></ellipse>
+                <path d="M56 86q0 30 24 32q24-2 24-32l-5 3q-2 20-19 22q-17-2-19-22z" fill="#2c1c10"></path>
+                <path d="M70 101q5-3 10-1q5-2 10 1q-5 2-10 1q-5 1-10-1z" fill="#2c1c10"></path>
+                <!-- kozie rogi — w końcu to GOAT -->
+                <path d="M60 58c-12-10-28-8-34 6c-3 8 0 16 6 18c-2-8 0-14 6-16c6-2 12 1 16 6z" fill="#efe4c8" stroke="#9c8c6a" stroke-width="2" stroke-linejoin="round"></path>
+                <path d="M100 58c12-10 28-8 34 6c3 8 0 16-6 18c2-8 0-14-6-16c-6-2-12 1-16 6z" fill="#efe4c8" stroke="#9c8c6a" stroke-width="2" stroke-linejoin="round"></path>
+                <path d="M46 56l3 6M38 60l4 5M120 60l-4 5M112 56l-3 6" stroke="#b3a37f" stroke-width="1.6" stroke-linecap="round"></path>
+                <path d="M54 78C54 56 66 47 80 47s26 9 26 31c-8-6-16-8-26-8s-18 2-26 8z" fill="#c8923a" stroke="#7a5418" stroke-width="2"></path>
+                <path d="M77 68h6v13h-6z" fill="#b07a2c" stroke="#7a5418" stroke-width="1.5"></path>
+                <path d="M60 60q20-10 40 0" fill="none" stroke="#f0c75e" stroke-width="2" opacity="0.7"></path>
+              </g>
+              <g class="spokoj">
+                <path d="M63 89q5 4 10 0M87 89q5 4 10 0" fill="none" stroke="#2a1a0c" stroke-width="2.6" stroke-linecap="round"></path>
+                <path d="M73 106q7 4 14 0" fill="none" stroke="#5a2a14" stroke-width="2.4" stroke-linecap="round"></path>
+              </g>
+              <g class="furia">
+                <path d="M61 82l13 5M99 82l-13 5" stroke="#1a0d05" stroke-width="3.6" stroke-linecap="round"></path>
+                <ellipse cx="69" cy="90" rx="4.2" ry="3" fill="#ff3b1f"></ellipse>
+                <ellipse cx="91" cy="90" rx="4.2" ry="3" fill="#ff3b1f"></ellipse>
+                <path d="M71 104h18v7H71z" fill="#ffffff" stroke="#3a1a0a" stroke-width="1.8"></path>
+                <path d="M75.5 104v7M80 104v7M84.5 104v7M71 107.5h18" stroke="#3a1a0a" stroke-width="1.2"></path>
+              </g>
+            </svg>
+            <span class="ranga">Bohater</span>
+            <span class="korona" hidden>Ulubieniec mecenasów</span>
+            <div class="dymek" aria-live="polite"></div>
           </div>
 
-          <ul class="staty">
-            <li><span class="stat-nazwa">Budowanie</span><span class="pasek-stat" data-v="9"><i></i></span><span class="stat-wart">9/10</span></li>
-            <li><span class="stat-nazwa">Celowanie</span><span class="pasek-stat" data-v="5"><i></i></span><span class="stat-wart">5/10</span></li>
-            <li><span class="stat-nazwa">Odwaga</span><span class="pasek-stat" data-v="10"><i></i></span><span class="stat-wart">10/10</span></li>
-            <li><span class="stat-nazwa">Ambicje</span><span class="pasek-stat" data-v="11"><i></i></span><span class="stat-wart stat-ponad">11/10</span></li>
-          </ul>
+          <div class="karta-tresc">
+            <h2 class="nick">Kozak</h2>
+            <p class="aka">GOAT z Izraela</p>
+            <ul class="metryka">
+              <li><span>Pochodzenie</span><b>Izrael</b></li>
+              <li><span>Cywilizacja</span><b>każda — i tak wygrywa</b></li>
+              <li><span>Ranking w lobby</span><b>2050 ▲</b></li>
+            </ul>
+            <p class="haslo">Spokojny jak świątynia. Groźny jak szarża słoni.</p>
 
-          <div class="zbiorka">
-            <div class="zebrano">
-              <span class="zebrano-opis">Zebrano</span>
-              <span class="zebrano-kwota">
-                <svg class="vb" aria-hidden="true"><use href="#vbuck"></use></svg>
-                <span data-kwota>0</span>
-              </span>
+            <div class="opis">
+              <p>
+                Najlepszy gracz w lobby 0 A.D. i dobrze o tym wie, ale nie musi tego mówić —
+                wystarczy mu tabela wyników po meczu. Gra spokojnie i z opanowaniem: równy boom,
+                idealne mikro, ani jednego zbędnego kliknięcia. Na czacie pisze „gg” i nic więcej.
+              </p>
+              <p>
+                Ale jest cena. Jeśli ktoś go wkurzy — zrobi mu rusha w trzeciej minucie, podbierze
+                drewno albo, nie daj bóg, napisze „ez” — spokój się kończy. Wtedy nikt go nie
+                zatrzyma: ani mury, ani wieże, ani sojusznicy błagający na czacie o litość.
+              </p>
+              <p>
+                Srebrniki nie są mu do niczego potrzebne. Traktuj je jako haracz za święty
+                spokój — twój, nie jego.
+              </p>
             </div>
-            <div class="cel">
-              <div class="cel-gora">
-                <span class="cel-etap" data-cel-etap>Cel 1/3</span>
-                <span class="cel-kwota"><svg class="vb" aria-hidden="true"><use href="#vbuck"></use></svg><span data-cel-kwota>950</span></span>
+
+            <ul class="staty">
+              <li><span class="stat-nazwa">Mikro</span><span class="pasek-stat" data-v="10"><i></i></span><span class="stat-wart">X/X</span></li>
+              <li><span class="stat-nazwa">Makro</span><span class="pasek-stat" data-v="9"><i></i></span><span class="stat-wart">IX/X</span></li>
+              <li><span class="stat-nazwa">Spokój</span><span class="pasek-stat" data-v="9"><i></i></span><span class="stat-wart">IX/X</span></li>
+              <li><span class="stat-nazwa">Furia po wkurwieniu</span><span class="pasek-stat" data-v="11"><i></i></span><span class="stat-wart stat-ponad">XI/X</span></li>
+            </ul>
+
+            <div class="zbiorka">
+              <div class="zebrano">
+                <span class="zebrano-opis">Metal w skarbcu</span>
+                <span class="zebrano-kwota"><svg class="vb" aria-hidden="true"><use href="#srebrnik"></use></svg><span data-kwota>0</span></span>
               </div>
-              <div class="cel-nazwa" data-cel-nazwa>Karnet Bojowy</div>
-              <div class="cel-pasek"><div class="cel-wypelnienie" data-cel-pasek></div></div>
-              <div class="cel-brakuje" data-cel-brakuje></div>
-            </div>
-            <button class="btn-dofinansuj" type="button">
-              <svg class="vb" aria-hidden="true"><use href="#vbuck"></use></svg>
-              Dofinansuj
-            </button>
-          </div>
-        </div>
-      </article>
-
-      <!-- ================= Krayo ================= -->
-      <article class="karta" data-gracz="krayo" data-rzadkosc="pospolity">
-        <div class="karta-obraz">
-          <div class="promienie" aria-hidden="true"></div>
-          <svg class="awatar" viewBox="0 0 160 160" role="img" aria-label="Krayo, zagubiony jak zawsze">
-            <text x="118" y="50" class="awatar-znak" font-size="34" fill="#ffffff" transform="rotate(14 118 50)">?</text>
-            <text x="26" y="56" class="awatar-znak" font-size="24" fill="#ffffff" opacity="0.8" transform="rotate(-16 26 56)">?</text>
-            <text x="134" y="92" class="awatar-znak" font-size="18" fill="#ffffff" opacity="0.6" transform="rotate(20 134 92)">?</text>
-            <path d="M34 160c3-26 20-40 46-40s43 14 46 40z" fill="#5d6b4b"></path>
-            <text x="80" y="150" class="awatar-znak" font-size="13" fill="#e9eedc" text-anchor="middle" letter-spacing="1">NOOB</text>
-            <rect x="71" y="102" width="18" height="22" rx="6" fill="#dca07a"></rect>
-            <circle cx="55" cy="87" r="5.5" fill="#eab48f"></circle>
-            <circle cx="105" cy="87" r="5.5" fill="#eab48f"></circle>
-            <ellipse cx="80" cy="84" rx="25" ry="27" fill="#f2c29b"></ellipse>
-            <path d="M55 80C52 62 64 55 80 55s28 7 25 25c-4-9-12-13-25-13s-21 4-25 13z" fill="#6b4423"></path>
-            <path d="M63 79q7-6 13 0M86 81q6-5 11 1" fill="none" stroke="#4a2c17" stroke-width="3" stroke-linecap="round"></path>
-            <circle cx="70" cy="89" r="6.5" fill="#ffffff"></circle>
-            <circle cx="67.5" cy="86.5" r="2.8" fill="#161616"></circle>
-            <circle cx="91" cy="90" r="4.6" fill="#ffffff"></circle>
-            <circle cx="93" cy="92" r="2.3" fill="#161616"></circle>
-            <path d="M69 105q4-4 8 0t8 0 7-1" fill="none" stroke="#6b2a1a" stroke-width="2.6" stroke-linecap="round"></path>
-            <path d="M109 66q6 9 0 13q-6-4 0-13z" fill="#8fd6ff" stroke="#4aa6e0" stroke-width="1"></path>
-          </svg>
-          <span class="rzadkosc">Pospolity</span>
-        </div>
-
-        <div class="karta-tresc">
-          <h2 class="nick">Krayo</h2>
-          <p class="aka">status: <b>kokot, nie umie grać</b></p>
-          <p class="haslo">Pierwszy z autobusu, pierwszy do lobby</p>
-
-          <div class="opis">
-            <p>
-              Wyskakuje z autobusu jako pierwszy i jako pierwszy odpada — zwykle zanim
-              reszta ekipy w ogóle wyląduje. Budowanie? Postawił kiedyś jedną ścianę.
-              Tyłem do przeciwnika.
-            </p>
-            <p>
-              Na strzelbę mówi „ten duży pistolet”, a apteczki trzyma „na później”,
-              czyli do śmierci. Gra w domyślnej skórce, więc wszyscy biorą go za bota —
-              i szczerze, nikt nie zauważa różnicy.
-            </p>
-            <p>
-              Po każdej przegranej ma ten sam argument: <i>„lagowało mi”</i>. Lagowało mu
-              też, jak grał offline w trybie kreatywnym.
-            </p>
-          </div>
-
-          <ul class="staty">
-            <li><span class="stat-nazwa">Budowanie</span><span class="pasek-stat" data-v="1"><i></i></span><span class="stat-wart">1/10</span></li>
-            <li><span class="stat-nazwa">Celowanie</span><span class="pasek-stat" data-v="2"><i></i></span><span class="stat-wart">2/10</span></li>
-            <li><span class="stat-nazwa">Wymówki</span><span class="pasek-stat" data-v="10"><i></i></span><span class="stat-wart">10/10</span></li>
-            <li><span class="stat-nazwa">Pewność siebie</span><span class="pasek-stat" data-v="10"><i></i></span><span class="stat-wart">10/10</span></li>
-          </ul>
-
-          <div class="zbiorka">
-            <div class="zebrano">
-              <span class="zebrano-opis">Zebrano</span>
-              <span class="zebrano-kwota">
-                <svg class="vb" aria-hidden="true"><use href="#vbuck"></use></svg>
-                <span data-kwota>0</span>
-              </span>
-            </div>
-            <div class="cel">
-              <div class="cel-gora">
-                <span class="cel-etap" data-cel-etap>Cel 1/3</span>
-                <span class="cel-kwota"><svg class="vb" aria-hidden="true"><use href="#vbuck"></use></svg><span data-cel-kwota>800</span></span>
+              <div class="cel">
+                <div class="cel-gora">
+                  <span class="cel-etap" data-cel-etap>Faza miasteczka</span>
+                  <span class="cel-kwota"><svg class="vb" aria-hidden="true"><use href="#srebrnik"></use></svg><span data-cel-kwota>250</span></span>
+                </div>
+                <div class="cel-nazwa" data-cel-nazwa>Melisa na uspokojenie (dla przeciwników)</div>
+                <div class="cel-pasek"><div class="cel-wypelnienie" data-cel-pasek></div></div>
+                <div class="cel-brakuje" data-cel-brakuje></div>
               </div>
-              <div class="cel-nazwa" data-cel-nazwa>Jakakolwiek skórka, żeby nie brali go za bota</div>
-              <div class="cel-pasek"><div class="cel-wypelnienie" data-cel-pasek></div></div>
-              <div class="cel-brakuje" data-cel-brakuje></div>
+              <button class="btn-wesprzyj" type="button">
+                <svg class="vb" aria-hidden="true"><use href="#srebrnik"></use></svg>
+                Wesprzyj
+              </button>
             </div>
-            <button class="btn-dofinansuj" type="button">
-              <svg class="vb" aria-hidden="true"><use href="#vbuck"></use></svg>
-              Dofinansuj
-            </button>
           </div>
-        </div>
-      </article>
+        </article>
 
-      <!-- ================= Śliski Karp ================= -->
-      <article class="karta" data-gracz="karp" data-rzadkosc="legendarny">
-        <div class="karta-obraz">
-          <div class="promienie" aria-hidden="true"></div>
-          <svg class="awatar" viewBox="0 0 160 160" role="img" aria-label="Dziadek Piotr w słuchawkach i z karpiem na głowie">
-            <!-- sweterek -->
-            <path d="M34 160c3-26 20-40 46-40s43 14 46 40z" fill="#7b5a36"></path>
-            <path d="M66 122l14 26 14-26z" fill="#ece5d2"></path>
-            <path d="M66 122l14 26 14-26" fill="none" stroke="#5e4226" stroke-width="3"></path>
-            <circle cx="80" cy="152" r="2.4" fill="#3f2a15"></circle>
-            <rect x="71" y="102" width="18" height="20" rx="6" fill="#d9a07e"></rect>
-            <circle cx="55" cy="88" r="5.5" fill="#e8b08f"></circle>
-            <circle cx="105" cy="88" r="5.5" fill="#e8b08f"></circle>
-            <ellipse cx="80" cy="84" rx="25" ry="28" fill="#f0c3a2"></ellipse>
-            <path d="M57 88q-6-12 3-20q-1 11 4 16zM103 88q6-12-3-20q1 11-4 16z" fill="#eeeeee"></path>
-            <path d="M70 68q10-3 20 0M72 74q8-2 16 0" fill="none" stroke="#d49b7b" stroke-width="1.6" stroke-linecap="round"></path>
-            <!-- słuchawki z mikrofonem -->
-            <path d="M52 88C48 50 112 50 108 88" fill="none" stroke="#1f1f24" stroke-width="6" stroke-linecap="round"></path>
-            <rect x="45" y="79" width="13" height="21" rx="5" fill="#2b2b33"></rect>
-            <rect x="102" y="79" width="13" height="21" rx="5" fill="#2b2b33"></rect>
-            <path d="M52 98q2 16 17 16" fill="none" stroke="#1f1f24" stroke-width="3" stroke-linecap="round"></path>
-            <circle cx="70" cy="114" r="3.6" fill="#1f1f24"></circle>
-            <!-- brwi, okulary, oczy -->
-            <path d="M60 80q8-6 15-1M85 79q7-5 15 1" fill="none" stroke="#f4f4f4" stroke-width="4" stroke-linecap="round"></path>
-            <circle cx="69" cy="90" r="4" fill="#1d1d1d"></circle>
-            <circle cx="91" cy="90" r="4" fill="#1d1d1d"></circle>
-            <g fill="#cdeaff" fill-opacity="0.28" stroke="#3a3a3a" stroke-width="2.6">
-              <circle cx="69" cy="90" r="9.5"></circle>
-              <circle cx="91" cy="90" r="9.5"></circle>
-            </g>
-            <path d="M78.5 89q1.5-2 3 0" fill="none" stroke="#3a3a3a" stroke-width="2.4"></path>
-            <ellipse cx="80" cy="99" rx="4.5" ry="5" fill="#e79c83"></ellipse>
-            <path d="M62 105q9-9 18-3q9-6 18 3q-7 7-18 2q-11 5-18-2z" fill="#f6f6f6" stroke="#dcdcdc" stroke-width="1"></path>
-            <!-- śliski karp na głowie -->
-            <g>
-              <path d="M104 44l20-15-5 15 5 15z" fill="#b0802a" stroke="#6e4d12" stroke-width="2" stroke-linejoin="round"></path>
-              <path d="M78 31q8-9 18-2" fill="#b0802a" stroke="#6e4d12" stroke-width="2"></path>
-              <ellipse cx="80" cy="44" rx="29" ry="13" fill="#d4a53e" stroke="#6e4d12" stroke-width="2"></ellipse>
-              <path d="M68 38q4 4 0 8M78 36q4 5 0 10M88 36q4 5 0 10M98 38q3 4 0 8" fill="none" stroke="#8a6419" stroke-width="1.6" opacity="0.7"></path>
-              <circle cx="60" cy="42" r="4" fill="#ffffff"></circle>
-              <circle cx="59" cy="42" r="2" fill="#1d1d1d"></circle>
-              <path d="M52 48q3 2 6 0" fill="none" stroke="#6e4d12" stroke-width="1.6" stroke-linecap="round"></path>
-              <ellipse cx="74" cy="38" rx="11" ry="3" fill="#ffffff" opacity="0.45"></ellipse>
-            </g>
-            <path d="M44 34q3 5 0 7q-3-2 0-7zM118 64q3 5 0 7q-3-2 0-7z" fill="#9fe0ff" opacity="0.9"></path>
-          </svg>
-          <span class="rzadkosc">Legendarny</span>
-        </div>
-
-        <div class="karta-tresc">
-          <h2 class="nick">Śliski Karp</h2>
-          <p class="aka">aka <b>dziadek Piotr</b></p>
-          <p class="haslo">Senior serwera, król krzaków</p>
-
-          <div class="opis">
-            <p>
-              Najstarszy aktywny gracz Fortnite w całym powiecie. Gra na telewizorze
-              w salonie, z dźwiękiem na maksa i okularami na czubku nosa. Na mikrofonie
-              mówi do wszystkich „synku”, nawet do przeciwników.
-            </p>
-            <p>
-              Zamiast budować — kuca w krzaku i czeka, aż młodzi się pozabijają. Tak właśnie
-              wygrał swoją jedyną rundę: zasnął w krzaku w ostatniej strefie i obudził się
-              na ekranie zwycięstwa.
-            </p>
-            <p>
-              Śliski jak karp w wannie przed Wigilią — nikt go nie może złapać, bo nikt go
-              nie może znaleźć. Powtarza: <i>„za moich czasów nie było budowania i jakoś
-              żyliśmy”</i>.
-            </p>
+        <!-- ================= Lazi ================= -->
+        <article class="karta" data-gracz="lazi" data-kolor="brazowy">
+          <div class="karta-obraz">
+            <div class="promienie" aria-hidden="true"></div>
+            <svg class="awatar" viewBox="0 0 160 160" role="img" aria-label="Lazi, weteran w pogiętym hełmie, obok drogowskaz do lobby">
+              <g class="drogowskaz">
+                <rect x="126" y="44" width="5" height="116" fill="#6b4a26"></rect>
+                <path d="M108 40h40l8 9-8 9h-40z" fill="#a8743c" stroke="#5a3a18" stroke-width="2" stroke-linejoin="round"></path>
+                <text x="130" y="53.5" class="awatar-napis" font-size="10.5" fill="#2a1a0a" text-anchor="middle">LOBBY</text>
+              </g>
+              <g class="postac">
+                <path d="M30 160c3-28 22-42 50-42s47 14 50 42z" fill="#6b5a45"></path>
+                <path d="M44 144h72" stroke="#4a3b2a" stroke-width="5"></path>
+                <path d="M58 124l7 14 7-14z" fill="#2c5aa0"></path>
+                <circle cx="65" cy="142" r="6.5" fill="#e0b53a" stroke="#8a6a12" stroke-width="1.6"></circle>
+                <rect x="71" y="100" width="18" height="24" rx="6" fill="#d6a482"></rect>
+                <circle cx="55" cy="88" r="5.5" fill="#dfa988"></circle>
+                <circle cx="105" cy="88" r="5.5" fill="#dfa988"></circle>
+                <ellipse cx="80" cy="85" rx="25" ry="27" fill="#e8b996"></ellipse>
+                <path d="M64 80q4 2 8 0M88 80q4 2 8 0" fill="none" stroke="#c98f6d" stroke-width="1.4"></path>
+                <path d="M53 78C53 56 66 47 80 47s27 9 27 31c-8-5-17-7-27-7s-19 2-27 7z" fill="#8a9098" stroke="#4f545a" stroke-width="2"></path>
+                <path d="M86 49l5 8 7-3" fill="none" stroke="#4f545a" stroke-width="2" stroke-linejoin="round"></path>
+                <path d="M62 54l12 8M74 54l-12 8" stroke="#e8d3a8" stroke-width="4.5" stroke-linecap="round"></path>
+                <path d="M54 84l46-10" stroke="#161616" stroke-width="2.4"></path>
+                <ellipse cx="69" cy="90" rx="7.5" ry="6.5" fill="#161616"></ellipse>
+                <g class="oko">
+                  <ellipse cx="91" cy="90" rx="4.6" ry="3.6" fill="#ffffff"></ellipse>
+                  <circle cx="91" cy="91" r="2.2" fill="#1d1d1d"></circle>
+                  <path d="M86 88.5q5-3 10 0" fill="#e8b996" stroke="#b77e5c" stroke-width="1.4"></path>
+                </g>
+                <path d="M86 96q5 2 10 0" fill="none" stroke="#b77e5c" stroke-width="1.2"></path>
+                <path d="M85 81q6-3 12 1" fill="none" stroke="#bdbdbd" stroke-width="3" stroke-linecap="round"></path>
+                <ellipse cx="80" cy="99" rx="4.2" ry="4.8" fill="#d88f76"></ellipse>
+                <path d="M62 105q9-8 18-3q9-5 18 3q-1 12-7 9q-5-4-11-4q-6 0-11 4q-6 3-7-9z" fill="#dcdcdc" stroke="#bdbdbd" stroke-width="1"></path>
+              </g>
+            </svg>
+            <span class="ranga">Weteran</span>
+            <span class="korona" hidden>Ulubieniec mecenasów</span>
+            <div class="dymek" aria-live="polite"></div>
           </div>
 
-          <ul class="staty">
-            <li><span class="stat-nazwa">Cierpliwość</span><span class="pasek-stat" data-v="10"><i></i></span><span class="stat-wart">10/10</span></li>
-            <li><span class="stat-nazwa">Refleks</span><span class="pasek-stat" data-v="2"><i></i></span><span class="stat-wart">2/10</span></li>
-            <li><span class="stat-nazwa">Krzakowanie</span><span class="pasek-stat" data-v="10"><i></i></span><span class="stat-wart">10/10</span></li>
-            <li><span class="stat-nazwa">Obsługa pada</span><span class="pasek-stat" data-v="3"><i></i></span><span class="stat-wart">3/10</span></li>
-          </ul>
+          <div class="karta-tresc">
+            <h2 class="nick">Lazi</h2>
+            <p class="aka">emeryt, weteran, kiedyś postrach lobby</p>
+            <ul class="metryka">
+              <li><span>Staż</span><b>od Alphy 23</b></li>
+              <li><span>Cywilizacja</span><b>ta z najszybszą konnicą</b></li>
+              <li><span>Ranking w lobby</span><b>1380 ▼ (szczyt: 1910)</b></li>
+            </ul>
+            <p class="haslo">Kiedyś legenda. Dziś — blitzkrieg i do lobby.</p>
 
-          <div class="zbiorka">
-            <div class="zebrano">
-              <span class="zebrano-opis">Zebrano</span>
-              <span class="zebrano-kwota">
-                <svg class="vb" aria-hidden="true"><use href="#vbuck"></use></svg>
-                <span data-kwota>0</span>
-              </span>
+            <div class="opis">
+              <p>
+                Weteran, który pamięta jeszcze Alphę 23 i czasy, gdy był postrachem lobby.
+                Opowiada o tym przy każdej okazji: „za moich czasów to ja trzema hoplitami
+                brałem całe centrum miasta”.
+              </p>
+              <p>
+                Dzisiejszy styl gry: blitzkrieg. W piątej minucie rzuca na wroga wszystko, co ma —
+                konnicę, obywatelki, nawet taran bez eskorty. Jeśli się uda: wielki powrót legendy.
+                Jeśli nie (czyli zawsze): cicho wychodzi do lobby, zanim ktoś zdąży napisać „gg”.
+              </p>
+              <p>
+                Srebrniki pójdą na emeryturę kombatancką i rehabilitację nadgarstka
+                po ostatnim rushu.
+              </p>
             </div>
-            <div class="cel">
-              <div class="cel-gora">
-                <span class="cel-etap" data-cel-etap>Cel 1/3</span>
-                <span class="cel-kwota"><svg class="vb" aria-hidden="true"><use href="#vbuck"></use></svg><span data-cel-kwota>950</span></span>
+
+            <ul class="staty">
+              <li><span class="stat-nazwa">Blitzkrieg</span><span class="pasek-stat" data-v="9"><i></i></span><span class="stat-wart">IX/X</span></li>
+              <li><span class="stat-nazwa">Forma dziś</span><span class="pasek-stat pasek-kiedys" data-v="3"><i></i></span><span class="stat-wart">III/X</span></li>
+              <li><span class="stat-nazwa">Siły po 10. minucie</span><span class="pasek-stat" data-v="2"><i></i></span><span class="stat-wart">II/X</span></li>
+              <li><span class="stat-nazwa">Ucieczka do lobby</span><span class="pasek-stat" data-v="10"><i></i></span><span class="stat-wart">X/X</span></li>
+            </ul>
+
+            <div class="zbiorka">
+              <div class="zebrano">
+                <span class="zebrano-opis">Metal w skarbcu</span>
+                <span class="zebrano-kwota"><svg class="vb" aria-hidden="true"><use href="#srebrnik"></use></svg><span data-kwota>0</span></span>
               </div>
-              <div class="cel-nazwa" data-cel-nazwa>Karnet Bojowy (wnuczek pomoże kliknąć)</div>
-              <div class="cel-pasek"><div class="cel-wypelnienie" data-cel-pasek></div></div>
-              <div class="cel-brakuje" data-cel-brakuje></div>
+              <div class="cel">
+                <div class="cel-gora">
+                  <span class="cel-etap" data-cel-etap>Faza miasteczka</span>
+                  <span class="cel-kwota"><svg class="vb" aria-hidden="true"><use href="#srebrnik"></use></svg><span data-cel-kwota>150</span></span>
+                </div>
+                <div class="cel-nazwa" data-cel-nazwa>Laska do podpierania się w lobby</div>
+                <div class="cel-pasek"><div class="cel-wypelnienie" data-cel-pasek></div></div>
+                <div class="cel-brakuje" data-cel-brakuje></div>
+              </div>
+              <button class="btn-wesprzyj" type="button">
+                <svg class="vb" aria-hidden="true"><use href="#srebrnik"></use></svg>
+                Wesprzyj
+              </button>
             </div>
-            <button class="btn-dofinansuj" type="button">
-              <svg class="vb" aria-hidden="true"><use href="#vbuck"></use></svg>
-              Dofinansuj
-            </button>
           </div>
-        </div>
-      </article>
+        </article>
+
+        <!-- ================= Stozhinio ================= -->
+        <article class="karta" data-gracz="stozhinio" data-kolor="szkarlatny">
+          <div class="karta-obraz">
+            <div class="promienie" aria-hidden="true"></div>
+            <svg class="awatar" viewBox="0 0 160 160" role="img" aria-label="Stozhinio w spartańskim hełmie z czerwonym grzebieniem i tarczą z lambdą">
+              <g class="postac">
+                <path d="M24 160c2-32 22-46 56-46s54 14 56 46z" fill="#a11d1d"></path>
+                <path d="M46 160c2-22 14-34 34-34s32 12 34 34z" fill="#c8923a" stroke="#7a5418" stroke-width="2"></path>
+                <path d="M64 142q8 5 16 0q8 5 16 0" fill="none" stroke="#8a611f" stroke-width="2"></path>
+                <rect x="71" y="100" width="18" height="24" rx="6" fill="#d19a74"></rect>
+                <circle cx="55" cy="88" r="5.5" fill="#dca07a"></circle>
+                <circle cx="105" cy="88" r="5.5" fill="#dca07a"></circle>
+                <ellipse cx="80" cy="85" rx="25" ry="27" fill="#e9b48f"></ellipse>
+                <ellipse class="rumieniec" cx="80" cy="90" rx="24" ry="22" fill="#e0402a"></ellipse>
+                <path d="M56 88q1 26 24 29q23-3 24-29l-4 3q-3 18-20 20q-17-2-20-20z" fill="#5a3a22"></path>
+                <path d="M52 76C52 52 66 43 80 43s28 9 28 33c-8-6-17-9-28-9s-20 3-28 9z" fill="#c8923a" stroke="#7a5418" stroke-width="2"></path>
+                <path d="M64 60q6-4 12 0q-6 3-12 0zM84 60q6-4 12 0q-6 3-12 0z" fill="#3a2410"></path>
+                <path d="M78 58h4v10h-4z" fill="#b07a2c"></path>
+                <path d="M50 46C54 18 106 18 110 46C100 34 60 34 50 46z" fill="#c0262a" stroke="#7a1010" stroke-width="2"></path>
+                <path d="M60 36l2-8M70 31l1-9M80 30v-9M90 31l-1-9M100 36l-2-8" stroke="#8a1212" stroke-width="1.6" stroke-linecap="round"></path>
+              </g>
+              <g class="spokoj">
+                <g class="oko"><circle cx="69" cy="91" r="2.6" fill="#1d1d1d"></circle></g>
+                <g class="oko"><circle cx="91" cy="91" r="2.6" fill="#1d1d1d"></circle></g>
+                <path d="M63 88q6-3 12 0M85 88q6-3 12 0" fill="none" stroke="#5a3a22" stroke-width="2" stroke-linecap="round"></path>
+                <path d="M71 103q9 6 18 0" fill="none" stroke="#6b2a1a" stroke-width="2.6" stroke-linecap="round"></path>
+              </g>
+              <g class="furia">
+                <path d="M60 82l14 6M100 82l-14 6" stroke="#2a1208" stroke-width="3.8" stroke-linecap="round"></path>
+                <circle cx="69" cy="92" r="5" fill="#ffffff"></circle><circle cx="69" cy="92" r="2" fill="#1d1d1d"></circle>
+                <circle cx="91" cy="92" r="5" fill="#ffffff"></circle><circle cx="91" cy="92" r="2" fill="#1d1d1d"></circle>
+                <path d="M68 100q12-4 24 0q-2 14-12 14q-10 0-12-14z" fill="#4a0d0d"></path>
+                <path d="M69 100.5q11-3 22 0v3q-11-2-22 0z" fill="#ffffff"></path>
+                <g fill="#dddddd" opacity="0.85">
+                  <circle cx="44" cy="74" r="5"></circle><circle cx="38" cy="64" r="6.5"></circle><circle cx="30" cy="52" r="8"></circle>
+                  <circle cx="116" cy="74" r="5"></circle><circle cx="122" cy="64" r="6.5"></circle><circle cx="130" cy="52" r="8"></circle>
+                </g>
+              </g>
+              <g class="tarcza">
+                <circle cx="34" cy="138" r="26" fill="#b8862b" stroke="#6e4d12" stroke-width="3"></circle>
+                <circle cx="34" cy="138" r="20" fill="#9b1c1c"></circle>
+                <path d="M24 150l10-24 10 24" fill="none" stroke="#f0c75e" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"></path>
+              </g>
+            </svg>
+            <span class="ranga">Spartiata</span>
+            <span class="korona" hidden>Ulubieniec mecenasów</span>
+            <div class="dymek" aria-live="polite"></div>
+          </div>
+
+          <div class="karta-tresc">
+            <h2 class="nick">Stozhinio</h2>
+            <p class="aka">spokojny działkowiec ze Sparty</p>
+            <ul class="metryka">
+              <li><span>Cywilizacja</span><b>Spartanie. Tylko Spartanie.</b></li>
+              <li><span>Ulubiona jednostka</span><b>Spartiata</b></li>
+              <li><span>Ranking w lobby</span><b>1600 (do czasu)</b></li>
+            </ul>
+            <p class="haslo">Gra na spokojnie… dopóki mu nie stanie.</p>
+
+            <div class="opis">
+              <p>
+                Najspokojniejszy człowiek w lobby. Buduje wioskę powoli i równiutko, farma przy
+                farmie, jak ogródek na działce. Na czacie kulturalny, wszystkim życzy miłej gry —
+                nawet tym, którzy go właśnie atakują.
+              </p>
+              <p>
+                Do czasu. Bo gdy mu stanie — a staje zawsze w najmniej spodziewanym momencie —
+                robi się zły. Bardzo zły. Z koszar wylewa się fala czerwonych peleryn, a spokojny
+                działkowiec zamienia się w Leonidasa.
+              </p>
+              <p>
+                Gra wyłącznie Spartanami. Zapytany dlaczego, odpowiada tylko „This is Sparta”
+                i długo patrzy w dal.
+              </p>
+            </div>
+
+            <ul class="staty">
+              <li><span class="stat-nazwa">Spokój (do czasu)</span><span class="pasek-stat" data-v="8"><i></i></span><span class="stat-wart">VIII/X</span></li>
+              <li><span class="stat-nazwa">Miłość do Spartan</span><span class="pasek-stat" data-v="11"><i></i></span><span class="stat-wart stat-ponad">XI/X</span></li>
+              <li><span class="stat-nazwa">Furia, gdy stanie</span><span class="pasek-stat" data-v="10"><i></i></span><span class="stat-wart">X/X</span></li>
+              <li><span class="stat-nazwa">Rolnictwo</span><span class="pasek-stat" data-v="7"><i></i></span><span class="stat-wart">VII/X</span></li>
+            </ul>
+
+            <div class="zbiorka">
+              <div class="zebrano">
+                <span class="zebrano-opis">Metal w skarbcu</span>
+                <span class="zebrano-kwota"><svg class="vb" aria-hidden="true"><use href="#srebrnik"></use></svg><span data-kwota>0</span></span>
+              </div>
+              <div class="cel">
+                <div class="cel-gora">
+                  <span class="cel-etap" data-cel-etap>Faza miasteczka</span>
+                  <span class="cel-kwota"><svg class="vb" aria-hidden="true"><use href="#srebrnik"></use></svg><span data-cel-kwota>300</span></span>
+                </div>
+                <div class="cel-nazwa" data-cel-nazwa>300 Spartan (po srebrniku za sztukę)</div>
+                <div class="cel-pasek"><div class="cel-wypelnienie" data-cel-pasek></div></div>
+                <div class="cel-brakuje" data-cel-brakuje></div>
+              </div>
+              <button class="btn-wesprzyj" type="button">
+                <svg class="vb" aria-hidden="true"><use href="#srebrnik"></use></svg>
+                Wesprzyj
+              </button>
+            </div>
+          </div>
+        </article>
+
+        <!-- ================= Nolli ================= -->
+        <article class="karta" data-gracz="nolli" data-kolor="szmaragdowy">
+          <div class="karta-obraz">
+            <div class="promienie" aria-hidden="true"></div>
+            <svg class="awatar" viewBox="0 0 160 160" role="img" aria-label="Nolli w babcinej chuście, z workiem srebrników">
+              <g class="postac">
+                <path d="M30 160c3-28 22-42 50-42s47 14 50 42z" fill="#1f7a4d"></path>
+                <path d="M60 124l20 36 20-36" fill="none" stroke="#e0b53a" stroke-width="4"></path>
+                <path d="M58 128q22 18 44 0" fill="none" stroke="#e0b53a" stroke-width="2" stroke-dasharray="3 2"></path>
+                <rect x="71" y="100" width="18" height="24" rx="6" fill="#c98d63"></rect>
+                <ellipse cx="80" cy="85" rx="25" ry="27" fill="#d9a276"></ellipse>
+                <!-- babcina chusta: atakuje jak babcia, to i wygląda -->
+                <path d="M50 90C45 56 62 44 80 44s35 12 30 46c-2 12-8 22-14 26l-4-8c6-6 8-14 8-24c0-14-8-25-20-25s-20 11-20 25c0 10 2 18 8 24l-4 8c-6-4-12-14-14-26z" fill="#c0392b" stroke="#8e2519" stroke-width="1.6"></path>
+                <path d="M72 114l8 6 8-6-2 11-6-4-6 4z" fill="#a93226" stroke="#8e2519" stroke-width="1.2"></path>
+                <g fill="#fff4e0">
+                  <circle cx="62" cy="58" r="2.3"></circle><circle cx="72" cy="50" r="2.3"></circle><circle cx="88" cy="50" r="2.3"></circle>
+                  <circle cx="98" cy="58" r="2.3"></circle><circle cx="55" cy="74" r="2.3"></circle><circle cx="105" cy="74" r="2.3"></circle>
+                  <circle cx="80" cy="47" r="2"></circle><circle cx="54" cy="92" r="2"></circle><circle cx="106" cy="92" r="2"></circle>
+                </g>
+                <path d="M64 82q7-5 14-1M84 80q7-4 13 1" fill="none" stroke="#2c1c10" stroke-width="2.6" stroke-linecap="round"></path>
+                <g class="oko oczy-chytre">
+                  <ellipse cx="71" cy="90" rx="4.8" ry="3.2" fill="#ffffff"></ellipse>
+                  <ellipse cx="91" cy="90" rx="4.8" ry="3.2" fill="#ffffff"></ellipse>
+                  <g class="zrenice">
+                    <circle cx="73.6" cy="90.3" r="2.2" fill="#1d1d1d"></circle>
+                    <circle cx="93.6" cy="90.3" r="2.2" fill="#1d1d1d"></circle>
+                  </g>
+                  <path d="M66 88.5q5-3.5 10 0M86 88.5q5-3.5 10 0" fill="#d9a276" stroke="#a8704c" stroke-width="1.3"></path>
+                </g>
+                <path d="M70 99q5-3 10 0q5-3 10 0" fill="none" stroke="#2c1c10" stroke-width="2.2" stroke-linecap="round"></path>
+                <path d="M72 104q7 4 15-2" fill="none" stroke="#6b2a1a" stroke-width="2.4" stroke-linecap="round"></path>
+              </g>
+              <g class="worek">
+                <path d="M110 122c-9 6-14 17-12 27c2 9 34 9 36 0c2-10-3-21-12-27z" fill="#a0763a" stroke="#5e4220" stroke-width="2"></path>
+                <path d="M109 122q7 5 14 0" fill="none" stroke="#5e4220" stroke-width="3" stroke-linecap="round"></path>
+                <use href="#srebrnik" x="107" y="131" width="20" height="20"></use>
+                <use href="#srebrnik" x="126" y="148" width="12" height="12"></use>
+              </g>
+            </svg>
+            <span class="ranga">Kupiec</span>
+            <span class="korona" hidden>Ulubieniec mecenasów</span>
+            <div class="dymek" aria-live="polite"></div>
+          </div>
+
+          <div class="karta-tresc">
+            <h2 class="nick">Nolli</h2>
+            <p class="aka">podstępny ekonomista</p>
+            <ul class="metryka">
+              <li><span>Pochodzenie</span><b>Palestyna</b></li>
+              <li><span>Cywilizacja</span><b>najchętniej handlowa</b></li>
+              <li><span>Ranking w lobby</span><b>gospodarka 2400 / atak 800</b></li>
+            </ul>
+            <p class="haslo">Gospodarka jak u cesarza, atak jak u babci.</p>
+
+            <div class="opis">
+              <p>
+                Podstępny jak mało kto. Zanim się obejrzysz, ma dwieście obywatelek przy farmach,
+                pięć targów, kupców na każdym szlaku i skarbiec, za który mógłby wykupić całą mapę.
+                Nikt nie wie, jak to robi. On też nie powie.
+              </p>
+              <p>
+                Kłopot zaczyna się, kiedy tę gospodarkę trzeba wreszcie użyć. Atakuje jak babcia
+                na zakupach: powoli, po jednej jednostce, z przerwami na odpoczynek. Armia dochodzi
+                pod mury wroga i… czeka. Na co? Nie wiadomo.
+              </p>
+              <p>
+                Srebrniki i tak odłoży do skarbca. Ale może tym razem kupi za nie odwagę.
+              </p>
+            </div>
+
+            <ul class="staty">
+              <li><span class="stat-nazwa">Gospodarka</span><span class="pasek-stat" data-v="10"><i></i></span><span class="stat-wart">X/X</span></li>
+              <li><span class="stat-nazwa">Podstęp</span><span class="pasek-stat" data-v="9"><i></i></span><span class="stat-wart">IX/X</span></li>
+              <li><span class="stat-nazwa">Atak</span><span class="pasek-stat" data-v="2"><i></i></span><span class="stat-wart">II/X</span></li>
+              <li><span class="stat-nazwa">Odwaga</span><span class="pasek-stat" data-v="3"><i></i></span><span class="stat-wart">III/X</span></li>
+            </ul>
+
+            <div class="zbiorka">
+              <div class="zebrano">
+                <span class="zebrano-opis">Metal w skarbcu</span>
+                <span class="zebrano-kwota"><svg class="vb" aria-hidden="true"><use href="#srebrnik"></use></svg><span data-kwota>0</span></span>
+              </div>
+              <div class="cel">
+                <div class="cel-gora">
+                  <span class="cel-etap" data-cel-etap>Faza miasteczka</span>
+                  <span class="cel-kwota"><svg class="vb" aria-hidden="true"><use href="#srebrnik"></use></svg><span data-cel-kwota>250</span></span>
+                </div>
+                <div class="cel-nazwa" data-cel-nazwa>Kurs ataku dla początkujących babć</div>
+                <div class="cel-pasek"><div class="cel-wypelnienie" data-cel-pasek></div></div>
+                <div class="cel-brakuje" data-cel-brakuje></div>
+              </div>
+              <button class="btn-wesprzyj" type="button">
+                <svg class="vb" aria-hidden="true"><use href="#srebrnik"></use></svg>
+                Wesprzyj
+              </button>
+            </div>
+          </div>
+        </article>
+      </div>
     </section>
 
-    <section class="wplaty" aria-labelledby="wplaty-tytul">
-      <h2 id="wplaty-tytul">Ostatnie wpłaty</h2>
-      <ol class="wplaty-lista" id="wplaty-lista"></ol>
-      <p class="wplaty-pusto" id="wplaty-pusto">Jeszcze nikt nic nie wrzucił. Bądź pierwszy — nie bądź jak Krayo.</p>
+    <!-- =====================================================
+         Ranking, wpłaty, profil — wspólne, pokazują bieżącą kategorię
+         ===================================================== -->
+    <section class="kronika" aria-label="Ranking i ostatnie wpłaty">
+      <div class="panel-kroniki">
+        <h2>
+          <span data-dla="fortnite">Ranking zbiórki</span>
+          <span data-dla="zeroad">Ranking wojowników</span>
+        </h2>
+        <ol class="ranking" id="ranking"></ol>
+      </div>
+      <div class="panel-kroniki">
+        <h2>
+          <span data-dla="fortnite">Ostatnie wpłaty</span>
+          <span data-dla="zeroad">Kronika darowizn</span>
+        </h2>
+        <ol class="wplaty-lista" id="wplaty-lista"></ol>
+        <p class="wplaty-pusto" id="wplaty-pusto">
+          <span data-dla="fortnite">Jeszcze nikt nic nie wrzucił. Bądź pierwszy — nie bądź jak Krayo.</span>
+          <span data-dla="zeroad">Kronika jest pusta. Nolli już by coś odłożył.</span>
+        </p>
+      </div>
+    </section>
+
+    <section class="profil" id="profil" aria-labelledby="profil-tytul">
+      <h2 id="profil-tytul">
+        <span data-dla="fortnite">Twój profil sponsora</span>
+        <span data-dla="zeroad">Twój herb mecenasa</span>
+      </h2>
+      <div class="profil-karta">
+        <div class="profil-blok">
+          <span class="profil-etykieta">Tytuł</span>
+          <b class="profil-wartosc" id="profil-ranga">Bot</b>
+        </div>
+        <div class="profil-blok">
+          <span class="profil-etykieta">Przekazane</span>
+          <b class="profil-wartosc profil-suma">
+            <svg class="vb" data-dla="fortnite" aria-hidden="true"><use href="#vbuck"></use></svg>
+            <svg class="vb" data-dla="zeroad" aria-hidden="true"><use href="#srebrnik"></use></svg>
+            <span id="profil-suma">0</span>
+          </b>
+        </div>
+        <div class="profil-blok profil-blok-szeroki">
+          <span class="profil-etykieta" id="profil-nastepny">Do następnego tytułu</span>
+          <div class="profil-pasek"><i id="profil-pasek"></i></div>
+        </div>
+      </div>
+
+      <h3 class="odznaki-tytul">Odznaki <span id="odznaki-licznik">0/15</span></h3>
+      <ul class="odznaki" id="odznaki"></ul>
     </section>
   </main>
 
   <footer class="stopka">
     <p>
-      Strona dla beki. Żadne prawdziwe pieniądze ani V-dolce nie zmieniają tu właściciela —
-      wszystko zapisuje się tylko w Twojej przeglądarce.
-      Fortnite i V-dolce należą do Epic Games; ta strona nie ma z nimi nic wspólnego.
+      Strona dla beki. Żadne prawdziwe pieniądze, V-dolce ani srebrniki nie zmieniają tu
+      właściciela — wszystko zapisuje się tylko w Twojej przeglądarce.
+      Fortnite i V-dolce należą do Epic Games, 0 A.D. to gra Wildfire Games;
+      ta strona nie ma z nimi nic wspólnego.
     </p>
     <button class="btn-zeruj" id="btn-zeruj" type="button">Wyzeruj zrzutkę</button>
   </footer>
 
-  <!-- okno dofinansowania -->
+  <!-- okno wpłaty (wspólne; teksty i ikony podmienia JS) -->
   <dialog class="okno" id="okno" aria-labelledby="okno-tytul">
     <form class="okno-form" id="okno-form" novalidate>
       <button class="okno-x" id="okno-x" type="button" aria-label="Zamknij">&times;</button>
       <div class="okno-naglowek">
         <div class="okno-awatar" id="okno-awatar" aria-hidden="true"></div>
         <div>
-          <p class="okno-nad">Dofinansowanie dla</p>
+          <p class="okno-nad" id="okno-nad">Dofinansowanie dla</p>
           <h2 class="okno-tytul" id="okno-tytul">—</h2>
           <p class="okno-cel" id="okno-cel"></p>
         </div>
       </div>
 
-      <div class="szybkie" role="group" aria-label="Szybki wybór kwoty">
-        <button type="button" data-ile="100"><svg class="vb" aria-hidden="true"><use href="#vbuck"></use></svg>100</button>
-        <button type="button" data-ile="500"><svg class="vb" aria-hidden="true"><use href="#vbuck"></use></svg>500</button>
-        <button type="button" data-ile="1000"><svg class="vb" aria-hidden="true"><use href="#vbuck"></use></svg>1 000</button>
-        <button type="button" data-ile="2800"><svg class="vb" aria-hidden="true"><use href="#vbuck"></use></svg>2 800</button>
-        <button type="button" data-ile="5000"><svg class="vb" aria-hidden="true"><use href="#vbuck"></use></svg>5 000</button>
-        <button type="button" data-ile="13500"><svg class="vb" aria-hidden="true"><use href="#vbuck"></use></svg>13 500</button>
-      </div>
+      <div class="szybkie" id="szybkie" role="group" aria-label="Szybki wybór kwoty"></div>
 
-      <label class="okno-etykieta" for="pole-ile">Ile V-dolców?</label>
+      <label class="okno-etykieta" for="pole-ile" id="etykieta-ile">Ile?</label>
       <div class="pole-kwota">
-        <svg class="vb" aria-hidden="true"><use href="#vbuck"></use></svg>
-        <input id="pole-ile" type="number" inputmode="numeric" min="1" max="1000000" step="1" placeholder="np. 1000" autocomplete="off">
+        <svg class="vb" aria-hidden="true"><use id="pole-ikona" href="#vbuck"></use></svg>
+        <input id="pole-ile" type="number" inputmode="numeric" min="1" step="1" placeholder="np. 1000" autocomplete="off">
       </div>
 
-      <label class="okno-etykieta" for="pole-nick">Twój nick <span>(opcjonalnie)</span></label>
-      <input class="pole-nick" id="pole-nick" type="text" maxlength="24" placeholder="Anonimowy sponsor" autocomplete="nickname">
+      <div class="podglad" id="podglad" aria-live="polite">
+        <div class="podglad-pasek"><i class="podglad-teraz" id="podglad-teraz"></i><i class="podglad-po" id="podglad-po"></i></div>
+        <p class="podglad-tekst" id="podglad-tekst"></p>
+      </div>
+
+      <div class="okno-pola">
+        <div>
+          <label class="okno-etykieta" for="pole-nick" id="etykieta-nick">Twój nick</label>
+          <input class="pole-tekst" id="pole-nick" type="text" maxlength="24" autocomplete="nickname">
+        </div>
+        <div>
+          <label class="okno-etykieta" for="pole-wiadomosc"><span id="etykieta-wiadomosc">Wiadomość</span> <span class="opcjonalnie">(opcjonalnie)</span></label>
+          <input class="pole-tekst" id="pole-wiadomosc" type="text" maxlength="60" autocomplete="off">
+        </div>
+      </div>
 
       <p class="okno-blad" id="okno-blad" role="alert"></p>
 
       <button class="btn-wyslij" id="btn-wyslij" type="submit">
-        <svg class="vb" aria-hidden="true"><use href="#vbuck"></use></svg>
-        Wyślij V-dolce
+        <svg class="vb" aria-hidden="true"><use id="wyslij-ikona" href="#vbuck"></use></svg>
+        <span id="wyslij-tekst">Wyślij</span>
       </button>
+
+      <svg class="okno-pieczec" id="okno-pieczec" aria-hidden="true"><use href="#pieczec"></use></svg>
     </form>
   </dialog>
 
@@ -433,15 +1071,26 @@
   <div class="zwyciestwo" id="zwyciestwo" hidden>
     <div class="zw-blask" aria-hidden="true"></div>
     <div class="zw-tresc">
-      <div class="zw-numer">#1</div>
-      <div class="zw-tytul">Cel zdobyty!</div>
+      <svg class="zw-laur" data-dla="zeroad" aria-hidden="true"><use href="#laur"></use></svg>
+      <div class="zw-numer" id="zw-numer">#1</div>
+      <div class="zw-tytul" id="zw-tytul">Cel zdobyty!</div>
       <div class="zw-opis" id="zw-opis"></div>
     </div>
   </div>
 
+  <!-- przejście między kategoriami -->
+  <div class="kurtyna" id="kurtyna" hidden aria-hidden="true">
+    <div class="kurtyna-srodek">
+      <svg class="kurtyna-ikona"><use id="kurtyna-ikona" href="#vbuck"></use></svg>
+      <div class="kurtyna-napis" id="kurtyna-napis"></div>
+    </div>
+  </div>
+
   <div class="fx" id="fx" aria-hidden="true"></div>
+  <div class="odznaki-wyskakujace" id="odznaki-wyskakujace" aria-live="polite"></div>
   <div class="toasty" id="toasty" aria-live="polite"></div>
 
-  <script src="vdolce.js" defer></script>
+  <script src="zrzutka/dane.js" defer></script>
+  <script src="zrzutka/app.js" defer></script>
 </body>
 </html>

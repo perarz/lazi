@@ -1,0 +1,1773 @@
+/* ============================================================
+   Zrzutka — część wspólna obu kategorii.
+   Wygląd konkretnego świata (kolory, fonty, faktury) ustawiają
+   fortnite.css i zeroad.css przez zmienne na body[data-motyw].
+   ============================================================ */
+
+*, *::before, *::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+[hidden] { display: none !important; }
+
+/* treść tylko dla jednego świata */
+[data-motyw="fortnite"] [data-dla="zeroad"],
+[data-motyw="zeroad"] [data-dla="fortnite"] { display: none !important; }
+
+html {
+  background: #0a1646;
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  min-height: 100vh;
+  font-family: var(--f-tekst);
+  color: var(--c-tekst);
+  line-height: 1.5;
+  overflow-x: hidden;
+}
+
+button { font: inherit; color: inherit; }
+
+.sprite {
+  position: absolute;
+  width: 0;
+  height: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.vb {
+  width: 1em;
+  height: 1em;
+  flex: none;
+  vertical-align: -0.14em;
+  filter: drop-shadow(0 2px 0 rgba(0, 0, 0, 0.35));
+}
+
+/* kolory graczy: karta, okno, dymki i wpisy dostają je przez data-kolor */
+[data-kolor="epicki"]      { --r1: #c76bff; --r2: #7b2fd0; --r3: #35105f; --rz: #b659ff; }
+[data-kolor="pospolity"]   { --r1: #d3d6de; --r2: #7d8491; --r3: #363a44; --rz: #b4bac6; }
+[data-kolor="legendarny"]  { --r1: #ffc85e; --r2: #e5761b; --r3: #6b2807; --rz: #ff9d2e; }
+[data-kolor="zloty"]       { --r1: #ffe08a; --r2: #c08a24; --r3: #3b2505; --rz: #e8b93a; }
+[data-kolor="brazowy"]     { --r1: #d8c7a8; --r2: #7d6a50; --r3: #2a2118; --rz: #b39a74; }
+[data-kolor="szkarlatny"]  { --r1: #ff7a62; --r2: #a11d1d; --r3: #360606; --rz: #d9382e; }
+[data-kolor="szmaragdowy"] { --r1: #7fe0a8; --r2: #1f7a4d; --r3: #0a2c1b; --rz: #3fb97a; }
+
+/* ------------------------------------------------------------
+   Tło
+   ------------------------------------------------------------ */
+
+.tlo,
+.tlo > div {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+}
+
+.tlo { z-index: 0; }
+
+.tlo-monety { overflow: hidden; }
+
+.moneta-tlo,
+.iskra-tlo {
+  position: absolute;
+  left: var(--x, 50%);
+  bottom: -120px;
+  width: var(--s, 40px);
+  height: var(--s, 40px);
+  opacity: var(--op, 0.2);
+  filter: blur(var(--b, 0px));
+  animation: unos var(--d, 20s) linear var(--o, 0s) infinite;
+}
+
+.moneta-tlo svg { width: 100%; height: 100%; display: block; }
+
+@keyframes unos {
+  from { transform: translate3d(0, 0, 0) rotate(0deg); }
+  to   { transform: translate3d(var(--dx, 0px), calc(-100vh - 240px), 0) rotate(var(--r, 360deg)); }
+}
+
+/* ------------------------------------------------------------
+   Górny pasek
+   ------------------------------------------------------------ */
+
+.pasek {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px clamp(16px, 4vw, 40px);
+  background: var(--c-pasek);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border-bottom: 2px solid var(--c-pasek-ramka);
+}
+
+.logo {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--f-display);
+  font-size: 1.5rem;
+  line-height: 1;
+  text-transform: uppercase;
+  text-decoration: none;
+  color: var(--c-tekst);
+}
+
+.logo .vb { font-size: 1.8rem; }
+
+.kategorie {
+  display: flex;
+  gap: 6px;
+  margin: 0 auto;
+  padding: 4px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid var(--c-pasek-ramka);
+  border-radius: var(--r-kat, 10px);
+}
+
+.kat {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 14px;
+  font-family: var(--f-etykieta);
+  font-weight: 800;
+  font-size: 0.9rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  text-decoration: none;
+  white-space: nowrap;
+  color: var(--c-tekst-2);
+  border-radius: calc(var(--r-kat, 10px) - 3px);
+  transition: background 0.2s, color 0.2s, transform 0.15s;
+}
+
+.kat .vb { font-size: 1.25rem; }
+.kat:hover { color: var(--c-tekst); background: rgba(255, 255, 255, 0.08); }
+.kat:active { transform: scale(0.96); }
+
+.kat[aria-current="page"] {
+  color: var(--c-kat-aktywna-tekst);
+  background: var(--c-kat-aktywna);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+}
+
+.pasek-prawo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.saldo {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px 6px 8px;
+  background: rgba(0, 0, 0, 0.35);
+  border: 2px solid var(--c-pasek-ramka);
+  border-radius: 999px;
+}
+
+.saldo .vb { font-size: 1.6rem; }
+
+.saldo-liczba {
+  font-family: var(--f-liczby);
+  font-size: 1.35rem;
+  line-height: 1;
+  min-width: 2ch;
+  font-variant-numeric: tabular-nums;
+}
+
+.saldo-opis {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--c-tekst-3);
+}
+
+.btn-dzwiek {
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  flex: none;
+  border-radius: 50%;
+  border: 2px solid var(--c-pasek-ramka);
+  background: rgba(0, 0, 0, 0.35);
+  color: var(--c-tekst);
+  cursor: pointer;
+  transition: background 0.15s, transform 0.15s;
+}
+
+.btn-dzwiek:hover { background: rgba(255, 255, 255, 0.12); }
+.btn-dzwiek:active { transform: scale(0.92); }
+.btn-dzwiek svg { width: 22px; height: 22px; }
+.btn-dzwiek .wycisz { display: none; }
+.btn-dzwiek[aria-pressed="false"] .fale { display: none; }
+.btn-dzwiek[aria-pressed="false"] .wycisz { display: inline; }
+.btn-dzwiek[aria-pressed="false"] { color: var(--c-tekst-3); }
+
+@media (max-width: 720px) {
+  .logo span, .saldo-opis { display: none; }
+}
+
+@media (max-width: 460px) {
+  .pasek { gap: 8px; padding-left: 12px; padding-right: 12px; }
+  .logo .vb { font-size: 1.6rem; }
+  .kat { padding: 7px 9px; font-size: 0.8rem; gap: 5px; }
+  .kat .vb { font-size: 1.05rem; }
+  .saldo { padding: 5px 10px 5px 6px; gap: 6px; }
+  .saldo .vb { font-size: 1.3rem; }
+  .saldo-liczba { font-size: 1.1rem; }
+  .btn-dzwiek { width: 38px; height: 38px; }
+}
+
+@media (max-width: 370px) {
+  .logo { display: none; }
+  .kategorie { margin-left: 0; }
+}
+
+/* ------------------------------------------------------------
+   Nagłówek kategorii
+   ------------------------------------------------------------ */
+
+main {
+  position: relative;
+  z-index: 1;
+}
+
+.hero {
+  position: relative;
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: clamp(36px, 7vw, 80px) 16px clamp(28px, 5vw, 52px);
+  text-align: center;
+}
+
+.hero-nad {
+  display: inline-block;
+  padding: 4px 14px;
+  font-family: var(--f-etykieta);
+  font-weight: 800;
+  font-size: clamp(0.7rem, 2.4vw, 0.9rem);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+h1 {
+  margin: 18px 0 20px;
+  font-family: var(--f-display);
+  font-weight: 400;
+  line-height: 0.95;
+}
+
+h1 span { display: block; }
+
+.hero-pod {
+  max-width: 580px;
+  margin: 0 auto;
+  font-size: clamp(1rem, 2.6vw, 1.12rem);
+  color: var(--c-tekst-2);
+}
+
+.hero-pod b { color: var(--c-akcent); }
+
+.tytul-pill {
+  display: inline-flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: baseline;
+  gap: 4px 6px;
+  margin-top: 20px;
+  padding: 7px 16px;
+  font-size: 0.88rem;
+  color: var(--c-tekst-2);
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid var(--c-panel-ramka);
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.15s;
+}
+
+.tytul-pill b { color: var(--c-akcent); }
+.tytul-pill:hover { background: rgba(0, 0, 0, 0.45); transform: translateY(-1px); }
+.tytul-kropka { opacity: 0.5; }
+
+.hero-moneta {
+  position: absolute;
+  pointer-events: none;
+  filter: drop-shadow(0 10px 14px rgba(0, 0, 0, 0.35));
+  animation: bujanie 3.6s ease-in-out infinite alternate;
+}
+
+.hero-moneta-1 { width: clamp(64px, 11vw, 120px); height: clamp(64px, 11vw, 120px); top: 26%; right: clamp(0px, 4vw, 60px); --obr: 14deg; }
+.hero-moneta-2 { width: clamp(40px, 7vw, 74px); height: clamp(40px, 7vw, 74px); top: 16%; left: clamp(4px, 6vw, 80px); --obr: -18deg; animation-delay: -1.3s; }
+.hero-moneta-3 { width: clamp(30px, 5vw, 52px); height: clamp(30px, 5vw, 52px); bottom: 14%; left: clamp(12px, 12vw, 160px); --obr: 8deg; animation-delay: -2.4s; }
+
+@keyframes bujanie {
+  from { transform: translateY(0) rotate(var(--obr, 0deg)); }
+  to   { transform: translateY(-14px) rotate(calc(var(--obr, 0deg) * -1)); }
+}
+
+@media (max-width: 640px) {
+  .hero-nad { letter-spacing: 0.06em; }
+  .hero-moneta-1 { top: 112px; right: 4px; width: 56px; height: 56px; }
+  .hero-moneta-2 { top: 150px; left: 6px; width: 36px; height: 36px; }
+  .hero-moneta-3 { display: none; }
+}
+
+/* ------------------------------------------------------------
+   Karty graczy — szkielet (wygląd w plikach motywów)
+   ------------------------------------------------------------ */
+
+.gracze {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr));
+  gap: clamp(18px, 3vw, 28px);
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 16px;
+}
+
+/* czterech wojowników: 2×2 zamiast 3+1 */
+.gracze-4 {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr));
+  max-width: 1000px;
+}
+
+@media (min-width: 1500px) {
+  .gracze-4 { grid-template-columns: repeat(4, 1fr); max-width: 1440px; }
+}
+
+.karta {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.karta.blysk { animation: blysk 0.9s ease-out; }
+
+@keyframes blysk {
+  0%   { box-shadow: 0 0 0 0 var(--rz), 0 0 0 0 transparent; }
+  25%  { box-shadow: 0 0 0 6px var(--rz), 0 0 60px 10px var(--rz); }
+  100% { box-shadow: 0 0 0 0 transparent, 0 0 0 0 transparent; }
+}
+
+.karta-obraz {
+  position: relative;
+  aspect-ratio: 16 / 11;
+  overflow: hidden;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.karta-obraz:focus-visible {
+  outline: 3px solid var(--c-akcent);
+  outline-offset: -3px;
+}
+
+.promienie {
+  position: absolute;
+  inset: -60%;
+  background: repeating-conic-gradient(from 0deg at 50% 50%,
+    rgba(255, 255, 255, 0.13) 0deg 7deg,
+    transparent 7deg 20deg);
+  animation: obrot 50s linear infinite;
+}
+
+@keyframes obrot {
+  to { transform: rotate(360deg); }
+}
+
+.karta-obraz::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, transparent 55%, rgba(0, 0, 0, 0.35));
+  pointer-events: none;
+}
+
+.awatar {
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  height: 94%;
+  width: auto;
+  aspect-ratio: 1;
+  overflow: visible;
+  transform: translateX(-50%);
+  transform-origin: 50% 100%;
+  filter: drop-shadow(0 8px 12px rgba(0, 0, 0, 0.35));
+  transition: transform 0.35s cubic-bezier(.2, .9, .2, 1.3);
+}
+
+.karta-obraz:hover .awatar { transform: translateX(-50%) scale(1.05); }
+
+.awatar-znak,
+.awatar-napis { font-family: var(--f-display); }
+
+/* elementy SVG animowane względem siebie samych */
+.awatar g,
+.awatar path,
+.awatar circle,
+.awatar ellipse {
+  transform-box: fill-box;
+}
+
+/* oddech i mruganie */
+.postac {
+  transform-origin: 50% 100%;
+  animation: oddech 4.2s ease-in-out infinite;
+}
+
+@keyframes oddech {
+  50% { transform: translateY(-1.5%) scaleY(1.008); }
+}
+
+.oko {
+  transform-origin: 50% 50%;
+  animation: mrug 5.2s infinite;
+}
+
+.karta:nth-child(2) .oko { animation-delay: -1.9s; }
+.karta:nth-child(3) .oko { animation-delay: -3.3s; }
+.karta:nth-child(4) .oko { animation-delay: -0.8s; }
+
+@keyframes mrug {
+  0%, 93%, 100% { transform: scaleY(1); }
+  96% { transform: scaleY(0.1); }
+}
+
+/* stan spokoju / furii (Kozak, Stozhinio) */
+.awatar .furia,
+.awatar .rumieniec {
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.karta.wsciekly .awatar .furia { opacity: 1; }
+.karta.wsciekly .awatar .spokoj { opacity: 0; }
+.karta.wsciekly .awatar .rumieniec { opacity: 0.45; }
+.karta.wsciekly .karta-obraz { animation: trzesienie 0.11s linear 12; }
+
+@keyframes trzesienie {
+  25% { transform: translate(-3px, 1px); }
+  50% { transform: translate(2px, -2px); }
+  75% { transform: translate(3px, 2px); }
+}
+
+/* reakcje na wpłatę — każdy gracz po swojemu */
+.karta.reaguje .postac { animation: podskok 0.6s cubic-bezier(.3, 1.6, .5, 1) 2; }
+
+@keyframes podskok {
+  40% { transform: translateY(-9%) scale(1.03, 0.97); }
+}
+
+.sciana-l { transform-origin: 100% 50%; }
+.sciana-p { transform-origin: 0% 50%; }
+.karta.reaguje .sciana { animation: sciana 0.5s ease-in-out 2; }
+
+@keyframes sciana {
+  45% { transform: scaleX(1.35); }
+}
+
+.karta.reaguje[data-gracz="krayo"] .awatar { animation: krayo-upadek 1.2s ease-in-out; }
+.karta.reaguje[data-gracz="krayo"] .pytajniki { animation: pytajniki 0.4s ease-in-out 3; }
+
+@keyframes krayo-upadek {
+  30%  { transform: translateX(-50%) rotate(-28deg) translateY(4%); }
+  55%  { transform: translateX(-50%) rotate(18deg); }
+  80%  { transform: translateX(-50%) rotate(-6deg); }
+  100% { transform: translateX(-50%) rotate(0deg); }
+}
+
+.pytajniki { transform-origin: 50% 50%; }
+
+@keyframes pytajniki {
+  50% { transform: scale(1.25) rotate(8deg); }
+}
+
+.ryba { transform-origin: 50% 80%; }
+.karta.reaguje .ryba { animation: ryba 0.25s ease-in-out 6; }
+
+@keyframes ryba {
+  25% { transform: rotate(-16deg) translateY(-6%); }
+  75% { transform: rotate(14deg) translateY(-4%); }
+}
+
+.karta.reaguje[data-gracz="kozak"] .postac { animation: kiwniecie 0.9s ease-in-out; }
+
+@keyframes kiwniecie {
+  35% { transform: translateY(3%) rotate(-2deg); }
+  70% { transform: translateY(-1%) rotate(1deg); }
+}
+
+/* blitzkrieg i do lobby */
+.karta.reaguje[data-gracz="lazi"] .awatar { animation: blitzkrieg 1.6s cubic-bezier(.5, 0, .3, 1); }
+
+@keyframes blitzkrieg {
+  0%   { transform: translateX(-50%); }
+  22%  { transform: translateX(-38%) scale(1.12); }
+  48%  { transform: translateX(-190%) scale(0.9); }
+  50%  { transform: translateX(120%) scale(0.9); }
+  100% { transform: translateX(-50%); }
+}
+
+.tarcza { transform-origin: 50% 50%; }
+.karta.reaguje .tarcza { animation: tarcza 0.5s cubic-bezier(.3, 1.6, .5, 1) 2; }
+
+@keyframes tarcza {
+  40% { transform: translate(18%, -12%) rotate(-12deg) scale(1.1); }
+}
+
+.worek { transform-origin: 50% 100%; }
+.karta.reaguje .worek { animation: worek 0.35s ease-in-out 4; }
+
+@keyframes worek {
+  50% { transform: translateY(-10%) scale(1.06, 0.94) rotate(-5deg); }
+}
+
+.karta.reaguje .zrenice { animation: zerkanie 1.2s ease-in-out; }
+
+@keyframes zerkanie {
+  25%, 45% { transform: translateX(-160%); }
+  70%, 90% { transform: translateX(40%); }
+}
+
+/* zaczepka: portret się wzdryga */
+.karta.zaczepiony .awatar { animation: zaczepka 0.35s ease-out; }
+
+@keyframes zaczepka {
+  30% { transform: translateX(-50%) scale(0.95, 1.05) rotate(-3deg); }
+  65% { transform: translateX(-50%) scale(1.03, 0.97) rotate(2deg); }
+}
+
+/* etykiety na obrazku */
+.ranga {
+  position: absolute;
+  z-index: 1;
+  left: 12px;
+  bottom: 10px;
+  padding: 2px 10px;
+  font-family: var(--f-etykieta);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #ffffff;
+  background: var(--r3);
+  border: 2px solid var(--rz);
+}
+
+.korona {
+  position: absolute;
+  z-index: 2;
+  right: 10px;
+  bottom: 10px;
+  padding: 3px 10px 3px 8px;
+  font-family: var(--f-etykieta);
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #2a1a00;
+  background: linear-gradient(180deg, #fff2a0, #f5c400);
+  border-radius: 4px;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.35);
+  animation: korona-wejscie 0.5s cubic-bezier(.2, .9, .25, 1.4);
+}
+
+.korona::before { content: "👑 "; }
+
+@keyframes korona-wejscie {
+  from { opacity: 0; transform: translateY(8px) scale(0.8); }
+}
+
+/* dymek z tekstem gracza */
+.dymek {
+  position: absolute;
+  z-index: 3;
+  left: 50%;
+  top: 12px;
+  width: max-content;
+  max-width: 84%;
+  padding: 8px 14px;
+  font-size: 0.92rem;
+  line-height: 1.3;
+  text-align: center;
+  opacity: 0;
+  transform: translate(-50%, -10px) scale(0.85);
+  transform-origin: 50% 100%;
+  transition: opacity 0.2s, transform 0.3s cubic-bezier(.2, .9, .25, 1.4);
+  pointer-events: none;
+}
+
+.dymek.widoczny {
+  opacity: 1;
+  transform: translate(-50%, 0) scale(1);
+  pointer-events: auto;
+}
+
+.dymek::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: -9px;
+  width: 16px;
+  height: 16px;
+  margin-left: -8px;
+  background: inherit;
+  border: inherit;
+  border-top: 0;
+  border-left: 0;
+  transform: rotate(45deg);
+}
+
+.dymek a {
+  display: inline-block;
+  margin-top: 4px;
+  font-weight: 800;
+  color: inherit;
+}
+
+/* treść karty */
+.karta-tresc {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  padding: 16px 18px 18px;
+}
+
+.nick {
+  font-family: var(--f-display);
+  font-weight: 400;
+  line-height: 1.05;
+}
+
+.aka {
+  margin-top: 4px;
+  font-size: 0.9rem;
+  color: var(--c-karta-tekst-3);
+}
+
+.aka b { font-weight: 700; color: var(--c-karta-tekst-2); }
+
+.metryka {
+  list-style: none;
+  display: grid;
+  gap: 3px;
+  margin-top: 10px;
+  font-size: 0.82rem;
+}
+
+.metryka li {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.metryka li::after {
+  content: "";
+  order: 1;
+  flex: 1;
+  min-width: 12px;
+  border-bottom: 1px dotted var(--c-karta-linia);
+  transform: translateY(-3px);
+}
+
+.metryka span {
+  flex: none;
+  font-family: var(--f-etykieta);
+  font-weight: 700;
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--c-karta-tekst-3);
+}
+
+.metryka b {
+  order: 2;
+  text-align: right;
+  font-weight: 700;
+  color: var(--c-karta-tekst);
+}
+
+.haslo {
+  margin-top: 12px;
+  font-style: italic;
+  font-weight: 500;
+}
+
+.opis {
+  margin-top: 8px;
+  font-size: 0.94rem;
+  color: var(--c-karta-tekst-2);
+}
+
+.opis p + p { margin-top: 8px; }
+.opis b { color: var(--c-karta-tekst); }
+
+/* statystyki */
+.staty {
+  list-style: none;
+  display: grid;
+  gap: 6px;
+  margin-top: 14px;
+  padding: 12px;
+  border-radius: 6px;
+}
+
+.staty li {
+  display: grid;
+  grid-template-columns: 8.8em 1fr 3.6em;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.8rem;
+}
+
+.stat-nazwa {
+  font-family: var(--f-etykieta);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  line-height: 1.2;
+  text-transform: uppercase;
+  color: var(--c-karta-tekst-2);
+}
+
+.stat-wart {
+  font-family: var(--f-liczby);
+  font-size: 0.95rem;
+  text-align: right;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.pasek-stat {
+  --v: 0;
+  position: relative;
+  height: 10px;
+  background: var(--c-stat-tlo);
+}
+
+.pasek-stat i {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: calc(var(--v) * 10%);
+  background: linear-gradient(90deg, var(--r2), var(--r1));
+}
+
+.pasek-stat[data-v="11"] i {
+  animation: pulsuj 1.2s ease-in-out infinite alternate;
+}
+
+@keyframes pulsuj {
+  to { filter: brightness(1.35); }
+}
+
+.pasek-stat[data-v="1"]  { --v: 1; }
+.pasek-stat[data-v="2"]  { --v: 2; }
+.pasek-stat[data-v="3"]  { --v: 3; }
+.pasek-stat[data-v="4"]  { --v: 4; }
+.pasek-stat[data-v="5"]  { --v: 5; }
+.pasek-stat[data-v="6"]  { --v: 6; }
+.pasek-stat[data-v="7"]  { --v: 7; }
+.pasek-stat[data-v="8"]  { --v: 8; }
+.pasek-stat[data-v="9"]  { --v: 9; }
+.pasek-stat[data-v="10"] { --v: 10; }
+.pasek-stat[data-v="11"] { --v: 11; }
+
+/* zbiórka */
+.zbiorka {
+  margin-top: auto;
+  padding-top: 16px;
+}
+
+.zebrano {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.zebrano-opis {
+  font-family: var(--f-etykieta);
+  font-size: 0.76rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--c-karta-tekst-3);
+}
+
+.zebrano-kwota {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--f-liczby);
+  font-size: clamp(2rem, 7vw, 2.5rem);
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+
+.zebrano-kwota .vb {
+  font-size: 0.95em;
+  transform-origin: 50% 50%;
+}
+
+.cel {
+  margin-top: 8px;
+  padding: 10px 12px 12px;
+  border-radius: 6px;
+}
+
+.cel-gora {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.cel-etap {
+  font-family: var(--f-etykieta);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.cel-kwota {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--f-liczby);
+  font-size: 1.05rem;
+}
+
+.cel-nazwa {
+  margin-top: 2px;
+  font-weight: 700;
+  font-size: 0.95rem;
+  line-height: 1.3;
+}
+
+.cel-pasek {
+  position: relative;
+  height: 14px;
+  margin-top: 8px;
+  overflow: hidden;
+  border-radius: 3px;
+}
+
+.cel-wypelnienie {
+  --p: 0;
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: calc(var(--p) * 100%);
+  background: var(--c-postep);
+  transition: width 0.35s cubic-bezier(.2, .9, .2, 1);
+  overflow: hidden;
+}
+
+.cel-wypelnienie::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(100deg, transparent 30%, rgba(255, 255, 255, 0.55) 50%, transparent 70%);
+  transform: translateX(-100%);
+  animation: polysk 2.6s ease-in-out infinite;
+}
+
+@keyframes polysk {
+  60%, 100% { transform: translateX(100%); }
+}
+
+.cel-wypelnienie.bez-animacji { transition: none; }
+
+.cel-brakuje {
+  margin-top: 6px;
+  min-height: 1.3em;
+  font-size: 0.8rem;
+  color: var(--c-karta-tekst-3);
+}
+
+.cel-brakuje b { color: var(--c-karta-tekst); }
+
+.btn-wesprzyj,
+.btn-wyslij {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  margin-top: 14px;
+  padding: 0.55em 1em;
+  line-height: 1.1;
+  cursor: pointer;
+  transition: transform 0.12s ease, filter 0.15s ease;
+}
+
+.btn-wesprzyj .vb,
+.btn-wyslij .vb { font-size: 1.15em; }
+
+.btn-wesprzyj:hover,
+.btn-wyslij:hover { filter: brightness(1.08) saturate(1.1); transform: translateY(-2px); }
+
+.btn-wesprzyj:active,
+.btn-wyslij:active { transform: translateY(2px) scale(0.985); }
+
+/* ------------------------------------------------------------
+   Ranking i ostatnie wpłaty
+   ------------------------------------------------------------ */
+
+.kronika {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 380px), 1fr));
+  gap: 20px;
+  max-width: 1100px;
+  margin: clamp(40px, 7vw, 72px) auto 0;
+  padding: 0 16px;
+}
+
+.panel-kroniki {
+  padding: 18px 18px 20px;
+  background: var(--c-panel);
+  border: 1px solid var(--c-panel-ramka);
+  border-radius: var(--r-panel, 10px);
+}
+
+.panel-kroniki h2,
+.profil h2 {
+  font-family: var(--f-display);
+  font-weight: 400;
+  font-size: clamp(1.6rem, 4.5vw, 2.1rem);
+  line-height: 1.1;
+  text-align: center;
+}
+
+.ranking,
+.wplaty-lista {
+  list-style: none;
+  display: grid;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.ranking li {
+  display: grid;
+  grid-template-columns: 2em 1fr auto;
+  align-items: center;
+  gap: 4px 12px;
+  padding: 8px 12px;
+  background: rgba(0, 0, 0, 0.22);
+  border-left: 4px solid var(--rz);
+  border-radius: 4px;
+}
+
+.rk-miejsce {
+  font-family: var(--f-liczby);
+  font-size: 1.3rem;
+  text-align: center;
+  color: var(--c-tekst-3);
+}
+
+.ranking li:first-child .rk-miejsce { color: var(--c-akcent); }
+
+.rk-nick { font-weight: 700; }
+
+.rk-ile {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--f-liczby);
+  font-size: 1.15rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.rk-pasek {
+  grid-column: 2 / -1;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.rk-pasek i {
+  display: block;
+  height: 100%;
+  width: calc(var(--p, 0) * 100%);
+  background: linear-gradient(90deg, var(--r2), var(--r1));
+  transition: width 0.6s cubic-bezier(.2, .9, .2, 1);
+}
+
+.wplaty-lista li {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 2px 12px;
+  padding: 10px 14px;
+  background: rgba(0, 0, 0, 0.22);
+  border-left: 4px solid var(--rz, var(--c-akcent));
+  border-radius: 4px;
+  animation: wjazd 0.45s cubic-bezier(.2, .9, .2, 1.2);
+}
+
+@keyframes wjazd {
+  from { opacity: 0; transform: translateX(-16px); }
+}
+
+.wp-kto {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: var(--c-tekst-2);
+}
+
+.wp-kto b { color: var(--c-tekst); }
+
+.wp-ile {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--f-liczby);
+  font-size: 1.2rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.wp-msg {
+  grid-column: 1 / -1;
+  font-style: italic;
+  overflow-wrap: anywhere;
+  color: var(--c-tekst-2);
+}
+
+.wp-msg::before { content: "„"; }
+.wp-msg::after { content: "”"; }
+
+.wp-kiedy {
+  grid-column: 1 / -1;
+  font-size: 0.75rem;
+  color: var(--c-tekst-3);
+}
+
+.wplaty-pusto {
+  margin-top: 14px;
+  text-align: center;
+  color: var(--c-tekst-3);
+}
+
+/* ------------------------------------------------------------
+   Profil sponsora i odznaki
+   ------------------------------------------------------------ */
+
+.profil {
+  max-width: 1100px;
+  margin: 28px auto 0;
+  padding: 0 16px;
+}
+
+.profil-karta {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
+  gap: 14px 24px;
+  align-items: center;
+  margin-top: 14px;
+  padding: 18px 20px;
+  background: var(--c-panel);
+  border: 1px solid var(--c-panel-ramka);
+  border-radius: var(--r-panel, 10px);
+}
+
+.profil-blok { display: grid; gap: 4px; }
+.profil-blok-szeroki { grid-column: 1 / -1; }
+
+.profil-etykieta {
+  font-family: var(--f-etykieta);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--c-tekst-3);
+}
+
+.profil-wartosc {
+  font-family: var(--f-display);
+  font-weight: 400;
+  font-size: 1.6rem;
+  line-height: 1.1;
+  color: var(--c-akcent);
+}
+
+.profil-suma {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--f-liczby);
+  color: var(--c-tekst);
+}
+
+.profil-pasek {
+  height: 10px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 5px;
+  overflow: hidden;
+}
+
+.profil-pasek i {
+  display: block;
+  height: 100%;
+  width: calc(var(--p, 0) * 100%);
+  background: var(--c-postep);
+  transition: width 0.6s cubic-bezier(.2, .9, .2, 1);
+}
+
+.odznaki-tytul {
+  margin-top: 26px;
+  font-family: var(--f-etykieta);
+  font-size: 0.95rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  text-align: center;
+  color: var(--c-tekst-2);
+}
+
+.odznaki-tytul span { color: var(--c-akcent); }
+
+.odznaki {
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 190px), 1fr));
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.odznaka {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 2px 10px;
+  padding: 10px 12px;
+  background: var(--c-panel);
+  border: 1px solid var(--c-panel-ramka);
+  border-radius: 8px;
+}
+
+.odznaka-ikona {
+  grid-row: span 2;
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  font-size: 1.5rem;
+  line-height: 1;
+  background: rgba(0, 0, 0, 0.3);
+  border: 2px solid var(--c-akcent);
+  border-radius: 50%;
+}
+
+.odznaka-nazwa { font-weight: 700; font-size: 0.88rem; line-height: 1.2; }
+.odznaka-opis { font-size: 0.76rem; line-height: 1.3; color: var(--c-tekst-3); }
+
+.odznaka.zablokowana { opacity: 0.5; }
+.odznaka.zablokowana .odznaka-ikona { filter: grayscale(1); border-color: var(--c-panel-ramka); }
+.odznaka.swieza { animation: odznaka-swieza 1.2s ease-out; }
+
+@keyframes odznaka-swieza {
+  0% { box-shadow: 0 0 0 0 var(--c-akcent); }
+  40% { box-shadow: 0 0 0 4px var(--c-akcent), 0 0 30px var(--c-akcent); }
+  100% { box-shadow: 0 0 0 0 transparent; }
+}
+
+/* ------------------------------------------------------------
+   Stopka
+   ------------------------------------------------------------ */
+
+.stopka {
+  position: relative;
+  z-index: 1;
+  max-width: 760px;
+  margin: 56px auto 0;
+  padding: 24px 16px 40px;
+  text-align: center;
+  font-size: 0.82rem;
+  color: var(--c-tekst-3);
+}
+
+.btn-zeruj {
+  margin-top: 14px;
+  padding: 6px 14px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--c-tekst-3);
+  background: transparent;
+  border: 1px solid var(--c-panel-ramka);
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.btn-zeruj:hover { color: var(--c-tekst); border-color: var(--c-tekst-2); }
+
+/* ------------------------------------------------------------
+   Okno wpłaty
+   ------------------------------------------------------------ */
+
+.okno {
+  width: min(480px, calc(100vw - 32px));
+  max-height: calc(100dvh - 32px);
+  margin: auto;
+  padding: 0;
+  color: var(--c-okno-tekst);
+  border: 3px solid var(--rz);
+  border-radius: var(--r-panel, 10px);
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.6), 0 0 40px color-mix(in srgb, var(--rz) 35%, transparent);
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+
+.okno[open] { animation: okno-wejscie 0.35s cubic-bezier(.2, .9, .25, 1.25); }
+
+.okno::backdrop {
+  background: rgba(3, 8, 35, 0.72);
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+}
+
+@keyframes okno-wejscie {
+  from { opacity: 0; transform: translateY(24px) scale(0.92); }
+}
+
+.okno-form {
+  position: relative;
+  padding: 20px 20px 22px;
+}
+
+.okno-form.trzes { animation: trzes 0.4s ease; }
+
+@keyframes trzes {
+  20%, 60% { transform: translateX(-7px); }
+  40%, 80% { transform: translateX(7px); }
+}
+
+.okno-x {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  width: 36px;
+  height: 36px;
+  font-size: 1.8rem;
+  line-height: 1;
+  color: var(--c-okno-tekst-3);
+  background: transparent;
+  border: 0;
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.okno-x:hover { color: var(--c-okno-tekst); background: rgba(128, 128, 128, 0.15); }
+
+.okno-naglowek {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding-right: 30px;
+}
+
+.okno-awatar {
+  flex: none;
+  width: 76px;
+  height: 76px;
+  overflow: hidden;
+  border-radius: 8px;
+  border: 2px solid var(--rz);
+  background: radial-gradient(circle at 50% 42%, var(--r1), var(--r2) 55%, var(--r3));
+}
+
+.okno-awatar svg { width: 100%; height: 100%; display: block; }
+.okno-awatar .furia, .okno-awatar .rumieniec { opacity: 0; }
+
+.okno-nad {
+  font-family: var(--f-etykieta);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--c-okno-tekst-3);
+}
+
+.okno-tytul {
+  font-family: var(--f-display);
+  font-weight: 400;
+  font-size: 2rem;
+  line-height: 1.05;
+}
+
+.okno-cel {
+  margin-top: 2px;
+  font-size: 0.85rem;
+  color: var(--c-okno-tekst-2);
+}
+
+.okno-cel b { color: var(--c-okno-akcent); }
+
+.szybkie {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-top: 18px;
+}
+
+.szybkie button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 6px;
+  font-family: var(--f-liczby);
+  font-size: 1.1rem;
+  color: var(--c-okno-tekst);
+  background: var(--c-pole);
+  border: 2px solid var(--c-pole-ramka);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, transform 0.12s;
+}
+
+.szybkie button:hover { border-color: var(--c-okno-akcent); }
+.szybkie button:active { transform: scale(0.95); }
+
+.szybkie button.wybrany,
+.szybkie button.wybrany:hover {
+  color: var(--c-wybrany-tekst);
+  background: var(--c-wybrany);
+  border-color: var(--c-wybrany);
+}
+
+.okno-etykieta {
+  display: block;
+  margin-top: 14px;
+  font-family: var(--f-etykieta);
+  font-size: 0.76rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--c-okno-tekst-2);
+}
+
+.okno-etykieta .opcjonalnie {
+  font-family: var(--f-tekst);
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--c-okno-tekst-3);
+}
+
+.pole-kwota {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 6px;
+  padding: 0 14px;
+  background: var(--c-pole);
+  border: 2px solid var(--c-pole-ramka);
+  border-radius: 6px;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.pole-kwota:focus-within,
+.pole-tekst:focus {
+  border-color: var(--c-okno-akcent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--c-okno-akcent) 30%, transparent);
+}
+
+.pole-kwota .vb { font-size: 1.8rem; }
+
+.pole-kwota input {
+  width: 100%;
+  min-width: 0;
+  padding: 10px 0;
+  font-family: var(--f-liczby);
+  font-size: 1.8rem;
+  color: var(--c-okno-tekst);
+  background: transparent;
+  border: 0;
+  outline: none;
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+.pole-kwota input::-webkit-outer-spin-button,
+.pole-kwota input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.pole-kwota input::placeholder,
+.pole-tekst::placeholder { color: var(--c-okno-tekst-3); opacity: 0.7; }
+
+.pole-tekst {
+  display: block;
+  width: 100%;
+  margin-top: 6px;
+  padding: 10px 12px;
+  font: inherit;
+  font-size: 1rem;
+  color: var(--c-okno-tekst);
+  background: var(--c-pole);
+  border: 2px solid var(--c-pole-ramka);
+  border-radius: 6px;
+  outline: none;
+}
+
+.okno-pola {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  align-items: end;
+  gap: 0 12px;
+}
+
+@media (max-width: 440px) {
+  .okno-pola { grid-template-columns: 1fr; }
+  .okno-tytul { font-size: 1.7rem; }
+  .okno-awatar { width: 64px; height: 64px; }
+}
+
+/* podgląd paska celu po wpłacie */
+.podglad { margin-top: 10px; }
+
+.podglad-pasek {
+  position: relative;
+  height: 10px;
+  overflow: hidden;
+  background: var(--c-pole);
+  border: 1px solid var(--c-pole-ramka);
+  border-radius: 5px;
+}
+
+.podglad-pasek i {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  transition: width 0.3s cubic-bezier(.2, .9, .2, 1), left 0.3s cubic-bezier(.2, .9, .2, 1);
+}
+
+.podglad-teraz {
+  left: 0;
+  width: calc(var(--p, 0) * 100%);
+  background: var(--c-postep);
+}
+
+.podglad-po {
+  left: calc(var(--od, 0) * 100%);
+  width: calc(var(--p, 0) * 100%);
+  background: repeating-linear-gradient(120deg,
+    var(--c-okno-akcent) 0 6px,
+    color-mix(in srgb, var(--c-okno-akcent) 45%, transparent) 6px 12px);
+  animation: przesuw 0.8s linear infinite;
+}
+
+@keyframes przesuw {
+  to { background-position: 28px 0; }
+}
+
+.podglad-tekst {
+  min-height: 1.3em;
+  margin-top: 5px;
+  font-size: 0.8rem;
+  color: var(--c-okno-tekst-2);
+}
+
+.podglad-tekst b { color: var(--c-okno-akcent); }
+
+.okno-blad {
+  min-height: 1.4em;
+  margin-top: 10px;
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--c-blad);
+}
+
+.btn-wyslij { margin-top: 6px; }
+
+.okno-pieczec {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 150px;
+  height: 150px;
+  margin: -75px 0 0 -75px;
+  opacity: 0;
+  pointer-events: none;
+  filter: drop-shadow(0 8px 12px rgba(0, 0, 0, 0.45));
+}
+
+/* ------------------------------------------------------------
+   Efekty
+   ------------------------------------------------------------ */
+
+.fx {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.moneta-lot {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 34px;
+  height: 34px;
+  will-change: transform, opacity;
+}
+
+.moneta-lot svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+  filter: drop-shadow(0 3px 4px rgba(0, 0, 0, 0.4));
+}
+
+.iskra {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--c-iskra);
+  will-change: transform, opacity;
+}
+
+.plus,
+.combo {
+  position: absolute;
+  left: 0;
+  top: 0;
+  font-family: var(--f-display);
+  line-height: 1;
+  white-space: nowrap;
+  color: var(--c-akcent);
+  will-change: transform, opacity;
+}
+
+.plus { font-size: 2.2rem; }
+.combo { font-size: clamp(2.6rem, 9vw, 4.4rem); }
+
+/* ------------------------------------------------------------
+   Ekran zdobycia celu
+   ------------------------------------------------------------ */
+
+.zwyciestwo {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  overflow: hidden;
+  text-align: center;
+  cursor: pointer;
+  animation: zw-tlo 0.3s ease-out;
+}
+
+.zwyciestwo.znika { animation: zw-znika 0.35s ease-in forwards; }
+
+@keyframes zw-tlo { from { opacity: 0; } }
+@keyframes zw-znika { to { opacity: 0; } }
+
+.zw-blask {
+  position: absolute;
+  left: 50%;
+  top: 45%;
+  width: 180vmax;
+  height: 180vmax;
+  margin: -90vmax 0 0 -90vmax;
+  animation: obrot 18s linear infinite;
+}
+
+.zw-tresc {
+  position: relative;
+  animation: zw-wejscie 0.7s cubic-bezier(.2, .9, .25, 1.4);
+}
+
+@keyframes zw-wejscie {
+  0%   { opacity: 0; transform: scale(2.4) rotate(-6deg); }
+  60%  { opacity: 1; transform: scale(0.94) rotate(-3deg); }
+  100% { transform: scale(1) rotate(-3deg); }
+}
+
+.zw-numer:empty { display: none; }
+
+.zw-opis {
+  max-width: 560px;
+  margin: 18px auto 0;
+  padding: 8px 18px;
+  font-weight: 700;
+  font-size: clamp(1rem, 3.5vw, 1.25rem);
+}
+
+.moneta-deszcz {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 40px;
+  height: 40px;
+  will-change: transform;
+}
+
+.moneta-deszcz svg { width: 100%; height: 100%; display: block; }
+
+/* ------------------------------------------------------------
+   Przejście między kategoriami
+   ------------------------------------------------------------ */
+
+.kurtyna {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+}
+
+.kurtyna-srodek {
+  display: grid;
+  justify-items: center;
+  gap: 14px;
+}
+
+.kurtyna-ikona {
+  width: clamp(110px, 24vw, 170px);
+  height: clamp(110px, 24vw, 170px);
+  filter: drop-shadow(0 16px 30px rgba(0, 0, 0, 0.5));
+}
+
+.kurtyna-napis {
+  font-size: clamp(2.4rem, 9vw, 4.4rem);
+  line-height: 1;
+}
+
+/* ------------------------------------------------------------
+   Wyskakujące odznaki i powiadomienia
+   ------------------------------------------------------------ */
+
+.odznaki-wyskakujace {
+  position: fixed;
+  top: 76px;
+  left: 50%;
+  z-index: 75;
+  display: grid;
+  gap: 8px;
+  width: min(380px, calc(100vw - 32px));
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+.odznaka-popup {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 0 12px;
+  padding: 10px 14px;
+  background: var(--c-popup);
+  border: 2px solid var(--c-akcent);
+  border-radius: 10px;
+  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.5), 0 0 24px color-mix(in srgb, var(--c-akcent) 40%, transparent);
+  animation: popup-wejscie 0.5s cubic-bezier(.2, .9, .25, 1.35);
+}
+
+.odznaka-popup.znika { animation: popup-znika 0.35s ease-in forwards; }
+
+.odznaka-popup .odznaka-ikona { grid-row: span 2; }
+
+.popup-nad {
+  font-family: var(--f-etykieta);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--c-akcent);
+}
+
+.popup-nazwa { font-weight: 700; line-height: 1.25; }
+
+@keyframes popup-wejscie {
+  from { opacity: 0; transform: translateY(-24px) scale(0.9); }
+}
+
+@keyframes popup-znika {
+  to { opacity: 0; transform: translateY(-16px) scale(0.95); }
+}
+
+.toasty {
+  position: fixed;
+  left: 50%;
+  bottom: 16px;
+  z-index: 70;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  width: min(480px, calc(100vw - 32px));
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+.toast {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 12px 14px;
+  font-size: 0.95rem;
+  font-weight: 500;
+  background: var(--c-popup);
+  border: 2px solid var(--rz, var(--c-akcent));
+  border-radius: 8px;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.45);
+  animation: toast-wejscie 0.4s cubic-bezier(.2, .9, .25, 1.3);
+}
+
+.toast .vb { font-size: 1.6rem; }
+.toast.znika { animation: toast-znika 0.35s ease-in forwards; }
+
+@keyframes toast-wejscie {
+  from { opacity: 0; transform: translateY(20px) scale(0.95); }
+}
+
+@keyframes toast-znika {
+  to { opacity: 0; transform: translateY(12px) scale(0.96); }
+}
+
+/* ------------------------------------------------------------
+   Mniej ruchu
+   ------------------------------------------------------------ */
+
+@media (prefers-reduced-motion: reduce) {
+  .promienie,
+  .zw-blask,
+  .hero-moneta,
+  .postac,
+  .oko,
+  .cel-wypelnienie::after,
+  .podglad-po,
+  .pasek-stat[data-v="11"] i,
+  .pochodnia { animation: none !important; }
+  .tlo-monety { display: none; }
+  .karta,
+  .awatar { transition: none; }
+  .karta.reaguje *,
+  .karta.reaguje .awatar,
+  .karta.wsciekly .karta-obraz { animation: none !important; }
+}
