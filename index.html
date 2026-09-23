@@ -3,58 +3,445 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="theme-color" content="#0a0a0a">
+  <meta name="theme-color" content="#123a9c">
   <meta http-equiv="X-Content-Type-Options" content="nosniff">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; script-src 'self'; base-uri 'none'; form-action 'none';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; script-src 'self'; img-src 'self' data:; base-uri 'none'; form-action 'none';">
   <meta name="referrer" content="no-referrer">
-  <title>LAZI</title>
+  <meta name="description" content="Zrzutka na V-dolce dla początkujących graczy Fortnite. Oni nie umieją grać, Ty możesz pomóc.">
+  <title>V-dolce dla noobów</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Creepster&family=Russo+One&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css">
+  <link href="https://fonts.googleapis.com/css2?family=Anton&family=Rubik:ital,wght@0,400;0,500;0,700;0,800;1,500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="vdolce.css">
 </head>
 <body>
-  <!-- filtry: falowanie płomienia + ziarno -->
-  <svg class="defs" aria-hidden="true" focusable="false">
-    <!-- statyczny szum: animowany feTurbulence przeliczałby się w każdej klatce -->
-    <filter id="wobble" x="-60%" y="-60%" width="220%" height="220%">
-      <feTurbulence type="fractalNoise" baseFrequency="0.012 0.05" numOctaves="2" seed="7" result="n"></feTurbulence>
-      <feDisplacementMap in="SourceGraphic" in2="n" scale="22"
-                         xChannelSelector="R" yChannelSelector="G"></feDisplacementMap>
-    </filter>
-    <filter id="wobble2" x="-60%" y="-60%" width="220%" height="220%">
-      <feTurbulence type="fractalNoise" baseFrequency="0.02 0.035" numOctaves="2" seed="19" result="n"></feTurbulence>
-      <feDisplacementMap in="SourceGraphic" in2="n" scale="30"
-                         xChannelSelector="R" yChannelSelector="G"></feDisplacementMap>
-    </filter>
-    <filter id="grain">
-      <feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="3" stitchTiles="stitch"></feTurbulence>
-    </filter>
+  <!-- Ikona V-dolca: jeden symbol, używany wszędzie przez <use href="#vbuck">.
+       Nie display:none — Firefox nie rysuje wtedy gradientów. -->
+  <svg class="sprite" aria-hidden="true" focusable="false">
+    <defs>
+      <linearGradient id="vb-obwodka" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#8fe0ff"></stop>
+        <stop offset="1" stop-color="#0b44a8"></stop>
+      </linearGradient>
+      <radialGradient id="vb-srodek" cx="0.38" cy="0.3" r="0.85">
+        <stop offset="0" stop-color="#c8f4ff"></stop>
+        <stop offset="0.45" stop-color="#3cb6f7"></stop>
+        <stop offset="1" stop-color="#0f5ccc"></stop>
+      </radialGradient>
+      <linearGradient id="vb-litera" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#ffffff"></stop>
+        <stop offset="1" stop-color="#cdeeff"></stop>
+      </linearGradient>
+    </defs>
+    <symbol id="vbuck" viewBox="0 0 64 64">
+      <circle cx="32" cy="32" r="31" fill="#072f7a"></circle>
+      <circle cx="32" cy="32" r="28.5" fill="url(#vb-obwodka)"></circle>
+      <circle cx="32" cy="32" r="23.5" fill="url(#vb-srodek)"></circle>
+      <ellipse cx="23" cy="19" rx="11" ry="5" fill="#ffffff" opacity="0.35" transform="rotate(-32 23 19)"></ellipse>
+      <path d="M16 17h11.5L32 33l4.5-16H48L37.5 47h-11z" fill="url(#vb-litera)" stroke="#0a47a6" stroke-width="2.6" stroke-linejoin="round"></path>
+    </symbol>
   </svg>
 
-  <div class="floor" aria-hidden="true"></div>
-  <canvas id="fx" aria-hidden="true"></canvas>
-  <div class="heat" aria-hidden="true"></div>
+  <div class="tlo" aria-hidden="true"></div>
+  <div class="tlo-monety" aria-hidden="true"></div>
 
-  <main class="container">
-    <p class="text-lazi">ŁAZI TO</p>
-
-    <div class="goat-wrap">
-      <span class="goat goat-glow" aria-hidden="true">GOAT</span>
-      <span class="goat goat-flame goat-flame-b" aria-hidden="true">GOAT</span>
-      <span class="goat goat-flame" aria-hidden="true">GOAT</span>
-      <span class="goat goat-core">GOAT</span>
-      <span class="goat-reflection" aria-hidden="true">GOAT</span>
+  <header class="pasek">
+    <a class="logo" href="#gracze">
+      <svg class="vb" aria-hidden="true"><use href="#vbuck"></use></svg>
+      <span>Zrzutka</span>
+    </a>
+    <div class="pasek-prawo">
+      <div class="saldo" title="Tyle V-dolców zebrała cała zrzutka">
+        <svg class="vb" aria-hidden="true"><use href="#vbuck"></use></svg>
+        <span class="saldo-liczba" id="suma">0</span>
+        <span class="saldo-opis">zebrano</span>
+      </div>
+      <button class="btn-dzwiek" id="btn-dzwiek" type="button" aria-pressed="true" aria-label="Dźwięk monet">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M4 9h4l5-4v14l-5-4H4z" fill="currentColor"></path>
+          <g class="fale" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+            <path d="M16 9.5a3.5 3.5 0 0 1 0 5"></path>
+            <path d="M18.5 7a7 7 0 0 1 0 10"></path>
+          </g>
+          <g class="wycisz" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+            <path d="M16 9.5l5 5M21 9.5l-5 5"></path>
+          </g>
+        </svg>
+      </button>
     </div>
+  </header>
 
-    <a class="do-areny" href="/gra/">Wejdź do Areny</a>
+  <main>
+    <section class="hero">
+      <p class="hero-nad">Fundacja Pomocy Początkującym Graczom</p>
+      <h1>
+        <span class="h1-a">V-dolce</span>
+        <span class="h1-b">dla noobów</span>
+      </h1>
+      <p class="hero-pod">
+        Oni nie umieją grać. Ty możesz pomóc. Wybierz gracza, kliknij
+        <b>Dofinansuj</b> i wrzuć mu trochę V-dolców — każdy się liczy
+        (dosłownie, liczymy je).
+      </p>
+      <svg class="hero-moneta hero-moneta-1" aria-hidden="true"><use href="#vbuck"></use></svg>
+      <svg class="hero-moneta hero-moneta-2" aria-hidden="true"><use href="#vbuck"></use></svg>
+      <svg class="hero-moneta hero-moneta-3" aria-hidden="true"><use href="#vbuck"></use></svg>
+    </section>
+
+    <section class="gracze" id="gracze" aria-label="Gracze do dofinansowania">
+
+      <!-- ================= PowPow ================= -->
+      <article class="karta" data-gracz="powpow" data-rzadkosc="epicki">
+        <div class="karta-obraz">
+          <div class="promienie" aria-hidden="true"></div>
+          <svg class="awatar" viewBox="0 0 160 160" role="img" aria-label="PowPow w swoim full boxie">
+            <!-- full box z drewna -->
+            <g stroke="#5a3210" stroke-width="2" stroke-linejoin="round">
+              <polygon points="6,4 40,30 40,122 6,158" fill="#a8672c"></polygon>
+              <polygon points="154,4 120,30 120,122 154,158" fill="#a8672c"></polygon>
+              <rect x="40" y="30" width="80" height="92" fill="#c98543"></rect>
+            </g>
+            <g stroke="#86501f" stroke-width="2" opacity="0.85">
+              <line x1="40" y1="53" x2="120" y2="53"></line>
+              <line x1="40" y1="76" x2="120" y2="76"></line>
+              <line x1="40" y1="99" x2="120" y2="99"></line>
+              <line x1="6" y1="42" x2="40" y2="53"></line>
+              <line x1="6" y1="81" x2="40" y2="76"></line>
+              <line x1="6" y1="120" x2="40" y2="99"></line>
+              <line x1="154" y1="42" x2="120" y2="53"></line>
+              <line x1="154" y1="81" x2="120" y2="76"></line>
+              <line x1="154" y1="120" x2="120" y2="99"></line>
+            </g>
+            <!-- postać -->
+            <path d="M34 160c3-26 20-40 46-40s43 14 46 40z" fill="#2c2a7a"></path>
+            <path d="M58 128l22 16 22-16" fill="none" stroke="#1d1b5a" stroke-width="3"></path>
+            <line x1="74" y1="134" x2="72" y2="152" stroke="#e6e6ff" stroke-width="2.5" stroke-linecap="round"></line>
+            <line x1="86" y1="134" x2="88" y2="152" stroke="#e6e6ff" stroke-width="2.5" stroke-linecap="round"></line>
+            <rect x="71" y="102" width="18" height="22" rx="6" fill="#dca07a"></rect>
+            <circle cx="55" cy="87" r="5.5" fill="#eab48f"></circle>
+            <circle cx="105" cy="87" r="5.5" fill="#eab48f"></circle>
+            <ellipse cx="80" cy="84" rx="25" ry="27" fill="#f2c29b"></ellipse>
+            <path d="M54 80C50 63 58 53 66 50l0-8 8 7 6-11 6 11 8-7v9c10 5 14 15 12 26l-6-8-6 5-6-9-7 8-7-9-7 9-6-6z" fill="#4a2c17"></path>
+            <path d="M55 71q25-9 50 0v8q-25-9-50 0z" fill="#e8322e"></path>
+            <path d="M103 72l16-6-4 8 9 5-18 1z" fill="#c9221f"></path>
+            <path d="M63 83l11 3M97 83l-11 3" stroke="#3a2210" stroke-width="3.5" stroke-linecap="round"></path>
+            <ellipse cx="70" cy="91" rx="3" ry="3.6" fill="#1d1d1d"></ellipse>
+            <ellipse cx="90" cy="91" rx="3" ry="3.6" fill="#1d1d1d"></ellipse>
+            <circle cx="63" cy="99" r="4" fill="#f59a8a" opacity="0.5"></circle>
+            <circle cx="97" cy="99" r="4" fill="#f59a8a" opacity="0.5"></circle>
+            <path d="M70 102q9 7 20-2" fill="none" stroke="#7a2e1c" stroke-width="3" stroke-linecap="round"></path>
+          </svg>
+          <span class="rzadkosc">Epicki</span>
+        </div>
+
+        <div class="karta-tresc">
+          <h2 class="nick">PowPow</h2>
+          <p class="aka">aka <b>Konradek</b></p>
+          <p class="haslo">Odważny gracz z ambicjami</p>
+
+          <div class="opis">
+            <p>
+              Jedyny w ekipie, który umie postawić <b>full boxa</b> — i stawia go przy
+              każdej okazji: przy walce, przy lądowaniu, przy otwieraniu skrzynki,
+              a raz nawet w lobby, zanim gra się zaczęła. Kokot, ale kokot z ambicjami.
+            </p>
+            <p>
+              Ogląda poradniki pro graczy do trzeciej w nocy i co wieczór obiecuje, że
+              „od jutra gra rankedy na serio”. Jego firmowy tekst to „spokojnie, mam boxa” —
+              zwykle sekundę przed tym, jak ktoś wbija mu do boxa z pompą.
+            </p>
+            <p>
+              Za zebrane V-dolce kupi Karnet Bojowy, a potem już tylko turnieje
+              i Fortnite World Cup. Tak twierdzi.
+            </p>
+          </div>
+
+          <ul class="staty">
+            <li><span class="stat-nazwa">Budowanie</span><span class="pasek-stat" data-v="9"><i></i></span><span class="stat-wart">9/10</span></li>
+            <li><span class="stat-nazwa">Celowanie</span><span class="pasek-stat" data-v="5"><i></i></span><span class="stat-wart">5/10</span></li>
+            <li><span class="stat-nazwa">Odwaga</span><span class="pasek-stat" data-v="10"><i></i></span><span class="stat-wart">10/10</span></li>
+            <li><span class="stat-nazwa">Ambicje</span><span class="pasek-stat" data-v="11"><i></i></span><span class="stat-wart stat-ponad">11/10</span></li>
+          </ul>
+
+          <div class="zbiorka">
+            <div class="zebrano">
+              <span class="zebrano-opis">Zebrano</span>
+              <span class="zebrano-kwota">
+                <svg class="vb" aria-hidden="true"><use href="#vbuck"></use></svg>
+                <span data-kwota>0</span>
+              </span>
+            </div>
+            <div class="cel">
+              <div class="cel-gora">
+                <span class="cel-etap" data-cel-etap>Cel 1/3</span>
+                <span class="cel-kwota"><svg class="vb" aria-hidden="true"><use href="#vbuck"></use></svg><span data-cel-kwota>950</span></span>
+              </div>
+              <div class="cel-nazwa" data-cel-nazwa>Karnet Bojowy</div>
+              <div class="cel-pasek"><div class="cel-wypelnienie" data-cel-pasek></div></div>
+              <div class="cel-brakuje" data-cel-brakuje></div>
+            </div>
+            <button class="btn-dofinansuj" type="button">
+              <svg class="vb" aria-hidden="true"><use href="#vbuck"></use></svg>
+              Dofinansuj
+            </button>
+          </div>
+        </div>
+      </article>
+
+      <!-- ================= Krayo ================= -->
+      <article class="karta" data-gracz="krayo" data-rzadkosc="pospolity">
+        <div class="karta-obraz">
+          <div class="promienie" aria-hidden="true"></div>
+          <svg class="awatar" viewBox="0 0 160 160" role="img" aria-label="Krayo, zagubiony jak zawsze">
+            <text x="118" y="50" class="awatar-znak" font-size="34" fill="#ffffff" transform="rotate(14 118 50)">?</text>
+            <text x="26" y="56" class="awatar-znak" font-size="24" fill="#ffffff" opacity="0.8" transform="rotate(-16 26 56)">?</text>
+            <text x="134" y="92" class="awatar-znak" font-size="18" fill="#ffffff" opacity="0.6" transform="rotate(20 134 92)">?</text>
+            <path d="M34 160c3-26 20-40 46-40s43 14 46 40z" fill="#5d6b4b"></path>
+            <text x="80" y="150" class="awatar-znak" font-size="13" fill="#e9eedc" text-anchor="middle" letter-spacing="1">NOOB</text>
+            <rect x="71" y="102" width="18" height="22" rx="6" fill="#dca07a"></rect>
+            <circle cx="55" cy="87" r="5.5" fill="#eab48f"></circle>
+            <circle cx="105" cy="87" r="5.5" fill="#eab48f"></circle>
+            <ellipse cx="80" cy="84" rx="25" ry="27" fill="#f2c29b"></ellipse>
+            <path d="M55 80C52 62 64 55 80 55s28 7 25 25c-4-9-12-13-25-13s-21 4-25 13z" fill="#6b4423"></path>
+            <path d="M63 79q7-6 13 0M86 81q6-5 11 1" fill="none" stroke="#4a2c17" stroke-width="3" stroke-linecap="round"></path>
+            <circle cx="70" cy="89" r="6.5" fill="#ffffff"></circle>
+            <circle cx="67.5" cy="86.5" r="2.8" fill="#161616"></circle>
+            <circle cx="91" cy="90" r="4.6" fill="#ffffff"></circle>
+            <circle cx="93" cy="92" r="2.3" fill="#161616"></circle>
+            <path d="M69 105q4-4 8 0t8 0 7-1" fill="none" stroke="#6b2a1a" stroke-width="2.6" stroke-linecap="round"></path>
+            <path d="M109 66q6 9 0 13q-6-4 0-13z" fill="#8fd6ff" stroke="#4aa6e0" stroke-width="1"></path>
+          </svg>
+          <span class="rzadkosc">Pospolity</span>
+        </div>
+
+        <div class="karta-tresc">
+          <h2 class="nick">Krayo</h2>
+          <p class="aka">status: <b>kokot, nie umie grać</b></p>
+          <p class="haslo">Pierwszy z autobusu, pierwszy do lobby</p>
+
+          <div class="opis">
+            <p>
+              Wyskakuje z autobusu jako pierwszy i jako pierwszy odpada — zwykle zanim
+              reszta ekipy w ogóle wyląduje. Budowanie? Postawił kiedyś jedną ścianę.
+              Tyłem do przeciwnika.
+            </p>
+            <p>
+              Na strzelbę mówi „ten duży pistolet”, a apteczki trzyma „na później”,
+              czyli do śmierci. Gra w domyślnej skórce, więc wszyscy biorą go za bota —
+              i szczerze, nikt nie zauważa różnicy.
+            </p>
+            <p>
+              Po każdej przegranej ma ten sam argument: <i>„lagowało mi”</i>. Lagowało mu
+              też, jak grał offline w trybie kreatywnym.
+            </p>
+          </div>
+
+          <ul class="staty">
+            <li><span class="stat-nazwa">Budowanie</span><span class="pasek-stat" data-v="1"><i></i></span><span class="stat-wart">1/10</span></li>
+            <li><span class="stat-nazwa">Celowanie</span><span class="pasek-stat" data-v="2"><i></i></span><span class="stat-wart">2/10</span></li>
+            <li><span class="stat-nazwa">Wymówki</span><span class="pasek-stat" data-v="10"><i></i></span><span class="stat-wart">10/10</span></li>
+            <li><span class="stat-nazwa">Pewność siebie</span><span class="pasek-stat" data-v="10"><i></i></span><span class="stat-wart">10/10</span></li>
+          </ul>
+
+          <div class="zbiorka">
+            <div class="zebrano">
+              <span class="zebrano-opis">Zebrano</span>
+              <span class="zebrano-kwota">
+                <svg class="vb" aria-hidden="true"><use href="#vbuck"></use></svg>
+                <span data-kwota>0</span>
+              </span>
+            </div>
+            <div class="cel">
+              <div class="cel-gora">
+                <span class="cel-etap" data-cel-etap>Cel 1/3</span>
+                <span class="cel-kwota"><svg class="vb" aria-hidden="true"><use href="#vbuck"></use></svg><span data-cel-kwota>800</span></span>
+              </div>
+              <div class="cel-nazwa" data-cel-nazwa>Jakakolwiek skórka, żeby nie brali go za bota</div>
+              <div class="cel-pasek"><div class="cel-wypelnienie" data-cel-pasek></div></div>
+              <div class="cel-brakuje" data-cel-brakuje></div>
+            </div>
+            <button class="btn-dofinansuj" type="button">
+              <svg class="vb" aria-hidden="true"><use href="#vbuck"></use></svg>
+              Dofinansuj
+            </button>
+          </div>
+        </div>
+      </article>
+
+      <!-- ================= Śliski Karp ================= -->
+      <article class="karta" data-gracz="karp" data-rzadkosc="legendarny">
+        <div class="karta-obraz">
+          <div class="promienie" aria-hidden="true"></div>
+          <svg class="awatar" viewBox="0 0 160 160" role="img" aria-label="Dziadek Piotr w słuchawkach i z karpiem na głowie">
+            <!-- sweterek -->
+            <path d="M34 160c3-26 20-40 46-40s43 14 46 40z" fill="#7b5a36"></path>
+            <path d="M66 122l14 26 14-26z" fill="#ece5d2"></path>
+            <path d="M66 122l14 26 14-26" fill="none" stroke="#5e4226" stroke-width="3"></path>
+            <circle cx="80" cy="152" r="2.4" fill="#3f2a15"></circle>
+            <rect x="71" y="102" width="18" height="20" rx="6" fill="#d9a07e"></rect>
+            <circle cx="55" cy="88" r="5.5" fill="#e8b08f"></circle>
+            <circle cx="105" cy="88" r="5.5" fill="#e8b08f"></circle>
+            <ellipse cx="80" cy="84" rx="25" ry="28" fill="#f0c3a2"></ellipse>
+            <path d="M57 88q-6-12 3-20q-1 11 4 16zM103 88q6-12-3-20q1 11-4 16z" fill="#eeeeee"></path>
+            <path d="M70 68q10-3 20 0M72 74q8-2 16 0" fill="none" stroke="#d49b7b" stroke-width="1.6" stroke-linecap="round"></path>
+            <!-- słuchawki z mikrofonem -->
+            <path d="M52 88C48 50 112 50 108 88" fill="none" stroke="#1f1f24" stroke-width="6" stroke-linecap="round"></path>
+            <rect x="45" y="79" width="13" height="21" rx="5" fill="#2b2b33"></rect>
+            <rect x="102" y="79" width="13" height="21" rx="5" fill="#2b2b33"></rect>
+            <path d="M52 98q2 16 17 16" fill="none" stroke="#1f1f24" stroke-width="3" stroke-linecap="round"></path>
+            <circle cx="70" cy="114" r="3.6" fill="#1f1f24"></circle>
+            <!-- brwi, okulary, oczy -->
+            <path d="M60 80q8-6 15-1M85 79q7-5 15 1" fill="none" stroke="#f4f4f4" stroke-width="4" stroke-linecap="round"></path>
+            <circle cx="69" cy="90" r="4" fill="#1d1d1d"></circle>
+            <circle cx="91" cy="90" r="4" fill="#1d1d1d"></circle>
+            <g fill="#cdeaff" fill-opacity="0.28" stroke="#3a3a3a" stroke-width="2.6">
+              <circle cx="69" cy="90" r="9.5"></circle>
+              <circle cx="91" cy="90" r="9.5"></circle>
+            </g>
+            <path d="M78.5 89q1.5-2 3 0" fill="none" stroke="#3a3a3a" stroke-width="2.4"></path>
+            <ellipse cx="80" cy="99" rx="4.5" ry="5" fill="#e79c83"></ellipse>
+            <path d="M62 105q9-9 18-3q9-6 18 3q-7 7-18 2q-11 5-18-2z" fill="#f6f6f6" stroke="#dcdcdc" stroke-width="1"></path>
+            <!-- śliski karp na głowie -->
+            <g>
+              <path d="M104 44l20-15-5 15 5 15z" fill="#b0802a" stroke="#6e4d12" stroke-width="2" stroke-linejoin="round"></path>
+              <path d="M78 31q8-9 18-2" fill="#b0802a" stroke="#6e4d12" stroke-width="2"></path>
+              <ellipse cx="80" cy="44" rx="29" ry="13" fill="#d4a53e" stroke="#6e4d12" stroke-width="2"></ellipse>
+              <path d="M68 38q4 4 0 8M78 36q4 5 0 10M88 36q4 5 0 10M98 38q3 4 0 8" fill="none" stroke="#8a6419" stroke-width="1.6" opacity="0.7"></path>
+              <circle cx="60" cy="42" r="4" fill="#ffffff"></circle>
+              <circle cx="59" cy="42" r="2" fill="#1d1d1d"></circle>
+              <path d="M52 48q3 2 6 0" fill="none" stroke="#6e4d12" stroke-width="1.6" stroke-linecap="round"></path>
+              <ellipse cx="74" cy="38" rx="11" ry="3" fill="#ffffff" opacity="0.45"></ellipse>
+            </g>
+            <path d="M44 34q3 5 0 7q-3-2 0-7zM118 64q3 5 0 7q-3-2 0-7z" fill="#9fe0ff" opacity="0.9"></path>
+          </svg>
+          <span class="rzadkosc">Legendarny</span>
+        </div>
+
+        <div class="karta-tresc">
+          <h2 class="nick">Śliski Karp</h2>
+          <p class="aka">aka <b>dziadek Piotr</b></p>
+          <p class="haslo">Senior serwera, król krzaków</p>
+
+          <div class="opis">
+            <p>
+              Najstarszy aktywny gracz Fortnite w całym powiecie. Gra na telewizorze
+              w salonie, z dźwiękiem na maksa i okularami na czubku nosa. Na mikrofonie
+              mówi do wszystkich „synku”, nawet do przeciwników.
+            </p>
+            <p>
+              Zamiast budować — kuca w krzaku i czeka, aż młodzi się pozabijają. Tak właśnie
+              wygrał swoją jedyną rundę: zasnął w krzaku w ostatniej strefie i obudził się
+              na ekranie zwycięstwa.
+            </p>
+            <p>
+              Śliski jak karp w wannie przed Wigilią — nikt go nie może złapać, bo nikt go
+              nie może znaleźć. Powtarza: <i>„za moich czasów nie było budowania i jakoś
+              żyliśmy”</i>.
+            </p>
+          </div>
+
+          <ul class="staty">
+            <li><span class="stat-nazwa">Cierpliwość</span><span class="pasek-stat" data-v="10"><i></i></span><span class="stat-wart">10/10</span></li>
+            <li><span class="stat-nazwa">Refleks</span><span class="pasek-stat" data-v="2"><i></i></span><span class="stat-wart">2/10</span></li>
+            <li><span class="stat-nazwa">Krzakowanie</span><span class="pasek-stat" data-v="10"><i></i></span><span class="stat-wart">10/10</span></li>
+            <li><span class="stat-nazwa">Obsługa pada</span><span class="pasek-stat" data-v="3"><i></i></span><span class="stat-wart">3/10</span></li>
+          </ul>
+
+          <div class="zbiorka">
+            <div class="zebrano">
+              <span class="zebrano-opis">Zebrano</span>
+              <span class="zebrano-kwota">
+                <svg class="vb" aria-hidden="true"><use href="#vbuck"></use></svg>
+                <span data-kwota>0</span>
+              </span>
+            </div>
+            <div class="cel">
+              <div class="cel-gora">
+                <span class="cel-etap" data-cel-etap>Cel 1/3</span>
+                <span class="cel-kwota"><svg class="vb" aria-hidden="true"><use href="#vbuck"></use></svg><span data-cel-kwota>950</span></span>
+              </div>
+              <div class="cel-nazwa" data-cel-nazwa>Karnet Bojowy (wnuczek pomoże kliknąć)</div>
+              <div class="cel-pasek"><div class="cel-wypelnienie" data-cel-pasek></div></div>
+              <div class="cel-brakuje" data-cel-brakuje></div>
+            </div>
+            <button class="btn-dofinansuj" type="button">
+              <svg class="vb" aria-hidden="true"><use href="#vbuck"></use></svg>
+              Dofinansuj
+            </button>
+          </div>
+        </div>
+      </article>
+    </section>
+
+    <section class="wplaty" aria-labelledby="wplaty-tytul">
+      <h2 id="wplaty-tytul">Ostatnie wpłaty</h2>
+      <ol class="wplaty-lista" id="wplaty-lista"></ol>
+      <p class="wplaty-pusto" id="wplaty-pusto">Jeszcze nikt nic nie wrzucił. Bądź pierwszy — nie bądź jak Krayo.</p>
+    </section>
   </main>
 
-  <svg class="grain" aria-hidden="true" focusable="false">
-    <rect width="100%" height="100%" filter="url(#grain)"></rect>
-  </svg>
-  <div class="vignette" aria-hidden="true"></div>
+  <footer class="stopka">
+    <p>
+      Strona dla beki. Żadne prawdziwe pieniądze ani V-dolce nie zmieniają tu właściciela —
+      wszystko zapisuje się tylko w Twojej przeglądarce.
+      Fortnite i V-dolce należą do Epic Games; ta strona nie ma z nimi nic wspólnego.
+    </p>
+    <button class="btn-zeruj" id="btn-zeruj" type="button">Wyzeruj zrzutkę</button>
+  </footer>
 
-  <script src="fire.js" defer></script>
+  <!-- okno dofinansowania -->
+  <dialog class="okno" id="okno" aria-labelledby="okno-tytul">
+    <form class="okno-form" id="okno-form" novalidate>
+      <button class="okno-x" id="okno-x" type="button" aria-label="Zamknij">&times;</button>
+      <div class="okno-naglowek">
+        <div class="okno-awatar" id="okno-awatar" aria-hidden="true"></div>
+        <div>
+          <p class="okno-nad">Dofinansowanie dla</p>
+          <h2 class="okno-tytul" id="okno-tytul">—</h2>
+          <p class="okno-cel" id="okno-cel"></p>
+        </div>
+      </div>
+
+      <div class="szybkie" role="group" aria-label="Szybki wybór kwoty">
+        <button type="button" data-ile="100"><svg class="vb" aria-hidden="true"><use href="#vbuck"></use></svg>100</button>
+        <button type="button" data-ile="500"><svg class="vb" aria-hidden="true"><use href="#vbuck"></use></svg>500</button>
+        <button type="button" data-ile="1000"><svg class="vb" aria-hidden="true"><use href="#vbuck"></use></svg>1 000</button>
+        <button type="button" data-ile="2800"><svg class="vb" aria-hidden="true"><use href="#vbuck"></use></svg>2 800</button>
+        <button type="button" data-ile="5000"><svg class="vb" aria-hidden="true"><use href="#vbuck"></use></svg>5 000</button>
+        <button type="button" data-ile="13500"><svg class="vb" aria-hidden="true"><use href="#vbuck"></use></svg>13 500</button>
+      </div>
+
+      <label class="okno-etykieta" for="pole-ile">Ile V-dolców?</label>
+      <div class="pole-kwota">
+        <svg class="vb" aria-hidden="true"><use href="#vbuck"></use></svg>
+        <input id="pole-ile" type="number" inputmode="numeric" min="1" max="1000000" step="1" placeholder="np. 1000" autocomplete="off">
+      </div>
+
+      <label class="okno-etykieta" for="pole-nick">Twój nick <span>(opcjonalnie)</span></label>
+      <input class="pole-nick" id="pole-nick" type="text" maxlength="24" placeholder="Anonimowy sponsor" autocomplete="nickname">
+
+      <p class="okno-blad" id="okno-blad" role="alert"></p>
+
+      <button class="btn-wyslij" id="btn-wyslij" type="submit">
+        <svg class="vb" aria-hidden="true"><use href="#vbuck"></use></svg>
+        Wyślij V-dolce
+      </button>
+    </form>
+  </dialog>
+
+  <!-- ekran zdobycia celu -->
+  <div class="zwyciestwo" id="zwyciestwo" hidden>
+    <div class="zw-blask" aria-hidden="true"></div>
+    <div class="zw-tresc">
+      <div class="zw-numer">#1</div>
+      <div class="zw-tytul">Cel zdobyty!</div>
+      <div class="zw-opis" id="zw-opis"></div>
+    </div>
+  </div>
+
+  <div class="fx" id="fx" aria-hidden="true"></div>
+  <div class="toasty" id="toasty" aria-live="polite"></div>
+
+  <script src="vdolce.js" defer></script>
 </body>
 </html>
