@@ -108,10 +108,13 @@
   DANE.odznaki.forEach(function (o) { odznakaPoId[o.id] = o; });
 
   function pustyStan() {
-    var s = { sumy: {}, wplaty: [], odznaki: {}, zaczepki: 0 };
+    // sumy — wspólne (z serwera, a bez niego lokalne); moje — tylko wpłaty
+    // z tej przeglądarki, z nich liczą się odznaki i tytuły sponsora
+    var s = { sumy: {}, moje: {}, wplaty: [], odznaki: {}, zaczepki: 0 };
     Object.keys(KAT).forEach(function (kat) {
       s.sumy[kat] = {};
-      Object.keys(KAT[kat].gracze).forEach(function (id) { s.sumy[kat][id] = 0; });
+      s.moje[kat] = {};
+      Object.keys(KAT[kat].gracze).forEach(function (id) { s.sumy[kat][id] = 0; s.moje[kat][id] = 0; });
     });
     return s;
   }
@@ -127,10 +130,14 @@
     try {
       var z = JSON.parse(localStorage.getItem(KLUCZ));
       if (z && typeof z === 'object') {
+        // zapis sprzed wspólnych sum nie ma „moje” — wtedy wszystko było własne
+        var moje = z.moje && typeof z.moje === 'object' ? z.moje : z.sumy;
         Object.keys(s.sumy).forEach(function (kat) {
           Object.keys(s.sumy[kat]).forEach(function (id) {
             var v = Number(z.sumy && z.sumy[kat] && z.sumy[kat][id]);
             if (isFinite(v) && v > 0) s.sumy[kat][id] = Math.floor(v);
+            var m = Number(moje && moje[kat] && moje[kat][id]);
+            if (isFinite(m) && m > 0) s.moje[kat][id] = Math.floor(m);
           });
         });
         if (Array.isArray(z.wplaty)) s.wplaty = z.wplaty.filter(poprawnaWplata).slice(0, MAX_WPLAT);
@@ -148,7 +155,7 @@
       if (v1 && v1.sumy) {
         Object.keys(s.sumy.fortnite).forEach(function (id) {
           var v = Number(v1.sumy[id]);
-          if (isFinite(v) && v > 0) s.sumy.fortnite[id] = Math.floor(v);
+          if (isFinite(v) && v > 0) s.sumy.fortnite[id] = s.moje.fortnite[id] = Math.floor(v);
         });
         if (Array.isArray(v1.wplaty)) {
           s.wplaty = v1.wplaty.map(function (w) {
@@ -166,10 +173,12 @@
 
   var stan = wczytaj();
 
-  function sumaKat(kat) {
-    var s = stan.sumy[kat];
+  function sumaKat(kat, zrodlo) {
+    var s = (zrodlo || stan.sumy)[kat];
     return Object.keys(s).reduce(function (a, id) { return a + s[id]; }, 0);
   }
+
+  function sumaMoje(kat) { return sumaKat(kat, stan.moje); }
 
   /* ---------------------------------------------------------
      Liczniki, które płynnie dojeżdżają do wartości
@@ -640,11 +649,11 @@
 
   function rysujProfil() {
     Object.keys(KAT).forEach(function (kat) {
-      var r = ranga(kat, sumaKat(kat));
+      var r = ranga(kat, sumaMoje(kat));
       $$('[data-tytul="' + kat + '"]').forEach(function (e) { e.textContent = r.nazwa; });
     });
 
-    var suma = sumaKat(aktywna);
+    var suma = sumaMoje(aktywna);
     var r = ranga(aktywna, suma);
     $('#profil-ranga').textContent = r.nazwa;
     $('#profil-suma').textContent = fmt(suma);
@@ -697,20 +706,20 @@
   }
 
   function sprawdzOdznaki(w) {
-    var fn = stan.sumy.fortnite, za = stan.sumy.zeroad;
+    var fn = stan.moje.fortnite, za = stan.moje.zeroad;
     var wszyscy = function (s) { return Object.keys(s).every(function (id) { return s[id] > 0; }); };
 
-    if (sumaKat('fortnite') + sumaKat('zeroad') > 0) odblokuj('pierwsza');
+    if (sumaMoje('fortnite') + sumaMoje('zeroad') > 0) odblokuj('pierwsza');
     if (w && w.ile === 1) odblokuj('grosz');
     if (w && w.ile >= KAT[w.kat].hojnie) odblokuj('hojny');
     if (fn.krayo > 0) odblokuj('krayo');
     if (wszyscy(fn)) odblokuj('mecenas-fn');
-    if (sumaKat('fortnite') >= 50000) odblokuj('wieloryb');
+    if (sumaMoje('fortnite') >= 50000) odblokuj('wieloryb');
     if (za.kozak > 0) odblokuj('haracz');
     if (za.lazi > 0) odblokuj('weteran');
     if (w && w.kat === 'zeroad' && w.komu === 'stozhinio' && w.ile === 300) odblokuj('sparta');
     if (wszyscy(za)) odblokuj('skarbnik');
-    if (sumaKat('fortnite') > 0 && sumaKat('zeroad') > 0) odblokuj('dwa-swiaty');
+    if (sumaMoje('fortnite') > 0 && sumaMoje('zeroad') > 0) odblokuj('dwa-swiaty');
     if (stan.zaczepki >= 15) odblokuj('zaczepialski');
   }
 
@@ -1061,11 +1070,15 @@
     var zdobyte = k.gracz.cele.filter(function (c) { return przed < c.kwota && po >= c.kwota; });
 
     stan.sumy[kat][k.id] = po;
-    var wpis = { kat: kat, komu: k.id, ile: ile, kto: nick, t: Date.now() };
+    stan.moje[kat][k.id] += ile;
+    var wpis = { kat: kat, komu: k.id, ile: ile, kto: nick, t: Date.now(), id: noweId() };
     if (msg) wpis.msg = msg;
     stan.wplaty.unshift(wpis);
     if (stan.wplaty.length > MAX_WPLAT) stan.wplaty.length = MAX_WPLAT;
+    mojeId[wpis.id] = true;
     zapisz();
+    lotyTrwa++;
+    wyslijNaSerwer(wpis);
 
     // trzy wpłaty w 20 sekund to combo
     var teraz = Date.now();
@@ -1089,6 +1102,13 @@
         zwyciestwo(kat, k.gracz.nick, zdobyte, function () { rysujCel(k, true); });
       } else {
         rysujCel(k);
+      }
+      // stan z serwera, który przyszedł w trakcie lotu monet, wchodzi dopiero teraz
+      lotyTrwa--;
+      if (!lotyTrwa && zaleglyStan) {
+        var d = zaleglyStan;
+        zaleglyStan = null;
+        przyjmijSerwer(d, true);
       }
     }
 
@@ -1382,10 +1402,119 @@
   }, 30000);
 
   /* ---------------------------------------------------------
+     Wspólne sumy online (api/zrzutka.js)
+     Bez serwera (np. plik otwarty lokalnie) strona działa jak dawniej,
+     tylko na localStorage.
+     --------------------------------------------------------- */
+
+  var ADRES_API = '/api/zrzutka';
+  var CO_ILE_ODSWIEZAC = 10000;
+  var online = false;
+  var serwerPadl = false;
+  var lotyTrwa = 0;
+  var zaleglyStan = null;
+  var mojeId = {};
+  stan.wplaty.forEach(function (w) { if (w.id) mojeId[w.id] = true; });
+
+  function noweId() {
+    return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+  }
+
+  function pobierzZSerwera(animuj) {
+    if (!window.fetch) return;
+    fetch(ADRES_API, { cache: 'no-store' })
+      .then(function (r) { return r.ok ? r.json() : Promise.reject(r.status); })
+      .then(function (d) { serwerPadl = false; przyjmijSerwer(d, animuj); })
+      .catch(function () { serwerPadl = true; ustawOnline(false); });
+  }
+
+  function wyslijNaSerwer(wpis) {
+    if (!window.fetch || (serwerPadl && !online)) return;
+    fetch(ADRES_API, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ kat: wpis.kat, komu: wpis.komu, ile: wpis.ile, kto: wpis.kto, msg: wpis.msg || '', id: wpis.id })
+    })
+      .then(function (r) {
+        if (r.status === 429) toast('Wolniej! Serwer przyjmuje najwyżej 30 wpłat na minutę.');
+        return r.ok ? r.json() : Promise.reject(r.status);
+      })
+      .then(function (d) { przyjmijSerwer(d, true); })
+      .catch(function () {
+        if (online) toast('Serwer nie przyjął wpłaty — zniknie przy następnym odświeżeniu.');
+      });
+  }
+
+  function ustawOnline(tak) {
+    online = tak;
+    html.classList.toggle('online', tak);
+  }
+
+  function przyjmijSerwer(d, animuj) {
+    if (!d || !d.sumy || !Array.isArray(d.wplaty)) return;
+    var pierwszy = !online;
+    ustawOnline(true);
+    // w trakcie lotu monet liczniki są w ruchu — poczekamy na koniec
+    if (lotyTrwa > 0) {
+      zaleglyStan = d;
+      return;
+    }
+    if (pierwszy) animuj = false;
+
+    var znane = {};
+    stan.wplaty.forEach(function (w) { if (w.id) znane[w.id] = true; });
+    var cudze = pierwszy ? [] : d.wplaty.filter(function (w) {
+      return poprawnaWplata(w) && w.id && !znane[w.id] && !mojeId[w.id];
+    });
+
+    var zmiana = false;
+    Object.keys(KAT).forEach(function (kat) {
+      Object.keys(stan.sumy[kat]).forEach(function (id) {
+        var v = Math.floor(Number(d.sumy[kat] && d.sumy[kat][id]));
+        if (!isFinite(v) || v < 0) return;
+        var k = karty[kat + ':' + id];
+        if (v === stan.sumy[kat][id] && v === k.licznik.cel) return;
+        var urosla = v > stan.sumy[kat][id];
+        stan.sumy[kat][id] = v;
+        k.licznik.ustaw(v, !animuj);
+        if (animuj && urosla && kat === aktywna) odpal(k.el, 'blysk');
+        rysujCel(k);
+        zmiana = true;
+      });
+    });
+
+    stan.wplaty = d.wplaty.filter(poprawnaWplata).slice(0, MAX_WPLAT);
+    zapisz();
+
+    if (zmiana || pierwszy) {
+      sumaLicznik.ustaw(sumaKat(aktywna), !animuj);
+      metalLicznik.ustaw(sumaKat('zeroad'), !animuj);
+      Object.keys(KAT).forEach(rysujKorony);
+      rysujRanking();
+    }
+    rysujWplaty();
+
+    cudze.slice(0, 2).forEach(function (w) {
+      var k = karty[w.kat + ':' + w.komu];
+      toast(w.kto + ' → ' + k.gracz.nick + ': ' + fmt(w.ile) + ' ' + odmiana(w.kat, w.ile),
+        k.el.getAttribute('data-kolor'), KAT[w.kat].ikona);
+    });
+  }
+
+  setInterval(function () {
+    if (document.visibilityState === 'visible') pobierzZSerwera(true);
+  }, CO_ILE_ODSWIEZAC);
+
+  document.addEventListener('visibilitychange', function () {
+    if (document.visibilityState === 'visible') pobierzZSerwera(true);
+  });
+
+  /* ---------------------------------------------------------
      Zerowanie
      --------------------------------------------------------- */
 
   $('#btn-zeruj').addEventListener('click', function () {
+    if (online) return;   // wspólnej zrzutki nie zeruje się z przeglądarki
     if (!window.confirm('Wyzerować wszystkie wpłaty w obu kategoriach? Odznaki zostają.')) return;
     var odznaki = stan.odznaki;
     var zaczepki = stan.zaczepki;
@@ -1453,4 +1582,5 @@
   Object.keys(KAT).forEach(rysujKorony);
   zastosujKategorie(kategoriaZHasha());
   sprawdzOdznaki();
+  pobierzZSerwera(false);
 })();
