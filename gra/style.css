@@ -7,6 +7,10 @@
   --tekst: #ffe9c8;
   --panel: rgba(18, 10, 7, 0.82);
   --obwodka: rgba(255, 120, 40, 0.35);
+  --bezp-l: env(safe-area-inset-left, 0px);
+  --bezp-p: env(safe-area-inset-right, 0px);
+  --bezp-d: env(safe-area-inset-bottom, 0px);
+  --bezp-g: env(safe-area-inset-top, 0px);
 }
 
 *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
@@ -21,9 +25,18 @@ html, body {
   background: var(--tlo);
   color: var(--tekst);
   font-family: 'Russo One', system-ui, sans-serif;
+  overscroll-behavior: none;
+  -webkit-text-size-adjust: 100%;
 }
 
-#plotno { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+/* Plansza przejmuje wszystkie gesty: bez przewijania strony, bez zoomu
+   przeglądarki i bez menu po przytrzymaniu palca. */
+#plotno {
+  position: fixed; inset: 0; width: 100%; height: 100%; display: block;
+  touch-action: none;
+  -webkit-user-select: none; user-select: none;
+  -webkit-touch-callout: none;
+}
 
 /* ---------- HUD ---------- */
 
@@ -31,30 +44,35 @@ html, body {
   position: fixed; inset: 0;
   pointer-events: none;
   display: flex; flex-direction: column; justify-content: space-between;
-  padding: 14px;
+  padding: calc(12px + var(--bezp-g)) calc(12px + var(--bezp-p)) calc(12px + var(--bezp-d)) calc(12px + var(--bezp-l));
+  -webkit-user-select: none; user-select: none;
 }
 
-.hud-gora { display: flex; gap: 12px; align-items: flex-start; }
+.hud-gora { display: flex; gap: 10px; align-items: flex-start; }
 .hud-dol { display: flex; flex-direction: column; align-items: center; gap: 8px; }
 
 .panel {
   background: var(--panel);
   border: 1px solid var(--obwodka);
   border-radius: 10px;
-  padding: 10px 14px;
+  padding: 9px 13px;
   backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
 }
 
-#panel-gracze { display: flex; flex-direction: column; gap: 6px; min-width: 170px; }
+#panel-gracze { display: flex; flex-direction: column; gap: 5px; min-width: 170px; }
 
 .gracz { display: flex; align-items: center; gap: 8px; font-size: 13px; }
 .gracz .kropka { width: 10px; height: 10px; border-radius: 50%; flex: none; }
 .gracz .imie { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .gracz .hp { font-variant-numeric: tabular-nums; opacity: 0.85; }
+.gracz .znak { font-size: 10px; opacity: 0.7; font-family: system-ui, sans-serif; }
 .gracz.trup { opacity: 0.35; text-decoration: line-through; }
+.gracz.wyszedl { opacity: 0.3; }
+.gracz.rozlaczony .imie { opacity: 0.55; }
 .gracz.aktywny { color: var(--zar-jasny); text-shadow: 0 0 12px rgba(255, 150, 0, 0.7); }
 
-.panel-tura { text-align: center; margin-inline: auto; }
+.panel-tura { text-align: center; margin-inline: auto; min-width: 120px; }
 .tura-kto { font-size: 14px; letter-spacing: 0.06em; }
 .tura-czas {
   font-size: 32px; line-height: 1.1;
@@ -63,9 +81,10 @@ html, body {
   font-variant-numeric: tabular-nums;
 }
 .tura-czas.malo { color: #ff3b23; animation: puls 0.6s ease-in-out infinite alternate; }
+.tura-czas.sync { font-size: 13px; letter-spacing: 0.08em; opacity: 0.7; line-height: 2.7; }
 @keyframes puls { to { opacity: 0.45; } }
 
-.panel-wiatr { text-align: center; min-width: 130px; }
+.panel-wiatr { text-align: center; min-width: 120px; }
 .etykieta { font-size: 10px; letter-spacing: 0.22em; opacity: 0.7; }
 .wiatr-tor {
   position: relative; height: 8px; margin: 7px 0 4px;
@@ -82,24 +101,103 @@ html, body {
 }
 .wiatr-txt { font-size: 11px; opacity: 0.8; font-variant-numeric: tabular-nums; }
 
-.bronie { display: flex; gap: 8px; }
+.hud-przyciski { display: flex; gap: 8px; align-items: flex-start; }
+
+/* HUD ma pointer-events: none, więc klikalne elementy muszą je włączyć same. */
+.przycisk-hud {
+  pointer-events: auto;
+  font-family: inherit;
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  padding: 9px 13px;
+  cursor: pointer;
+  color: var(--tekst);
+  min-height: 40px;
+}
+.przycisk-hud:hover { border-color: var(--zar-jasny); }
+#btn-opusc { border-color: rgba(255, 70, 40, 0.5); }
+
+/* ---------- banery i napis tury ---------- */
+
+.banery {
+  position: absolute; left: 50%; top: calc(96px + var(--bezp-g));
+  transform: translateX(-50%);
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+  width: min(560px, calc(100% - 24px));
+}
+
+.baner {
+  background: var(--panel);
+  border: 1px solid var(--obwodka);
+  border-radius: 9px;
+  padding: 8px 16px;
+  font-size: 12px;
+  font-family: system-ui, sans-serif;
+  text-align: center;
+}
+.baner-blad { border-color: rgba(255, 60, 40, 0.6); color: #ffb3a6; }
+.baner-info { border-color: rgba(255, 217, 59, 0.55); color: #fff3c4; }
+
+.napis-tury {
+  position: absolute; left: 50%; top: 38%;
+  transform: translate(-50%, -50%);
+  font-size: clamp(28px, 7vw, 56px);
+  letter-spacing: 0.06em;
+  text-align: center;
+  white-space: nowrap;
+  color: var(--zar-jasny);
+  text-shadow: 0 0 24px rgba(255, 120, 0, 0.8), 0 4px 0 rgba(0, 0, 0, 0.6);
+  animation: napis 1.8s ease-out forwards;
+  pointer-events: none;
+}
+.napis-tury.cudza { color: var(--tekst); font-size: clamp(20px, 4.5vw, 34px); }
+@keyframes napis {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(1.6); }
+  15% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  75% { opacity: 1; }
+  100% { opacity: 0; transform: translate(-50%, -60%) scale(0.96); }
+}
+
+/* ---------- bronie i moc ---------- */
+
+.bronie {
+  display: flex; gap: 7px;
+  pointer-events: auto;
+  max-width: 100%;
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding: 2px;
+}
+.bronie::-webkit-scrollbar { display: none; }
+
 .bron {
+  flex: none;
   background: var(--panel);
   border: 1px solid var(--obwodka);
   border-radius: 10px;
-  padding: 7px 13px;
+  padding: 7px 11px;
+  font-family: inherit;
   font-size: 12px;
-  display: flex; align-items: center; gap: 7px;
+  color: var(--tekst);
+  display: flex; align-items: center; gap: 6px;
+  cursor: pointer;
+  min-height: 38px;
 }
 .bron .klawisz {
   background: rgba(255, 255, 255, 0.1);
   border-radius: 4px; padding: 1px 6px; font-size: 10px;
+}
+.bron .zapas {
+  font-size: 10px; font-family: system-ui, sans-serif;
+  background: rgba(255, 106, 0, 0.25); border-radius: 8px; padding: 1px 6px;
 }
 .bron.wybrana {
   border-color: var(--zar-jasny);
   color: var(--zar-jasny);
   box-shadow: 0 0 22px rgba(255, 140, 0, 0.35);
 }
+.bron.pusta { opacity: 0.35; text-decoration: line-through; }
+.bron.nieaktywna { opacity: 0.6; }
 
 .moc {
   width: min(420px, 60vw); height: 9px;
@@ -112,8 +210,56 @@ html, body {
   transition: width 0.03s linear;
 }
 
-.pomoc { font-size: 11px; opacity: 0.55; font-family: system-ui, sans-serif; }
+.pomoc { font-size: 11px; opacity: 0.55; font-family: system-ui, sans-serif; text-align: center; }
 .pomoc b { color: var(--zar-jasny); font-weight: 600; }
+
+/* ---------- sterowanie dotykowe ---------- */
+
+.dotyk {
+  position: fixed;
+  left: calc(10px + var(--bezp-l));
+  right: calc(10px + var(--bezp-p));
+  bottom: calc(10px + var(--bezp-d));
+  display: flex; justify-content: space-between; align-items: flex-end;
+  pointer-events: none;
+}
+
+.dotyk button {
+  pointer-events: auto;
+  touch-action: none;
+  -webkit-user-select: none; user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+  width: 58px; height: 58px;
+  border-radius: 50%;
+  font-size: 22px;
+  background: rgba(18, 10, 7, 0.7);
+  border: 1px solid var(--obwodka);
+  color: var(--tekst);
+  padding: 0;
+  transition: none;
+}
+.dotyk button.wcisniety { background: rgba(255, 106, 0, 0.45); border-color: var(--zar-jasny); }
+
+.dotyk-lewy { display: flex; gap: 10px; align-items: flex-end; }
+.dotyk-lewy [data-akcja="jump"] { margin-bottom: 36px; }
+.dotyk-prawy { display: flex; gap: 12px; align-items: flex-end; }
+.dotyk-celownik { display: flex; flex-direction: column; gap: 10px; }
+
+.dotyk .dotyk-ogien {
+  width: 88px; height: 88px;
+  font-family: inherit;
+  font-size: 15px;
+  letter-spacing: 0.06em;
+  background: radial-gradient(circle at 50% 35%, rgba(255, 180, 60, 0.55), rgba(255, 60, 0, 0.45));
+  border: 2px solid var(--zar-jasny);
+  box-shadow: 0 0 24px rgba(255, 110, 0, 0.45);
+}
+.dotyk .dotyk-ogien.wcisniety { background: radial-gradient(circle, #ff8a00, #c81000); }
+
+/* W trybie dotykowym pasek broni i mocy siedzi nad przyciskami. */
+body.dotykowy .pomoc { display: none; }
+body.dotykowy.moja-tura .hud-dol { margin-bottom: 104px; }
 
 /* ---------- ekrany ---------- */
 
@@ -122,6 +268,7 @@ html, body {
   display: flex; align-items: center; justify-content: center;
   background: radial-gradient(ellipse 120% 80% at 50% 120%, #ff4500 0%, #b22000 18%, #1a0300 48%, #0a0a0a 75%);
   padding: 20px;
+  overflow-y: auto;
 }
 
 .karta {
@@ -132,6 +279,7 @@ html, body {
   width: min(460px, 100%);
   text-align: center;
   box-shadow: 0 30px 90px rgba(0, 0, 0, 0.6);
+  margin: auto;
 }
 
 .karta h1 { font-size: 30px; letter-spacing: 0.05em; margin-bottom: 6px; }
@@ -156,7 +304,7 @@ input[type="text"] {
   border-radius: 9px;
   padding: 11px 13px;
   color: var(--tekst);
-  font-family: inherit; font-size: 14px;
+  font-family: inherit; font-size: 16px;   /* 16 px — iOS nie zoomuje przy wpisywaniu */
 }
 input[type="text"]:focus { outline: 2px solid var(--zar); outline-offset: 1px; }
 
@@ -169,6 +317,7 @@ button {
   font-family: inherit; font-size: 13px;
   cursor: pointer;
   transition: background 0.18s, border-color 0.18s, transform 0.12s;
+  touch-action: manipulation;
 }
 button:hover:not(:disabled) { background: rgba(255, 106, 0, 0.3); border-color: var(--zar-jasny); }
 button:active:not(:disabled) { transform: translateY(1px); }
@@ -192,17 +341,20 @@ button:disabled { opacity: 0.35; cursor: not-allowed; }
 }
 .lista-graczy .kropka { width: 12px; height: 12px; border-radius: 50%; flex: none; }
 .lista-graczy .imie { flex: 1; text-align: left; }
-.lista-graczy button { padding: 3px 9px; font-size: 11px; }
 
 .info { font-size: 11px; opacity: 0.6; margin-top: 12px; font-family: system-ui, sans-serif; }
 
-@media (max-width: 720px) {
-  .hud-gora { flex-direction: column; align-items: stretch; }
-  .panel-tura { margin-inline: 0; }
-  .pomoc { display: none; }
+.trwa-gra {
+  margin-top: 16px;
+  padding: 12px;
+  border: 1px dashed var(--obwodka);
+  border-radius: 10px;
+  font-size: 13px;
 }
+.trwa-gra .info { margin-top: 4px; }
+.trwa-gra button { margin-top: 10px; }
 
-/* ---------- lobby i banery ---------- */
+/* ---------- lobby ---------- */
 
 .odliczanie {
   margin-top: 16px;
@@ -224,39 +376,58 @@ button:disabled { opacity: 0.35; cursor: not-allowed; }
   padding: 2px 6px;
 }
 .lista-graczy li.ja { border-color: var(--obwodka); }
-.lista-graczy li.rozlaczony { opacity: 0.4; }
 
-.baner {
-  align-self: center;
-  background: var(--panel);
-  border: 1px solid var(--obwodka);
-  border-radius: 9px;
-  padding: 8px 16px;
-  font-size: 12px;
-  font-family: system-ui, sans-serif;
-}
-.baner-blad { border-color: rgba(255, 60, 40, 0.6); color: #ffb3a6; }
+/* ---------- małe ekrany ---------- */
 
-.stan-polaczenia {
-  display: flex; align-items: center; gap: 7px;
-  justify-content: center;
-  font-size: 11px; opacity: 0.7;
-  font-family: system-ui, sans-serif;
-  margin-top: 10px;
+@media (max-width: 760px), (max-height: 500px) {
+  #hud { padding: calc(8px + var(--bezp-g)) calc(8px + var(--bezp-p)) calc(8px + var(--bezp-d)) calc(8px + var(--bezp-l)); }
+  .hud-gora { gap: 6px; }
+  .panel { padding: 6px 9px; border-radius: 8px; }
+  #panel-gracze { min-width: 0; max-width: 42vw; gap: 3px; }
+  .gracz { font-size: 11px; gap: 5px; }
+  .panel-tura { min-width: 0; }
+  .tura-kto { font-size: 11px; }
+  .tura-czas { font-size: 22px; }
+  .panel-wiatr { min-width: 84px; }
+  .przycisk-hud { font-size: 11px; padding: 7px 9px; min-height: 36px; }
+  .banery { top: calc(70px + var(--bezp-g)); }
+  .bron { padding: 6px 9px; font-size: 11px; min-height: 36px; }
+  .bron .klawisz { display: none; }
+  .pomoc { display: none; }
 }
-.stan-polaczenia .kropka { width: 8px; height: 8px; border-radius: 50%; background: #5ec26a; }
-.stan-polaczenia.zle .kropka { background: #ff3b23; }
 
-/* HUD ma pointer-events: none, wiec klikalny element musi je wlaczyc sam. */
-.panel-wyjscie {
-  pointer-events: auto;
-  align-self: flex-start;
-  font-family: inherit;
-  font-size: 11px;
-  letter-spacing: 0.04em;
-  padding: 8px 12px;
-  cursor: pointer;
-  color: var(--tekst);
-  opacity: 0.75;
+/* Telefon pionowo: panele w dwóch rzędach, bronie w pełnej szerokości. */
+@media (max-width: 560px) {
+  .hud-gora { flex-wrap: wrap; }
+  #panel-gracze { order: 4; flex-basis: 100%; max-width: none; flex-direction: row; flex-wrap: wrap; gap: 4px 10px; }
+  .panel-tura { order: 1; margin-inline: 0; }
+  .panel-wiatr { order: 2; }
+  .hud-przyciski { order: 3; margin-left: auto; }
+  .banery { top: calc(120px + var(--bezp-g)); }
+  .dotyk button { width: 54px; height: 54px; }
+  .dotyk .dotyk-ogien { width: 80px; height: 80px; }
+  .dotyk-lewy { gap: 6px; }
+  body.dotykowy.moja-tura .hud-dol { margin-bottom: 150px; }
+  .hud-dol { align-items: stretch; }
+  .bronie { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; overflow: visible; }
+  .bron { justify-content: center; min-height: 34px; padding: 5px 6px; }
+  .moc { width: 100%; }
 }
-.panel-wyjscie:hover { opacity: 1; border-color: var(--zar-jasny); }
+
+/* Telefon poziomo: środek ekranu to robal, więc bronie (siatka 3×2) i pasek
+   mocy siedzą na dole, w wolnym pasie między lewymi a prawymi przyciskami. */
+@media (orientation: landscape) and (max-height: 500px) {
+  body.dotykowy.moja-tura .hud-dol {
+    margin-bottom: 0;
+    margin-inline: auto;
+    max-width: calc(100vw - 400px - var(--bezp-l) - var(--bezp-p));
+    gap: 5px;
+  }
+  body.dotykowy.moja-tura .bronie {
+    display: grid; grid-template-columns: repeat(3, auto); gap: 4px;
+    overflow: visible;
+  }
+  body.dotykowy.moja-tura .bron { min-height: 30px; padding: 4px 8px; font-size: 10px; justify-content: center; }
+  body.dotykowy.moja-tura .bron .zapas { padding: 0 4px; }
+  body.dotykowy.moja-tura .moc { width: 100%; order: -1; }
+}

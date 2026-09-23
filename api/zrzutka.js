@@ -1,13 +1,13 @@
 /* Wspólne sumy zrzutki (V-dolce i srebrniki).
  *
- * Ta sama baza Redis co lobby Areny (api/room.js), osobne klucze:
+ * Ta sama baza Redis co Arena (api/arena.js), osobne klucze:
  *   zrzutka:sumy    — hash "kategoria:gracz" -> suma (HINCRBY, bez wyścigów)
  *   zrzutka:wplaty  — lista ostatnich wpłat (LPUSH + LTRIM)
  *
  * Odznaki, zaczepki i tytuły sponsora zostają w przeglądarce — wspólne
  * są tylko pieniądze, których i tak nie ma.
  *
- * CommonJS i brak package.json celowo, tak jak w api/room.js.
+ * CommonJS i brak package.json celowo, tak jak w api/arena.js.
  */
 
 function znajdzKonfiguracje() {

@@ -38,8 +38,20 @@ export function createFx() {
     free: [],
     fire: makeSprites(PALETTE),
     smoke: makeSprites(SMOKE),
-    shocks: []
+    shocks: [],
+    teksty: [],     // unoszące się napisy: obrażenia, komunikaty nad robalami
+    smugi: []       // ślad strzału ze strzelby
   };
+}
+
+/* Napis unoszący się nad punktem (np. „-24” po trafieniu). */
+export function emitTekst(fx, x, y, tekst, kolor = '#ffe9c8', rozmiar = 15) {
+  if (fx.teksty.length > 40) fx.teksty.shift();
+  fx.teksty.push({ x, y, tekst, kolor, rozmiar, life: 1.4, maxLife: 1.4 });
+}
+
+export function emitSmuga(fx, x0, y0, x1, y1) {
+  fx.smugi.push({ x0, y0, x1, y1, life: 0.35, maxLife: 0.35 });
 }
 
 const MAX = 1400;
@@ -117,6 +129,17 @@ export function stepFx(fx, dt) {
     s.life -= dt;
     if (s.life <= 0) fx.shocks.splice(i, 1);
   }
+  for (let i = fx.teksty.length - 1; i >= 0; i--) {
+    const t = fx.teksty[i];
+    t.life -= dt;
+    t.y -= 26 * dt;
+    if (t.life <= 0) fx.teksty.splice(i, 1);
+  }
+  for (let i = fx.smugi.length - 1; i >= 0; i--) {
+    const s = fx.smugi[i];
+    s.life -= dt;
+    if (s.life <= 0) fx.smugi.splice(i, 1);
+  }
 }
 
 export function drawFx(fx, ctx) {
@@ -145,6 +168,30 @@ export function drawFx(fx, ctx) {
     ctx.stroke();
   }
 
+  for (const s of fx.smugi) {
+    const t = s.life / s.maxLife;
+    ctx.globalAlpha = t;
+    ctx.strokeStyle = '#fff1c2';
+    ctx.lineWidth = 1 + 2 * t;
+    ctx.beginPath();
+    ctx.moveTo(s.x0, s.y0);
+    ctx.lineTo(s.x1, s.y1);
+    ctx.stroke();
+  }
+
   ctx.globalAlpha = 1;
   ctx.globalCompositeOperation = 'source-over';
+
+  for (const t of fx.teksty) {
+    const a = Math.min(1, t.life / t.maxLife * 2.5);
+    ctx.globalAlpha = a;
+    ctx.font = '700 ' + t.rozmiar + 'px "Russo One", system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = 'rgba(0,0,0,0.75)';
+    ctx.strokeText(t.tekst, t.x, t.y);
+    ctx.fillStyle = t.kolor;
+    ctx.fillText(t.tekst, t.x, t.y);
+  }
+  ctx.globalAlpha = 1;
 }

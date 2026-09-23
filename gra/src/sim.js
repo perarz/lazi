@@ -1,19 +1,25 @@
 /* Symulacja gry: fizyka robali, pociski, tury.
 
    Ten plik NIE dotyka DOM-u ani Math.random(). Dzięki temu odpala się
-   w Node (test/sim.test.mjs) i można sprawdzić, że ten sam seed z tymi
-   samymi akcjami daje ten sam stan — czego potrzebuje warstwa sieciowa. */
+   w Node (test/*.test.mjs) i można sprawdzić, że ten sam stan z tą samą
+   akcją daje ten sam wynik — czego potrzebuje warstwa sieciowa.
 
-import { mulberry32, hashNumbers } from './rng.js';
+   Determinizm między przeglądarkami: w części liczonej u wszystkich są
+   tylko +, -, *, / i sqrt (IEEE gwarantuje identyczny wynik wszędzie).
+   Trygonometria (cos/sin/atan2) potrafi się różnić na ostatnim bicie
+   między silnikami JS, więc liczy ją wyłącznie strzelec, a do innych
+   leci gotowy wektor startowy pocisku. */
+
+import { mulberry32, hashNumbers, hashTekstu } from './rng.js';
 import * as T from './terrain.js';
-import { WEAPONS } from './weapons.js';
+import { WEAPONS, startowaAmunicja } from './weapons.js';
 
 export const DT = 1 / 120;          // stały krok symulacji, render interpoluje
 
 const GRAVITY = 520;
 const WALK_SPEED = 82;
 const MAX_STEP = 5;                 // ile pikseli robal wejdzie pod górę
-const WORM_H = 20;
+export const WORM_H = 20;
 const JUMP_VY = -235;
 const JUMP_VX = 118;
 const AIM_SPEED = 1.5;              // rad/s
@@ -24,10 +30,35 @@ export const TURN_TIME = 30;
 const SETTLE_MAX = 5;
 const MAX_POWER_TIME = 1.4;         // ile trwa naładowanie strzału do pełna
 
-export function createGame(seed, players) {
+/* Nagła śmierć: po tylu pełnych rundach lawa zaczyna wzbierać,
+   żeby partia nie ciągnęła się w nieskończoność. */
+export const LAWA_PO_RUNDACH = 6;
+const LAWA_ZA_TURE = 12;
+const LAWA_MIN = 260;
+
+/* Pięć odłamków kasetówki — stała tabela, żadnej losowości. */
+const ODLAMKI = [[-160, -220], [-80, -290], [0, -330], [80, -290], [160, -220]];
+
+const pusteWejscie = () => ({ left: false, right: false, aimUp: false, aimDown: false });
+
+/* Kolejność tur tasowana z seeda — identyczna u każdego klienta.
+   Osobna funkcja, żeby warstwa sieciowa znała kolejkę bez liczenia mapy. */
+export function kolejnoscTur(seed, ids) {
+  const rng = mulberry32((seed ^ 0x9e3779b9) >>> 0);
+  const order = ids.slice();
+  for (let i = order.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1));
+    [order[i], order[j]] = [order[j], order[i]];
+  }
+  return order;
+}
+
+/* opcje.sieciowa: tura nie przechodzi sama — po osiadaniu symulacja staje
+   w fazie 'koniec' i czeka, aż warstwa sieciowa poda kanoniczny stan.
+   Wtedy też licznik tury prowadzi warstwa sieciowa (wspólny czas serwera). */
+export function createGame(seed, players, opcje = {}) {
   const terrain = T.createTerrain(seed);
   const spawns = T.spawnPoints(terrain, players.length, seed);
-  const rng = mulberry32((seed ^ 0x9e3779b9) >>> 0);
 
   const worms = players.map((p, i) => ({
     id: p.id,
@@ -41,38 +72,36 @@ export function createGame(seed, players) {
     facing: spawns[i].x < T.WORLD_W / 2 ? 1 : -1,
     angle: spawns[i].x < T.WORLD_W / 2 ? -0.6 : Math.PI + 0.6,
     alive: true,
-    onGround: true
+    onGround: true,
+    amunicja: startowaAmunicja(),
+    odszedl: false
   }));
-
-  // Kolejność tur tasowana z seeda — identyczna u każdego klienta.
-  const order = worms.map((w) => w.id);
-  for (let i = order.length - 1; i > 0; i--) {
-    const j = Math.floor(rng() * (i + 1));
-    [order[i], order[j]] = [order[j], order[i]];
-  }
 
   const state = {
     seed: seed >>> 0,
     terrain,
     worms,
-    order,
+    order: kolejnoscTur(seed, worms.map((w) => w.id)),
     turnPtr: 0,
     turnNumber: 0,
     phase: 'aim',
     turnTimeLeft: TURN_TIME,
     settleTime: 0,
     wind: 0,
+    lava: T.LAVA_Y,
     projectiles: [],
     nextProjectileId: 1,
     weapon: 'bazooka',
     power: 0,
     charging: false,
     firedThisTurn: false,
-    zdalna: false,          // true = turę prowadzi ktoś inny, czekamy na sieć
+    cel: null,                 // punkt nalotu wskazany przez strzelca
+    sieciowa: !!opcje.sieciowa,
+    akcjeDoWyslania: [],       // strzały oddane lokalnie, do opublikowania
     events: [],
     winner: null,
     tick: 0,
-    input: { left: false, right: false, aimUp: false, aimDown: false }
+    input: pusteWejscie()
   };
 
   state.wind = windFor(state.seed, 0);
@@ -100,80 +129,221 @@ export function jump(state) {
   w.onGround = false;
 }
 
-export function startCharging(state) {
-  if (state.phase !== 'aim' || state.firedThisTurn) return;
-  state.charging = true;
-  state.power = 0;
+/* Kąt w układzie ekranu: 0 = w prawo, ujemny = w górę. Robal patrzący
+   w prawo celuje w [-π/2, π/2], patrzący w lewo w [π/2, 3π/2]. */
+function aim(w, delta) {
+  w.angle += delta * (w.facing >= 0 ? 1 : -1);
+  const lo = w.facing >= 0 ? -Math.PI / 2 : Math.PI / 2;
+  const hi = w.facing >= 0 ? Math.PI / 2 : (3 * Math.PI) / 2;
+  if (w.angle < lo) w.angle = lo;
+  if (w.angle > hi) w.angle = hi;
 }
 
-/* Zwraca opis strzału — to jest dokładnie ten obiekt, który poleci
-   do innych graczy przez sieć. */
+/* Obrót robala: celownik odbija się lustrzanie, żeby po zawróceniu
+   dalej mierzył pod tym samym kątem nad ziemią. */
+function obroc(w, dir) {
+  if (dir === w.facing) return;
+  w.facing = dir;
+  w.angle = Math.PI - w.angle;
+}
+
+/* Celowanie myszką lub palcem: kąt prosto z punktu na ekranie.
+   Wolane tylko u gracza prowadzącego turę — gotowy kąt i wektor
+   startowy i tak lecą w zdarzeniu strzału. */
+export function ustawCelownik(state, kat) {
+  const w = activeWorm(state);
+  if (!w || !w.alive || state.phase !== 'aim' || state.firedThisTurn) return;
+  const facing = Math.cos(kat) >= 0 ? 1 : -1;
+  if (facing < 0 && kat < 0) kat += 2 * Math.PI;
+  w.facing = facing;
+  w.angle = kat;
+  aim(w, 0);   // przycięcie do dozwolonego zakresu
+}
+
+export function ustawCel(state, x, y) {
+  if (state.phase !== 'aim' || state.firedThisTurn) return;
+  state.cel = {
+    x: Math.max(0, Math.min(T.WORLD_W, Math.round(x))),
+    y: Math.max(0, Math.min(T.WORLD_H, Math.round(y)))
+  };
+}
+
+export function mozeStrzelic(state, weaponId) {
+  const w = activeWorm(state);
+  if (!w || !w.alive || state.phase !== 'aim' || state.firedThisTurn) return false;
+  const weapon = WEAPONS[weaponId];
+  if (!weapon || weapon.ukryta) return false;
+  const zapas = w.amunicja[weaponId];
+  if (zapas !== undefined && zapas <= 0) return false;
+  if (weapon.celowany && !state.cel) return false;
+  return true;
+}
+
+export function startCharging(state) {
+  if (!mozeStrzelic(state, state.weapon)) return false;
+  state.charging = true;
+  state.power = 0;
+  return true;
+}
+
+/* Puszczenie spustu. Akcja ląduje też w state.akcjeDoWyslania — to jedyna
+   droga, którą strzał wychodzi do sieci, niezależnie od tego, czy wyzwolił
+   go gracz, pełne naładowanie, czy koniec czasu. */
 export function releaseFire(state) {
   if (!state.charging) return null;
   state.charging = false;
-  const w = activeWorm(state);
-  if (!w || !w.alive) return null;
-  const action = {
-    wormId: w.id,
-    weapon: state.weapon,
-    angle: w.angle,
-    power: state.weapon === 'dynamit' ? 0 : Math.max(0.08, state.power)
-  };
-  applyFire(state, action);
+  if (!mozeStrzelic(state, state.weapon)) return null;
+
+  const action = przygotujStrzal(state);
+  // Strzelec przechodzi przez tę samą ścieżkę co odbiorca — po normalizacji
+  // liczb stan u obu jest identyczny co do bitu.
+  zastosujStrzal(state, action);
+  state.akcjeDoWyslania.push(action);
   return action;
 }
 
-/* Tura oddana bez strzału — u pozostałych graczy wywoływane po
-   otrzymaniu zdarzenia 'pas' od gracza, który ją prowadził. */
+/* Pełny opis strzału: stan wszystkich robali w chwili strzału i gotowy
+   wektor startowy. Odbiorca nie zgaduje niczego — ustawia to, co dostał. */
+export function przygotujStrzal(state) {
+  const w = activeWorm(state);
+  const weapon = WEAPONS[state.weapon];
+  const zMoca = weapon.kind === 'pocisk' || weapon.kind === 'odbijany';
+  const power = zMoca ? Math.max(0.08, state.power) : 0;
+  return {
+    wormId: w.id,
+    weapon: weapon.id,
+    angle: w.angle,
+    power,
+    robale: stanRobali(state),
+    kratery: plaskieKratery(state),
+    start: obliczStart(w, weapon, w.angle, power),
+    cel: weapon.celowany && state.cel ? { x: state.cel.x, y: state.cel.y } : null
+  };
+}
+
+function obliczStart(w, weapon, angle, power) {
+  if (weapon.kind === 'podkladany') return { x: w.x, y: w.y - WORM_H * 0.5, vx: 0, vy: 0 };
+  if (weapon.kind === 'nalot') return null;
+  const c = Math.cos(angle), s = Math.sin(angle);
+  const mx = w.x + c * 18;
+  const my = w.y - WORM_H * 0.55 + s * 18;
+  if (weapon.kind === 'hitscan') return { x: mx, y: my, vx: c, vy: s };
+  const speed = weapon.speed * power;
+  return { x: mx, y: my, vx: c * speed, vy: s * speed };
+}
+
+/* Strzał odebrany z sieci (albo własny, po normalizacji).
+   Zwraca true, jeśli trzeba było przebudować teren (rzadkie: np. robal
+   zginął od upadku jeszcze przed strzałem i jego wybuch zrobił krater). */
+export function zastosujStrzal(state, action) {
+  const przebudowa = ustawKratery(state, action.kratery);
+  if (action.robale) ustawRobale(state, action.robale);
+  state.weapon = action.weapon;
+  applyFire(state, action);
+  return przebudowa;
+}
+
+/* Tura oddana bez strzału. */
 export function applyPas(state) {
-  if (state.phase === 'over') return;
+  if (state.phase === 'over' || state.phase === 'koniec') return;
+  state.charging = false;
+  state.power = 0;
   state.phase = 'settle';
   state.settleTime = SETTLE_MAX;
 }
 
 export function applyFire(state, action) {
   const w = state.worms.find((x) => x.id === action.wormId);
-  if (!w || !w.alive) return;
+  if (!w || !w.alive) return false;
   const weapon = WEAPONS[action.weapon];
-  if (!weapon) return;
+  if (!weapon || weapon.ukryta) return false;
 
-  if (weapon.kind === 'podkladany') {
-    spawnProjectile(state, weapon, w.x, w.y - WORM_H * 0.5, 0, 0, w.id);
+  const zapas = w.amunicja[weapon.id];
+  if (zapas !== undefined) {
+    if (zapas <= 0) return false;
+    w.amunicja[weapon.id] = zapas - 1;
+  }
+
+  const start = action.start || obliczStart(w, weapon, action.angle, action.power);
+
+  if (weapon.kind === 'hitscan') {
+    strzalNatychmiastowy(state, w, start, weapon);
+  } else if (weapon.kind === 'nalot') {
+    const cel = action.cel || { x: w.x, y: 0 };
+    const n = weapon.rakiety;
+    const kier = w.facing >= 0 ? 1 : -1;
+    for (let i = 0; i < n; i++) {
+      spawnProjectile(state, WEAPONS.rakieta,
+        cel.x + (i - (n - 1) / 2) * weapon.rozstaw - kier * 70,
+        -40 - i * 22, kier * 55, 110, null);
+    }
   } else {
-    const speed = weapon.speed * action.power;
-    const mx = w.x + Math.cos(action.angle) * 18;
-    const my = w.y - WORM_H * 0.55 + Math.sin(action.angle) * 18;
-    spawnProjectile(state, weapon, mx, my,
-      Math.cos(action.angle) * speed, Math.sin(action.angle) * speed, w.id);
+    spawnProjectile(state, weapon, start.x, start.y, start.vx, start.vy, w.id);
   }
 
   state.firedThisTurn = true;
+  state.charging = false;
   state.power = 0;
   state.phase = 'flight';
-  state.events.push({ type: 'strzal', weapon: weapon.id, x: w.x, y: w.y - WORM_H * 0.5 });
+  state.events.push({ type: 'strzal', weapon: weapon.id, wormId: w.id, x: w.x, y: w.y - WORM_H * 0.5 });
+  return true;
 }
 
 function spawnProjectile(state, weapon, x, y, vx, vy, ownerId) {
   state.projectiles.push({
     id: state.nextProjectileId++,
     weapon: weapon.id,
-    x, y, vx, vy,
+    x: x + 0, y: y + 0, vx: vx + 0, vy: vy + 0,
     fuse: weapon.fuse,
     ownerId
   });
 }
 
+/* Strzelba: promień po prostej co 2 px, do pierwszej skały albo robala. */
+function strzalNatychmiastowy(state, w, start, weapon) {
+  const t = state.terrain;
+  let x = start.x, y = start.y;
+  const dx = start.vx * 2, dy = start.vy * 2;
+  const kroki = Math.ceil(weapon.zasieg / 2);
+  let trafiony = null, wSkale = false;
+
+  for (let i = 0; i < kroki; i++) {
+    x += dx;
+    y += dy;
+    if (x < 0 || x >= T.WORLD_W || y >= state.lava || y < -200) break;
+    if (T.solidAt(t, x, y)) { wSkale = true; break; }
+    trafiony = state.worms.find(
+      (o) => o.alive && o.id !== w.id && Math.abs(o.x - x) < 9 && y > o.y - WORM_H && y < o.y
+    ) || null;
+    if (trafiony) break;
+  }
+
+  state.events.push({ type: 'smuga', x0: start.x, y0: start.y, x1: x, y1: y });
+  if (trafiony) {
+    damageWorm(state, trafiony, weapon.bezposrednie, 'strzal');
+    if (trafiony.alive) {
+      trafiony.vx += start.vx * weapon.knockback;
+      trafiony.vy += start.vy * weapon.knockback - 60;
+      trafiony.onGround = false;
+    }
+    explode(state, x, y, weapon);
+  } else if (wSkale) {
+    explode(state, x, y, weapon);
+  }
+}
+
 /* ---------- krok symulacji ---------- */
 
 export function step(state) {
-  if (state.phase === 'over') return;
+  if (state.phase === 'over' || state.phase === 'koniec') return;
   state.tick++;
 
   const act = activeWorm(state);
 
-  // Zabezpieczenie: jeśli aktywny robal nie żyje (zginął w cudzej turze albo
-  // na starcie), tura musi ruszyć dalej — inaczej gra stoi w miejscu.
+  // Zabezpieczenie: jeśli aktywny robal nie żyje (np. wszedł do lawy),
+  // tura musi ruszyć dalej — inaczej gra stoi w miejscu.
   if (state.phase === 'aim' && (!act || !act.alive)) {
+    state.charging = false;
     state.phase = 'settle';
     state.settleTime = SETTLE_MAX;
   }
@@ -185,14 +355,11 @@ export function step(state) {
       state.power = Math.min(1, state.power + DT / MAX_POWER_TIME);
       if (state.power >= 1) releaseFire(state);
     }
-    if (!state.zdalna) {
+    if (!state.sieciowa) {
       state.turnTimeLeft -= DT;
       if (state.turnTimeLeft <= 0) {
         state.turnTimeLeft = 0;
-        state.phase = 'settle';
-        // Gdy nic nie leci, nie ma na co czekac: faza osiadania odliczalaby
-        // do SETTLE_MAX i tura przechodzila z kilkusekundowym opoznieniem.
-        state.settleTime = state.projectiles.length ? 0 : SETTLE_MAX;
+        applyPas(state);
       }
     }
   }
@@ -208,17 +375,15 @@ export function step(state) {
   if (state.phase === 'settle') {
     state.settleTime += DT;
     const moving = state.worms.some((w) => w.alive && (!w.onGround || Math.abs(w.vy) > 8));
-    if (!moving || state.settleTime > SETTLE_MAX) nextTurn(state);
+    if (!moving || state.settleTime > SETTLE_MAX) {
+      if (state.sieciowa) {
+        state.phase = 'koniec';
+        state.events.push({ type: 'koniecTury', nr: state.turnNumber });
+      } else {
+        nextTurn(state);
+      }
+    }
   }
-}
-
-function aim(w, delta) {
-  // Kąt trzymamy w układzie ekranu: 0 = w prawo, ujemny = w górę.
-  w.angle += delta * (w.facing >= 0 ? 1 : -1);
-  const lo = w.facing >= 0 ? -Math.PI / 2 : Math.PI / 2;
-  const hi = w.facing >= 0 ? Math.PI / 2 : (3 * Math.PI) / 2;
-  if (w.angle < lo) w.angle = lo;
-  if (w.angle > hi) w.angle = hi;
 }
 
 function headBlocked(t, x, groundY) {
@@ -234,8 +399,7 @@ function stepWorm(state, w, controllable) {
     if (state.input.left) dir = -1;
     else if (state.input.right) dir = 1;
     if (dir !== 0) {
-      w.facing = dir;
-      // Kąt lustrzany, żeby po obrocie celownik został po tej samej stronie.
+      obroc(w, dir);
       const nx = w.x + dir * WALK_SPEED * DT;
       const g = T.findGround(t, nx, w.y, MAX_STEP, MAX_STEP);
       if (g !== null && !headBlocked(t, nx, g)) {
@@ -258,7 +422,7 @@ function stepWorm(state, w, controllable) {
     w.onGround = false;   // grunt zniknął pod nogami (np. po wybuchu)
   }
 
-  if (w.y > T.LAVA_Y) killWorm(state, w, 'lawa');
+  if (w.y > state.lava) killWorm(state, w, 'lawa');
 }
 
 function moveAxis(state, w, dx, dy) {
@@ -328,13 +492,9 @@ function stepProjectiles(state) {
       const nx = p.x + ix, ny = p.y + iy;
 
       if (T.solidAt(t, nx, ny)) {
-        if (weapon.kind === 'pocisk') {
-          detonate(state, p, i);
-          done = true;
-        } else {
-          bounce(state, p, weapon);
-          done = true;
-        }
+        if (weapon.kind === 'pocisk') detonate(state, p, i);
+        else bounce(state, p, weapon);
+        done = true;
         break;
       }
 
@@ -357,9 +517,9 @@ function stepProjectiles(state) {
 
     if (done) continue;
 
-    if (p.y > T.LAVA_Y || p.x < -80 || p.x > T.WORLD_W + 80) {
+    if (p.y > state.lava || p.x < -80 || p.x > T.WORLD_W + 80) {
       state.projectiles.splice(i, 1);
-      state.events.push({ type: 'plusk', x: p.x, y: Math.min(p.y, T.LAVA_Y) });
+      state.events.push({ type: 'plusk', x: p.x, y: Math.min(p.y, state.lava) });
     }
   }
 }
@@ -390,7 +550,13 @@ function surfaceNormal(t, x, y) {
 
 function detonate(state, p, index) {
   state.projectiles.splice(index, 1);
-  explode(state, p.x, p.y, WEAPONS[p.weapon]);
+  const weapon = WEAPONS[p.weapon];
+  explode(state, p.x, p.y, weapon);
+  if (weapon.odlamki) {
+    for (const [vx, vy] of ODLAMKI) {
+      spawnProjectile(state, WEAPONS.odlamek, p.x, p.y - 6, vx, vy, null);
+    }
+  }
 }
 
 export function explode(state, x, y, weapon) {
@@ -439,11 +605,26 @@ function killWorm(state, w, cause) {
   }
 }
 
+/* Gracze, którzy wyszli albo wypadli z sieci: robal znika z areny bez
+   wybuchu. Wołane wyłącznie na granicy tur, w stanie kanonicznym. */
+export function usunGraczy(state, ids) {
+  for (const w of state.worms) {
+    if (!ids.includes(w.id) || w.odszedl) continue;
+    w.odszedl = true;
+    if (w.alive) {
+      w.alive = false;
+      w.hp = 0;
+      state.events.push({ type: 'odszedl', wormId: w.id, x: w.x, y: w.y });
+    }
+  }
+}
+
 function nextTurn(state) {
   const living = state.worms.filter((w) => w.alive);
   if (living.length <= 1) {
     state.phase = 'over';
     state.winner = living[0] ? living[0].id : null;
+    state.charging = false;
     state.events.push({ type: 'koniec', winner: state.winner });
     return;
   }
@@ -455,52 +636,168 @@ function nextTurn(state) {
   }
 
   state.turnNumber++;
+  if (state.turnNumber >= state.order.length * LAWA_PO_RUNDACH) {
+    const nowa = Math.max(LAWA_MIN, state.lava - LAWA_ZA_TURE);
+    if (nowa !== state.lava) {
+      state.lava = nowa;
+      state.events.push({ type: 'lawa', y: nowa });
+    }
+  }
+  rozpocznijTure(state);
+}
+
+/* Pola, które na starcie każdej tury są zawsze takie same. */
+export function rozpocznijTure(state) {
   state.turnTimeLeft = TURN_TIME;
   state.phase = 'aim';
+  state.settleTime = 0;
   state.firedThisTurn = false;
   state.charging = false;
   state.power = 0;
+  state.cel = null;
+  state.projectiles = [];
   state.wind = windFor(state.seed, state.turnNumber);
-  state.input = { left: false, right: false, aimUp: false, aimDown: false };
-  state.events.push({ type: 'tura', wormId: state.order[state.turnPtr], wind: state.wind });
+  state.input = pusteWejscie();
+  const w = activeWorm(state);
+  state.events.push({ type: 'tura', wormId: w ? w.id : null, wind: state.wind, nr: state.turnNumber });
 }
 
 /* ---------- synchronizacja ---------- */
 
-/* Kanoniczny stan pokoju: kilkaset bajtów zamiast 2 MB mapy.
-   Teren odtwarza się z seeda i listy kraterów. */
+export function stanRobali(state) {
+  return state.worms.map((w) => ({
+    id: w.id,
+    x: w.x, y: w.y, vx: w.vx, vy: w.vy,
+    hp: w.hp,
+    alive: w.alive,
+    onGround: w.onGround,
+    facing: w.facing,
+    angle: w.angle,
+    amunicja: { ...w.amunicja },
+    odszedl: !!w.odszedl
+  }));
+}
+
+/* + 0 zamienia -0 na 0: JSON i tak zapisze -0 jako 0, więc bez tego
+   nadawca miałby inną wartość niż odbiorca. */
+export function ustawRobale(state, robale) {
+  for (const s of robale) {
+    const w = state.worms.find((x) => x.id === s.id);
+    if (!w) continue;
+    w.x = s.x + 0;
+    w.y = s.y + 0;
+    w.vx = s.vx + 0;
+    w.vy = s.vy + 0;
+    w.hp = s.hp;
+    w.alive = !!s.alive;
+    w.onGround = !!s.onGround;
+    w.facing = s.facing >= 0 ? 1 : -1;
+    w.angle = s.angle + 0;
+    w.amunicja = { ...(s.amunicja || {}) };
+    w.odszedl = !!s.odszedl;
+  }
+}
+
+export function plaskieKratery(state) {
+  const kratery = [];
+  for (const c of state.terrain.craters) kratery.push(c.x, c.y, c.r);
+  return kratery;
+}
+
+/* Kanoniczny stan na początku tury: kilka kilobajtów zamiast 2 MB mapy.
+   Teren odtwarza się z seeda i listy kraterów (płaska lista x,y,r). */
 export function snapshot(state) {
+  const over = state.phase === 'over';
+  const akt = over ? null : activeWorm(state);
   return {
     seed: state.seed,
-    craters: state.terrain.craters.map((c) => ({
-      x: Math.round(c.x), y: Math.round(c.y), r: Math.round(c.r)
-    })),
-    worms: state.worms.map((w) => ({
-      id: w.id, x: Math.round(w.x), y: Math.round(w.y),
-      hp: w.hp, alive: w.alive, facing: w.facing
-    })),
+    kratery: plaskieKratery(state),
+    robale: stanRobali(state),
     turnPtr: state.turnPtr,
     turnNumber: state.turnNumber,
-    winner: state.winner
+    winner: state.winner,
+    over,
+    lava: state.lava,
+    aktywny: akt ? akt.id : null
   };
 }
 
-export function applySnapshot(state, snap) {
-  state.terrain = T.rebuild(snap.seed, snap.craters);
-  for (const s of snap.worms) {
-    const w = state.worms.find((x) => x.id === s.id);
-    if (!w) continue;
-    w.x = s.x; w.y = s.y; w.hp = s.hp; w.alive = s.alive; w.facing = s.facing;
-    w.vx = 0; w.vy = 0; w.onGround = true;
-  }
-  state.turnPtr = snap.turnPtr;
-  state.turnNumber = snap.turnNumber;
-  state.winner = snap.winner;
-  state.projectiles = [];
+/* Stan po zamknięciu bieżącej tury — BEZ zmieniania stanu źródłowego.
+   Publikuje go jeden klient; wszyscy (łącznie z nim) przyjmują dopiero
+   wersję, która wróci z logu. */
+export function stanPoTurze(state, usun = []) {
+  const kopia = {
+    seed: state.seed,
+    terrain: state.terrain,
+    order: state.order,
+    worms: state.worms.map((w) => ({ ...w, amunicja: { ...w.amunicja } })),
+    turnPtr: state.turnPtr,
+    turnNumber: state.turnNumber,
+    winner: state.winner,
+    lava: state.lava,
+    phase: 'koniec',
+    events: [],
+    projectiles: [],
+    input: pusteWejscie()
+  };
+  usunGraczy(kopia, usun);
+  nextTurn(kopia);
+  return snapshot(kopia);
 }
 
-/* Hash do wykrycia rozjazdu między klientami. */
+function teSameKratery(lista, plaska) {
+  if (!Array.isArray(plaska) || lista.length * 3 !== plaska.length) return false;
+  for (let i = 0; i < lista.length; i++) {
+    const c = lista[i];
+    if (c.x !== plaska[i * 3] || c.y !== plaska[i * 3 + 1] || c.r !== plaska[i * 3 + 2]) return false;
+  }
+  return true;
+}
+
+/* Teren według listy kraterów — przebudowa tylko, gdy lista się różni.
+   Zwraca true, jeśli teren trzeba przemalować. */
+export function ustawKratery(state, plaska) {
+  if (!Array.isArray(plaska) || teSameKratery(state.terrain.craters, plaska)) return false;
+  const lista = [];
+  for (let i = 0; i + 2 < plaska.length; i += 3) {
+    lista.push({ x: plaska[i], y: plaska[i + 1], r: plaska[i + 2] });
+  }
+  state.terrain = T.rebuild(state.seed, lista);
+  return true;
+}
+
+/* Przyjęcie kanonicznego stanu. Teren przebudowuje się tylko wtedy, gdy
+   lista kraterów faktycznie się różni — przy zgodnej symulacji nigdy.
+   Zwraca true, jeśli teren trzeba przemalować. */
+export function zastosujSnapshot(state, snap) {
+  const przebudowa = ustawKratery(state, snap.kratery);
+  ustawRobale(state, snap.robale);
+  state.turnPtr = snap.turnPtr;
+  state.turnNumber = snap.turnNumber;
+  state.winner = snap.winner ?? null;
+  state.lava = typeof snap.lava === 'number' ? snap.lava : T.LAVA_Y;
+  state.projectiles = [];
+  state.akcjeDoWyslania.length = 0;
+  if (snap.over) {
+    state.phase = 'over';
+    state.charging = false;
+    state.events.push({ type: 'koniec', winner: state.winner });
+  } else {
+    rozpocznijTure(state);
+  }
+  return przebudowa;
+}
+
+/* Hash całego stanu do testów i diagnostyki: równy hash = stan równy co do bitu. */
 export function stateHash(state) {
+  const s = snapshot(state);
+  s.phase = state.phase;
+  s.pociski = state.projectiles.map((p) => [p.weapon, p.x, p.y, p.vx, p.vy, p.fuse]);
+  return hashTekstu(JSON.stringify(s));
+}
+
+/* Zgrubny hash w pikselach — do porównań „czy wygląda tak samo”. */
+export function hashPikseli(state) {
   const nums = [state.turnPtr, state.turnNumber, state.terrain.craters.length];
   for (const w of state.worms) nums.push(w.x, w.y, w.hp, w.alive ? 1 : 0);
   for (const c of state.terrain.craters) nums.push(c.x, c.y, c.r);
