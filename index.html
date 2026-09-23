@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="theme-color" content="#123a9c">
   <meta http-equiv="X-Content-Type-Options" content="nosniff">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; script-src 'self'; img-src 'self' data:; base-uri 'none'; form-action 'none';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; script-src 'self'; connect-src 'self'; img-src 'self' data:; base-uri 'none'; form-action 'none';">
   <meta name="referrer" content="no-referrer">
   <meta name="description" content="Zrzutka dla graczy: V-dolce dla noobów z Fortnite i srebrniki dla wojowników z 0 A.D.">
   <title>Zrzutka dla graczy</title>
@@ -972,6 +972,7 @@
           <span data-dla="fortnite">Ostatnie wpłaty</span>
           <span data-dla="zeroad">Kronika darowizn</span>
         </h2>
+        <p class="na-zywo tylko-online">na żywo — wszyscy widzą te same sumy</p>
         <ol class="wplaty-lista" id="wplaty-lista"></ol>
         <p class="wplaty-pusto" id="wplaty-pusto">
           <span data-dla="fortnite">Jeszcze nikt nic nie wrzucił. Bądź pierwszy — nie bądź jak Krayo.</span>
@@ -1012,11 +1013,13 @@
   <footer class="stopka">
     <p>
       Strona dla beki. Żadne prawdziwe pieniądze, V-dolce ani srebrniki nie zmieniają tu
-      właściciela — wszystko zapisuje się tylko w Twojej przeglądarce.
+      właściciela.
+      <span class="tylko-online">Sumy i wpłaty są wspólne dla wszystkich, a odznaki i tytuły zapisują się w Twojej przeglądarce.</span>
+      <span class="tylko-offline">Wszystko zapisuje się tylko w Twojej przeglądarce.</span>
       Fortnite i V-dolce należą do Epic Games, 0 A.D. to gra Wildfire Games;
       ta strona nie ma z nimi nic wspólnego.
     </p>
-    <button class="btn-zeruj" id="btn-zeruj" type="button">Wyzeruj zrzutkę</button>
+    <button class="btn-zeruj tylko-offline" id="btn-zeruj" type="button">Wyzeruj zrzutkę</button>
   </footer>
 
   <!-- okno wpłaty (wspólne; teksty i ikony podmienia JS) -->
