@@ -2,8 +2,10 @@
 <html lang="pl">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="theme-color" content="#0a0a0a">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
   <meta http-equiv="X-Content-Type-Options" content="nosniff">
   <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; script-src 'self'; connect-src 'self'; img-src 'self' data:; base-uri 'none'; form-action 'none';">
   <meta name="referrer" content="no-referrer">
@@ -24,23 +26,47 @@
         <div class="tura-kto" id="tura-kto">—</div>
         <div class="tura-czas" id="tura-czas">30</div>
       </div>
-      <button id="btn-do-lobby" class="panel panel-wyjscie" type="button">Wróć do lobby</button>
       <div class="panel panel-wiatr">
         <div class="etykieta">WIATR</div>
         <div class="wiatr-tor"><div class="wiatr-slup" id="wiatr-slup"></div></div>
         <div class="wiatr-txt" id="wiatr-txt">0</div>
       </div>
+      <div class="hud-przyciski">
+        <button id="btn-pelny" class="panel przycisk-hud" type="button" aria-label="Pełny ekran" title="Pełny ekran" hidden>⛶</button>
+        <button id="btn-opusc" class="panel przycisk-hud" type="button">Opuść grę</button>
+      </div>
     </div>
 
-    <div class="baner" id="baner-obserwator" hidden>Dołączyłeś w trakcie — oglądasz. Grasz w następnej rundzie.</div>
-    <div class="baner baner-blad" id="baner-blad" hidden></div>
+    <div class="banery">
+      <div class="baner" id="baner-obserwator" hidden>Oglądasz tę partię. Zagrasz w następnej rundzie.</div>
+      <div class="baner baner-blad" id="baner-blad" hidden></div>
+      <div class="baner baner-info" id="baner-info" hidden></div>
+    </div>
+
+    <div class="napis-tury" id="napis-tury" hidden></div>
 
     <div class="hud-dol">
       <div class="bronie" id="bronie"></div>
       <div class="moc"><div class="moc-wypelnienie" id="moc-wypelnienie"></div></div>
       <div class="pomoc">
-        <b>A</b>/<b>D</b> ruch &nbsp; <b>W</b>/<b>S</b> celowanie &nbsp;
-        <b>Enter</b> skok &nbsp; <b>1-3</b> broń &nbsp; <b>Spacja</b> (przytrzymaj) strzał
+        <b>A</b>/<b>D</b> ruch &nbsp; <b>W</b>/<b>S</b> albo mysz: celowanie &nbsp;
+        <b>Enter</b> skok &nbsp; <b>1-6</b> broń &nbsp; <b>Spacja</b> (przytrzymaj) strzał
+      </div>
+    </div>
+
+    <!-- sterowanie dotykowe: widoczne w Twojej turze na telefonie i tablecie -->
+    <div class="dotyk" id="dotyk" hidden>
+      <div class="dotyk-lewy">
+        <button type="button" data-akcja="left" aria-label="Idź w lewo">◀</button>
+        <button type="button" data-akcja="jump" aria-label="Skok">⤒</button>
+        <button type="button" data-akcja="right" aria-label="Idź w prawo">▶</button>
+      </div>
+      <div class="dotyk-prawy">
+        <div class="dotyk-celownik">
+          <button type="button" data-akcja="aimUp" aria-label="Celownik w górę">▲</button>
+          <button type="button" data-akcja="aimDown" aria-label="Celownik w dół">▼</button>
+        </div>
+        <button type="button" class="dotyk-ogien" data-akcja="fire" aria-label="Strzał — przytrzymaj, żeby naładować">OGNIA</button>
       </div>
     </div>
   </div>
@@ -49,10 +75,10 @@
   <div class="ekran" id="ekran-nazwa">
     <div class="karta">
       <h1>ARENA <span class="plonie">GOAT</span>ÓW</h1>
-      <p class="podtytul">Turowa strzelanka z terenem, który da się rozwalić do zera.<br>Jedno wspólne lobby — kto wejdzie, ten gra.</p>
+      <p class="podtytul">Turowa strzelanka z terenem, który da się rozwalić do zera.<br>Jedno wspólne lobby — kto wejdzie, ten gra. Działa też na telefonie.</p>
 
       <div class="pole">
-        <input id="input-nazwa" type="text" maxlength="14" placeholder="Twoja nazwa" autocomplete="off">
+        <input id="input-nazwa" type="text" maxlength="14" placeholder="Twoja nazwa" autocomplete="off" enterkeyhint="go">
       </div>
       <button id="btn-wejdz" class="glowny" disabled>Wchodzę</button>
       <p class="info" id="info-nazwa"></p>
@@ -66,6 +92,12 @@
       <p class="podtytul" id="lobby-podtytul">Czekamy na graczy…</p>
 
       <ul class="lista-graczy" id="lista-graczy"></ul>
+
+      <div class="trwa-gra" id="trwa-gra" hidden>
+        <p>Trwa partia: <b id="trwa-gra-gracze"></b></p>
+        <p class="info">Nowa ruszy, gdy ta się skończy.</p>
+        <button id="btn-ogladaj" type="button">Oglądaj</button>
+      </div>
 
       <div class="odliczanie" id="odliczanie" hidden>
         Start za <b id="odliczanie-sek">20</b> s

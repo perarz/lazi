@@ -4,11 +4,10 @@
    Teren malujemy raz do offscreen canvasu; po wybuchu przemalowujemy
    tylko kolumny objęte kraterem, a nie całe 2 MB. */
 
-import { WORLD_W, WORLD_H, LAVA_Y } from './terrain.js';
+import { WORLD_W, WORLD_H } from './terrain.js';
 import { WEAPONS } from './weapons.js';
+import { WORM_H } from './sim.js';
 import { drawFx } from './fx.js';
-
-const WORM_H = 20;
 
 export function createRenderer(canvas) {
   const terrainCanvas = document.createElement('canvas');
@@ -99,7 +98,10 @@ export function focusCamera(cam, x, y, zoom) {
   if (zoom) cam.tzoom = zoom;
 }
 
-export function updateCamera(cam, dt, viewW, viewH) {
+/* dol: ile px CSS od dołu ekranu zasłania HUD (bronie, przyciski dotykowe).
+   Dno świata może podjechać ponad ten pas, a świat niższy od ekranu
+   (telefon pionowo) stoi tuż nad nim zamiast wisieć na środku. */
+export function updateCamera(cam, dt, viewW, viewH, dol = 0) {
   const k = Math.min(1, dt * 3.4);
   cam.x += (cam.tx - cam.x) * k;
   cam.y += (cam.ty - cam.y) * k;
@@ -108,14 +110,28 @@ export function updateCamera(cam, dt, viewW, viewH) {
   // Nie pokazujemy pustki poza mapą, chyba że świat jest węższy niż ekran.
   const halfW = viewW / (2 * cam.zoom);
   const halfH = viewH / (2 * cam.zoom);
+  const maxY = WORLD_H - (viewH / 2 - dol) / cam.zoom;
   if (halfW * 2 < WORLD_W) cam.x = Math.max(halfW, Math.min(WORLD_W - halfW, cam.x));
   else cam.x = WORLD_W / 2;
-  cam.y = Math.min(WORLD_H - halfH, Math.max(halfH, cam.y));
+  if (halfH * 2 < WORLD_H) cam.y = Math.min(maxY, Math.max(halfH, cam.y));
+  else cam.y = Math.max(WORLD_H / 2, maxY);
+  // cel kamery też w granicach — inaczej po ręcznym przesunięciu „ciągnęłaby” w pustkę
+  if (halfW * 2 < WORLD_W) cam.tx = Math.max(halfW, Math.min(WORLD_W - halfW, cam.tx));
+  if (halfH * 2 < WORLD_H) cam.ty = Math.min(maxY, Math.max(halfH, cam.ty));
+}
+
+/* Punkt na ekranie (px CSS) → punkt w świecie. */
+export function ekranNaSwiat(r, cam, sx, sy) {
+  return {
+    x: cam.x + (sx - r.viewW / 2) / cam.zoom,
+    y: cam.y + (sy - r.viewH / 2) / cam.zoom
+  };
 }
 
 /* ---------- rysowanie ---------- */
 
-export function draw(r, state, cam, fx, dt) {
+/* opcje: { mojeId, rozlaczeni: Set, celNalotu: {x,y}|null } */
+export function draw(r, state, cam, fx, dt, opcje = {}) {
   const ctx = r.ctx;
   const W = r.viewW, H = r.viewH;
   r.time += dt;
@@ -132,11 +148,21 @@ export function draw(r, state, cam, fx, dt) {
   ctx.scale(cam.zoom, cam.zoom);
   ctx.translate(-cam.x, -cam.y);
 
-  drawLava(ctx, r.time);
   ctx.drawImage(r.terrainCanvas, 0, 0);
+  drawLava(ctx, r.time, state.lava);
 
+  if (opcje.celNalotu) drawCel(ctx, opcje.celNalotu, r.time);
+
+  const akt = activeOf(state);
   for (const p of state.projectiles) drawProjectile(ctx, p);
-  for (const w of state.worms) if (w.alive) drawWorm(ctx, w, w === activeOf(state), r.time);
+  for (const w of state.worms) {
+    if (!w.alive) continue;
+    drawWorm(ctx, w, w === akt && state.phase === 'aim', r.time, {
+      ja: w.id === opcje.mojeId,
+      rozlaczony: !!opcje.rozlaczeni && opcje.rozlaczeni.has(w.id),
+      moc: w === akt && state.phase === 'aim' ? (w.widok ? w.widok.moc : state.charging ? state.power : 0) : 0
+    });
+  }
 
   if (fx) drawFx(fx, ctx);
   ctx.restore();
@@ -148,23 +174,42 @@ function activeOf(state) {
   return state.worms.find((w) => w.id === id) || null;
 }
 
-function drawLava(ctx, time) {
-  const g = ctx.createLinearGradient(0, LAVA_Y - 20, 0, WORLD_H);
-  g.addColorStop(0, 'rgba(255,150,30,0.75)');
-  g.addColorStop(0.25, '#ff5a00');
+function drawLava(ctx, time, poziom) {
+  const g = ctx.createLinearGradient(0, poziom - 20, 0, WORLD_H);
+  g.addColorStop(0, 'rgba(255,150,30,0.85)');
+  g.addColorStop(0.18, '#ff5a00');
   g.addColorStop(1, '#8a0f00');
   ctx.fillStyle = g;
-  ctx.fillRect(0, LAVA_Y, WORLD_W, WORLD_H - LAVA_Y);
+  ctx.fillRect(-200, poziom, WORLD_W + 400, WORLD_H - poziom + 200);
 
   // falująca, świecąca powierzchnia
   ctx.strokeStyle = 'rgba(255,220,120,0.8)';
   ctx.lineWidth = 3;
   ctx.beginPath();
-  for (let x = 0; x <= WORLD_W; x += 16) {
-    const y = LAVA_Y + Math.sin(x * 0.012 + time * 1.6) * 3 + Math.sin(x * 0.03 - time * 2.3) * 2;
-    if (x === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+  for (let x = -200; x <= WORLD_W + 200; x += 16) {
+    const y = poziom + Math.sin(x * 0.012 + time * 1.6) * 3 + Math.sin(x * 0.03 - time * 2.3) * 2;
+    if (x === -200) ctx.moveTo(x, y); else ctx.lineTo(x, y);
   }
   ctx.stroke();
+}
+
+function drawCel(ctx, cel, time) {
+  const r = 14 + Math.sin(time * 6) * 2;
+  ctx.strokeStyle = '#ff3b23';
+  ctx.lineWidth = 2.5;
+  ctx.beginPath();
+  ctx.arc(cel.x, cel.y, r, 0, 6.283);
+  ctx.moveTo(cel.x - r - 6, cel.y); ctx.lineTo(cel.x + r + 6, cel.y);
+  ctx.moveTo(cel.x, cel.y - r - 6); ctx.lineTo(cel.x, cel.y + r + 6);
+  ctx.stroke();
+  // pionowa linia — rakiety spadają z nieba
+  ctx.setLineDash([6, 8]);
+  ctx.strokeStyle = 'rgba(255,80,40,0.35)';
+  ctx.beginPath();
+  ctx.moveTo(cel.x, 0);
+  ctx.lineTo(cel.x, cel.y - r - 8);
+  ctx.stroke();
+  ctx.setLineDash([]);
 }
 
 function drawProjectile(ctx, p) {
@@ -174,17 +219,33 @@ function drawProjectile(ctx, p) {
 
   if (weapon.kind === 'pocisk') {
     ctx.rotate(Math.atan2(p.vy, p.vx));
-    ctx.fillStyle = '#e8e2d8';
-    ctx.fillRect(-9, -3, 18, 6);
-    ctx.fillStyle = '#ff3b00';
-    ctx.beginPath();
-    ctx.moveTo(9, 0); ctx.lineTo(3, -4); ctx.lineTo(3, 4);
-    ctx.fill();
+    if (weapon.id === 'odlamek') {
+      ctx.fillStyle = '#2d2a26';
+      ctx.beginPath();
+      ctx.arc(0, 0, 3.5, 0, 6.283);
+      ctx.fill();
+    } else {
+      const dl = weapon.id === 'rakieta' ? 14 : 18;
+      ctx.fillStyle = weapon.id === 'rakieta' ? '#c9c2b6' : '#e8e2d8';
+      ctx.fillRect(-dl / 2, -3, dl, 6);
+      ctx.fillStyle = '#ff3b00';
+      ctx.beginPath();
+      ctx.moveTo(dl / 2, 0); ctx.lineTo(dl / 2 - 6, -4); ctx.lineTo(dl / 2 - 6, 4);
+      ctx.fill();
+    }
   } else {
-    ctx.fillStyle = weapon.id === 'dynamit' ? '#c62b1a' : '#3f4a35';
+    const dynamit = weapon.id === 'dynamit';
+    ctx.fillStyle = dynamit ? '#c62b1a' : weapon.id === 'kasetowa' ? '#5b4a8a' : '#3f4a35';
     ctx.beginPath();
-    ctx.arc(0, 0, weapon.id === 'dynamit' ? 8 : 6, 0, 6.283);
+    ctx.arc(0, 0, dynamit ? 8 : 6, 0, 6.283);
     ctx.fill();
+    if (weapon.id === 'kasetowa') {
+      ctx.strokeStyle = '#ffd93b';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.arc(0, 0, 3.5, 0, 6.283);
+      ctx.stroke();
+    }
     // lont miga tym szybciej, im bliżej wybuchu
     if (p.fuse !== null) {
       const blink = p.fuse < 1 ? (Math.floor(p.fuse * 10) % 2 === 0) : true;
@@ -199,9 +260,13 @@ function drawProjectile(ctx, p) {
   ctx.restore();
 }
 
-function drawWorm(ctx, w, isActive, time) {
-  const cx = w.x;
-  const cy = w.y - WORM_H / 2;
+function drawWorm(ctx, w, isActive, time, o) {
+  // Cudzy robal w trakcie tury: pozycja i celownik z podglądu na żywo.
+  const v = w.widok || w;
+  const cx = v.x;
+  const cy = v.y - WORM_H / 2;
+  const facing = v.facing ?? w.facing;
+  const angle = v.angle ?? w.angle;
 
   if (isActive) {
     ctx.globalAlpha = 0.35 + Math.sin(time * 4) * 0.15;
@@ -212,26 +277,28 @@ function drawWorm(ctx, w, isActive, time) {
     ctx.globalAlpha = 1;
   }
 
+  ctx.globalAlpha = o.rozlaczony ? 0.45 : 1;
   ctx.fillStyle = w.color;
   ctx.beginPath();
   ctx.ellipse(cx, cy, 8, 10, 0, 0, 6.283);
   ctx.fill();
-  ctx.strokeStyle = 'rgba(0,0,0,0.55)';
-  ctx.lineWidth = 1.5;
+  ctx.strokeStyle = o.ja ? '#fff6cf' : 'rgba(0,0,0,0.55)';
+  ctx.lineWidth = o.ja ? 2 : 1.5;
   ctx.stroke();
 
   ctx.fillStyle = '#fff';
   ctx.beginPath();
-  ctx.arc(cx + w.facing * 3, cy - 3, 2.6, 0, 6.283);
+  ctx.arc(cx + facing * 3, cy - 3, 2.6, 0, 6.283);
   ctx.fill();
   ctx.fillStyle = '#111';
   ctx.beginPath();
-  ctx.arc(cx + w.facing * 3.8, cy - 3, 1.3, 0, 6.283);
+  ctx.arc(cx + facing * 3.8, cy - 3, 1.3, 0, 6.283);
   ctx.fill();
+  ctx.globalAlpha = 1;
 
   if (isActive) {
-    const ax = cx + Math.cos(w.angle) * 42;
-    const ay = cy + Math.sin(w.angle) * 42;
+    const ax = cx + Math.cos(angle) * 42;
+    const ay = cy + Math.sin(angle) * 42;
     ctx.strokeStyle = 'rgba(255,210,120,0.85)';
     ctx.lineWidth = 2;
     ctx.setLineDash([4, 4]);
@@ -244,6 +311,15 @@ function drawWorm(ctx, w, isActive, time) {
     ctx.beginPath();
     ctx.arc(ax, ay, 3, 0, 6.283);
     ctx.fill();
+
+    // ładowanie strzału — łuk wokół robala
+    if (o.moc > 0) {
+      ctx.strokeStyle = o.moc > 0.85 ? '#ff2200' : '#ffb020';
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.arc(cx, cy, 16, -Math.PI / 2, -Math.PI / 2 + o.moc * 6.283);
+      ctx.stroke();
+    }
   }
 
   // pasek zdrowia i nazwa
@@ -254,10 +330,11 @@ function drawWorm(ctx, w, isActive, time) {
   ctx.fillStyle = w.hp > 50 ? '#5ec26a' : w.hp > 22 ? '#ffb020' : '#ff3b23';
   ctx.fillRect(cx - barW / 2, top, (barW * w.hp) / 100, 4);
 
+  const nazwa = w.name + (o.rozlaczony ? ' (brak sieci)' : '');
   ctx.font = '600 11px system-ui, sans-serif';
   ctx.textAlign = 'center';
   ctx.fillStyle = 'rgba(0,0,0,0.7)';
-  ctx.fillText(w.name, cx, top - 5);
-  ctx.fillStyle = '#ffe9c8';
-  ctx.fillText(w.name, cx, top - 6);
+  ctx.fillText(nazwa, cx, top - 5);
+  ctx.fillStyle = o.ja ? '#fff6cf' : '#ffe9c8';
+  ctx.fillText(nazwa, cx, top - 6);
 }

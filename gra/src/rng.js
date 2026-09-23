@@ -42,7 +42,19 @@ export function smoothstep(edge0, edge1, x) {
   return t * t * (3 - 2 * t);
 }
 
-/* Tani hash stanu — służy do wykrycia rozjazdu symulacji między klientami. */
+/* FNV-1a po znakach tekstu — hash całego stanu zserializowanego do JSON-a.
+   JSON zapisuje liczby tak, że odczyt daje dokładnie tę samą wartość,
+   więc równy hash znaczy stan równy co do bitu. */
+export function hashTekstu(s) {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i);
+    h = Math.imul(h, 0x01000193);
+  }
+  return (h >>> 0).toString(16).padStart(8, '0');
+}
+
+/* Tani hash liczb (zaokrąglonych do pikseli). */
 export function hashNumbers(values) {
   let h = 0x811c9dc5;
   for (let i = 0; i < values.length; i++) {
