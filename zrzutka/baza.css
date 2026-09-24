@@ -1250,6 +1250,8 @@ h1 span { display: block; }
 }
 
 .odznaki-tytul span { color: var(--c-akcent); }
+.arena-zacheta { margin: -6px 0 12px; font-size: 0.85rem; color: var(--c-tekst-3); }
+.arena-zacheta a { color: var(--c-akcent); }
 
 .odznaki {
   list-style: none;

@@ -454,3 +454,72 @@ button:disabled { opacity: 0.35; cursor: not-allowed; }
 .tura-czas.ucieczka { color: #ff3b23; }
 body.ucieczka .dotyk-prawy { visibility: hidden; }
 body.ucieczka .bronie { opacity: 0.35; pointer-events: none; }
+
+/* ---------- osiągnięcia ---------- */
+
+/* wyskakujące w trakcie gry — pod panelami, nie zasłania robala */
+.osiagniecie {
+  position: absolute; left: 50%; top: calc(88px + var(--bezp-g));
+  transform: translateX(-50%);
+  display: grid; grid-template-columns: auto 1fr; column-gap: 12px; align-items: center;
+  min-width: min(320px, calc(100% - 24px));
+  padding: 10px 16px 10px 12px;
+  background: linear-gradient(135deg, rgba(60, 30, 4, 0.95), rgba(24, 12, 6, 0.95));
+  border: 1px solid var(--zar-jasny);
+  border-radius: 12px;
+  box-shadow: 0 0 30px rgba(255, 180, 40, 0.35);
+  pointer-events: none;
+  z-index: 5;
+}
+.osiagniecie.wchodzi { animation: osiagniecie 2.8s ease-out forwards; }
+@keyframes osiagniecie {
+  0% { opacity: 0; transform: translate(-50%, -14px) scale(0.9); }
+  10% { opacity: 1; transform: translate(-50%, 0) scale(1.04); }
+  16% { transform: translate(-50%, 0) scale(1); }
+  85% { opacity: 1; }
+  100% { opacity: 0; transform: translate(-50%, -8px); }
+}
+.osiagniecie-ikona { grid-row: span 3; font-size: 30px; line-height: 1; }
+.osiagniecie-nad { font-size: 10px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--zar-jasny); }
+.osiagniecie-nazwa { font-size: 16px; font-weight: 400; }
+.osiagniecie-opis { font-size: 11px; opacity: 0.75; font-family: system-ui, sans-serif; }
+
+/* lista w lobby */
+.osiagniecia { margin-top: 12px; text-align: left; }
+.osiagniecia summary {
+  cursor: pointer; font-size: 13px; letter-spacing: 0.04em; opacity: 0.85;
+  list-style: none; text-align: center;
+}
+.osiagniecia summary::-webkit-details-marker { display: none; }
+.osiagniecia summary::before { content: '🏆 '; }
+.osiagniecia summary b { color: var(--zar-jasny); }
+.osiagniecia-lista {
+  list-style: none; margin-top: 10px;
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 6px;
+  max-height: 260px; overflow-y: auto;
+}
+.osiagniecia-lista li {
+  display: flex; gap: 8px; align-items: center;
+  padding: 6px 8px; border-radius: 8px;
+  background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255, 255, 255, 0.08);
+}
+.osiagniecia-lista li.ma { border-color: rgba(255, 200, 60, 0.45); background: rgba(255, 170, 30, 0.08); }
+.osiagniecia-lista li.brak { opacity: 0.45; }
+.osiagniecia-lista li.brak .ikona { filter: grayscale(1); }
+.osiagniecia-lista .ikona { font-size: 20px; flex: none; }
+.osiagniecia-lista b { display: block; font-size: 12px; font-weight: 400; }
+.osiagniecia-lista small { display: block; font-size: 10.5px; opacity: 0.7; font-family: system-ui, sans-serif; line-height: 1.25; }
+
+/* ekran końca: co wpadło w tej partii */
+.koniec-osiagniecia { list-style: none; margin: 4px 0 14px; display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
+.koniec-osiagniecia li {
+  font-size: 12px; padding: 4px 10px; border-radius: 999px;
+  background: rgba(255, 170, 30, 0.14); border: 1px solid rgba(255, 200, 60, 0.5);
+}
+
+@media (max-height: 500px) {
+  .osiagniecie { top: calc(64px + var(--bezp-g)); min-width: 0; padding: 6px 12px 6px 9px; column-gap: 9px; }
+  .osiagniecie-ikona { font-size: 22px; }
+  .osiagniecie-nazwa { font-size: 13px; }
+  .osiagniecie-opis { font-size: 10px; }
+}

@@ -685,6 +685,33 @@
 
   var swiezeOdznaki = {};
 
+  /* Osiągnięcia z Areny: lista z gra/osiagniecia.js, zdobyte w localStorage
+     (ta sama domena, więc gra i strona widzą ten sam zapis). */
+  function rysujOsiagnieciaAreny() {
+    var A = window.ARENA_OSIAGNIECIA;
+    var lista = $('#arena-osiagniecia');
+    if (!A || !lista) return;
+    var zdobyte = A.wczytaj();
+    lista.textContent = '';
+    var ile = 0;
+    A.lista.forEach(function (o) {
+      var ma = !!zdobyte[o.id];
+      if (ma) ile++;
+      var widac = ma || !o.ukryta;
+      var li = elem('li', 'odznaka' + (ma ? '' : ' zablokowana'));
+      li.appendChild(elem('span', 'odznaka-ikona', widac ? o.ikona : '❔'));
+      li.appendChild(elem('span', 'odznaka-nazwa', widac ? o.nazwa : '???'));
+      li.appendChild(elem('span', 'odznaka-opis', widac ? o.opis : 'Tajne osiągnięcie. Kombinuj w Arenie.'));
+      lista.appendChild(li);
+    });
+    $('#arena-licznik').textContent = ile + '/' + A.lista.length;
+  }
+
+  // gra otwarta w drugiej karcie coś odblokowała — odświeżamy bez przeładowania
+  window.addEventListener('storage', function (e) {
+    if (window.ARENA_OSIAGNIECIA && e.key === window.ARENA_OSIAGNIECIA.klucz) rysujOsiagnieciaAreny();
+  });
+
   function rysujOdznaki() {
     var lista = $('#odznaki');
     lista.textContent = '';
@@ -702,6 +729,7 @@
     var tekst = ile + '/' + DANE.odznaki.length;
     $('#odznaki-licznik').textContent = tekst;
     $$('[data-odznaki-licznik]').forEach(function (e) { e.textContent = tekst; });
+    rysujOsiagnieciaAreny();
   }
 
   function odblokuj(id) {
