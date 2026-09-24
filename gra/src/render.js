@@ -98,26 +98,40 @@ export function focusCamera(cam, x, y, zoom) {
   if (zoom) cam.tzoom = zoom;
 }
 
+/* Ile świata wolno pokazać poza krawędzią mapy. Z boku i w górę kamera
+   może wyjechać w pustkę (niebo, lawa), żeby robal stojący przy samej
+   krawędzi był w kadrze, a nie przyklejony do brzegu ekranu albo schowany
+   pod przyciskami na telefonie. */
+const ZAPAS_BOK = 380;
+const ZAPAS_NIEBO = 420;
+
 /* dol: ile px CSS od dołu ekranu zasłania HUD (bronie, przyciski dotykowe).
    Dno świata może podjechać ponad ten pas, a świat niższy od ekranu
    (telefon pionowo) stoi tuż nad nim zamiast wisieć na środku. */
 export function updateCamera(cam, dt, viewW, viewH, dol = 0) {
-  const k = Math.min(1, dt * 3.4);
+  const k = Math.min(1, dt * 4.2);
   cam.x += (cam.tx - cam.x) * k;
   cam.y += (cam.ty - cam.y) * k;
   cam.zoom += (cam.tzoom - cam.zoom) * k;
 
-  // Nie pokazujemy pustki poza mapą, chyba że świat jest węższy niż ekran.
   const halfW = viewW / (2 * cam.zoom);
   const halfH = viewH / (2 * cam.zoom);
+  const minX = halfW - Math.min(ZAPAS_BOK, halfW * 0.8);
+  const maxX = WORLD_W - minX;
+  const minY = halfH - Math.min(ZAPAS_NIEBO, halfH);
   const maxY = WORLD_H - (viewH / 2 - dol) / cam.zoom;
-  if (halfW * 2 < WORLD_W) cam.x = Math.max(halfW, Math.min(WORLD_W - halfW, cam.x));
-  else cam.x = WORLD_W / 2;
-  if (halfH * 2 < WORLD_H) cam.y = Math.min(maxY, Math.max(halfH, cam.y));
-  else cam.y = Math.max(WORLD_H / 2, maxY);
-  // cel kamery też w granicach — inaczej po ręcznym przesunięciu „ciągnęłaby” w pustkę
-  if (halfW * 2 < WORLD_W) cam.tx = Math.max(halfW, Math.min(WORLD_W - halfW, cam.tx));
-  if (halfH * 2 < WORLD_H) cam.ty = Math.min(maxY, Math.max(halfH, cam.ty));
+  if (halfW * 2 < WORLD_W) {
+    cam.x = Math.max(minX, Math.min(maxX, cam.x));
+    cam.tx = Math.max(minX, Math.min(maxX, cam.tx));
+  } else {
+    cam.x = WORLD_W / 2;
+  }
+  if (halfH * 2 < WORLD_H) {
+    cam.y = Math.min(maxY, Math.max(minY, cam.y));
+    cam.ty = Math.min(maxY, Math.max(minY, cam.ty));
+  } else {
+    cam.y = Math.max(WORLD_H / 2, maxY);
+  }
 }
 
 /* Punkt na ekranie (px CSS) → punkt w świecie. */
@@ -180,15 +194,16 @@ function drawLava(ctx, time, poziom) {
   g.addColorStop(0.18, '#ff5a00');
   g.addColorStop(1, '#8a0f00');
   ctx.fillStyle = g;
-  ctx.fillRect(-200, poziom, WORLD_W + 400, WORLD_H - poziom + 200);
+  // lawa sięga daleko za mapę — kamera potrafi tam zajrzeć
+  ctx.fillRect(-1400, poziom, WORLD_W + 2800, WORLD_H - poziom + 1400);
 
   // falująca, świecąca powierzchnia
   ctx.strokeStyle = 'rgba(255,220,120,0.8)';
   ctx.lineWidth = 3;
   ctx.beginPath();
-  for (let x = -200; x <= WORLD_W + 200; x += 16) {
+  for (let x = -1400; x <= WORLD_W + 1400; x += 16) {
     const y = poziom + Math.sin(x * 0.012 + time * 1.6) * 3 + Math.sin(x * 0.03 - time * 2.3) * 2;
-    if (x === -200) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    if (x === -1400) ctx.moveTo(x, y); else ctx.lineTo(x, y);
   }
   ctx.stroke();
 }
