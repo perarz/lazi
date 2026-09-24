@@ -11,6 +11,7 @@ import { createFx, stepFx, emitExplosion, emitTrail, emitSpark, emitTekst, emitS
 import { attachInput } from './input.js';
 import { WEAPONS, WEAPON_ORDER } from './weapons.js';
 import { createNet } from './net.js';
+import { nowaPartiaOs, zdarzenieOs, koniecTuryOs, koniecPartiiOs } from './osiagniecia-reguly.js';
 
 const KOLORY = ['#ff7a1e', '#4ea3ff', '#5ec26a', '#e04fd0', '#ffd93b', '#9b8cff'];
 
@@ -69,8 +70,47 @@ const OPISY_MAP = {
 
 /* Statystyki gracza liczone wyłącznie w przeglądarce (localStorage) —
    zero dodatkowych zapytań do serwera. */
-let tura = { nr: -1, kto: null, suma: 0 };       // obrażenia zadane w bieżącej turze
-let partia = { obrazenia: 0, fragi: 0, liczona: false };
+let tura = pustaTura();                           // co się dzieje w bieżącej turze
+let partia = pustaPartia();
+
+function pustaTura(nr = -1, kto = null) {
+  return { nr, kto, suma: 0 };
+}
+function pustaPartia() {
+  // os: stan reguł osiągnięć (osiagniecia-reguly.js) — liczy też fragi bez duplikatów
+  return { obrazenia: 0, liczona: false, nowe: [], os: nowaPartiaOs() };
+}
+function turaDla(st, akt) {
+  if (tura.nr !== st.turnNumber) tura = pustaTura(st.turnNumber, akt);
+  return tura;
+}
+
+/* Osiągnięcia z Areny (lista w gra/osiagniecia.js, zapis w localStorage). */
+const OSIAGNIECIA = window.ARENA_OSIAGNIECIA || null;
+const kolejkaOsiagniec = [];
+let osiagniecieTimer = null;
+function zdobadz(id) {
+  if (!OSIAGNIECIA || !rg || rg.obserwator) return;
+  const o = OSIAGNIECIA.odblokuj(id);
+  if (!o) return;
+  partia.nowe.push(o);
+  kolejkaOsiagniec.push(o);
+  if (!osiagniecieTimer) pokazOsiagniecie();
+}
+function pokazOsiagniecie() {
+  const o = kolejkaOsiagniec.shift();
+  const box = el('osiagniecie');
+  if (!o) { box.hidden = true; osiagniecieTimer = null; return; }
+  el('osiagniecie-ikona').textContent = o.ikona;
+  el('osiagniecie-nazwa').textContent = o.nazwa;
+  el('osiagniecie-opis').textContent = o.opis;
+  box.hidden = false;
+  box.classList.remove('wchodzi');
+  void box.offsetWidth;
+  box.classList.add('wchodzi');
+  try { navigator.vibrate?.(40); } catch { /* nie wszędzie */ }
+  osiagniecieTimer = setTimeout(pokazOsiagniecie, 2800);
+}
 function wczytajStaty() {
   try {
     const z = JSON.parse(czytaj('arena:staty'));
@@ -83,6 +123,36 @@ function opisStatow() {
   if (!s.partie) return '';
   return 'Twoje statystyki: ' + s.partie + ' partii, ' + s.wygrane + ' wygranych, ' +
     s.fragi + ' fragów, ' + s.obrazenia + ' obrażeń (rekord tury: ' + s.rekordTury + ').';
+}
+
+let podpisOsiagniec = '';
+function rysujOsiagnieciaLobby() {
+  if (!OSIAGNIECIA) return;
+  const zdobyte = OSIAGNIECIA.wczytaj();
+  const podpis = Object.keys(zdobyte).sort().join(',');
+  if (podpis === podpisOsiagniec) return;
+  podpisOsiagniec = podpis;
+  const lista = el('osiagniecia-lista');
+  lista.replaceChildren();
+  let ile = 0;
+  for (const o of OSIAGNIECIA.lista) {
+    const ma = !!zdobyte[o.id];
+    if (ma) ile++;
+    const li = document.createElement('li');
+    li.className = ma ? 'ma' : 'brak';
+    const ik = document.createElement('span');
+    ik.className = 'ikona';
+    ik.textContent = ma || !o.ukryta ? o.ikona : '❔';
+    const tekst = document.createElement('span');
+    const b = document.createElement('b');
+    b.textContent = ma || !o.ukryta ? o.nazwa : '???';
+    const opis = document.createElement('small');
+    opis.textContent = ma || !o.ukryta ? o.opis : 'Tajne. Kombinuj.';
+    tekst.append(b, opis);
+    li.append(ik, tekst);
+    lista.append(li);
+  }
+  el('osiagniecia-licznik').textContent = ile + '/' + OSIAGNIECIA.lista.length;
 }
 
 function czytaj(k) { try { return localStorage.getItem(k); } catch { return null; } }
@@ -329,6 +399,7 @@ function odswiezLobby() {
   }
 
   el('moje-staty').textContent = opisStatow();
+  rysujOsiagnieciaLobby();
   el('btn-start').disabled = obecni.length < 2 || wToku;
   el('info-lobby').textContent = Date.now() < infoLobby.do
     ? infoLobby.tekst
@@ -425,8 +496,8 @@ function zbudujGre() {
   odswiezPelnyEkran();
   pasy.pomiar = -1e9;
   pasy.swieze = true;
-  tura = { nr: -1, kto: null, suma: 0 };
-  partia = { obrazenia: 0, fragi: 0, liczona: false };
+  tura = pustaTura();
+  partia = pustaPartia();
   const opisMapy = OPISY_MAP[rg.state.terrain.styl];
   if (dotykowy() && window.innerHeight > window.innerWidth * 1.2) {
     pokazInfo('Obróć telefon poziomo — zobaczysz więcej areny.');
@@ -621,13 +692,20 @@ function pokazTure() {
   if (!akt) return;
   const moja = akt.id === mojeId && !rg.obserwator;
   napis(moja ? 'TWOJA TURA' : 'Tura: ' + akt.name, !moja);
-  if (tura.kto && tura.nr !== st.turnNumber && tura.suma >= 50) {
-    pokazInfo((tura.kto.id === mojeId ? 'Twój strzał' : 'Strzał ' + tura.kto.name) + ': ' + tura.suma + ' obrażeń' + (tura.suma >= 100 ? ' — MASAKRA!' : '!'));
-    if (tura.kto.id === mojeId && !rg.obserwator) {
-      const staty = wczytajStaty();
-      if (tura.suma > staty.rekordTury) { staty.rekordTury = tura.suma; zapisz('arena:staty', JSON.stringify(staty)); }
+  if (tura.kto && tura.nr !== st.turnNumber) {
+    const moja = tura.kto.id === mojeId && !rg.obserwator;
+    if (tura.suma >= 50) {
+      pokazInfo((moja ? 'Twój strzał' : 'Strzał ' + tura.kto.name) + ': ' + tura.suma + ' obrażeń' + (tura.suma >= 100 ? ' — MASAKRA!' : '!'));
+      if (moja) {
+        const staty = wczytajStaty();
+        if (tura.suma > staty.rekordTury) { staty.rekordTury = tura.suma; zapisz('arena:staty', JSON.stringify(staty)); }
+      }
     }
-    tura = { nr: -1, kto: null, suma: 0 };
+    tura = pustaTura();
+  }
+  if (partia.os.tura.nr !== -1 && partia.os.tura.nr !== st.turnNumber && !rg.obserwator) {
+    const ja = st.worms.find((x) => x.id === mojeId);
+    for (const id of koniecTuryOs(partia.os, { mojeId, jaZywy: !!ja && ja.alive })) zdobadz(id);
   }
   recznaKameraDo = 0;
   if (moja) {
@@ -726,6 +804,11 @@ function trzymajWKadrze() {
 function obsluzZdarzenia() {
   const st = rg.state;
   for (const e of st.events) {
+    if (!rg.obserwator && (e.type === 'strzal' || e.type === 'obrazenia' || e.type === 'smierc')) {
+      const akt = S.activeWorm(st);
+      const ctx = { nr: st.turnNumber, aktId: akt ? akt.id : null, mojeId, fragiWczesniej: wczytajStaty().fragi };
+      for (const id of zdarzenieOs(partia.os, e, ctx)) zdobadz(id);
+    }
     switch (e.type) {
       case 'wybuch':
         emitExplosion(fx, e.x, e.y, e.r);
@@ -740,16 +823,13 @@ function obsluzZdarzenia() {
         emitTekst(fx, e.x, e.y - 34, '-' + e.amount, '#ff7a55');
         const akt = S.activeWorm(st);
         if (akt && e.wormId !== akt.id) {
-          if (tura.nr !== st.turnNumber) tura = { nr: st.turnNumber, kto: akt, suma: 0 };
-          tura.suma += e.amount;
+          turaDla(st, akt).suma += e.amount;
           if (akt.id === mojeId && !rg.obserwator) partia.obrazenia += e.amount;
         }
         break;
       }
       case 'smierc': {
         emitTekst(fx, e.x, e.y - 50, e.cause === 'lawa' ? 'do lawy!' : 'RIP', '#ffd93b', 17);
-        const akt = S.activeWorm(st);
-        if (akt && akt.id === mojeId && e.wormId !== mojeId && !rg.obserwator) partia.fragi++;
         break;
       }
       case 'odszedl':
@@ -775,11 +855,22 @@ function pokazKoniec(winnerId) {
     staty.partie++;
     if (w && w.id === mojeId) staty.wygrane++;
     staty.obrazenia += partia.obrazenia;
-    staty.fragi += partia.fragi;
+    staty.fragi += partia.os.fragi;
     if (tura.kto && tura.kto.id === mojeId && tura.suma > staty.rekordTury) staty.rekordTury = tura.suma;
     zapisz('arena:staty', JSON.stringify(staty));
-    opis += ' Ty w tej partii: ' + partia.obrazenia + ' obrażeń, ' + partia.fragi + ' fragów.';
+    opis += ' Ty w tej partii: ' + partia.obrazenia + ' obrażeń, ' + partia.os.fragi + ' fragów.';
+    const ja = rg.state.worms.find((x) => x.id === mojeId);
+    const ctx = { wygralem: !!w && w.id === mojeId, hp: ja ? ja.hp : 0, partie: staty.partie };
+    if (!rg.obserwator) for (const id of koniecPartiiOs(partia.os, ctx)) zdobadz(id);
   }
+  const nowe = el('koniec-osiagniecia');
+  nowe.replaceChildren();
+  for (const o of partia.nowe) {
+    const li = document.createElement('li');
+    li.textContent = o.ikona + ' ' + o.nazwa;
+    nowe.append(li);
+  }
+  nowe.hidden = partia.nowe.length === 0;
   el('koniec-opis').textContent = opis;
   el('ekran-koniec').hidden = false;
   hud.hidden = true;

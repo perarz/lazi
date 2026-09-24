@@ -45,6 +45,14 @@
 
     <div class="napis-tury" id="napis-tury" hidden></div>
 
+    <!-- wyskakujące osiągnięcie -->
+    <div class="osiagniecie" id="osiagniecie" role="status" aria-live="polite" hidden>
+      <span class="osiagniecie-ikona" id="osiagniecie-ikona"></span>
+      <span class="osiagniecie-nad">Osiągnięcie!</span>
+      <b class="osiagniecie-nazwa" id="osiagniecie-nazwa"></b>
+      <span class="osiagniecie-opis" id="osiagniecie-opis"></span>
+    </div>
+
     <div class="hud-dol">
       <div class="bronie" id="bronie"></div>
       <div class="moc"><div class="moc-wypelnienie" id="moc-wypelnienie"></div></div>
@@ -109,6 +117,10 @@
       <button id="btn-start" class="glowny" disabled>Zaczynamy</button>
       <p class="info" id="info-lobby"></p>
       <p class="info staty" id="moje-staty"></p>
+      <details class="osiagniecia">
+        <summary>Osiągnięcia <b id="osiagniecia-licznik">0/0</b></summary>
+        <ul class="osiagniecia-lista" id="osiagniecia-lista"></ul>
+      </details>
     </div>
   </div>
 
@@ -117,11 +129,13 @@
     <div class="karta">
       <h1 id="koniec-tytul">KONIEC</h1>
       <p class="podtytul" id="koniec-opis"></p>
+      <ul class="koniec-osiagniecia" id="koniec-osiagniecia" hidden></ul>
       <button id="btn-znowu" class="glowny">Wracam do lobby</button>
     </div>
   </div>
 
   <script src="/wersja.js" defer></script>
+  <script src="osiagniecia.js" defer></script>
   <script type="module" src="src/main.js"></script>
 </body>
 </html>

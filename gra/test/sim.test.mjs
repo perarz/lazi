@@ -2,9 +2,11 @@
    node gra/test/sim.test.mjs
    Jednocześnie pilnują, żeby sim.js i terrain.js nie wciągnęły DOM-u. */
 
+import { readFileSync } from 'fs';
 import * as T from '../src/terrain.js';
 import * as S from '../src/sim.js';
 import { WEAPONS, WEAPON_ORDER } from '../src/weapons.js';
+import { nowaPartiaOs, zdarzenieOs, koniecTuryOs, koniecPartiiOs } from '../src/osiagniecia-reguly.js';
 
 let passed = 0, failed = 0;
 
@@ -438,6 +440,94 @@ test('snapshot jest maly', () => {
 
 test('rozne seedy daja rozny hash', () => {
   assert(S.stateHash(S.createGame(1, players(2))) !== S.stateHash(S.createGame(2, players(2))));
+});
+
+console.log('\nOSIAGNIECIA');
+
+/* Prawdziwa symulacja, zdarzenia karmione do reguł tak jak w main.js. */
+function grajZOsiagnieciami(st, os, mojeId, sek) {
+  const zdobyte = new Set();
+  for (let i = 0; i < sek / S.DT; i++) {
+    S.step(st);
+    const akt = S.activeWorm(st);
+    for (const e of st.events) {
+      for (const id of zdarzenieOs(os, e, { nr: st.turnNumber, aktId: akt ? akt.id : null, mojeId, fragiWczesniej: 0 })) zdobyte.add(id);
+    }
+    st.events.length = 0;
+    if (st.phase === 'koniec' || st.phase === 'over') break;
+  }
+  return zdobyte;
+}
+
+test('zabicie nalotem daje „Nalot dywanowy” i „Pierwsza krew”', () => {
+  const st = S.createGame(21, players(2), { sieciowa: true });
+  const ja = S.activeWorm(st);
+  const wrog = st.worms.find((w) => w !== ja);
+  wrog.hp = 1;
+  st.weapon = 'nalot';
+  S.ustawCel(st, wrog.x, wrog.y);
+  assert(S.startCharging(st), 'nalot nie wystartowal');
+  S.releaseFire(st);
+  const os = nowaPartiaOs();
+  const z = grajZOsiagnieciami(st, os, ja.id, 20);
+  assert(!wrog.alive, 'nalot nie zabil');
+  assert(z.has('nalot') && z.has('pierwsza-krew'), 'brak osiagniec: ' + [...z].join(','));
+  assert(os.fragi === 1, 'fragi=' + os.fragi);
+});
+
+test('wrzucenie do lawy daje „Kąpiel w lawie”', () => {
+  const st = S.createGame(21, players(2), { sieciowa: true });
+  const ja = S.activeWorm(st);
+  const wrog = st.worms.find((w) => w !== ja);
+  wrog.y = st.lava + 4;
+  wrog.onGround = false;
+  const z = grajZOsiagnieciami(st, nowaPartiaOs(), ja.id, 0.1);
+  assert(z.has('lawa'), 'brak: ' + [...z].join(','));
+});
+
+test('smierc liczona raz, dublet, progi 5 i 25, samoboja', () => {
+  const os = nowaPartiaOs();
+  const ctx = { nr: 3, aktId: 'ja', mojeId: 'ja', fragiWczesniej: 3 };
+  zdarzenieOs(os, { type: 'strzal', weapon: 'dynamit' }, ctx);
+  const a = zdarzenieOs(os, { type: 'smierc', wormId: 'x', cause: 'wybuch' }, ctx);
+  const b = zdarzenieOs(os, { type: 'smierc', wormId: 'x', cause: 'wybuch' }, ctx);
+  const c = zdarzenieOs(os, { type: 'smierc', wormId: 'y', cause: 'wybuch' }, ctx);
+  assert(a.includes('saper') && !a.includes('piec-fragow'), 'a: ' + a);
+  assert(b.length === 0, 'podwojne liczenie: ' + b);
+  assert(c.includes('dublet') && c.includes('piec-fragow') && !c.includes('rzeznik'), 'c: ' + c);
+  assert(os.fragi === 2, 'fragi=' + os.fragi);
+  assert(zdarzenieOs(os, { type: 'smierc', wormId: 'z' }, { ...ctx, fragiWczesniej: 30 }).includes('rzeznik'), 'rzeznik');
+  assert(zdarzenieOs(os, { type: 'smierc', wormId: 'ja', cause: 'lawa' }, ctx).includes('samoboja'), 'samoboja');
+  // cudza tura: nic mi się nie liczy
+  const d = zdarzenieOs(os, { type: 'smierc', wormId: 'w', cause: 'lawa' }, { ...ctx, nr: 4, aktId: 'inny' });
+  assert(d.length === 0, 'cudza tura: ' + d);
+});
+
+test('masakra, ucieczka po dynamicie i osiagniecia konca partii', () => {
+  const os = nowaPartiaOs();
+  const ctx = { nr: 1, aktId: 'ja', mojeId: 'ja' };
+  zdarzenieOs(os, { type: 'strzal', weapon: 'dynamit' }, ctx);
+  assert(zdarzenieOs(os, { type: 'obrazenia', wormId: 'a', amount: 60 }, ctx).length === 0);
+  assert(zdarzenieOs(os, { type: 'obrazenia', wormId: 'b', amount: 45 }, ctx).includes('masakra'), 'masakra');
+  assert(koniecTuryOs(os, { mojeId: 'ja', jaZywy: true }).includes('ucieczka'), 'ucieczka');
+  zdarzenieOs(os, { type: 'strzal', weapon: 'dynamit' }, { ...ctx, nr: 2 });
+  zdarzenieOs(os, { type: 'obrazenia', wormId: 'ja', amount: 30 }, { ...ctx, nr: 2 });
+  assert(!koniecTuryOs(os, { mojeId: 'ja', jaZywy: true }).includes('ucieczka'), 'ucieczka mimo ran');
+  const k = koniecPartiiOs(os, { wygralem: true, hp: 7, partie: 10 });
+  assert(k.includes('zwyciestwo') && k.includes('na-wlosku') && k.includes('weteran') && !k.includes('nietykalny'), 'koniec: ' + k);
+  assert(koniecPartiiOs(nowaPartiaOs(), { wygralem: true, hp: 100, partie: 1 }).includes('nietykalny'), 'nietykalny');
+});
+
+test('kazde id z regul jest na liscie osiagniec', () => {
+  const zrodlo = readFileSync(new URL('../osiagniecia.js', import.meta.url), 'utf8');
+  const reguly = readFileSync(new URL('../src/osiagniecia-reguly.js', import.meta.url), 'utf8');
+  const naLiscie = new Set([...zrodlo.matchAll(/id: '([a-z-]+)'/g)].map((m) => m[1]));
+  const uzyte = new Set([...reguly.matchAll(/'([a-z]+(?:-[a-z]+)+|masakra|samoboja|dublet|lawa|rzeznik|ucieczka|weteran|zwyciestwo|nietykalny|nalot|saper|snajper|kasetowka)'/g)].map((m) => m[1]));
+  for (const id of ['pierwsza-krew', 'piec-fragow', 'rzeznik', 'dublet', 'lawa', 'masakra', 'samoboja', 'ucieczka', 'weteran', 'zwyciestwo', 'na-wlosku', 'nietykalny', 'nalot', 'saper', 'snajper', 'kasetowka']) {
+    assert(naLiscie.has(id), 'brak na liscie: ' + id);
+    assert(uzyte.has(id), 'regula nie uzywa: ' + id);
+  }
+  assert(naLiscie.size === 16, 'na liscie jest ' + naLiscie.size);
 });
 
 console.log('\n' + (failed === 0

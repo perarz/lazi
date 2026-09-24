@@ -5,6 +5,14 @@
 (function () {
   var historia = [
     {
+      wersja: '3.5', data: '2026-09-24', tytul: 'Osiągnięcia z Areny',
+      zmiany: [
+        '16 osiągnięć do zdobycia w Arenie: 5 i 25 eliminacji, zabójstwo nalotem, dynamitem, ze strzelby i kasetówką, wrzucenie do lawy, dublet, masakra, wielka ucieczka, wygrane i jedno tajne.',
+        'Zdobyte osiągnięcie wyskakuje w trakcie gry, a na ekranie końca widać, co wpadło w tej partii.',
+        'Lista osiągnięć w lobby Areny i w profilu na stronie głównej. Zapisują się w przeglądarce, bez obciążania serwera.'
+      ]
+    },
+    {
       wersja: '3.4', data: '2026-09-24', tytul: 'Ucieczka po dynamicie i Quber',
       zmiany: [
         'Po podłożeniu dynamitu masz 3,5 s na ucieczkę (odliczanie nad laską i na zegarze).',

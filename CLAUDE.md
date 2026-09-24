@@ -20,6 +20,7 @@ bez `package.json`, bez zależności npm.
 | `zrzutka/app.js` | Logika strony (przełączanie kategorii przez `#fortnite` / `#0ad`, wpłaty, odznaki) |
 | `zrzutka/baza.css`, `fortnite.css`, `zeroad.css` | Wspólny szkielet i dwa motywy |
 | `gra/` | **Arena GOATów** — turowa strzelanka w stylu Worms, multiplayer online |
+| `gra/osiagniecia.js` | Lista osiągnięć Areny (gra + profil na stronie głównej) |
 | `goat/` | Stara, ukryta strona „ŁAZI TO GOAT” |
 | `zmiany/` | Log zmian (czyta `wersja.js`) |
 | `wersja.js` | **Numer wersji i historia zmian** — jedno źródło; znaczek `vX.Y` w rogu stron |
@@ -48,6 +49,9 @@ bez `package.json`, bez zależności npm.
 - Dynamit ma fazę `odwrot` (3,5 s ucieczki). Wciśnięcia z ucieczki są nagrywane i lecą w strzale jako RLE,
   a strzał wychodzi dopiero po ucieczce. Odbiorca odtwarza je krok w krok.
 - Gospodarz lobby to obecny gracz, który dołączył najwcześniej (kolejność `dolacz` w logu), a nie najmniejsze id.
+- Osiągnięcia: lista w `gra/osiagniecia.js` (klasyczny skrypt, czyta go też strona główna do profilu),
+  reguły w `gra/src/osiagniecia-reguly.js` (czyste funkcje, testowane w `sim.test.mjs`), zapis w
+  `localStorage['arena:osiagniecia']`. Nowe osiągnięcie = wpis na liście + reguła + test.
 
 ## Testy
 
