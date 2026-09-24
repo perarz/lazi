@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#0a0a0a">
+  <meta http-equiv="X-Content-Type-Options" content="nosniff">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; script-src 'self'; img-src 'self' data:; base-uri 'none'; form-action 'none';">
+  <meta name="referrer" content="no-referrer">
+  <title>Co nowego — log zmian</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Russo+One&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styl.css">
+</head>
+<body data-bez-znaczka>
+  <header class="gora">
+    <nav class="nawigacja">
+      <a href="/">Zrzutka</a>
+      <a href="/gra/">Arena</a>
+    </nav>
+    <h1>Co nowego</h1>
+    <p class="pod">Obecna wersja: <b id="obecna">—</b></p>
+  </header>
+  <main id="lista" class="lista"></main>
+  <script src="/wersja.js"></script>
+  <script src="zmiany.js"></script>
+</body>
+</html>

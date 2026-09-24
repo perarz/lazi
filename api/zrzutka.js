@@ -156,6 +156,9 @@ module.exports = async function handler(req, res) {
   } catch (e) {
     if (e && e.brakKonfiguracji) return res.status(503).json({ blad: 'brak-konfiguracji' });
     if (e instanceof SyntaxError) return res.status(400).json({ blad: 'zly-json' });
-    return res.status(500).json({ blad: 'serwer', opis: String((e && e.message) || e).slice(0, 200) });
+    // Szczegóły tylko do logów Vercela — komunikat z Redisa czy fetcha
+    // może zawierać adres bazy, więc do przeglądarki idzie sam kod błędu.
+    console.error('[' + (req.url || 'api') + ']', e);
+    return res.status(500).json({ blad: 'serwer' });
   }
 };

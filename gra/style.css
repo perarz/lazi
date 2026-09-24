@@ -445,3 +445,7 @@ button:disabled { opacity: 0.35; cursor: not-allowed; }
   color: var(--tekst); opacity: 0.6; text-decoration: none;
 }
 .powrot:hover { opacity: 1; color: var(--zar-jasny); }
+
+/* numer wersji na ekranie wejścia — prowadzi do logu zmian */
+.wersja { display: inline-block; margin-top: 14px; font-size: 11px; letter-spacing: 0.06em; color: var(--tekst); opacity: 0.5; text-decoration: none; }
+.wersja:hover { opacity: 1; color: var(--zar-jasny); }
