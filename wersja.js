@@ -8,7 +8,9 @@
       wersja: '3.6', data: '2026-09-24', tytul: 'Lepsze portrety',
       zmiany: [
         'Hełmy Stozhinia (koryncki), Qubera, Kozaka i Laziego zakrywają czoło — z osłonami nosa i policzków.',
-        'Wszystkie postacie: cieniowanie twarzy, cień pod brodą, odblaski w oczach, nosy tam, gdzie ich brakowało.'
+        'Wszystkie postacie: cieniowanie twarzy i ubrań, obrys twarzy, cień pod brodą, uszy, odblaski w oczach, nosy tam, gdzie ich brakowało.',
+        'Większe oczy z tęczówkami (Stozhinio, PowPow, Quber, Apollo), refleksy na włosach.',
+        'Froxy nosi okulary.'
       ]
     },
     {
