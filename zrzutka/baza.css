@@ -58,6 +58,7 @@ button { font: inherit; color: inherit; }
 [data-kolor="mityczny"]    { --r1: #fff09a; --r2: #d9a514; --r3: #4a3300; --rz: #ffd23f; }
 [data-kolor="blekitny"]    { --r1: #a8d8ff; --r2: #2f6fb5; --r3: #0b2240; --rz: #5aa8ec; }
 [data-kolor="jadeitowy"]   { --r1: #8ff0dc; --r2: #178a78; --r3: #06302a; --rz: #2fc4a8; }
+[data-kolor="cesarski"]    { --r1: #dcb0ff; --r2: #6a2fa0; --r3: #22093a; --rz: #a45ee0; }
 
 /* tryb online (wspólne sumy z serwera) lub lokalny */
 html:not(.online) .tylko-online,
@@ -393,10 +394,15 @@ h1 span { display: block; }
   .gracze-4 { grid-template-columns: repeat(4, 1fr); max-width: 1440px; }
 }
 
-/* sześciu wojowników: 3×2 na szerokim ekranie, 2×3 na średnim */
+/* sześciu i więcej wojowników: 3 kolumny na szerokim ekranie, 2 na średnim */
 .gracze-6 {
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 330px), 1fr));
   max-width: 1160px;
+}
+/* samotna ostatnia karta w trzech kolumnach stoi na środku */
+@media (min-width: 1100px) {
+  .gracze-6 { grid-template-columns: repeat(3, 1fr); }
+  .gracze-6 > .karta:last-child:nth-child(3n + 1) { grid-column: 2; }
 }
 
 .karta {

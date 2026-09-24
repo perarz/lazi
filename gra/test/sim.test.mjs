@@ -102,6 +102,38 @@ test('upadek z duzej wysokosci boli, z malej nie', () => {
   assert(mk(600) < 100, 'dlugi upadek powinien zabrac hp');
 });
 
+test('po dynamicie robal moze uciec, a potem traci sterowanie', () => {
+  const st = S.createGame(21, players(2), { sieciowa: true });
+  const w = S.activeWorm(st);
+  st.weapon = 'dynamit';
+  assert(S.startCharging(st), 'nie da sie podlozyc');
+  S.releaseFire(st);
+  assert(st.phase === 'odwrot', 'brak fazy ucieczki: ' + st.phase);
+  const x0 = w.x;
+  st.input.left = true; st.input.right = false;
+  run(st, 1);
+  assert(w.x !== x0 || !w.alive, 'robal nie ruszyl sie w czasie ucieczki');
+  run(st, 3);
+  assert(st.phase !== 'odwrot', 'ucieczka trwa za dlugo');
+  const x1 = w.x;
+  run(st, 0.3);
+  assert(Math.abs(w.x - x1) < 1 || !w.onGround, 'po ucieczce dalej mozna chodzic');
+});
+
+test('robal nie przenika przez stroma sciane', () => {
+  const st = S.createGame(11, players(2));
+  const w = S.activeWorm(st);
+  // pionowa ściana tuż przed robalem
+  const sx = Math.round(w.x) + 8;
+  for (let y = Math.round(w.y) - 60; y < Math.round(w.y) + 20; y++) {
+    for (let x = sx; x < sx + 30; x++) st.terrain.mask[y * T.WORLD_W + x] = 1;
+  }
+  w.facing = 1;
+  st.input.right = true;
+  run(st, 2);
+  assert(w.x < sx, 'robal wszedl w sciane: x=' + w.x + ', sciana od ' + sx);
+});
+
 test('robal wchodzi na lagodne zbocze', () => {
   const st = S.createGame(11, players(2));
   const w = S.activeWorm(st);
@@ -348,10 +380,19 @@ for (const bron of WEAPON_ORDER) {
       assert(S.startCharging(a), 'nie da sie strzelic: ' + bron);
       run(a, 0.5);
       S.releaseFire(a);
+      if (bron === 'dynamit') {
+        // ucieczka: bieg, skok, bieg z powrotem — nagranie leci w zdarzeniu
+        assert(a.phase === 'odwrot' && a.akcjeDoWyslania.length === 0, 'dynamit bez ucieczki');
+        a.input.left = true; run(a, 1.2);
+        a.input.left = false; S.jump(a); run(a, 0.6);
+        a.input.right = true; run(a, 0.8);
+        a.input.right = false;
+        for (let i = 0; i < 2000 && a.akcjeDoWyslania.length === 0; i++) S.step(a);
+      }
       assert(a.akcjeDoWyslania.length === 1, 'brak akcji do wyslania');
 
       S.zastosujStrzal(b, przezSiec(a.akcjeDoWyslania[0]));
-      assert(S.stateHash(a) === S.stateHash(b), 'rozjazd zaraz po strzale (' + bron + ', seed ' + seed + ')');
+      if (bron !== 'dynamit') assert(S.stateHash(a) === S.stateHash(b), 'rozjazd zaraz po strzale (' + bron + ', seed ' + seed + ')');
       doKonca(a);
       doKonca(b);
       assert(S.stateHash(a) === S.stateHash(b), 'rozjazd po locie (' + bron + ', seed ' + seed + ')');

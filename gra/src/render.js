@@ -205,7 +205,8 @@ export function draw(r, state, cam, fx, dt, opcje = {}) {
     drawWorm(ctx, w, w === akt && state.phase === 'aim', r.time, {
       ja: w.id === opcje.mojeId,
       rozlaczony: !!opcje.rozlaczeni && opcje.rozlaczeni.has(w.id),
-      moc: w === akt && state.phase === 'aim' ? (w.widok ? w.widok.moc : state.charging ? state.power : 0) : 0
+      moc: w === akt && state.phase === 'aim' ? (w.widok ? w.widok.moc : state.charging ? state.power : 0) : 0,
+      bron: w === akt ? (w.widok ? w.widok.bron : state.weapon) : null
     });
   }
 
@@ -339,11 +340,45 @@ function drawProjectile(ctx, p) {
       ctx.moveTo(dl / 2, 0); ctx.lineTo(dl / 2 - 6, -4); ctx.lineTo(dl / 2 - 6, 4);
       ctx.fill();
     }
-  } else {
-    const dynamit = weapon.id === 'dynamit';
-    ctx.fillStyle = dynamit ? '#c62b1a' : weapon.id === 'kasetowa' ? '#5b4a8a' : '#3f4a35';
+  } else if (weapon.id === 'dynamit') {
+    // laska dynamitu z tlącym się lontem i odliczaniem nad nią
+    ctx.fillStyle = '#c62b1a';
+    ctx.fillRect(-5, -9, 10, 18);
+    ctx.fillStyle = 'rgba(255,255,255,0.25)';
+    ctx.fillRect(-4, -9, 3, 18);
+    ctx.fillStyle = '#2b1a10';
+    ctx.fillRect(-5, -3, 10, 2.5);
+    ctx.strokeStyle = '#3a2a1a';
+    ctx.lineWidth = 1.5;
     ctx.beginPath();
-    ctx.arc(0, 0, dynamit ? 8 : 6, 0, 6.283);
+    ctx.moveTo(0, -9);
+    ctx.quadraticCurveTo(4, -14, 2, -17);
+    ctx.stroke();
+    if (p.fuse !== null) {
+      const t = performance.now() / 1000;
+      ctx.fillStyle = '#ffd23b';
+      for (let i = 0; i < 4; i++) {
+        const a = t * 20 + i * 1.6;
+        ctx.fillRect(2 + Math.cos(a) * 4, -17 + Math.sin(a) * 4, 1.6, 1.6);
+      }
+      ctx.font = 'bold 13px system-ui, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillStyle = p.fuse < 1.5 ? '#ff3b23' : '#fff1c2';
+      ctx.strokeStyle = 'rgba(0,0,0,0.7)';
+      ctx.lineWidth = 3;
+      const napis = Math.ceil(p.fuse).toString();
+      ctx.strokeText(napis, 0, -24);
+      ctx.fillText(napis, 0, -24);
+    }
+  } else {
+    const dynamit = false;
+    ctx.fillStyle = weapon.id === 'kasetowa' ? '#5b4a8a' : '#3f4a35';
+    ctx.beginPath();
+    ctx.arc(0, 0, 6, 0, 6.283);
+    ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.35)';
+    ctx.beginPath();
+    ctx.arc(-2, -2, 2, 0, 6.283);
     ctx.fill();
     if (weapon.id === 'kasetowa') {
       ctx.strokeStyle = '#ffd93b';
@@ -353,7 +388,7 @@ function drawProjectile(ctx, p) {
       ctx.stroke();
     }
     // lont miga tym szybciej, im bliżej wybuchu
-    if (p.fuse !== null) {
+    if (p.fuse !== null && !dynamit) {
       const blink = p.fuse < 1 ? (Math.floor(p.fuse * 10) % 2 === 0) : true;
       if (blink) {
         ctx.fillStyle = '#ffd23b';
@@ -384,23 +419,69 @@ function drawWorm(ctx, w, isActive, time, o) {
   }
 
   ctx.globalAlpha = o.rozlaczony ? 0.45 : 1;
+  // cień na ziemi
+  ctx.fillStyle = 'rgba(0,0,0,0.35)';
+  ctx.beginPath();
+  ctx.ellipse(cx, v.y, 9, 2.5, 0, 0, 6.283);
+  ctx.fill();
+  // oddech: lekkie rozciąganie w pionie
+  const oddech = 1 + Math.sin(time * 3 + cx * 0.1) * 0.04;
+  // ogonek z dwóch segmentów za plecami
   ctx.fillStyle = w.color;
   ctx.beginPath();
-  ctx.ellipse(cx, cy, 8, 10, 0, 0, 6.283);
+  ctx.ellipse(cx - facing * 8, v.y - 3.5, 4.6, 3.5, 0, 0, 6.283);
+  ctx.ellipse(cx - facing * 12.5, v.y - 2.2, 3, 2.2, 0, 0, 6.283);
+  ctx.fill();
+  // ciało z połyskiem
+  const g = ctx.createRadialGradient(cx - facing * 2 - 1, cy - 5, 1, cx, cy, 12);
+  g.addColorStop(0, 'rgba(255,255,255,0.55)');
+  g.addColorStop(0.35, w.color);
+  g.addColorStop(1, w.color);
+  ctx.fillStyle = g;
+  ctx.beginPath();
+  ctx.ellipse(cx, cy + (1 - oddech) * 10, 8, 10 * oddech, 0, 0, 6.283);
   ctx.fill();
   ctx.strokeStyle = o.ja ? '#fff6cf' : 'rgba(0,0,0,0.55)';
   ctx.lineWidth = o.ja ? 2 : 1.5;
   ctx.stroke();
+  // brzuszek
+  ctx.fillStyle = 'rgba(255,240,210,0.28)';
+  ctx.beginPath();
+  ctx.ellipse(cx + facing * 2.5, cy + 3, 4, 5, 0, 0, 6.283);
+  ctx.fill();
 
-  ctx.fillStyle = '#fff';
-  ctx.beginPath();
-  ctx.arc(cx + facing * 3, cy - 3, 2.6, 0, 6.283);
-  ctx.fill();
-  ctx.fillStyle = '#111';
-  ctx.beginPath();
-  ctx.arc(cx + facing * 3.8, cy - 3, 1.3, 0, 6.283);
-  ctx.fill();
+  // oczy: aktywny patrzy tam, gdzie celuje
+  const patrzX = isActive ? Math.cos(angle) : facing;
+  const patrzY = isActive ? Math.sin(angle) : 0;
+  const mruga = Math.sin(time * 1.3 + cx) > 0.985;
+  for (const ox of [facing * 1.2, facing * 5.6]) {
+    ctx.fillStyle = '#fff';
+    ctx.beginPath();
+    ctx.ellipse(cx + ox, cy - 4, 2.7, mruga ? 0.5 : 3.1, 0, 0, 6.283);
+    ctx.fill();
+    if (!mruga) {
+      ctx.fillStyle = '#111';
+      ctx.beginPath();
+      ctx.arc(cx + ox + patrzX * 1.3, cy - 4 + patrzY * 1.5, 1.3, 0, 6.283);
+      ctx.fill();
+    }
+  }
   ctx.globalAlpha = 1;
+
+  // broń w łapach aktywnego robala, ustawiona wzdłuż celownika
+  if (isActive && o.bron) {
+    const dl = o.bron === 'strzelba' ? 16 : o.bron === 'bazooka' ? 18 : 0;
+    if (dl) {
+      ctx.save();
+      ctx.translate(cx + facing * 2, cy + 3);
+      ctx.rotate(angle);
+      ctx.fillStyle = o.bron === 'bazooka' ? '#5f6b4a' : '#4a3a2a';
+      ctx.fillRect(-4, -2.5, dl, o.bron === 'bazooka' ? 5 : 3.5);
+      ctx.fillStyle = '#2a2a2a';
+      ctx.fillRect(dl - 6, -3, 3, o.bron === 'bazooka' ? 6 : 4.5);
+      ctx.restore();
+    }
+  }
 
   if (isActive) {
     const ax = cx + Math.cos(angle) * 42;

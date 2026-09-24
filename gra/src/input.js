@@ -23,7 +23,7 @@ const RUCHY = ['left', 'right', 'aimUp', 'aimDown'];
 export function attachInput(opts) {
   const wcisniete = new Set();     // kody klawiszy
   const trzymane = new Set();      // akcje trzymanych przycisków dotykowych
-  let spust = false;               // spust wciśnięty (spacja albo przycisk)
+  let spust = false;               // spust wciśnięty (F, Enter albo przycisk)
 
   const stan = () => opts.getState();
 
@@ -47,9 +47,11 @@ export function attachInput(opts) {
     if (st) S.releaseFire(st);   // bez ładowania (koniec tury, pełna moc) nic nie robi
   }
 
+  const mogeChodzic = () => opts.mogeGrac() || !!opts.mogeUciekac?.();
+
   function skok() {
     const st = stan();
-    if (st && opts.mogeGrac()) S.jump(st);
+    if (st && mogeChodzic()) S.jump(st);
   }
 
   /* ---------- klawiatura ---------- */
@@ -58,7 +60,9 @@ export function attachInput(opts) {
     if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) return;
     if (!stan()) return;
 
-    if (e.code === 'Space') {
+    // Strzał: przytrzymaj F albo Enter. Spacja to skok — tak jak w innych grach,
+    // wcześniejsze „spacja = strzał” myliło graczy.
+    if (e.code === 'KeyF' || e.code === 'Enter' || e.code === 'NumpadEnter') {
       e.preventDefault();
       if (!e.repeat) nacisnijSpust();
       return;
@@ -66,7 +70,7 @@ export function attachInput(opts) {
     if (wcisniete.has(e.code)) return;
     wcisniete.add(e.code);
 
-    if (e.code === 'Enter' || e.code === 'KeyJ') { e.preventDefault(); skok(); return; }
+    if (e.code === 'Space' || e.code === 'KeyJ') { e.preventDefault(); skok(); return; }
 
     const idx = ['Digit1', 'Digit2', 'Digit3', 'Digit4', 'Digit5', 'Digit6'].indexOf(e.code);
     if (idx >= 0 && idx < WEAPON_ORDER.length) {
@@ -78,7 +82,7 @@ export function attachInput(opts) {
 
   function onUp(e) {
     wcisniete.delete(e.code);
-    if (e.code === 'Space') {
+    if (e.code === 'KeyF' || e.code === 'Enter' || e.code === 'NumpadEnter') {
       e.preventDefault();
       pusscSpust();
     }
@@ -219,6 +223,10 @@ export function attachInput(opts) {
     for (const k of RUCHY) st.input[k] = false;
     if (!opts.mogeGrac()) {
       if (spust && !st.charging) spust = false;
+      if (!opts.mogeUciekac?.()) return;
+      // ucieczka po dynamicie: tylko chodzenie
+      for (const code of wcisniete) { const a = MAPA[code]; if (a === 'left' || a === 'right') st.input[a] = true; }
+      for (const a of trzymane) if (a === 'left' || a === 'right') st.input[a] = true;
       return;
     }
     for (const code of wcisniete) {

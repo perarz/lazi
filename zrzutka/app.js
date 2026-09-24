@@ -729,6 +729,7 @@
     if (fn.apollo > 0) odblokuj('earningsy');
     if (za.apollo > 0) odblokuj('spichlerz');
     if (za.froxy > 0) odblokuj('nauczyciel');
+    if (za.quber > 0) odblokuj('testudo');
     if (w && w.kat === 'zeroad' && w.komu === 'stozhinio' && w.ile === 300) odblokuj('sparta');
     if (wszyscy(za)) odblokuj('skarbnik');
     if (sumaMoje('fortnite') > 0 && sumaMoje('zeroad') > 0) odblokuj('dwa-swiaty');
@@ -1344,18 +1345,18 @@
 
   var toasty = $('#toasty');
 
-  function toast(tekst, kolor, ikonaId) {
+  function toast(tekst, kolor, ikonaId, ms) {
     var t = elem('div', 'toast');
     if (kolor) t.setAttribute('data-kolor', kolor);
     t.appendChild(ikona(ikonaId || KAT[aktywna].ikona, 'vb'));
     t.appendChild(elem('span', null, tekst));
     toasty.appendChild(t);
-    while (toasty.children.length > 3) toasty.removeChild(toasty.firstChild);
+    while (toasty.children.length > 2) toasty.removeChild(toasty.firstChild);
 
     setTimeout(function () {
       t.classList.add('znika');
       setTimeout(function () { t.remove(); }, animowac ? 350 : 0);
-    }, 4500);
+    }, ms || 3000);
   }
 
   /* ---------------------------------------------------------
@@ -1424,6 +1425,7 @@
   var online = false;
   var serwerPadl = false;
   var lotyTrwa = 0;
+  var widzianeWplaty = {};
   var zaleglyStan = null;
   var mojeId = {};
   stan.wplaty.forEach(function (w) { if (w.id) mojeId[w.id] = true; });
@@ -1473,11 +1475,15 @@
     }
     if (pierwszy) animuj = false;
 
-    var znane = {};
-    stan.wplaty.forEach(function (w) { if (w.id) znane[w.id] = true; });
+    // Serwer oddaje więcej wpłat, niż trzymamy lokalnie (60 vs 40) — dlatego
+    // „znane” to wszystkie id kiedykolwiek widziane w tej karcie, a nie tylko
+    // lokalna lista. Inaczej starsze wpłaty co 10 s wyskakiwały jako nowe.
+    var teraz = Number(d.teraz) || Date.now();   // czas serwera, nie zegar tej przeglądarki
     var cudze = pierwszy ? [] : d.wplaty.filter(function (w) {
-      return poprawnaWplata(w) && w.id && !znane[w.id] && !mojeId[w.id];
+      return poprawnaWplata(w) && w.id && !widzianeWplaty[w.id] && !mojeId[w.id] &&
+        !(w.t && teraz - w.t > 2 * 60 * 1000);   // po powrocie do karty bez zaległego spamu
     });
+    d.wplaty.forEach(function (w) { if (w && w.id) widzianeWplaty[w.id] = true; });
 
     var zmiana = false;
     Object.keys(KAT).forEach(function (kat) {
@@ -1508,8 +1514,9 @@
 
     cudze.slice(0, 2).forEach(function (w) {
       var k = karty[w.kat + ':' + w.komu];
+      if (!k) return;
       toast(w.kto + ' → ' + k.gracz.nick + ': ' + fmt(w.ile) + ' ' + odmiana(w.kat, w.ile),
-        k.el.getAttribute('data-kolor'), KAT[w.kat].ikona);
+        k.el.getAttribute('data-kolor'), KAT[w.kat].ikona, 2400);
     });
   }
 

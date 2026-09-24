@@ -449,3 +449,8 @@ button:disabled { opacity: 0.35; cursor: not-allowed; }
 /* numer wersji na ekranie wejścia — prowadzi do logu zmian */
 .wersja { display: inline-block; margin-top: 14px; font-size: 11px; letter-spacing: 0.06em; color: var(--tekst); opacity: 0.5; text-decoration: none; }
 .wersja:hover { opacity: 1; color: var(--zar-jasny); }
+
+/* ucieczka po dynamicie: zegar liczy dziesiąte części sekundy, przyciski strzału znikają */
+.tura-czas.ucieczka { color: #ff3b23; }
+body.ucieczka .dotyk-prawy { visibility: hidden; }
+body.ucieczka .bronie { opacity: 0.35; pointer-events: none; }
