@@ -5,6 +5,15 @@
 (function () {
   var historia = [
     {
+      wersja: '3.6', data: '2026-09-24', tytul: 'Lepsze portrety',
+      zmiany: [
+        'Hełmy Stozhinia (koryncki), Qubera, Kozaka i Laziego zakrywają czoło — z osłonami nosa i policzków.',
+        'Wszystkie postacie: cieniowanie twarzy i ubrań, obrys twarzy, cień pod brodą, uszy, odblaski w oczach, nosy tam, gdzie ich brakowało.',
+        'Większe oczy z tęczówkami (Stozhinio, PowPow, Quber, Apollo), refleksy na włosach.',
+        'Froxy nosi okulary.'
+      ]
+    },
+    {
       wersja: '3.5', data: '2026-09-24', tytul: 'Osiągnięcia z Areny',
       zmiany: [
         '16 osiągnięć do zdobycia w Arenie: 5 i 25 eliminacji, zabójstwo nalotem, dynamitem, ze strzelby i kasetówką, wrzucenie do lawy, dublet, masakra, wielka ucieczka, wygrane i jedno tajne.',

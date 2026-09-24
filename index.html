@@ -57,6 +57,23 @@
         <stop offset="0.6" stop-color="#a3161a"></stop>
         <stop offset="1" stop-color="#6a0a0d"></stop>
       </radialGradient>
+      <!-- cieniowanie twarzy i szyi: bryła zamiast płaskiego koła -->
+      <radialGradient id="cien-twarzy" cx="0.42" cy="0.36" r="0.72">
+        <stop offset="0.5" stop-color="#5a2410" stop-opacity="0"></stop>
+        <stop offset="1" stop-color="#5a2410" stop-opacity="0.3"></stop>
+      </radialGradient>
+      <radialGradient id="blask-twarzy" cx="0.36" cy="0.3" r="0.45">
+        <stop offset="0" stop-color="#ffffff" stop-opacity="0.32"></stop>
+        <stop offset="1" stop-color="#ffffff" stop-opacity="0"></stop>
+      </radialGradient>
+      <radialGradient id="cien-ciala" cx="0.5" cy="0.05" r="1">
+        <stop offset="0.35" stop-color="#000000" stop-opacity="0"></stop>
+        <stop offset="1" stop-color="#000000" stop-opacity="0.35"></stop>
+      </radialGradient>
+      <linearGradient id="cien-szyi" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#3a1608" stop-opacity="0.5"></stop>
+        <stop offset="0.55" stop-color="#3a1608" stop-opacity="0"></stop>
+      </linearGradient>
       <radialGradient id="aura-furii">
         <stop offset="0" stop-color="#ff5a1f" stop-opacity="0.75"></stop>
         <stop offset="0.6" stop-color="#ff2a00" stop-opacity="0.3"></stop>
@@ -263,22 +280,26 @@
                 <path d="M40 53h80M40 76h80M40 99h80" stroke="#86501f" opacity="0.85"></path>
               </g>
               <g class="postac">
-                <path d="M34 160c3-26 20-40 46-40s43 14 46 40z" fill="#2c2a7a"></path>
+                <path d="M34 160c3-26 20-40 46-40s43 14 46 40z" fill="#2c2a7a"></path><path d="M34 160c3-26 20-40 46-40s43 14 46 40z" fill="url(#cien-ciala)"></path>
                 <path d="M58 128l22 16 22-16" fill="none" stroke="#1d1b5a" stroke-width="3"></path>
                 <path d="M74 134l-2 18M86 134l2 18" stroke="#e6e6ff" stroke-width="2.5" stroke-linecap="round"></path>
-                <rect x="71" y="102" width="18" height="22" rx="6" fill="#dca07a"></rect>
-                <circle cx="55" cy="87" r="5.5" fill="#eab48f"></circle>
-                <circle cx="105" cy="87" r="5.5" fill="#eab48f"></circle>
-                <ellipse cx="80" cy="84" rx="25" ry="27" fill="#f2c29b"></ellipse>
+                <rect x="71" y="102" width="18" height="22" rx="6" fill="#dca07a"></rect><rect x="71" y="102" width="18" height="22" rx="6" fill="url(#cien-szyi)"></rect>
+                <circle cx="55" cy="87" r="5.5" fill="#eab48f"></circle><path d="M56 84.5q-2 2.5 0 5" fill="none" stroke="#8a4a2a" stroke-opacity="0.45" stroke-width="1.2" stroke-linecap="round"></path>
+                <circle cx="105" cy="87" r="5.5" fill="#eab48f"></circle><path d="M104 84.5q2 2.5 0 5" fill="none" stroke="#8a4a2a" stroke-opacity="0.45" stroke-width="1.2" stroke-linecap="round"></path>
+                <ellipse cx="80" cy="84" rx="25" ry="27" fill="#f2c29b" stroke="#7a3a1e" stroke-opacity="0.35" stroke-width="1.2"></ellipse>
+                <ellipse cx="80" cy="84" rx="25" ry="27" fill="url(#cien-twarzy)"></ellipse><ellipse cx="80" cy="84" rx="25" ry="27" fill="url(#blask-twarzy)"></ellipse>
                 <path d="M54 80C50 63 58 53 66 50l0-8 8 7 6-11 6 11 8-7v9c10 5 14 15 12 26l-6-8-6 5-6-9-7 8-7-9-7 9-6-6z" fill="#4a2c17"></path>
+                <path d="M63 58q8-6 18-5M86 55q6 0 10 4" fill="none" stroke="#7a4a2a" stroke-width="2" stroke-linecap="round" opacity="0.9"></path>
                 <path d="M55 71q25-9 50 0v8q-25-9-50 0z" fill="#e8322e"></path>
+                <path d="M57 72.5q23-7 46 0" fill="none" stroke="#ff8a7a" stroke-width="1.2" opacity="0.7"></path>
                 <path class="opaska" d="M103 72l16-6-4 8 9 5-18 1z" fill="#c9221f"></path>
                 <path d="M63 83l11 3M97 83l-11 3" stroke="#3a2210" stroke-width="3.5" stroke-linecap="round"></path>
-                <g class="oko"><ellipse cx="70" cy="91" rx="3" ry="3.6" fill="#1d1d1d"></ellipse></g>
-                <g class="oko"><ellipse cx="90" cy="91" rx="3" ry="3.6" fill="#1d1d1d"></ellipse></g>
+                <g class="oko"><ellipse cx="70" cy="91" rx="4.6" ry="4.4" fill="#ffffff" stroke="#3a2210" stroke-opacity="0.35" stroke-width="0.8"></ellipse><circle cx="70.6" cy="91.4" r="2.9" fill="#6b4423"></circle><circle cx="70.6" cy="91.4" r="1.5" fill="#111111"></circle><circle cx="71.6" cy="90.2" r="1" fill="#ffffff"></circle></g>
+                <g class="oko"><ellipse cx="90" cy="91" rx="4.6" ry="4.4" fill="#ffffff" stroke="#3a2210" stroke-opacity="0.35" stroke-width="0.8"></ellipse><circle cx="90.6" cy="91.4" r="2.9" fill="#6b4423"></circle><circle cx="90.6" cy="91.4" r="1.5" fill="#111111"></circle><circle cx="91.6" cy="90.2" r="1" fill="#ffffff"></circle></g>
                 <circle cx="63" cy="99" r="4" fill="#f59a8a" opacity="0.5"></circle>
                 <circle cx="97" cy="99" r="4" fill="#f59a8a" opacity="0.5"></circle>
                 <path d="M70 102q9 7 20-2" fill="none" stroke="#7a2e1c" stroke-width="3" stroke-linecap="round"></path>
+                <path d="M80.5 93q-2.5 5 1 7" fill="none" stroke="#8a4a2a" stroke-opacity="0.55" stroke-width="1.6" stroke-linecap="round"></path>
               </g>
             </svg>
             <span class="ranga">Epicki</span>
@@ -353,18 +374,21 @@
                 <text x="134" y="92" class="awatar-znak" font-size="18" fill="#ffffff" opacity="0.6" transform="rotate(20 134 92)">?</text>
               </g>
               <g class="postac">
-                <path d="M34 160c3-26 20-40 46-40s43 14 46 40z" fill="#5d6b4b"></path>
+                <path d="M34 160c3-26 20-40 46-40s43 14 46 40z" fill="#5d6b4b"></path><path d="M34 160c3-26 20-40 46-40s43 14 46 40z" fill="url(#cien-ciala)"></path>
                 <text x="80" y="150" class="awatar-znak" font-size="13" fill="#e9eedc" text-anchor="middle" letter-spacing="1">NOOB</text>
-                <rect x="71" y="102" width="18" height="22" rx="6" fill="#dca07a"></rect>
-                <circle cx="55" cy="87" r="5.5" fill="#eab48f"></circle>
-                <circle cx="105" cy="87" r="5.5" fill="#eab48f"></circle>
-                <ellipse cx="80" cy="84" rx="25" ry="27" fill="#f2c29b"></ellipse>
+                <rect x="71" y="102" width="18" height="22" rx="6" fill="#dca07a"></rect><rect x="71" y="102" width="18" height="22" rx="6" fill="url(#cien-szyi)"></rect>
+                <circle cx="55" cy="87" r="5.5" fill="#eab48f"></circle><path d="M56 84.5q-2 2.5 0 5" fill="none" stroke="#8a4a2a" stroke-opacity="0.45" stroke-width="1.2" stroke-linecap="round"></path>
+                <circle cx="105" cy="87" r="5.5" fill="#eab48f"></circle><path d="M104 84.5q2 2.5 0 5" fill="none" stroke="#8a4a2a" stroke-opacity="0.45" stroke-width="1.2" stroke-linecap="round"></path>
+                <ellipse cx="80" cy="84" rx="25" ry="27" fill="#f2c29b" stroke="#7a3a1e" stroke-opacity="0.35" stroke-width="1.2"></ellipse>
+                <ellipse cx="80" cy="84" rx="25" ry="27" fill="url(#cien-twarzy)"></ellipse><ellipse cx="80" cy="84" rx="25" ry="27" fill="url(#blask-twarzy)"></ellipse>
                 <path d="M55 80C52 62 64 55 80 55s28 7 25 25c-4-9-12-13-25-13s-21 4-25 13z" fill="#6b4423"></path>
+                <path d="M64 64q12-6 26-3" fill="none" stroke="#8a5a30" stroke-width="2.2" stroke-linecap="round" opacity="0.8"></path>
                 <path d="M63 79q7-6 13 0M86 81q6-5 11 1" fill="none" stroke="#4a2c17" stroke-width="3" stroke-linecap="round"></path>
-                <g class="oko"><circle cx="70" cy="89" r="6.5" fill="#ffffff"></circle><circle cx="67.5" cy="86.5" r="2.8" fill="#161616"></circle></g>
-                <g class="oko"><circle cx="91" cy="90" r="4.6" fill="#ffffff"></circle><circle cx="93" cy="92" r="2.3" fill="#161616"></circle></g>
+                <g class="oko"><circle cx="70" cy="89" r="6.5" fill="#ffffff"></circle><circle cx="67.5" cy="86.5" r="2.8" fill="#161616"></circle><circle cx="68.6" cy="85.3" r="0.9" fill="#ffffff"></circle></g>
+                <g class="oko"><circle cx="91" cy="90" r="4.6" fill="#ffffff"></circle><circle cx="93" cy="92" r="2.3" fill="#161616"></circle><circle cx="93.9" cy="91" r="0.8" fill="#ffffff"></circle></g>
                 <path d="M69 105q4-4 8 0t8 0 7-1" fill="none" stroke="#6b2a1a" stroke-width="2.6" stroke-linecap="round"></path>
                 <path d="M109 66q6 9 0 13q-6-4 0-13z" fill="#8fd6ff" stroke="#4aa6e0" stroke-width="1"></path>
+                <path d="M80.5 93q-2.5 5 1 7" fill="none" stroke="#8a4a2a" stroke-opacity="0.55" stroke-width="1.6" stroke-linecap="round"></path>
               </g>
             </svg>
             <span class="ranga">Pospolity</span>
@@ -434,14 +458,15 @@
             <div class="promienie" aria-hidden="true"></div>
             <svg class="awatar" viewBox="0 0 160 160" role="img" aria-label="Dziadek Piotr w słuchawkach i z karpiem na głowie">
               <g class="postac">
-                <path d="M34 160c3-26 20-40 46-40s43 14 46 40z" fill="#7b5a36"></path>
+                <path d="M34 160c3-26 20-40 46-40s43 14 46 40z" fill="#7b5a36"></path><path d="M34 160c3-26 20-40 46-40s43 14 46 40z" fill="url(#cien-ciala)"></path>
                 <path d="M66 122l14 26 14-26z" fill="#ece5d2"></path>
                 <path d="M66 122l14 26 14-26" fill="none" stroke="#5e4226" stroke-width="3"></path>
                 <circle cx="80" cy="152" r="2.4" fill="#3f2a15"></circle>
-                <rect x="71" y="102" width="18" height="20" rx="6" fill="#d9a07e"></rect>
-                <circle cx="55" cy="88" r="5.5" fill="#e8b08f"></circle>
-                <circle cx="105" cy="88" r="5.5" fill="#e8b08f"></circle>
-                <ellipse cx="80" cy="84" rx="25" ry="28" fill="#f0c3a2"></ellipse>
+                <rect x="71" y="102" width="18" height="20" rx="6" fill="#d9a07e"></rect><rect x="71" y="102" width="18" height="20" rx="6" fill="url(#cien-szyi)"></rect>
+                <circle cx="55" cy="88" r="5.5" fill="#e8b08f"></circle><path d="M56 85.5q-2 2.5 0 5" fill="none" stroke="#8a4a2a" stroke-opacity="0.45" stroke-width="1.2" stroke-linecap="round"></path>
+                <circle cx="105" cy="88" r="5.5" fill="#e8b08f"></circle><path d="M104 85.5q2 2.5 0 5" fill="none" stroke="#8a4a2a" stroke-opacity="0.45" stroke-width="1.2" stroke-linecap="round"></path>
+                <ellipse cx="80" cy="84" rx="25" ry="28" fill="#f0c3a2" stroke="#7a3a1e" stroke-opacity="0.35" stroke-width="1.2"></ellipse>
+                <ellipse cx="80" cy="84" rx="25" ry="28" fill="url(#cien-twarzy)"></ellipse><ellipse cx="80" cy="84" rx="25" ry="28" fill="url(#blask-twarzy)"></ellipse>
                 <path d="M57 88q-6-12 3-20q-1 11 4 16zM103 88q6-12-3-20q1 11-4 16z" fill="#eeeeee"></path>
                 <path d="M70 68q10-3 20 0M72 74q8-2 16 0" fill="none" stroke="#d49b7b" stroke-width="1.6" stroke-linecap="round"></path>
                 <path d="M52 88C48 50 112 50 108 88" fill="none" stroke="#1f1f24" stroke-width="6" stroke-linecap="round"></path>
@@ -450,8 +475,8 @@
                 <path d="M52 98q2 16 17 16" fill="none" stroke="#1f1f24" stroke-width="3" stroke-linecap="round"></path>
                 <circle cx="70" cy="114" r="3.6" fill="#1f1f24"></circle>
                 <path d="M60 80q8-6 15-1M85 79q7-5 15 1" fill="none" stroke="#f4f4f4" stroke-width="4" stroke-linecap="round"></path>
-                <g class="oko"><circle cx="69" cy="90" r="4" fill="#1d1d1d"></circle></g>
-                <g class="oko"><circle cx="91" cy="90" r="4" fill="#1d1d1d"></circle></g>
+                <g class="oko"><circle cx="69" cy="90" r="4" fill="#1d1d1d"></circle><circle cx="70.5" cy="88.3" r="1.2" fill="#ffffff" opacity="0.9"></circle></g>
+                <g class="oko"><circle cx="91" cy="90" r="4" fill="#1d1d1d"></circle><circle cx="92.5" cy="88.3" r="1.2" fill="#ffffff" opacity="0.9"></circle></g>
                 <g fill="#cdeaff" fill-opacity="0.28" stroke="#3a3a3a" stroke-width="2.6">
                   <circle cx="69" cy="90" r="9.5"></circle>
                   <circle cx="91" cy="90" r="9.5"></circle>
@@ -466,7 +491,7 @@
                 <ellipse cx="80" cy="44" rx="29" ry="13" fill="#d4a53e" stroke="#6e4d12" stroke-width="2"></ellipse>
                 <path d="M68 38q4 4 0 8M78 36q4 5 0 10M88 36q4 5 0 10M98 38q3 4 0 8" fill="none" stroke="#8a6419" stroke-width="1.6" opacity="0.7"></path>
                 <circle cx="60" cy="42" r="4" fill="#ffffff"></circle>
-                <circle cx="59" cy="42" r="2" fill="#1d1d1d"></circle>
+                <circle cx="59" cy="42" r="2" fill="#1d1d1d"></circle><circle cx="59.8" cy="41.2" r="0.6" fill="#ffffff" opacity="0.9"></circle>
                 <path d="M52 48q3 2 6 0" fill="none" stroke="#6e4d12" stroke-width="1.6" stroke-linecap="round"></path>
                 <ellipse cx="74" cy="38" rx="11" ry="3" fill="#ffffff" opacity="0.45"></ellipse>
               </g>
@@ -545,13 +570,14 @@
                 <text x="78" y="15.6" class="awatar-napis" font-size="8" fill="#0b0e2a" text-anchor="middle" letter-spacing="0.5">EARNINGS 97%</text>
               </g>
               <g class="postac">
-                <path d="M28 160c3-28 22-43 52-43s49 15 52 43z" fill="#1b1f3f"></path>
+                <path d="M28 160c3-28 22-43 52-43s49 15 52 43z" fill="#1b1f3f"></path><path d="M28 160c3-28 22-43 52-43s49 15 52 43z" fill="url(#cien-ciala)"></path>
                 <path d="M55 121q25 20 50 0l-3 11q-22 14-44 0z" fill="#2a3068"></path>
                 <path d="M72 129v17M88 129v17" stroke="#2de2ff" stroke-width="2.4" stroke-linecap="round"></path>
                 <circle cx="72" cy="147.5" r="2.2" fill="#2de2ff"></circle>
                 <circle cx="88" cy="147.5" r="2.2" fill="#2de2ff"></circle>
-                <rect x="71" y="100" width="18" height="22" rx="6" fill="#d19a72"></rect>
-                <ellipse cx="80" cy="84" rx="25" ry="27" fill="#e9b68e"></ellipse>
+                <rect x="71" y="100" width="18" height="22" rx="6" fill="#d19a72"></rect><rect x="71" y="100" width="18" height="22" rx="6" fill="url(#cien-szyi)"></rect>
+                <ellipse cx="80" cy="84" rx="25" ry="27" fill="#e9b68e" stroke="#7a3a1e" stroke-opacity="0.35" stroke-width="1.2"></ellipse>
+                <ellipse cx="80" cy="84" rx="25" ry="27" fill="url(#cien-twarzy)"></ellipse><ellipse cx="80" cy="84" rx="25" ry="27" fill="url(#blask-twarzy)"></ellipse>
                 <path d="M55 84C51 62 62 52 80 52s30 10 25 32c-3-9-9-14-16-16c2 4 2 7 0 10c-4-7-11-10-19-10c3 3 3 6 1 9c-6-5-13-6-21-2z" fill="#2b1a10"></path>
                 <!-- słuchawki -->
                 <path d="M51 86C50 58 63 46 80 46s30 12 29 40" fill="none" stroke="#12142b" stroke-width="7" stroke-linecap="round"></path>
@@ -563,8 +589,8 @@
                 <circle cx="69.5" cy="111" r="3.6" fill="#12142b"></circle>
                 <!-- skupienie: brwi w dół, worki pod oczami, pot na czole -->
                 <path d="M62 80.5l12 4M98 80.5l-12 4" stroke="#2b1a10" stroke-width="3.4" stroke-linecap="round"></path>
-                <g class="oko"><ellipse cx="70" cy="90.5" rx="4.4" ry="3.1" fill="#ffffff"></ellipse><circle cx="71" cy="90.8" r="2.3" fill="#1d1d1d"></circle></g>
-                <g class="oko"><ellipse cx="90" cy="90.5" rx="4.4" ry="3.1" fill="#ffffff"></ellipse><circle cx="89" cy="90.8" r="2.3" fill="#1d1d1d"></circle></g>
+                <g class="oko"><ellipse cx="70" cy="90.5" rx="4.4" ry="3.1" fill="#ffffff"></ellipse><circle cx="71" cy="90.8" r="2.3" fill="#1d1d1d"></circle><circle cx="71.9" cy="89.8" r="0.7" fill="#ffffff" opacity="0.9"></circle></g>
+                <g class="oko"><ellipse cx="90" cy="90.5" rx="4.4" ry="3.1" fill="#ffffff"></ellipse><circle cx="89" cy="90.8" r="2.3" fill="#1d1d1d"></circle><circle cx="89.9" cy="89.8" r="0.7" fill="#ffffff" opacity="0.9"></circle></g>
                 <path d="M65 95.5q5 2.4 10 0M85 95.5q5 2.4 10 0" fill="none" stroke="#9b6f8f" stroke-width="1.4" opacity="0.8"></path>
                 <path d="M81 92q-2 5 1 7" fill="none" stroke="#b77c56" stroke-width="1.6" stroke-linecap="round"></path>
                 <path d="M72 104.5q8 3.5 15-2" fill="none" stroke="#7a2e1c" stroke-width="2.6" stroke-linecap="round"></path>
@@ -699,29 +725,32 @@
             <svg class="awatar" viewBox="0 0 160 160" role="img" aria-label="Kozak w hełmie z kozimi rogami, spokojny jak zawsze">
               <circle class="furia" cx="80" cy="86" r="76" fill="url(#aura-furii)"></circle>
               <g class="postac">
-                <path d="M24 160c2-30 20-44 56-44s54 14 56 44z" fill="#1f3f8a"></path>
+                <path d="M24 160c2-30 20-44 56-44s54 14 56 44z" fill="#1f3f8a"></path><path d="M24 160c2-30 20-44 56-44s54 14 56 44z" fill="url(#cien-ciala)"></path>
                 <path d="M44 160c2-22 14-34 36-34s34 12 36 34z" fill="#c8923a" stroke="#7a5418" stroke-width="2"></path>
                 <path d="M62 140q9 6 18 0q9 6 18 0M80 134v26" fill="none" stroke="#8a611f" stroke-width="2"></path>
-                <rect x="71" y="100" width="18" height="24" rx="6" fill="#c98d63"></rect>
-                <circle cx="55" cy="88" r="5.5" fill="#cf9469"></circle>
-                <circle cx="105" cy="88" r="5.5" fill="#cf9469"></circle>
-                <ellipse cx="80" cy="85" rx="25" ry="27" fill="#d9a276"></ellipse>
+                <rect x="71" y="100" width="18" height="24" rx="6" fill="#c98d63"></rect><rect x="71" y="100" width="18" height="24" rx="6" fill="url(#cien-szyi)"></rect>
+                <circle cx="55" cy="88" r="5.5" fill="#cf9469"></circle><path d="M56 85.5q-2 2.5 0 5" fill="none" stroke="#8a4a2a" stroke-opacity="0.45" stroke-width="1.2" stroke-linecap="round"></path>
+                <circle cx="105" cy="88" r="5.5" fill="#cf9469"></circle><path d="M104 85.5q2 2.5 0 5" fill="none" stroke="#8a4a2a" stroke-opacity="0.45" stroke-width="1.2" stroke-linecap="round"></path>
+                <ellipse cx="80" cy="85" rx="25" ry="27" fill="#d9a276" stroke="#7a3a1e" stroke-opacity="0.35" stroke-width="1.2"></ellipse>
+                <ellipse cx="80" cy="85" rx="25" ry="27" fill="url(#cien-twarzy)"></ellipse><ellipse cx="80" cy="85" rx="25" ry="27" fill="url(#blask-twarzy)"></ellipse>
                 <path d="M56 86q0 30 24 32q24-2 24-32l-5 3q-2 20-19 22q-17-2-19-22z" fill="#2c1c10"></path>
                 <path d="M70 101q5-3 10-1q5-2 10 1q-5 2-10 1q-5 1-10-1z" fill="#2c1c10"></path>
                 <!-- kozie rogi — w końcu to GOAT -->
                 <path d="M60 58c-12-10-28-8-34 6c-3 8 0 16 6 18c-2-8 0-14 6-16c6-2 12 1 16 6z" fill="#efe4c8" stroke="#9c8c6a" stroke-width="2" stroke-linejoin="round"></path>
                 <path d="M100 58c12-10 28-8 34 6c3 8 0 16-6 18c2-8 0-14-6-16c-6-2-12 1-16 6z" fill="#efe4c8" stroke="#9c8c6a" stroke-width="2" stroke-linejoin="round"></path>
                 <path d="M46 56l3 6M38 60l4 5M120 60l-4 5M112 56l-3 6" stroke="#b3a37f" stroke-width="1.6" stroke-linecap="round"></path>
-                <path d="M54 78C54 56 66 47 80 47s26 9 26 31c-8-6-16-8-26-8s-18 2-26 8z" fill="#c8923a" stroke="#7a5418" stroke-width="2"></path>
-                <path d="M77 68h6v13h-6z" fill="#b07a2c" stroke="#7a5418" stroke-width="1.5"></path>
+                <path d="M54 84C53 58 66 47 80 47s27 11 26 37c-8-3-17-4-26-4s-18 1-26 4z" fill="#c8923a" stroke="#7a5418" stroke-width="2" stroke-linejoin="round"></path>
+                <path d="M77.5 72h5v21l-2.5 2.5-2.5-2.5z" fill="#b07a2c" stroke="#7a5418" stroke-width="1.5" stroke-linejoin="round"></path>
+                <path d="M55 81q25-6 50 0" fill="none" stroke="#7a5418" stroke-width="1.6" opacity="0.8"></path>
                 <path d="M60 60q20-10 40 0" fill="none" stroke="#f0c75e" stroke-width="2" opacity="0.7"></path>
+                <path d="M80.5 93q-2.5 5 1 7" fill="none" stroke="#8a4a2a" stroke-opacity="0.55" stroke-width="1.6" stroke-linecap="round"></path>
               </g>
               <g class="spokoj">
                 <path d="M63 89q5 4 10 0M87 89q5 4 10 0" fill="none" stroke="#2a1a0c" stroke-width="2.6" stroke-linecap="round"></path>
                 <path d="M73 106q7 4 14 0" fill="none" stroke="#5a2a14" stroke-width="2.4" stroke-linecap="round"></path>
               </g>
               <g class="furia">
-                <path d="M61 82l13 5M99 82l-13 5" stroke="#1a0d05" stroke-width="3.6" stroke-linecap="round"></path>
+                <path d="M62 85l12 4M98 85l-12 4" stroke="#1a0d05" stroke-width="3.6" stroke-linecap="round"></path>
                 <ellipse cx="69" cy="90" rx="4.2" ry="3" fill="#ff3b1f"></ellipse>
                 <ellipse cx="91" cy="90" rx="4.2" ry="3" fill="#ff3b1f"></ellipse>
                 <path d="M71 104h18v7H71z" fill="#ffffff" stroke="#3a1a0a" stroke-width="1.8"></path>
@@ -800,27 +829,30 @@
                 <text x="130" y="53.5" class="awatar-napis" font-size="10.5" fill="#2a1a0a" text-anchor="middle">LOBBY</text>
               </g>
               <g class="postac">
-                <path d="M30 160c3-28 22-42 50-42s47 14 50 42z" fill="#6b5a45"></path>
+                <path d="M30 160c3-28 22-42 50-42s47 14 50 42z" fill="#6b5a45"></path><path d="M30 160c3-28 22-42 50-42s47 14 50 42z" fill="url(#cien-ciala)"></path>
                 <path d="M44 144h72" stroke="#4a3b2a" stroke-width="5"></path>
                 <path d="M58 124l7 14 7-14z" fill="#2c5aa0"></path>
                 <circle cx="65" cy="142" r="6.5" fill="#e0b53a" stroke="#8a6a12" stroke-width="1.6"></circle>
-                <rect x="71" y="100" width="18" height="24" rx="6" fill="#d6a482"></rect>
-                <circle cx="55" cy="88" r="5.5" fill="#dfa988"></circle>
-                <circle cx="105" cy="88" r="5.5" fill="#dfa988"></circle>
-                <ellipse cx="80" cy="85" rx="25" ry="27" fill="#e8b996"></ellipse>
+                <rect x="71" y="100" width="18" height="24" rx="6" fill="#d6a482"></rect><rect x="71" y="100" width="18" height="24" rx="6" fill="url(#cien-szyi)"></rect>
+                <circle cx="55" cy="88" r="5.5" fill="#dfa988"></circle><path d="M56 85.5q-2 2.5 0 5" fill="none" stroke="#8a4a2a" stroke-opacity="0.45" stroke-width="1.2" stroke-linecap="round"></path>
+                <circle cx="105" cy="88" r="5.5" fill="#dfa988"></circle><path d="M104 85.5q2 2.5 0 5" fill="none" stroke="#8a4a2a" stroke-opacity="0.45" stroke-width="1.2" stroke-linecap="round"></path>
+                <ellipse cx="80" cy="85" rx="25" ry="27" fill="#e8b996" stroke="#7a3a1e" stroke-opacity="0.35" stroke-width="1.2"></ellipse>
+                <ellipse cx="80" cy="85" rx="25" ry="27" fill="url(#cien-twarzy)"></ellipse><ellipse cx="80" cy="85" rx="25" ry="27" fill="url(#blask-twarzy)"></ellipse>
                 <path d="M64 80q4 2 8 0M88 80q4 2 8 0" fill="none" stroke="#c98f6d" stroke-width="1.4"></path>
-                <path d="M53 78C53 56 66 47 80 47s27 9 27 31c-8-5-17-7-27-7s-19 2-27 7z" fill="#8a9098" stroke="#4f545a" stroke-width="2"></path>
+                <path d="M53 85C52 58 66 47 80 47s28 11 27 38c-8-3-17-5-27-5s-19 2-27 5z" fill="#8a9098" stroke="#4f545a" stroke-width="2" stroke-linejoin="round"></path>
+                <path d="M54 82q26-7 52 0" fill="none" stroke="#4f545a" stroke-width="1.6" opacity="0.8"></path>
+                <path d="M60 66q20-14 40 0" fill="none" stroke="#c9ced4" stroke-width="1.6" opacity="0.6"></path>
                 <path d="M86 49l5 8 7-3" fill="none" stroke="#4f545a" stroke-width="2" stroke-linejoin="round"></path>
                 <path d="M62 54l12 8M74 54l-12 8" stroke="#e8d3a8" stroke-width="4.5" stroke-linecap="round"></path>
-                <path d="M54 84l46-10" stroke="#161616" stroke-width="2.4"></path>
+                <path d="M54 88l46-8" stroke="#161616" stroke-width="2.4"></path>
                 <ellipse cx="69" cy="90" rx="7.5" ry="6.5" fill="#161616"></ellipse>
                 <g class="oko">
                   <ellipse cx="91" cy="90" rx="4.6" ry="3.6" fill="#ffffff"></ellipse>
-                  <circle cx="91" cy="91" r="2.2" fill="#1d1d1d"></circle>
+                  <circle cx="91" cy="91" r="2.2" fill="#1d1d1d"></circle><circle cx="91.8" cy="90.1" r="0.7" fill="#ffffff" opacity="0.9"></circle>
                   <path d="M86 88.5q5-3 10 0" fill="#e8b996" stroke="#b77e5c" stroke-width="1.4"></path>
                 </g>
                 <path d="M86 96q5 2 10 0" fill="none" stroke="#b77e5c" stroke-width="1.2"></path>
-                <path d="M85 81q6-3 12 1" fill="none" stroke="#bdbdbd" stroke-width="3" stroke-linecap="round"></path>
+                <path d="M85 85q6-2 12 1" fill="none" stroke="#bdbdbd" stroke-width="3" stroke-linecap="round"></path>
                 <ellipse cx="80" cy="99" rx="4.2" ry="4.8" fill="#d88f76"></ellipse>
                 <path d="M62 105q9-8 18-3q9-5 18 3q-1 12-7 9q-5-4-11-4q-6 0-11 4q-6 3-7-9z" fill="#dcdcdc" stroke="#bdbdbd" stroke-width="1"></path>
               </g>
@@ -892,31 +924,33 @@
             <div class="promienie" aria-hidden="true"></div>
             <svg class="awatar" viewBox="0 0 160 160" role="img" aria-label="Stozhinio w spartańskim hełmie z czerwonym grzebieniem i tarczą z lambdą">
               <g class="postac">
-                <path d="M24 160c2-32 22-46 56-46s54 14 56 46z" fill="#a11d1d"></path>
+                <path d="M24 160c2-32 22-46 56-46s54 14 56 46z" fill="#a11d1d"></path><path d="M24 160c2-32 22-46 56-46s54 14 56 46z" fill="url(#cien-ciala)"></path>
                 <path d="M46 160c2-22 14-34 34-34s32 12 34 34z" fill="#c8923a" stroke="#7a5418" stroke-width="2"></path>
                 <path d="M64 142q8 5 16 0q8 5 16 0" fill="none" stroke="#8a611f" stroke-width="2"></path>
-                <rect x="71" y="100" width="18" height="24" rx="6" fill="#d19a74"></rect>
-                <circle cx="55" cy="88" r="5.5" fill="#dca07a"></circle>
-                <circle cx="105" cy="88" r="5.5" fill="#dca07a"></circle>
-                <ellipse cx="80" cy="85" rx="25" ry="27" fill="#e9b48f"></ellipse>
+                <rect x="71" y="100" width="18" height="24" rx="6" fill="#d19a74"></rect><rect x="71" y="100" width="18" height="24" rx="6" fill="url(#cien-szyi)"></rect>
+                <ellipse cx="80" cy="85" rx="25" ry="27" fill="#e9b48f" stroke="#7a3a1e" stroke-opacity="0.35" stroke-width="1.2"></ellipse>
+                <ellipse cx="80" cy="85" rx="25" ry="27" fill="url(#cien-twarzy)"></ellipse><ellipse cx="80" cy="85" rx="25" ry="27" fill="url(#blask-twarzy)"></ellipse>
                 <ellipse class="rumieniec" cx="80" cy="90" rx="24" ry="22" fill="#e0402a"></ellipse>
                 <path d="M56 88q1 26 24 29q23-3 24-29l-4 3q-3 18-20 20q-17-2-20-20z" fill="#5a3a22"></path>
-                <path d="M52 76C52 52 66 43 80 43s28 9 28 33c-8-6-17-9-28-9s-20 3-28 9z" fill="#c8923a" stroke="#7a5418" stroke-width="2"></path>
-                <path d="M64 60q6-4 12 0q-6 3-12 0zM84 60q6-4 12 0q-6 3-12 0z" fill="#3a2410"></path>
-                <path d="M78 58h4v10h-4z" fill="#b07a2c"></path>
-                <path d="M50 46C54 18 106 18 110 46C100 34 60 34 50 46z" fill="#c0262a" stroke="#7a1010" stroke-width="2"></path>
-                <path d="M60 36l2-8M70 31l1-9M80 30v-9M90 31l-1-9M100 36l-2-8" stroke="#8a1212" stroke-width="1.6" stroke-linecap="round"></path>
+                <!-- hełm koryncki: zakrywa czoło, osłona nosa i policzków, grzebień z końskiego włosia -->
+                <path d="M53 87C50 58 63 41 80 41s30 17 27 46q-11-6-24-3l-1.5 15h-3L77 84q-13-3-24 3z" fill="#c8923a" stroke="#7a5418" stroke-width="2" stroke-linejoin="round"></path>
+                <path d="M53 87q-1 15 7 24q5-2 6-10q-1-8 1-13q-7-2-14-1zM107 87q1 15-7 24q-5-2-6-10q1-8-1-13q7-2 14-1z" fill="#c8923a" stroke="#7a5418" stroke-width="2" stroke-linejoin="round"></path>
+                <path d="M58 66q22-18 44 0" fill="none" stroke="#f0c75e" stroke-width="2" opacity="0.65"></path>
+                <path d="M55 82q25-9 50 0" fill="none" stroke="#7a5418" stroke-width="1.6" opacity="0.8"></path>
+                <circle cx="58" cy="94" r="1.4" fill="#f0c75e"></circle><circle cx="102" cy="94" r="1.4" fill="#f0c75e"></circle>
+                <path d="M50 50C54 22 106 22 110 50C100 38 60 38 50 50z" fill="#c0262a" stroke="#7a1010" stroke-width="2"></path>
+                <path d="M60 40l2-8M70 35l1-9M80 34v-9M90 35l-1-9M100 40l-2-8" stroke="#8a1212" stroke-width="1.6" stroke-linecap="round"></path>
               </g>
               <g class="spokoj">
-                <g class="oko"><circle cx="69" cy="91" r="2.6" fill="#1d1d1d"></circle></g>
-                <g class="oko"><circle cx="91" cy="91" r="2.6" fill="#1d1d1d"></circle></g>
-                <path d="M63 88q6-3 12 0M85 88q6-3 12 0" fill="none" stroke="#5a3a22" stroke-width="2" stroke-linecap="round"></path>
+                <g class="oko"><ellipse cx="72" cy="90.5" rx="4.8" ry="4.5" fill="#ffffff" stroke="#3a2210" stroke-opacity="0.35" stroke-width="0.8"></ellipse><circle cx="72.6" cy="90.9" r="2.9" fill="#5d4a1f"></circle><circle cx="72.6" cy="90.9" r="1.5" fill="#111111"></circle><circle cx="73.6" cy="89.7" r="1" fill="#ffffff"></circle></g>
+                <g class="oko"><ellipse cx="88.5" cy="90.5" rx="4.8" ry="4.5" fill="#ffffff" stroke="#3a2210" stroke-opacity="0.35" stroke-width="0.8"></ellipse><circle cx="89.1" cy="90.9" r="2.9" fill="#5d4a1f"></circle><circle cx="89.1" cy="90.9" r="1.5" fill="#111111"></circle><circle cx="90.1" cy="89.7" r="1" fill="#ffffff"></circle></g>
+                <path d="M67 85.6q5-2.4 10 0M83.5 85.6q5-2.4 10 0" fill="none" stroke="#5a3a22" stroke-width="2" stroke-linecap="round"></path>
                 <path d="M71 103q9 6 18 0" fill="none" stroke="#6b2a1a" stroke-width="2.6" stroke-linecap="round"></path>
               </g>
               <g class="furia">
-                <path d="M60 82l14 6M100 82l-14 6" stroke="#2a1208" stroke-width="3.8" stroke-linecap="round"></path>
-                <circle cx="69" cy="92" r="5" fill="#ffffff"></circle><circle cx="69" cy="92" r="2" fill="#1d1d1d"></circle>
-                <circle cx="91" cy="92" r="5" fill="#ffffff"></circle><circle cx="91" cy="92" r="2" fill="#1d1d1d"></circle>
+                <path d="M65 83l12 4.5M95.5 83l-12 4.5" stroke="#2a1208" stroke-width="3.8" stroke-linecap="round"></path>
+                <ellipse cx="72" cy="91" rx="5.2" ry="4.8" fill="#ffffff"></ellipse><circle cx="72" cy="91" r="2" fill="#1d1d1d"></circle>
+                <ellipse cx="88.5" cy="91" rx="5.2" ry="4.8" fill="#ffffff"></ellipse><circle cx="88.5" cy="91" r="2" fill="#1d1d1d"></circle>
                 <path d="M68 100q12-4 24 0q-2 14-12 14q-10 0-12-14z" fill="#4a0d0d"></path>
                 <path d="M69 100.5q11-3 22 0v3q-11-2-22 0z" fill="#ffffff"></path>
                 <g fill="#dddddd" opacity="0.85">
@@ -997,17 +1031,18 @@
             <div class="promienie" aria-hidden="true"></div>
             <svg class="awatar" viewBox="0 0 160 160" role="img" aria-label="Nolli w skrzydlatym kapeluszu kupca i okularach rachmistrza, podrzuca srebrnika, obok worek pełen monet">
               <g class="postac">
-                <path d="M30 160c3-28 22-42 50-42s47 14 50 42z" fill="#1f6b45"></path>
+                <path d="M30 160c3-28 22-42 50-42s47 14 50 42z" fill="#1f6b45"></path><path d="M30 160c3-28 22-42 50-42s47 14 50 42z" fill="url(#cien-ciala)"></path>
                 <!-- płaszcz kupca ze złotym obszyciem -->
                 <path d="M96 118c16 6 30 20 34 42H98z" fill="#17553a"></path>
                 <path d="M96 118c16 6 30 20 34 42" fill="none" stroke="#e0b53a" stroke-width="2.6"></path>
                 <path d="M62 121q18 14 36 0" fill="none" stroke="#e0b53a" stroke-width="3"></path>
                 <path d="M66 126q14 30 28 0" fill="none" stroke="#e0b53a" stroke-width="1.6" stroke-dasharray="2.5 2"></path>
                 <circle cx="80" cy="143" r="5" fill="url(#laur-zloto)" stroke="#8a6a1a" stroke-width="1.2"></circle>
-                <rect x="71" y="100" width="18" height="24" rx="6" fill="#c98d63"></rect>
-                <circle cx="55" cy="88" r="5.5" fill="#cf9469"></circle>
-                <circle cx="105" cy="88" r="5.5" fill="#cf9469"></circle>
-                <ellipse cx="80" cy="85" rx="25" ry="27" fill="#d9a276"></ellipse>
+                <rect x="71" y="100" width="18" height="24" rx="6" fill="#c98d63"></rect><rect x="71" y="100" width="18" height="24" rx="6" fill="url(#cien-szyi)"></rect>
+                <circle cx="55" cy="88" r="5.5" fill="#cf9469"></circle><path d="M56 85.5q-2 2.5 0 5" fill="none" stroke="#8a4a2a" stroke-opacity="0.45" stroke-width="1.2" stroke-linecap="round"></path>
+                <circle cx="105" cy="88" r="5.5" fill="#cf9469"></circle><path d="M104 85.5q2 2.5 0 5" fill="none" stroke="#8a4a2a" stroke-opacity="0.45" stroke-width="1.2" stroke-linecap="round"></path>
+                <ellipse cx="80" cy="85" rx="25" ry="27" fill="#d9a276" stroke="#7a3a1e" stroke-opacity="0.35" stroke-width="1.2"></ellipse>
+                <ellipse cx="80" cy="85" rx="25" ry="27" fill="url(#cien-twarzy)"></ellipse><ellipse cx="80" cy="85" rx="25" ry="27" fill="url(#blask-twarzy)"></ellipse>
                 <path d="M56 84q-3-12 3-19M104 84q3-12-3-19" fill="none" stroke="#2c1c10" stroke-width="5" stroke-linecap="round"></path>
                 <!-- kapelusz podróżnego kupca ze skrzydełkami (jak u Hermesa, boga handlu i sprytu) -->
                 <path d="M57 58c-9-7-20-9-27-5c7 1 11 3 13 6c-6 0-10 1.5-13 5c8 0 16-1.5 25-4z" fill="#fffaf0" stroke="#b8ad96" stroke-width="1.2" stroke-linejoin="round"></path>
@@ -1021,8 +1056,8 @@
                   <ellipse cx="70" cy="89" rx="4.8" ry="3.2" fill="#ffffff"></ellipse>
                   <ellipse cx="90" cy="89" rx="4.8" ry="3.2" fill="#ffffff"></ellipse>
                   <g class="zrenice">
-                    <circle cx="72.6" cy="89.3" r="2.2" fill="#1d1d1d"></circle>
-                    <circle cx="92.6" cy="89.3" r="2.2" fill="#1d1d1d"></circle>
+                    <circle cx="72.6" cy="89.3" r="2.2" fill="#1d1d1d"></circle><circle cx="73.4" cy="88.4" r="0.7" fill="#ffffff" opacity="0.9"></circle>
+                    <circle cx="92.6" cy="89.3" r="2.2" fill="#1d1d1d"></circle><circle cx="93.4" cy="88.4" r="0.7" fill="#ffffff" opacity="0.9"></circle>
                   </g>
                   <path d="M65 87.5q5-3.5 10 0M85 87.5q5-3.5 10 0" fill="#d9a276" stroke="#a8704c" stroke-width="1.3"></path>
                 </g>
@@ -1143,15 +1178,16 @@
               <g class="postac">
                 <!-- włosy z tyłu głowy -->
                 <path d="M53 94c-7-12-5-32 8-41c11-8 27-8 38 0c13 9 15 29 8 41z" fill="#c9922e"></path>
-                <path d="M30 160c3-28 22-42 50-42s47 14 50 42z" fill="#f1ead8"></path>
+                <path d="M30 160c3-28 22-42 50-42s47 14 50 42z" fill="#f1ead8"></path><path d="M30 160c3-28 22-42 50-42s47 14 50 42z" fill="url(#cien-ciala)"></path>
                 <path d="M63 121q17 12 34 0" fill="none" stroke="#2f6fb5" stroke-width="3"></path>
                 <path d="M30 160c3-26 15-38 33-42l21 42z" fill="#2f6fb5"></path>
                 <path d="M63 118l21 42" stroke="#e8b93a" stroke-width="2.4"></path>
                 <circle cx="62" cy="121" r="4.2" fill="url(#laur-zloto)" stroke="#8a6a1a" stroke-width="1.2"></circle>
-                <rect x="71" y="100" width="18" height="24" rx="6" fill="#cf9a70"></rect>
-                <circle cx="55" cy="88" r="5.5" fill="#dca57b"></circle>
-                <circle cx="105" cy="88" r="5.5" fill="#dca57b"></circle>
-                <ellipse cx="80" cy="85" rx="25" ry="27" fill="#e7b48b"></ellipse>
+                <rect x="71" y="100" width="18" height="24" rx="6" fill="#cf9a70"></rect><rect x="71" y="100" width="18" height="24" rx="6" fill="url(#cien-szyi)"></rect>
+                <circle cx="55" cy="88" r="5.5" fill="#dca57b"></circle><path d="M56 85.5q-2 2.5 0 5" fill="none" stroke="#8a4a2a" stroke-opacity="0.45" stroke-width="1.2" stroke-linecap="round"></path>
+                <circle cx="105" cy="88" r="5.5" fill="#dca57b"></circle><path d="M104 85.5q2 2.5 0 5" fill="none" stroke="#8a4a2a" stroke-opacity="0.45" stroke-width="1.2" stroke-linecap="round"></path>
+                <ellipse cx="80" cy="85" rx="25" ry="27" fill="#e7b48b" stroke="#7a3a1e" stroke-opacity="0.35" stroke-width="1.2"></ellipse>
+                <ellipse cx="80" cy="85" rx="25" ry="27" fill="url(#cien-twarzy)"></ellipse><ellipse cx="80" cy="85" rx="25" ry="27" fill="url(#blask-twarzy)"></ellipse>
                 <!-- złote loki -->
                 <g fill="#e6b54c" stroke="#b07f22" stroke-width="1">
                   <circle cx="58" cy="72" r="6"></circle>
@@ -1177,8 +1213,8 @@
                   <path d="M0 0Q5-4 10 0Q5 4 0 0Z" transform="translate(101 66) rotate(10)"></path>
                 </g>
                 <path d="M63 81q6-4 12-1M85 80q6-3 12 1" fill="none" stroke="#9a6a22" stroke-width="2.6" stroke-linecap="round"></path>
-                <g class="oko"><ellipse cx="70" cy="90" rx="3.2" ry="3.8" fill="#1d1d1d"></ellipse></g>
-                <g class="oko"><ellipse cx="90" cy="90" rx="3.2" ry="3.8" fill="#1d1d1d"></ellipse></g>
+                <g class="oko"><ellipse cx="70" cy="90" rx="4.6" ry="4.4" fill="#ffffff" stroke="#3a2210" stroke-opacity="0.35" stroke-width="0.8"></ellipse><circle cx="70.6" cy="90.4" r="2.9" fill="#3f7fd0"></circle><circle cx="70.6" cy="90.4" r="1.5" fill="#111111"></circle><circle cx="71.6" cy="89.2" r="1" fill="#ffffff"></circle></g>
+                <g class="oko"><ellipse cx="90" cy="90" rx="4.6" ry="4.4" fill="#ffffff" stroke="#3a2210" stroke-opacity="0.35" stroke-width="0.8"></ellipse><circle cx="90.6" cy="90.4" r="2.9" fill="#3f7fd0"></circle><circle cx="90.6" cy="90.4" r="1.5" fill="#111111"></circle><circle cx="91.6" cy="89.2" r="1" fill="#ffffff"></circle></g>
                 <circle cx="63" cy="99" r="4" fill="#f59a8a" opacity="0.45"></circle>
                 <circle cx="97" cy="99" r="4" fill="#f59a8a" opacity="0.45"></circle>
                 <path d="M71 102q9 8 18 0" fill="none" stroke="#7a2e1c" stroke-width="2.8" stroke-linecap="round"></path>
@@ -1265,17 +1301,18 @@
               </g>
               <text class="awatar-znak znak-pytania" x="26" y="58" font-size="30" fill="#fff4d0" transform="rotate(-12 26 58)">?</text>
               <g class="postac">
-                <path d="M30 160c3-28 22-42 50-42s47 14 50 42z" fill="#a3241c"></path>
+                <path d="M30 160c3-28 22-42 50-42s47 14 50 42z" fill="#a3241c"></path><path d="M30 160c3-28 22-42 50-42s47 14 50 42z" fill="url(#cien-ciala)"></path>
                 <!-- skrzyżowany kołnierz szaty -->
                 <path d="M65 119l15 18 15-18z" fill="#f1ead8"></path>
                 <path d="M62 119l19 23" stroke="#1d1a1a" stroke-width="6.5" stroke-linecap="round"></path>
                 <path d="M98 119L68 160" stroke="#1d1a1a" stroke-width="6.5" stroke-linecap="round"></path>
                 <path d="M36 152h88" stroke="#1d1a1a" stroke-width="8"></path>
                 <circle cx="100" cy="152" r="3.6" fill="#3fbf9a" stroke="#1d5a48" stroke-width="1"></circle>
-                <rect x="71" y="100" width="18" height="24" rx="6" fill="#cf9a70"></rect>
-                <circle cx="55" cy="88" r="5.5" fill="#dca57b"></circle>
-                <circle cx="105" cy="88" r="5.5" fill="#dca57b"></circle>
-                <ellipse cx="80" cy="85" rx="25" ry="27" fill="#e7b48b"></ellipse>
+                <rect x="71" y="100" width="18" height="24" rx="6" fill="#cf9a70"></rect><rect x="71" y="100" width="18" height="24" rx="6" fill="url(#cien-szyi)"></rect>
+                <circle cx="55" cy="88" r="5.5" fill="#dca57b"></circle><path d="M56 85.5q-2 2.5 0 5" fill="none" stroke="#8a4a2a" stroke-opacity="0.45" stroke-width="1.2" stroke-linecap="round"></path>
+                <circle cx="105" cy="88" r="5.5" fill="#dca57b"></circle><path d="M104 85.5q2 2.5 0 5" fill="none" stroke="#8a4a2a" stroke-opacity="0.45" stroke-width="1.2" stroke-linecap="round"></path>
+                <ellipse cx="80" cy="85" rx="25" ry="27" fill="#e7b48b" stroke="#7a3a1e" stroke-opacity="0.35" stroke-width="1.2"></ellipse>
+                <ellipse cx="80" cy="85" rx="25" ry="27" fill="url(#cien-twarzy)"></ellipse><ellipse cx="80" cy="85" rx="25" ry="27" fill="url(#blask-twarzy)"></ellipse>
                 <!-- włosy związane w kok i mała czapeczka z szpilą -->
                 <path d="M55 83C54 61 65 52 80 52s26 9 25 31c-5-9-13-14-25-14s-20 5-25 14z" fill="#1d1a1a"></path>
                 <ellipse cx="80" cy="47" rx="8.5" ry="7.5" fill="#1d1a1a"></ellipse>
@@ -1283,8 +1320,15 @@
                 <path d="M66 44h28" stroke="#c9a23a" stroke-width="2.2" stroke-linecap="round"></path>
                 <!-- zagubione spojrzenie -->
                 <path d="M63 81q6-4 12-1M86 78q6 1 11 5" fill="none" stroke="#1d1a1a" stroke-width="2.6" stroke-linecap="round"></path>
-                <g class="oko"><circle cx="70" cy="90" r="5" fill="#ffffff"></circle><circle cx="68.6" cy="89" r="2.4" fill="#1d1d1d"></circle></g>
-                <g class="oko"><circle cx="91" cy="90" r="5" fill="#ffffff"></circle><circle cx="92.6" cy="91.6" r="2.4" fill="#1d1d1d"></circle></g>
+                <g class="oko"><circle cx="70" cy="90" r="5" fill="#ffffff"></circle><circle cx="68.6" cy="89" r="2.4" fill="#1d1d1d"></circle><circle cx="69.5" cy="88.0" r="0.7" fill="#ffffff" opacity="0.9"></circle></g>
+                <g class="oko"><circle cx="91" cy="90" r="5" fill="#ffffff"></circle><circle cx="92.6" cy="91.6" r="2.4" fill="#1d1d1d"></circle><circle cx="93.5" cy="90.6" r="0.7" fill="#ffffff" opacity="0.9"></circle></g>
+                <!-- okulary w czarnych oprawkach -->
+                <g fill="rgba(200,230,255,0.14)" stroke="#161616" stroke-width="2">
+                  <circle cx="70" cy="90" r="7.4"></circle>
+                  <circle cx="91" cy="90" r="7.4"></circle>
+                </g>
+                <path d="M77.4 89q3.1-2.2 6.2 0M62.6 88.5l-7-2.5M98.4 88.5l6.6-2.5" fill="none" stroke="#161616" stroke-width="2" stroke-linecap="round"></path>
+                <path d="M65.5 86.5q2-2 4.5-2.2M86.5 86.5q2-2 4.5-2.2" fill="none" stroke="#ffffff" stroke-width="1.2" stroke-linecap="round" opacity="0.6"></path>
                 <path d="M80.5 92q-2 5 1 7" fill="none" stroke="#b77c56" stroke-width="1.6" stroke-linecap="round"></path>
                 <path d="M71 106q3-3 6 0t6 0t6 0" fill="none" stroke="#6b2a1a" stroke-width="2.4" stroke-linecap="round"></path>
                 <path class="pot" d="M104 70c-3 4.4-4 7.2-1 8.8s5.2-2 1-8.8z" fill="#9fe6ff"></path>
@@ -1387,23 +1431,26 @@
               </g>
               <g class="postac">
                 <!-- czerwony płaszcz i zbroja płytowa -->
-                <path d="M28 160c3-28 22-43 52-43s49 15 52 43z" fill="#9e1a1a"></path>
+                <path d="M28 160c3-28 22-43 52-43s49 15 52 43z" fill="#9e1a1a"></path><path d="M28 160c3-28 22-43 52-43s49 15 52 43z" fill="url(#cien-ciala)"></path>
                 <path d="M46 160c2-22 14-36 34-36s32 14 34 36z" fill="#b8bec6" stroke="#6a7278" stroke-width="1.6"></path>
                 <path d="M50 138h60M48 147h64M53 130h54" stroke="#7d858e" stroke-width="2"></path>
                 <circle cx="62" cy="124" r="3.6" fill="url(#laur-zloto)" stroke="#8a6a1a"></circle>
                 <circle cx="98" cy="124" r="3.6" fill="url(#laur-zloto)" stroke="#8a6a1a"></circle>
-                <rect x="71" y="100" width="18" height="24" rx="6" fill="#cf9a70"></rect>
-                <ellipse cx="80" cy="86" rx="24" ry="26" fill="#e3ad85"></ellipse>
+                <rect x="71" y="100" width="18" height="24" rx="6" fill="#cf9a70"></rect><rect x="71" y="100" width="18" height="24" rx="6" fill="url(#cien-szyi)"></rect>
+                <ellipse cx="80" cy="86" rx="24" ry="26" fill="#e3ad85" stroke="#7a3a1e" stroke-opacity="0.35" stroke-width="1.2"></ellipse>
+                <ellipse cx="80" cy="86" rx="24" ry="26" fill="url(#cien-twarzy)"></ellipse><ellipse cx="80" cy="86" rx="24" ry="26" fill="url(#blask-twarzy)"></ellipse>
                 <!-- hełm (galea) z grzebieniem i osłonami policzków -->
-                <path d="M55 84c-2-22 10-34 25-34s27 12 25 34l-5-2c0-16-8-24-20-24s-20 8-20 24z" fill="#c9923a" stroke="#7a5418" stroke-width="1.6"></path>
-                <path d="M55 82l2 22 8 4-1-22zM105 82l-2 22-8 4 1-22z" fill="#c9923a" stroke="#7a5418" stroke-width="1.4"></path>
-                <path d="M54 79q26-8 52 0" fill="none" stroke="#7a5418" stroke-width="3"></path>
+                <path d="M55 86C53 62 64 50 80 50s27 12 25 36c-8-4-16-6-25-6s-17 2-25 6z" fill="#c9923a" stroke="#7a5418" stroke-width="1.6" stroke-linejoin="round"></path>
+                <path d="M55 85l1 21 9 4-1-23zM105 85l-1 21-9 4 1-23z" fill="#c9923a" stroke="#7a5418" stroke-width="1.4" stroke-linejoin="round"></path>
+                <path d="M55 84q25-9 50 0" fill="none" stroke="#8a611f" stroke-width="3"></path>
+                <path d="M61 68q19-14 38 0" fill="none" stroke="#f0c75e" stroke-width="1.8" opacity="0.6"></path>
+                <circle cx="60" cy="96" r="1.3" fill="#f0c75e"></circle><circle cx="100" cy="96" r="1.3" fill="#f0c75e"></circle>
                 <path d="M66 50c0-14 28-14 28 0c-2-4-6-6-14-6s-12 2-14 6z" fill="#d42a1f"></path>
                 <path d="M64 51q16-26 32 0" fill="none" stroke="#d42a1f" stroke-width="7" stroke-linecap="round"></path>
                 <!-- skupiony, pewny siebie -->
                 <path d="M65 83l10 2M95 83l-10 2" stroke="#3a2210" stroke-width="3" stroke-linecap="round"></path>
-                <g class="oko"><ellipse cx="71" cy="91" rx="3" ry="3.4" fill="#1d1d1d"></ellipse></g>
-                <g class="oko"><ellipse cx="89" cy="91" rx="3" ry="3.4" fill="#1d1d1d"></ellipse></g>
+                <g class="oko"><ellipse cx="71" cy="91" rx="4.6" ry="4.4" fill="#ffffff" stroke="#3a2210" stroke-opacity="0.35" stroke-width="0.8"></ellipse><circle cx="71.6" cy="91.4" r="2.9" fill="#4a2e14"></circle><circle cx="71.6" cy="91.4" r="1.5" fill="#111111"></circle><circle cx="72.6" cy="90.2" r="1" fill="#ffffff"></circle></g>
+                <g class="oko"><ellipse cx="89" cy="91" rx="4.6" ry="4.4" fill="#ffffff" stroke="#3a2210" stroke-opacity="0.35" stroke-width="0.8"></ellipse><circle cx="89.6" cy="91.4" r="2.9" fill="#4a2e14"></circle><circle cx="89.6" cy="91.4" r="1.5" fill="#111111"></circle><circle cx="90.6" cy="90.2" r="1" fill="#ffffff"></circle></g>
                 <path d="M80.5 93q-2 5 1 7" fill="none" stroke="#b77c56" stroke-width="1.6" stroke-linecap="round"></path>
                 <path d="M72 105q8 4 16-1" fill="none" stroke="#6b2a1a" stroke-width="2.6" stroke-linecap="round"></path>
               </g>
