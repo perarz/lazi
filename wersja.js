@@ -5,6 +5,17 @@
 (function () {
   var historia = [
     {
+      wersja: '3.7', data: '2026-09-24', tytul: 'Ruch po strzale i nowe bronie',
+      zmiany: [
+        'Po każdym strzale masz 5 s na ruch — schowaj się albo odskocz od wybuchu.',
+        'Owca (7): biegnie po terenie, zawraca na ścianach i wybucha przy wrogu.',
+        'Kij bejsbolowy (8): mało obrażeń, ogromny odrzut — idealny do wybijania w lawę.',
+        'Teleport (9): wskaż miejsce na mapie i przenieś się tam.',
+        'Blitzkrieg (0): trzy rakiety naraz, wachlarzem.',
+        'Nowe osiągnięcia: Wilk w owczej skórze i Home run.'
+      ]
+    },
+    {
       wersja: '3.6', data: '2026-09-24', tytul: 'Lepsze portrety',
       zmiany: [
         'Hełmy Stozhinia (koryncki), Qubera, Kozaka i Laziego zakrywają czoło — z osłonami nosa i policzków.',

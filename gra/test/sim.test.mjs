@@ -115,7 +115,7 @@ test('po dynamicie robal moze uciec, a potem traci sterowanie', () => {
   st.input.left = true; st.input.right = false;
   run(st, 1);
   assert(w.x !== x0 || !w.alive, 'robal nie ruszyl sie w czasie ucieczki');
-  run(st, 3);
+  run(st, S.ODWROT_S - 0.9);
   assert(st.phase !== 'odwrot', 'ucieczka trwa za dlugo');
   const x1 = w.x;
   run(st, 0.3);
@@ -235,7 +235,7 @@ test('kasetowka rozsypuje odlamki', () => {
   st.power = 0.5;
   S.releaseFire(st);
   let maks = 0;
-  for (let i = 0; i < 12 / S.DT && st.phase === 'flight'; i++) {
+  for (let i = 0; i < 12 / S.DT && (st.phase === 'flight' || st.phase === 'odwrot'); i++) {
     S.step(st);
     maks = Math.max(maks, st.projectiles.length);
   }
@@ -253,6 +253,71 @@ test('nalot wymaga celu i zrzuca rakiety', () => {
   assert(st.projectiles.length === WEAPONS.nalot.rakiety, 'rakiet: ' + st.projectiles.length);
   run(st, 10);
   assert(cel.hp < 100, 'nalot nie zranil celu');
+});
+
+/* Płaska półka wokół robala: czyste pole testowe na nierównej mapie. */
+function polka(st, w, szer = 160) {
+  const y0 = Math.round(w.y);
+  for (let x = Math.round(w.x) - szer; x <= Math.round(w.x) + szer; x++) {
+    for (let y = y0 - 80; y < y0 + 30; y++) st.terrain.mask[y * T.WORLD_W + x] = y >= y0 + 1 ? 1 : 0;
+  }
+}
+
+test('owca biegnie do wroga i wybucha', () => {
+  const st = S.createGame(21, players(2), { sieciowa: true });
+  const a = S.activeWorm(st);
+  const b = st.worms.find((w) => w !== a);
+  polka(st, a);
+  a.y = Math.round(a.y); a.onGround = true; a.facing = 1;
+  b.x = a.x + 70; b.y = a.y; b.onGround = true;
+  st.weapon = 'owca';
+  assert(S.startCharging(st), 'nie da sie wypuscic owcy');
+  S.releaseFire(st);
+  let wybuch = false;
+  for (let i = 0; i < 6 / S.DT; i++) {
+    S.step(st);
+    if (st.events.some((e) => e.type === 'wybuch')) wybuch = true;
+    st.events.length = 0;
+  }
+  assert(wybuch, 'owca nie wybuchla');
+  assert(b.hp < 100, 'owca nie zranila wroga, hp=' + b.hp);
+});
+
+test('kij wybija wroga z ogromnym odrzutem', () => {
+  const st = S.createGame(21, players(2), { sieciowa: true });
+  const a = S.activeWorm(st);
+  const b = st.worms.find((w) => w !== a);
+  polka(st, a);
+  a.y = Math.round(a.y); a.onGround = true;
+  b.x = a.x + 16; b.y = a.y; b.onGround = true;
+  st.weapon = 'kij';
+  S.ustawCelownik(st, -0.4);
+  assert(S.startCharging(st), 'kij nie dziala');
+  S.releaseFire(st);
+  assert(b.hp === 100 - WEAPONS.kij.damage, 'kij: hp=' + b.hp);
+  assert(b.vx > 300 && !b.onGround, 'brak odrzutu: vx=' + b.vx);
+});
+
+test('teleport przenosi robala we wskazane miejsce', () => {
+  const st = S.createGame(21, players(2), { sieciowa: true });
+  const a = S.activeWorm(st);
+  st.weapon = 'teleport';
+  assert(!S.startCharging(st), 'teleport bez celu nie powinien ruszyc');
+  const cx = Math.round(T.WORLD_W / 2), cy = 120;       // wysoko nad mapą — na pewno wolne
+  S.ustawCel(st, cx, cy);
+  assert(S.startCharging(st), 'teleport z celem nie dziala');
+  S.releaseFire(st);
+  assert(Math.abs(a.x - cx) < 1 && Math.abs(a.y - cy) < 1, 'robal jest w ' + a.x + ',' + a.y);
+});
+
+test('blitzkrieg wystrzeliwuje trzy rakiety', () => {
+  const st = S.createGame(21, players(2), { sieciowa: true });
+  st.weapon = 'salwa';
+  S.ustawCelownik(st, -Math.PI / 2 + 0.3 * S.activeWorm(st).facing);
+  S.startCharging(st);
+  st.power = 0.7;
+  S.releaseFire(st);
+  assert(st.projectiles.length === 3 && st.projectiles.every((p) => p.weapon === 'rakietka'), 'pociski: ' + st.projectiles.map((p) => p.weapon));
 });
 
 test('amunicja sie konczy', () => {
@@ -274,6 +339,7 @@ test('pelne naladowanie strzela i trafia do kolejki wysylki', () => {
   S.startCharging(st);
   run(st, 2);
   assert(st.firedThisTurn, 'pelna moc nie wystrzelila');
+  run(st, S.ODWROT_S + 0.1);            // strzał wychodzi po 5 s ruchu
   assert(st.akcjeDoWyslania.length === 1, 'strzal nie trafil do kolejki wysylki — reszta by go nie zobaczyla');
 });
 
@@ -283,8 +349,8 @@ test('strzal przelacza faze i konczy ture', () => {
   const st = S.createGame(11, players(2));
   const kto = S.activeWorm(st).id;
   S.applyFire(st, { wormId: kto, weapon: 'bazooka', angle: -0.7, power: 0.9 });
-  assert(st.phase === 'flight', 'faza to ' + st.phase);
-  run(st, 12);
+  assert(st.phase === 'odwrot', 'faza to ' + st.phase);
+  run(st, 16);
   assert(st.phase !== 'flight', 'pocisk nigdy nie wybuchl');
   if (st.phase !== 'over') assert(S.activeWorm(st).id !== kto, 'tura sie nie zmienila');
 });
@@ -382,19 +448,16 @@ for (const bron of WEAPON_ORDER) {
       assert(S.startCharging(a), 'nie da sie strzelic: ' + bron);
       run(a, 0.5);
       S.releaseFire(a);
-      if (bron === 'dynamit') {
-        // ucieczka: bieg, skok, bieg z powrotem — nagranie leci w zdarzeniu
-        assert(a.phase === 'odwrot' && a.akcjeDoWyslania.length === 0, 'dynamit bez ucieczki');
-        a.input.left = true; run(a, 1.2);
-        a.input.left = false; S.jump(a); run(a, 0.6);
-        a.input.right = true; run(a, 0.8);
-        a.input.right = false;
-        for (let i = 0; i < 2000 && a.akcjeDoWyslania.length === 0; i++) S.step(a);
-      }
+      // 5 s ruchu po strzale: bieg, skok, bieg z powrotem — nagranie leci w zdarzeniu
+      assert(a.phase === 'odwrot' && a.akcjeDoWyslania.length === 0, 'strzal bez fazy ruchu: ' + bron);
+      a.input.left = true; run(a, 1.2);
+      a.input.left = false; S.jump(a); run(a, 0.6);
+      a.input.right = true; run(a, 0.8);
+      a.input.right = false;
+      for (let i = 0; i < 2000 && a.akcjeDoWyslania.length === 0; i++) S.step(a);
       assert(a.akcjeDoWyslania.length === 1, 'brak akcji do wyslania');
 
       S.zastosujStrzal(b, przezSiec(a.akcjeDoWyslania[0]));
-      if (bron !== 'dynamit') assert(S.stateHash(a) === S.stateHash(b), 'rozjazd zaraz po strzale (' + bron + ', seed ' + seed + ')');
       doKonca(a);
       doKonca(b);
       assert(S.stateHash(a) === S.stateHash(b), 'rozjazd po locie (' + bron + ', seed ' + seed + ')');
@@ -498,6 +561,9 @@ test('smierc liczona raz, dublet, progi 5 i 25, samoboja', () => {
   assert(os.fragi === 2, 'fragi=' + os.fragi);
   assert(zdarzenieOs(os, { type: 'smierc', wormId: 'z' }, { ...ctx, fragiWczesniej: 30 }).includes('rzeznik'), 'rzeznik');
   assert(zdarzenieOs(os, { type: 'smierc', wormId: 'ja', cause: 'lawa' }, ctx).includes('samoboja'), 'samoboja');
+  const os2 = nowaPartiaOs();
+  zdarzenieOs(os2, { type: 'strzal', weapon: 'kij' }, ctx);
+  assert(zdarzenieOs(os2, { type: 'smierc', wormId: 'q', cause: 'lawa' }, ctx).includes('home-run'), 'home run');
   // cudza tura: nic mi się nie liczy
   const d = zdarzenieOs(os, { type: 'smierc', wormId: 'w', cause: 'lawa' }, { ...ctx, nr: 4, aktId: 'inny' });
   assert(d.length === 0, 'cudza tura: ' + d);
@@ -522,12 +588,12 @@ test('kazde id z regul jest na liscie osiagniec', () => {
   const zrodlo = readFileSync(new URL('../osiagniecia.js', import.meta.url), 'utf8');
   const reguly = readFileSync(new URL('../src/osiagniecia-reguly.js', import.meta.url), 'utf8');
   const naLiscie = new Set([...zrodlo.matchAll(/id: '([a-z-]+)'/g)].map((m) => m[1]));
-  const uzyte = new Set([...reguly.matchAll(/'([a-z]+(?:-[a-z]+)+|masakra|samoboja|dublet|lawa|rzeznik|ucieczka|weteran|zwyciestwo|nietykalny|nalot|saper|snajper|kasetowka)'/g)].map((m) => m[1]));
-  for (const id of ['pierwsza-krew', 'piec-fragow', 'rzeznik', 'dublet', 'lawa', 'masakra', 'samoboja', 'ucieczka', 'weteran', 'zwyciestwo', 'na-wlosku', 'nietykalny', 'nalot', 'saper', 'snajper', 'kasetowka']) {
+  const uzyte = new Set([...reguly.matchAll(/'([a-z]+(?:-[a-z]+)+|masakra|samoboja|dublet|lawa|rzeznik|ucieczka|weteran|zwyciestwo|nietykalny|nalot|saper|snajper|kasetowka|owca)'/g)].map((m) => m[1]));
+  for (const id of ['pierwsza-krew', 'piec-fragow', 'rzeznik', 'dublet', 'lawa', 'masakra', 'samoboja', 'ucieczka', 'weteran', 'zwyciestwo', 'na-wlosku', 'nietykalny', 'nalot', 'saper', 'snajper', 'kasetowka', 'owca', 'home-run']) {
     assert(naLiscie.has(id), 'brak na liscie: ' + id);
     assert(uzyte.has(id), 'regula nie uzywa: ' + id);
   }
-  assert(naLiscie.size === 16, 'na liscie jest ' + naLiscie.size);
+  assert(naLiscie.size === 18, 'na liscie jest ' + naLiscie.size);
 });
 
 console.log('\n' + (failed === 0

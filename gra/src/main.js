@@ -636,9 +636,9 @@ function netCtx() {
 function celNalotu(moge) {
   const st = rg.state;
   if (st.phase !== 'aim') return null;
-  if (moge) return WEAPONS[st.weapon]?.celowany ? st.cel : null;
+  if (moge) return WEAPONS[st.weapon]?.celowany && st.cel ? { ...st.cel, teleport: st.weapon === 'teleport' } : null;
   const akt = S.activeWorm(st);
-  return akt && akt.widok && akt.widok.cel ? akt.widok.cel : null;
+  return akt && akt.widok && akt.widok.cel ? { ...akt.widok.cel, teleport: akt.widok.bron === 'teleport' } : null;
 }
 
 /* Cudza tura: pozycja i celownik z podglądu na żywo, wygładzone. Sama
@@ -749,7 +749,10 @@ function wybierzBron(id) {
     if ((akt.amunicja[id] ?? 1) <= 0) { pokazInfo(w.name + ': brak amunicji.'); return; }
     if (st.charging) return;
     st.weapon = id;
-    if (w.celowany) pokazInfo(dotykowy() ? 'Dotknij mapy, żeby wskazać cel nalotu, potem OGNIA.' : 'Kliknij na mapie cel nalotu, potem przytrzymaj F.');
+    if (w.celowany) {
+      const co = id === 'teleport' ? 'miejsce teleportu' : 'cel nalotu';
+      pokazInfo(dotykowy() ? 'Dotknij mapy, żeby wskazać ' + co + ', potem OGNIA.' : 'Kliknij na mapie ' + co + ', potem przytrzymaj F.');
+    }
   }
   rysujBronie();
 }
@@ -758,10 +761,11 @@ function ustawKamere(teraz) {
   const st = rg.state;
   const z = bazowyZoom() * zoomGracza;
   kamera.tzoom = z;
-  if (st.projectiles.length > 0 && st.phase !== 'odwrot') {
+  const lecacy = st.projectiles.find((p) => p.vx * p.vx + p.vy * p.vy > 900);
+  if (st.projectiles.length > 0 && (st.phase !== 'odwrot' || lecacy)) {
     // Lecący pocisk zawsze wygrywa z ręcznym przesunięciem.
     // (W czasie ucieczki po dynamicie kamera zostaje przy uciekającym.)
-    const p = st.projectiles[0];
+    const p = lecacy || st.projectiles[0];
     R.focusCamera(kamera, p.x, p.y, z * 0.92);
     recznaKameraDo = 0;
     return;
@@ -783,7 +787,8 @@ function ustawKamere(teraz) {
    płynny dojazd nie nadąża, więc dociągamy kamerę od razu. */
 function trzymajWKadrze() {
   const st = rg.state;
-  if (performance.now() < recznaKameraDo || (st.projectiles.length > 0 && st.phase !== 'odwrot')) return;
+  const lecacy = st.projectiles.some((p) => p.vx * p.vx + p.vy * p.vy > 900);
+  if (performance.now() < recznaKameraDo || (st.projectiles.length > 0 && (st.phase !== 'odwrot' || lecacy))) return;
   const w = S.activeWorm(st);
   if (!w || !w.alive) return;
   const v = w.widok || w;
@@ -817,6 +822,15 @@ function obsluzZdarzenia() {
         break;
       case 'strzal': emitSpark(fx, e.x, e.y, 14); break;
       case 'odbicie': emitSpark(fx, e.x, e.y, 5); break;
+      case 'uderzenie':
+        emitSpark(fx, e.x, e.y, 12);
+        emitTekst(fx, e.x, e.y - 20, 'BONK!', '#fff1c2', 16);
+        wstrzas = Math.min(14, wstrzas + 5);
+        break;
+      case 'teleport':
+        emitSpark(fx, e.x0, e.y0 - 10, 24);
+        emitSpark(fx, e.x1, e.y1 - 10, 24);
+        break;
       case 'plusk': emitSpark(fx, e.x, e.y, 18); break;
       case 'smuga': emitSmuga(fx, e.x0, e.y0, e.x1, e.y1); break;
       case 'obrazenia': {
@@ -925,7 +939,7 @@ function odswiezHud(moge, teraz) {
   document.body.classList.toggle('moja-tura', moge || uciekam);
   document.body.classList.toggle('ucieczka', uciekam);
   el('dotyk').hidden = !((moge || uciekam) && dotykowy());
-  if (uciekam && !bylaUcieczka) napis('UCIEKAJ!', false);
+  if (uciekam && !bylaUcieczka) napis(st.weapon === 'dynamit' ? 'UCIEKAJ!' : 'RUCH!', false);
   bylaUcieczka = uciekam;
 
   const ja = st.worms.find((w) => w.id === mojeId);

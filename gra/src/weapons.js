@@ -77,10 +77,10 @@ export const WEAPONS = {
     radius: 78,
     damage: 72,
     knockback: 380,
-    fuse: 5,              // 3,5 s ucieczki + chwila na odbiegnięcie
+    fuse: 6,              // 5 s ucieczki + chwila na odbiegnięcie
     bezMocy: true,
     amunicja: 2,
-    opis: 'Podłóż i uciekaj — 4 s'
+    opis: 'Podłóż i uciekaj — 6 s'
   },
   nalot: {
     id: 'nalot',
@@ -97,6 +97,63 @@ export const WEAPONS = {
     celowany: true,        // wymaga wskazania celu na mapie
     amunicja: 1,
     opis: 'Kliknij cel na mapie, potem strzał'
+  },
+
+  owca: {
+    id: 'owca',
+    name: 'Owca',
+    key: '7',
+    kind: 'owca',          // biegnie po terenie przed siebie, zawraca na ścianach
+    speed: 0,
+    predkosc: 72,          // px/s biegu
+    radius: 58,
+    damage: 55,
+    knockback: 300,
+    fuse: 4.5,             // wybucha po czasie albo przy pierwszym wrogu
+    bezMocy: true,
+    amunicja: 1,
+    opis: 'Biegnie przed siebie i wybucha'
+  },
+  kij: {
+    id: 'kij',
+    name: 'Kij',
+    key: '8',
+    kind: 'kij',           // cios wręcz: mało obrażeń, ogromny odrzut
+    zasieg: 24,
+    damage: 18,
+    knockback: 560,
+    radius: 0,
+    fuse: null,
+    bezMocy: true,
+    opis: 'Home run — wybij kogoś w lawę'
+  },
+  teleport: {
+    id: 'teleport',
+    name: 'Teleport',
+    key: '9',
+    kind: 'teleport',      // przenosi robala we wskazane miejsce
+    radius: 0,
+    damage: 0,
+    knockback: 0,
+    fuse: null,
+    bezMocy: true,
+    celowany: true,
+    amunicja: 1,
+    opis: 'Kliknij miejsce na mapie, potem strzał'
+  },
+  salwa: {
+    id: 'salwa',
+    name: 'Blitzkrieg',
+    key: '0',
+    kind: 'salwa',         // trzy rakiety wachlarzem, jak szarża Laziego
+    speed: 640,
+    rozrzut: 0.13,         // rad między rakietami
+    radius: 0,
+    damage: 0,
+    knockback: 0,
+    fuse: null,
+    amunicja: 2,
+    opis: 'Trzy rakiety naraz, ładuj moc'
   },
 
   /* --- pociski pomocnicze --- */
@@ -125,10 +182,23 @@ export const WEAPONS = {
     knockback: 200,
     fuse: null,
     ukryta: true
+  },
+  rakietka: {
+    id: 'rakietka',
+    name: 'Rakietka',
+    kind: 'pocisk',
+    speed: 0,
+    gravityFactor: 1,
+    windFactor: 0.6,
+    radius: 30,
+    damage: 24,
+    knockback: 170,
+    fuse: null,
+    ukryta: true
   }
 };
 
-export const WEAPON_ORDER = ['bazooka', 'granat', 'strzelba', 'kasetowa', 'dynamit', 'nalot'];
+export const WEAPON_ORDER = ['bazooka', 'granat', 'strzelba', 'kasetowa', 'dynamit', 'nalot', 'owca', 'kij', 'teleport', 'salwa'];
 
 /* Startowy zapas dla broni z limitem — ta sama wartość u każdego klienta. */
 export function startowaAmunicja() {

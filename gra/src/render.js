@@ -302,6 +302,17 @@ function drawLava(ctx, time, poziom) {
 
 function drawCel(ctx, cel, time) {
   const r = 14 + Math.sin(time * 6) * 2;
+  if (cel.teleport) {
+    // portal: wirujące fioletowe pierścienie tam, gdzie robal się pojawi
+    for (let i = 0; i < 3; i++) {
+      ctx.strokeStyle = 'rgba(190,120,255,' + (0.9 - i * 0.25) + ')';
+      ctx.lineWidth = 2.5 - i * 0.5;
+      ctx.beginPath();
+      ctx.ellipse(cel.x, cel.y - 10, 9 + i * 5, 14 + i * 5, 0, time * (3 + i) , time * (3 + i) + 4.6);
+      ctx.stroke();
+    }
+    return;
+  }
   ctx.strokeStyle = '#ff3b23';
   ctx.lineWidth = 2.5;
   ctx.beginPath();
@@ -324,6 +335,45 @@ function drawProjectile(ctx, p) {
   ctx.save();
   ctx.translate(p.x, p.y);
 
+  if (weapon.kind === 'owca') {
+    // owca: wełna z kilku kółek, czarny łepek w stronę biegu, przebierające nóżki
+    const kier = p.vx >= 0 ? 1 : -1;
+    const t = performance.now() / 1000;
+    ctx.strokeStyle = '#222';
+    ctx.lineWidth = 2;
+    for (const [lx, faza] of [[-5, 0], [-1, 1.6], [3, 3.1], [6, 4.7]]) {
+      const kr = Math.sin(t * 16 + faza) * 2;
+      ctx.beginPath();
+      ctx.moveTo(lx * kier, -5);
+      ctx.lineTo(lx * kier + kr, 0);
+      ctx.stroke();
+    }
+    ctx.fillStyle = '#f4f1ea';
+    for (const [bx, by, br] of [[-6, -9, 5], [-1, -11, 5.5], [4, -9, 5], [-3, -6, 5], [3, -6, 4.5]]) {
+      ctx.beginPath();
+      ctx.arc(bx * kier, by, br, 0, 6.283);
+      ctx.fill();
+    }
+    ctx.fillStyle = '#222';
+    ctx.beginPath();
+    ctx.ellipse(10 * kier, -10, 4.2, 3.4, 0, 0, 6.283);
+    ctx.fill();
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(10 * kier + kier * 1.2 - 0.8, -11.5, 1.6, 1.6);
+    if (p.fuse !== null) {
+      ctx.font = 'bold 12px system-ui, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillStyle = p.fuse < 1.5 ? '#ff3b23' : '#fff1c2';
+      ctx.strokeStyle = 'rgba(0,0,0,0.7)';
+      ctx.lineWidth = 3;
+      const napis = Math.ceil(p.fuse).toString();
+      ctx.strokeText(napis, 0, -22);
+      ctx.fillText(napis, 0, -22);
+    }
+    ctx.restore();
+    return;
+  }
+
   if (weapon.kind === 'pocisk') {
     ctx.rotate(Math.atan2(p.vy, p.vx));
     if (weapon.id === 'odlamek') {
@@ -332,8 +382,8 @@ function drawProjectile(ctx, p) {
       ctx.arc(0, 0, 3.5, 0, 6.283);
       ctx.fill();
     } else {
-      const dl = weapon.id === 'rakieta' ? 14 : 18;
-      ctx.fillStyle = weapon.id === 'rakieta' ? '#c9c2b6' : '#e8e2d8';
+      const dl = weapon.id === 'rakieta' ? 14 : weapon.id === 'rakietka' ? 12 : 18;
+      ctx.fillStyle = weapon.id === 'rakieta' ? '#c9c2b6' : weapon.id === 'rakietka' ? '#d9c38a' : '#e8e2d8';
       ctx.fillRect(-dl / 2, -3, dl, 6);
       ctx.fillStyle = '#ff3b00';
       ctx.beginPath();
@@ -470,15 +520,26 @@ function drawWorm(ctx, w, isActive, time, o) {
 
   // broń w łapach aktywnego robala, ustawiona wzdłuż celownika
   if (isActive && o.bron) {
-    const dl = o.bron === 'strzelba' ? 16 : o.bron === 'bazooka' ? 18 : 0;
+    const rura = o.bron === 'bazooka' || o.bron === 'salwa';
+    const dl = o.bron === 'strzelba' ? 16 : rura ? 18 : o.bron === 'kij' ? 17 : 0;
     if (dl) {
       ctx.save();
       ctx.translate(cx + facing * 2, cy + 3);
       ctx.rotate(angle);
-      ctx.fillStyle = o.bron === 'bazooka' ? '#5f6b4a' : '#4a3a2a';
-      ctx.fillRect(-4, -2.5, dl, o.bron === 'bazooka' ? 5 : 3.5);
-      ctx.fillStyle = '#2a2a2a';
-      ctx.fillRect(dl - 6, -3, 3, o.bron === 'bazooka' ? 6 : 4.5);
+      if (o.bron === 'kij') {
+        // kij bejsbolowy: grubieje ku końcowi
+        ctx.fillStyle = '#c8955a';
+        ctx.beginPath();
+        ctx.moveTo(-4, -1.5); ctx.lineTo(dl, -3.2); ctx.lineTo(dl, 3.2); ctx.lineTo(-4, 1.5);
+        ctx.fill();
+        ctx.fillStyle = '#6b4423';
+        ctx.fillRect(-4, -1.8, 4, 3.6);
+      } else {
+        ctx.fillStyle = o.bron === 'salwa' ? '#7a4a2a' : rura ? '#5f6b4a' : '#4a3a2a';
+        ctx.fillRect(-4, -2.5, dl, rura ? 5 : 3.5);
+        ctx.fillStyle = '#2a2a2a';
+        ctx.fillRect(dl - 6, -3, 3, rura ? 6 : 4.5);
+      }
       ctx.restore();
     }
   }

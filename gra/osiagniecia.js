@@ -17,6 +17,8 @@
     { id: 'saper', ikona: '🧨', nazwa: 'Saper', opis: 'Wyeliminuj kogoś dynamitem.' },
     { id: 'snajper', ikona: '🎯', nazwa: 'Śrut w plecy', opis: 'Wyeliminuj kogoś ze strzelby.' },
     { id: 'kasetowka', ikona: '🎆', nazwa: 'Deszcz odłamków', opis: 'Wyeliminuj kogoś kasetówką.' },
+    { id: 'owca', ikona: '🐑', nazwa: 'Wilk w owczej skórze', opis: 'Wyeliminuj kogoś owcą.' },
+    { id: 'home-run', ikona: '⚾', nazwa: 'Home run', opis: 'Wybij kogoś kijem prosto do lawy.' },
     { id: 'dublet', ikona: '⚡', nazwa: 'Dublet', opis: 'Dwie eliminacje w jednej turze.' },
     { id: 'masakra', ikona: '💥', nazwa: 'Masakra', opis: '100 albo więcej obrażeń w jednej turze.' },
     { id: 'ucieczka', ikona: '🏃', nazwa: 'Wielka ucieczka', opis: 'Podłóż dynamit, ucieknij i nie oberwij.' },

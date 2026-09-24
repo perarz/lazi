@@ -45,9 +45,13 @@ bez `package.json`, bez zależności npm.
 - Sieć (`net.js`): polling `/api/arena`. **Serwer jest słaby** — nowe funkcje mają być po stronie
   klienta (localStorage), bez dodatkowych zapytań.
 - `window.__arena()` w konsoli = diagnostyka (hash stanu, kamera, statystyki).
-- Sterowanie: A/D ruch, Spacja skok, W/S lub mysz celowanie, F/Enter (przytrzymaj) strzał, 1-6 broń.
-- Dynamit ma fazę `odwrot` (3,5 s ucieczki). Wciśnięcia z ucieczki są nagrywane i lecą w strzale jako RLE,
-  a strzał wychodzi dopiero po ucieczce. Odbiorca odtwarza je krok w krok.
+- Sterowanie: A/D ruch, Spacja skok, W/S lub mysz celowanie, F/Enter (przytrzymaj) strzał, 1-0 broń.
+- Bronie (`weapons.js`): bazooka, granat, strzelba, kasetówka, dynamit, nalot, owca, kij, teleport, salwa
+  (Blitzkrieg). Trygonometria nowych broni (wachlarz salwy, kierunek kija) liczona jest u strzelającego
+  w `obliczStart` i leci w `start`.
+- Po **każdym** strzale jest faza `odwrot` (5 s ruchu, `ODWROT_S`). Wciśnięcia są nagrywane i lecą w strzale
+  jako RLE, a strzał wychodzi do sieci dopiero po tych 5 s. Odbiorca odtwarza wszystko krok w krok.
+  Dlatego `GRACE_PAS` w protokole wynosi 12 s.
 - Gospodarz lobby to obecny gracz, który dołączył najwcześniej (kolejność `dolacz` w logu), a nie najmniejsze id.
 - Osiągnięcia: lista w `gra/osiagniecia.js` (klasyczny skrypt, czyta go też strona główna do profilu),
   reguły w `gra/src/osiagniecia-reguly.js` (czyste funkcje, testowane w `sim.test.mjs`), zapis w

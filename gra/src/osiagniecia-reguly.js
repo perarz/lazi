@@ -23,7 +23,7 @@ function turaDla(p, nr, aktId) {
   return p.tura;
 }
 
-const ZABOJCZE_BRONIE = { nalot: 'nalot', dynamit: 'saper', strzelba: 'snajper', kasetowa: 'kasetowka' };
+const ZABOJCZE_BRONIE = { nalot: 'nalot', dynamit: 'saper', strzelba: 'snajper', kasetowa: 'kasetowka', owca: 'owca' };
 
 /* ctx: { nr, aktId, mojeId, fragiWczesniej } — fragiWczesniej to eliminacje
    z poprzednich partii (do progów 5 i 25). */
@@ -52,6 +52,7 @@ export function zdarzenieOs(p, e, ctx) {
       if (razem >= 25) out.push('rzeznik');
       if (t.zabite >= 2) out.push('dublet');
       if (e.cause === 'lawa') out.push('lawa');
+      if (e.cause === 'lawa' && t.bron === 'kij') out.push('home-run');
       if (ZABOJCZE_BRONIE[t.bron]) out.push(ZABOJCZE_BRONIE[t.bron]);
     }
   }
