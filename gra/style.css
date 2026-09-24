@@ -437,3 +437,11 @@ button:disabled { opacity: 0.35; cursor: not-allowed; }
   body.dotykowy.moja-tura .bron .zapas { padding: 0 4px; }
   body.dotykowy.moja-tura .moc { width: 100%; order: -1; }
 }
+
+/* link powrotu na stronę zrzutki */
+.powrot {
+  display: inline-block; margin-bottom: 10px;
+  font-size: 12px; letter-spacing: 0.06em;
+  color: var(--tekst); opacity: 0.6; text-decoration: none;
+}
+.powrot:hover { opacity: 1; color: var(--zar-jasny); }

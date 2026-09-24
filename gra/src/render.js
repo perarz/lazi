@@ -4,7 +4,7 @@
    Teren malujemy raz do offscreen canvasu; po wybuchu przemalowujemy
    tylko kolumny objęte kraterem, a nie całe 2 MB. */
 
-import { WORLD_W, WORLD_H } from './terrain.js';
+import { WORLD_W, WORLD_H, LAVA_Y as T_LAVA } from './terrain.js';
 import { WEAPONS } from './weapons.js';
 import { WORM_H } from './sim.js';
 import { drawFx } from './fx.js';
@@ -25,9 +25,30 @@ export function createRenderer(canvas) {
   };
 }
 
-/* Kolor zależy od tego, ile solidnych pikseli jest bezpośrednio nad danym —
-   czyli od głębokości pod powierzchnią. Liczone jednym przejściem w dół
-   kolumny, więc całe 2 MB idzie w ~2 mln operacji zamiast w dziesiątki. */
+/* Palety skał dla stylów mapy (terrain.styl). Każda: skorupa na świeżej
+   krawędzi, podskórna warstwa, trzy pasy warstw skalnych, głębia i żyłka. */
+const PALETY = {
+  gory: {
+    skorupa: [255, 196, 110], pod: [214, 110, 40],
+    pasy: [[112, 72, 58], [96, 62, 54], [124, 84, 64]], gleboko: [52, 36, 38], zyla: [255, 120, 40]
+  },
+  archipelag: {
+    skorupa: [255, 214, 140], pod: [196, 120, 56],
+    pasy: [[70, 58, 66], [58, 50, 60], [82, 66, 72]], gleboko: [30, 26, 34], zyla: [255, 90, 60]
+  },
+  kaniony: {
+    skorupa: [255, 186, 96], pod: [226, 104, 34],
+    pasy: [[168, 78, 40], [140, 60, 34], [186, 96, 50]], gleboko: [70, 34, 24], zyla: [255, 170, 60]
+  },
+  jaskinie: {
+    skorupa: [255, 170, 90], pod: [180, 80, 40],
+    pasy: [[66, 46, 52], [56, 40, 48], [78, 54, 58]], gleboko: [28, 20, 26], zyla: [120, 230, 255]
+  }
+};
+
+/* Kolor zależy od głębokości pod powierzchnią (liczonej jednym przejściem
+   w dół kolumny), od pasa skalnego i od tego, czy obok jest powietrze.
+   Całe 2 MB idzie w kilka milionów prostych operacji. */
 function paintColumns(r, terrain, x0, x1) {
   x0 = Math.max(0, Math.floor(x0));
   x1 = Math.min(WORLD_W - 1, Math.ceil(x1));
@@ -37,38 +58,47 @@ function paintColumns(r, terrain, x0, x1) {
   const img = r.tctx.createImageData(w, WORLD_H);
   const d = img.data;
   const mask = terrain.mask;
+  const pal = PALETY[terrain.styl] || PALETY.gory;
 
   for (let x = x0; x <= x1; x++) {
     let depth = 9999;
     const col = x - x0;
+    // falowanie warstw skalnych — tylko wygląd, więc wolno użyć sinusa
+    const fala = Math.sin(x * 0.011) * 14 + Math.sin(x * 0.037 + 1.3) * 6;
     for (let y = 0; y < WORLD_H; y++) {
-      const solid = mask[y * WORLD_W + x];
+      const i = y * WORLD_W + x;
+      const solid = mask[i];
       depth = solid ? depth + 1 : 0;
       const o = (y * w + col) * 4;
 
       if (!solid) { d[o + 3] = 0; continue; }
 
-      // deterministyczne, tanie ziarno — tylko dla urozmaicenia faktury
+      // deterministyczne, tanie ziarno — faktura skały
       let h = (x * 374761393 + y * 668265263) | 0;
       h = Math.imul(h ^ (h >>> 13), 1274126177);
       h = h ^ (h >>> 16);
-      const n = h & 15;                  // drobna faktura skały
-      const zylka = (h & 1023) === 0;    // rzadka żyłka magmy w głębi
-      let rr, gg, bb;
-
-      if (depth <= 2) {            // rozżarzona skorupa na świeżej krawędzi
-        rr = 255; gg = 190 + (n & 7) * 4; bb = 90;
-      } else if (depth <= 5) {
-        rr = 236; gg = 118; bb = 26;
-      } else if (depth <= 11) {
-        rr = 150; gg = 62; bb = 20;
-      } else if (depth <= 34) {
-        rr = 88 + n; gg = 47 + (n >> 1); bb = 32;
-      } else {
-        rr = 46 + n; gg = 30; bb = 26;
-        if (zylka) { rr = 168; gg = 62; bb = 22; }
+      const n = h & 15;
+      let c;
+      // Ściemnianie w głąb liczone od wysokości, nie od głębokości w kolumnie —
+      // inaczej pod każdym tunelem wychodziłby jaśniejszy pionowy pas.
+      const k = y < 420 ? 0 : y > 860 ? 1 : (y - 420) / 440;
+      if (depth <= 2) c = pal.skorupa;
+      else if (depth <= 6) c = pal.pod;
+      else if (depth > 40 && k > 0.5 && (h & 2047) < 5) c = pal.zyla;
+      else {
+        const pas = Math.floor((y + fala) / 18);
+        c = pal.pasy[((pas % 3) + 3) % 3];
+        c = [c[0] + (pal.gleboko[0] - c[0]) * k, c[1] + (pal.gleboko[1] - c[1]) * k, c[2] + (pal.gleboko[2] - c[2]) * k];
       }
-      d[o] = rr; d[o + 1] = gg; d[o + 2] = bb; d[o + 3] = 255;
+      let rr = c[0] + n - 7, gg = c[1] + (n >> 1) - 3, bb = c[2] + (n >> 2);
+      // krawędź od boku (ściany jaskiń, zbocza) — jaśniejsza obwódka
+      if (depth > 2 && ((x > 0 && !mask[i - 1]) || (x < WORLD_W - 1 && !mask[i + 1]))) {
+        rr += 55; gg += 30; bb += 10;
+      } else if (depth > 2 && y + 1 < WORLD_H && !mask[i + WORLD_W]) {
+        // sufit komory: przyciemniony, z lekkim żarem od dołu
+        rr = rr * 0.7 + 30; gg *= 0.6; bb *= 0.6;
+      }
+      d[o] = rr > 255 ? 255 : rr; d[o + 1] = gg > 255 ? 255 : gg; d[o + 2] = bb > 255 ? 255 : bb; d[o + 3] = 255;
     }
   }
   r.tctx.putImageData(img, x0, 0);
@@ -151,11 +181,12 @@ export function draw(r, state, cam, fx, dt, opcje = {}) {
   r.time += dt;
 
   const sky = ctx.createLinearGradient(0, 0, 0, H);
-  sky.addColorStop(0, '#0a0a0a');
-  sky.addColorStop(0.55, '#1d0703');
-  sky.addColorStop(1, '#511403');
+  sky.addColorStop(0, '#07060a');
+  sky.addColorStop(0.5, '#1d0704');
+  sky.addColorStop(1, '#5a1604');
   ctx.fillStyle = sky;
   ctx.fillRect(0, 0, W, H);
+  drawTlo(ctx, r, cam, W, H);
 
   ctx.save();
   ctx.translate(W / 2, H / 2);
@@ -180,6 +211,66 @@ export function draw(r, state, cam, fx, dt, opcje = {}) {
 
   if (fx) drawFx(fx, ctx);
   ctx.restore();
+}
+
+/* Tło: gwiazdy, dwa pasma odległych gór (paralaksa) i unoszący się popiół.
+   Wszystko w układzie ekranu, liczone z pozycji kamery — nic z tego nie
+   wpływa na grę. */
+const GORY_TLA = [0.18, 0.38].map((par, k) => {
+  const pkt = [];
+  let h = 0.5;
+  for (let i = 0; i <= 64; i++) {
+    h += Math.sin(i * (1.7 + k) + k * 3.1) * 0.22 + Math.sin(i * 0.37 + k) * 0.12;
+    h = Math.max(0.1, Math.min(0.95, h));
+    pkt.push(h);
+  }
+  return { par, pkt, kolor: k === 0 ? '#1a0a0a' : '#260d08', wys: k === 0 ? 260 : 200 };
+});
+const GWIAZDY = Array.from({ length: 70 }, (_, i) => ({
+  x: (Math.sin(i * 12.9898) * 43758.5453) % 1, y: (Math.sin(i * 78.233) * 12543.1) % 1, r: 0.6 + (i % 3) * 0.4
+}));
+
+function drawTlo(ctx, r, cam, W, H) {
+  // gwiazdy prawie nieruchome
+  ctx.fillStyle = 'rgba(255,230,200,0.5)';
+  for (const g of GWIAZDY) {
+    const x = ((Math.abs(g.x) * W * 1.3 - cam.x * 0.03) % W + W) % W;
+    const y = Math.abs(g.y) * H * 0.45 - cam.y * 0.02;
+    const miganie = 0.5 + 0.5 * Math.sin(r.time * 1.5 + g.x * 50);
+    ctx.globalAlpha = 0.3 + miganie * 0.5;
+    ctx.fillRect(x, y, g.r, g.r);
+  }
+  ctx.globalAlpha = 1;
+  // pasma gór: im dalej, tym wolniej przesuwają się z kamerą
+  const horyzont = H * 0.62 + (T_LAVA - cam.y) * cam.zoom * 0.12;
+  for (const g of GORY_TLA) {
+    const skok = 90;
+    const przes = -(cam.x * g.par) % skok;
+    const start = Math.floor((cam.x * g.par) / skok);
+    ctx.fillStyle = g.kolor;
+    ctx.beginPath();
+    ctx.moveTo(-skok, H);
+    for (let i = -1; i <= Math.ceil(W / skok) + 1; i++) {
+      const p = g.pkt[(((start + i) % 64) + 64) % 64];
+      ctx.lineTo(i * skok + przes, horyzont - p * g.wys * (0.6 + g.par));
+    }
+    ctx.lineTo(W + skok, H);
+    ctx.closePath();
+    ctx.fill();
+  }
+  // żar od lawy na dole ekranu
+  const zar = ctx.createLinearGradient(0, H * 0.55, 0, H);
+  zar.addColorStop(0, 'rgba(255,80,0,0)');
+  zar.addColorStop(1, 'rgba(255,90,0,0.22)');
+  ctx.fillStyle = zar;
+  ctx.fillRect(0, H * 0.55, W, H * 0.45);
+  // popiół i iskry
+  for (let i = 0; i < 26; i++) {
+    const sx = ((i * 97.3 + r.time * (8 + (i % 5) * 3)) % (W + 40)) - 20;
+    const sy = H - ((i * 53.7 + r.time * (14 + (i % 7) * 4)) % (H + 40));
+    ctx.fillStyle = i % 4 === 0 ? 'rgba(255,150,60,0.55)' : 'rgba(160,140,130,0.25)';
+    ctx.fillRect(sx, sy, i % 4 === 0 ? 2 : 1.5, i % 4 === 0 ? 2 : 1.5);
+  }
 }
 
 function activeOf(state) {
