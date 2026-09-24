@@ -30,10 +30,12 @@ export const TURN_TIME = 30;
 const SETTLE_MAX = 5;
 const MAX_POWER_TIME = 1.4;         // ile trwa naładowanie strzału do pełna
 
-/* Po podłożeniu dynamitu robal ma chwilę na ucieczkę. Wciśnięcia z tych
-   kroków lecą w zdarzeniu strzału (zwinięte RLE), więc odbiorca odtwarza
-   ucieczkę krok w krok — bit w bit tak samo jak u strzelającego. */
-export const ODWROT_S = 3.5;
+/* Po każdym strzale robal ma 5 s na ruch (ucieczkę). Wciśnięcia z tych
+   kroków lecą w zdarzeniu strzału (zwinięte RLE), a strzał wychodzi do
+   sieci dopiero po nich — odbiorca odtwarza wszystko krok w krok, bit w bit
+   tak samo jak u strzelającego. */
+export const ODWROT_S = 5;
+const OWCA_SKOK = 6;                // o ile pikseli owca wejdzie pod górę
 const ODWROT_KROKI = Math.round(ODWROT_S / DT);
 const ODWROT_LEWO = 1, ODWROT_PRAWO = 2, ODWROT_SKOK = 4;
 
@@ -217,7 +219,7 @@ export function releaseFire(state) {
   // liczb stan u obu jest identyczny co do bitu.
   zastosujStrzal(state, action);
   if (state.phase === 'odwrot') {
-    // dynamit: strzał wyjdzie dopiero po ucieczce, razem z jej nagraniem
+    // strzał wyjdzie dopiero po 5 s ruchu, razem z jego nagraniem
     state.odwrotPlan = null;
     state.odwrotNagranie = [];
     state.odwrotAkcja = action;
@@ -232,7 +234,7 @@ export function releaseFire(state) {
 export function przygotujStrzal(state) {
   const w = activeWorm(state);
   const weapon = WEAPONS[state.weapon];
-  const zMoca = weapon.kind === 'pocisk' || weapon.kind === 'odbijany';
+  const zMoca = weapon.kind === 'pocisk' || weapon.kind === 'odbijany' || weapon.kind === 'salwa';
   const power = zMoca ? Math.max(0.08, state.power) : 0;
   return {
     wormId: w.id,
@@ -248,11 +250,23 @@ export function przygotujStrzal(state) {
 
 function obliczStart(w, weapon, angle, power) {
   if (weapon.kind === 'podkladany') return { x: w.x, y: w.y - WORM_H * 0.5, vx: 0, vy: 0 };
-  if (weapon.kind === 'nalot') return null;
+  if (weapon.kind === 'nalot' || weapon.kind === 'teleport') return null;
+  const kier = w.facing >= 0 ? 1 : -1;
+  if (weapon.kind === 'owca') return { x: w.x + kier * 10, y: w.y - 2, vx: kier, vy: 0 };
   const c = Math.cos(angle), s = Math.sin(angle);
   const mx = w.x + c * 18;
   const my = w.y - WORM_H * 0.55 + s * 18;
   if (weapon.kind === 'hitscan') return { x: mx, y: my, vx: c, vy: s };
+  if (weapon.kind === 'kij') return { x: w.x + c * 12, y: w.y - WORM_H * 0.55 + s * 12, vx: c, vy: s };
+  if (weapon.kind === 'salwa') {
+    // trzy wektory liczone u strzelającego — odbiorca nie liczy trygonometrii
+    const speed = weapon.speed * power;
+    const salwa = [-1, 0, 1].map((k) => {
+      const a = angle + k * weapon.rozrzut;
+      return [Math.cos(a) * speed, Math.sin(a) * speed];
+    });
+    return { x: mx, y: my, vx: c * speed, vy: s * speed, salwa };
+  }
   const speed = weapon.speed * power;
   return { x: mx, y: my, vx: c * speed, vy: s * speed };
 }
@@ -293,6 +307,14 @@ export function applyFire(state, action) {
 
   if (weapon.kind === 'hitscan') {
     strzalNatychmiastowy(state, w, start, weapon);
+  } else if (weapon.kind === 'kij') {
+    ciosKijem(state, w, start, weapon);
+  } else if (weapon.kind === 'teleport') {
+    teleportuj(state, w, action.cel);
+  } else if (weapon.kind === 'salwa') {
+    for (const [vx, vy] of (start.salwa || [[start.vx, start.vy]])) {
+      spawnProjectile(state, WEAPONS.rakietka, start.x, start.y, vx, vy, w.id);
+    }
   } else if (weapon.kind === 'nalot') {
     const cel = action.cel || { x: w.x, y: 0 };
     const n = weapon.rakiety;
@@ -309,15 +331,13 @@ export function applyFire(state, action) {
   state.firedThisTurn = true;
   state.charging = false;
   state.power = 0;
-  state.phase = 'flight';
-  if (weapon.kind === 'podkladany') {
-    state.phase = 'odwrot';
-    state.odwrotKrok = 0;
-    state.odwrotPlan = rozwinOdwrot(action.odwrot);
-    state.odwrotNagranie = null;
-    state.odwrotAkcja = null;
-    state.skokWKolejce = false;
-  }
+  // po każdej broni: 5 s ruchu (faza odwrot), potem lot i osiadanie
+  state.phase = 'odwrot';
+  state.odwrotKrok = 0;
+  state.odwrotPlan = rozwinOdwrot(action.odwrot);
+  state.odwrotNagranie = null;
+  state.odwrotAkcja = null;
+  state.skokWKolejce = false;
   state.events.push({ type: 'strzal', weapon: weapon.id, wormId: w.id, x: w.x, y: w.y - WORM_H * 0.5 });
   return true;
 }
@@ -330,6 +350,42 @@ function spawnProjectile(state, weapon, x, y, vx, vy, ownerId) {
     fuse: weapon.fuse,
     ownerId
   });
+}
+
+/* Kij: cios wręcz w stronę celownika — trafia robale blisko końca kija,
+   mało obrażeń, ogromny odrzut (najlepiej prosto w lawę). */
+function ciosKijem(state, w, start, weapon) {
+  state.events.push({ type: 'uderzenie', x: start.x, y: start.y });
+  for (const inny of state.worms) {
+    if (!inny.alive || inny === w) continue;
+    const dx = inny.x - start.x;
+    const dy = (inny.y - WORM_H * 0.5) - start.y;
+    if (dx * dx + dy * dy > weapon.zasieg * weapon.zasieg) continue;
+    damageWorm(state, inny, weapon.damage, 'kij');
+    if (!inny.alive) continue;
+    inny.vx += start.vx * weapon.knockback;
+    inny.vy += start.vy * weapon.knockback - weapon.knockback * 0.35;
+    inny.onGround = false;
+  }
+}
+
+/* Teleport: robal ląduje we wskazanym miejscu. Cel w skale — szukamy wolnego
+   miejsca w górę (do 220 px); nad lawą albo bez miejsca — teleport nie działa. */
+function teleportuj(state, w, cel) {
+  if (!cel) return;
+  const t = state.terrain;
+  const x = Math.round(Math.max(12, Math.min(T.WORLD_W - 12, cel.x)));
+  let y = Math.round(cel.y);
+  const wolne = (yy) => !T.solidAt(t, x, yy - 1) && !T.solidAt(t, x, yy - WORM_H * 0.5) && !T.solidAt(t, x, yy - WORM_H + 1);
+  let n = 0;
+  while (!wolne(y) && n < 220) { y--; n++; }
+  if (!wolne(y) || y >= state.lava - 4 || y < 10) return;
+  state.events.push({ type: 'teleport', x0: w.x, y0: w.y, x1: x, y1: y });
+  w.x = x;
+  w.y = y;
+  w.vx = 0;
+  w.vy = 0;
+  w.onGround = false;
 }
 
 /* Strzelba: promień po prostej co 2 px, do pierwszej skały albo robala. */
@@ -569,6 +625,11 @@ function stepProjectiles(state) {
       }
     }
 
+    if (weapon.kind === 'owca') {
+      krokOwcy(state, p, weapon, i);
+      continue;
+    }
+
     p.vx += state.wind * weapon.windFactor * DT;
     p.vy += GRAVITY * weapon.gravityFactor * DT;
 
@@ -610,6 +671,43 @@ function stepProjectiles(state) {
       state.projectiles.splice(i, 1);
       state.events.push({ type: 'plusk', x: p.x, y: Math.min(p.y, state.lava) });
     }
+  }
+}
+
+/* Owca: vx = kierunek (±1), vy = prędkość spadania. Na ziemi biegnie,
+   wchodzi na progi do OWCA_SKOK px, na ścianie zawraca; bez gruntu spada.
+   Wybucha przy pierwszym robalu innym niż właściciel albo po zapalniku. */
+function krokOwcy(state, p, weapon, i) {
+  const t = state.terrain;
+  const naZiemi = T.solidAt(t, p.x, p.y + 1);
+  if (naZiemi && p.vy >= 0) {
+    p.vy = 0;
+    const nx = p.x + p.vx * weapon.predkosc * DT;
+    const g = T.findGround(t, nx, p.y, OWCA_SKOK, OWCA_SKOK);
+    if (g !== null && !T.solidAt(t, nx, g - 8)) {
+      p.x = nx;
+      p.y = g;
+    } else if (g === null && !T.solidAt(t, nx, p.y - 2) && !T.solidAt(t, nx, p.y - 8)) {
+      p.x = nx;                                   // krawędź: dalej spada
+    } else {
+      p.vx = -p.vx;                               // ściana: zawraca
+    }
+  } else {
+    p.vy += GRAVITY * DT;
+    const kroki = Math.max(1, Math.ceil(Math.abs(p.vy * DT)));
+    const iy = (p.vy * DT) / kroki;
+    for (let k = 0; k < kroki; k++) {
+      if (iy > 0 && T.solidAt(t, p.x, p.y + iy + 1)) { p.vy = 0; break; }
+      p.y += iy;
+    }
+  }
+  const trafiony = state.worms.find(
+    (w) => w.alive && w.id !== p.ownerId && Math.abs(w.x - p.x) < 11 && p.y > w.y - WORM_H - 4 && p.y < w.y + 4
+  );
+  if (trafiony) { detonate(state, p, i); return; }
+  if (p.y > state.lava || p.x < -80 || p.x > T.WORLD_W + 80) {
+    state.projectiles.splice(i, 1);
+    state.events.push({ type: 'plusk', x: p.x, y: Math.min(p.y, state.lava) });
   }
 }
 

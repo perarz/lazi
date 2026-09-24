@@ -22,7 +22,7 @@
 
 import * as S from './sim.js';
 
-export const GRACE_PAS = 8;           // s po terminie tury, zanim gospodarz odda ją za gracza
+export const GRACE_PAS = 12;          // s po terminie tury, zanim gospodarz odda ją za gracza (strzał wychodzi po 5 s ruchu)
 export const ROZLACZONY_PAS = 15;     // s bez pulsu gracza z turą — tura oddana od razu
 export const ROZLACZONY_WYRZUC = 90;  // s bez pulsu — robal znika na granicy tury
 export const ZYWY_PULS = 20;          // s — dłuższa cisza wyklucza z wyboru gospodarza

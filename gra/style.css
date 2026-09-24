@@ -415,12 +415,13 @@ button:disabled { opacity: 0.35; cursor: not-allowed; }
   .dotyk-lewy { gap: 6px; }
   body.dotykowy.moja-tura .hud-dol { margin-bottom: 150px; }
   .hud-dol { align-items: stretch; }
-  .bronie { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; overflow: visible; }
-  .bron { justify-content: center; min-height: 34px; padding: 5px 6px; }
+  .bronie { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; overflow: visible; }
+  .bron { justify-content: center; min-height: 32px; padding: 4px 4px; font-size: 10px; position: relative; }
+  .bron .zapas { position: absolute; top: -5px; right: -3px; font-size: 9px; padding: 0 4px; background: #5a2a08; }
   .moc { width: 100%; }
 }
 
-/* Telefon poziomo: środek ekranu to robal, więc bronie (siatka 3×2) i pasek
+/* Telefon poziomo: środek ekranu to robal, więc bronie (siatka 5×2) i pasek
    mocy siedzą na dole, w wolnym pasie między lewymi a prawymi przyciskami. */
 @media (orientation: landscape) and (max-height: 500px) {
   body.dotykowy.moja-tura .hud-dol {
@@ -430,11 +431,18 @@ button:disabled { opacity: 0.35; cursor: not-allowed; }
     gap: 5px;
   }
   body.dotykowy.moja-tura .bronie {
-    display: grid; grid-template-columns: repeat(3, auto); gap: 4px;
-    overflow: visible;
+    display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 4px;
+    overflow: visible; width: 100%;
   }
-  body.dotykowy.moja-tura .bron { min-height: 30px; padding: 4px 8px; font-size: 10px; justify-content: center; }
-  body.dotykowy.moja-tura .bron .zapas { padding: 0 4px; }
+  body.dotykowy.moja-tura .bron {
+    min-height: 28px; padding: 3px 3px; font-size: 9.5px; justify-content: center;
+    position: relative; min-width: 0; white-space: nowrap;
+  }
+  body.dotykowy.moja-tura .bron span:not(.zapas) { overflow: hidden; text-overflow: ellipsis; }
+  /* zapas amunicji jako znaczek w rogu, żeby nazwa miała całą szerokość */
+  body.dotykowy.moja-tura .bron .zapas {
+    position: absolute; top: -5px; right: -3px; font-size: 8.5px; padding: 0 4px; background: #5a2a08;
+  }
   body.dotykowy.moja-tura .moc { width: 100%; order: -1; }
 }
 
