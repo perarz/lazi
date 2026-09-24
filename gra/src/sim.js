@@ -30,6 +30,13 @@ export const TURN_TIME = 30;
 const SETTLE_MAX = 5;
 const MAX_POWER_TIME = 1.4;         // ile trwa naładowanie strzału do pełna
 
+/* Po podłożeniu dynamitu robal ma chwilę na ucieczkę. Wciśnięcia z tych
+   kroków lecą w zdarzeniu strzału (zwinięte RLE), więc odbiorca odtwarza
+   ucieczkę krok w krok — bit w bit tak samo jak u strzelającego. */
+export const ODWROT_S = 3.5;
+const ODWROT_KROKI = Math.round(ODWROT_S / DT);
+const ODWROT_LEWO = 1, ODWROT_PRAWO = 2, ODWROT_SKOK = 4;
+
 /* Nagła śmierć: po tylu pełnych rundach lawa zaczyna wzbierać,
    żeby partia nie ciągnęła się w nieskończoność. */
 export const LAWA_PO_RUNDACH = 6;
@@ -95,6 +102,11 @@ export function createGame(seed, players, opcje = {}) {
     power: 0,
     charging: false,
     firedThisTurn: false,
+    odwrotKrok: 0,             // ucieczka po dynamicie: krok, plan (odbiorca) albo nagranie (strzelec)
+    odwrotPlan: null,
+    odwrotNagranie: null,
+    odwrotAkcja: null,
+    skokWKolejce: false,
     cel: null,                 // punkt nalotu wskazany przez strzelca
     sieciowa: !!opcje.sieciowa,
     akcjeDoWyslania: [],       // strzały oddane lokalnie, do opublikowania
@@ -123,7 +135,13 @@ export function activeWorm(state) {
 
 export function jump(state) {
   const w = activeWorm(state);
+  // w czasie ucieczki skok idzie przez nagranie, żeby odbiorca go powtórzył
+  if (state.phase === 'odwrot' && state.odwrotNagranie) { state.skokWKolejce = true; return; }
   if (!w || !w.alive || !w.onGround || state.phase !== 'aim') return;
+  skocz(w);
+}
+
+function skocz(w) {
   w.vy = JUMP_VY;
   w.vx = JUMP_VX * w.facing;
   w.onGround = false;
@@ -198,6 +216,13 @@ export function releaseFire(state) {
   // Strzelec przechodzi przez tę samą ścieżkę co odbiorca — po normalizacji
   // liczb stan u obu jest identyczny co do bitu.
   zastosujStrzal(state, action);
+  if (state.phase === 'odwrot') {
+    // dynamit: strzał wyjdzie dopiero po ucieczce, razem z jej nagraniem
+    state.odwrotPlan = null;
+    state.odwrotNagranie = [];
+    state.odwrotAkcja = action;
+    return action;
+  }
   state.akcjeDoWyslania.push(action);
   return action;
 }
@@ -285,6 +310,14 @@ export function applyFire(state, action) {
   state.charging = false;
   state.power = 0;
   state.phase = 'flight';
+  if (weapon.kind === 'podkladany') {
+    state.phase = 'odwrot';
+    state.odwrotKrok = 0;
+    state.odwrotPlan = rozwinOdwrot(action.odwrot);
+    state.odwrotNagranie = null;
+    state.odwrotAkcja = null;
+    state.skokWKolejce = false;
+  }
   state.events.push({ type: 'strzal', weapon: weapon.id, wormId: w.id, x: w.x, y: w.y - WORM_H * 0.5 });
   return true;
 }
@@ -364,8 +397,34 @@ export function step(state) {
     }
   }
 
-  for (const w of state.worms) stepWorm(state, w, w === act && state.phase === 'aim');
+  let ster = state.input;
+  if (state.phase === 'odwrot') {
+    let b;
+    if (state.odwrotNagranie) {
+      const inp = state.input;
+      b = (inp.left ? ODWROT_LEWO : inp.right ? ODWROT_PRAWO : 0) | (state.skokWKolejce ? ODWROT_SKOK : 0);
+      state.skokWKolejce = false;
+      state.odwrotNagranie.push(b);
+    } else {
+      b = state.odwrotPlan[state.odwrotKrok] || 0;
+    }
+    state.odwrotKrok++;
+    ster = { left: (b & ODWROT_LEWO) !== 0, right: (b & ODWROT_PRAWO) !== 0 };
+    if ((b & ODWROT_SKOK) && act && act.alive && act.onGround) skocz(act);
+  }
+
+  const steruje = state.phase === 'aim' || state.phase === 'odwrot';
+  for (const w of state.worms) stepWorm(state, w, w === act && steruje, ster);
   stepProjectiles(state);
+
+  if (state.phase === 'odwrot' && state.odwrotKrok >= ODWROT_KROKI) {
+    state.phase = 'flight';
+    if (state.odwrotNagranie) {
+      state.akcjeDoWyslania.push({ ...state.odwrotAkcja, odwrot: zwinOdwrot(state.odwrotNagranie) });
+      state.odwrotNagranie = null;
+      state.odwrotAkcja = null;
+    }
+  }
 
   if (state.phase === 'flight' && state.projectiles.length === 0) {
     state.phase = 'settle';
@@ -387,17 +446,44 @@ export function step(state) {
 }
 
 function headBlocked(t, x, groundY) {
-  return T.solidAt(t, x, groundY - WORM_H) || T.solidAt(t, x, groundY - WORM_H + 6);
+  return T.solidAt(t, x, groundY - WORM_H) || T.solidAt(t, x, groundY - WORM_H + 6) ||
+    T.solidAt(t, x, groundY - WORM_H * 0.5);
 }
 
-function stepWorm(state, w, controllable) {
+/* Czy w kolumnie x robal stojący stopami na y miałby skałę w ciele. */
+function cialoWSkale(t, x, y) {
+  return T.solidAt(t, x, y - 1) || T.solidAt(t, x, y - WORM_H * 0.5) || T.solidAt(t, x, y - WORM_H + 2);
+}
+
+function zwinOdwrot(bity) {
+  const rle = [];
+  for (const b of bity) {
+    const ost = rle[rle.length - 1];
+    if (ost && ost[1] === b) ost[0]++;
+    else rle.push([1, b]);
+  }
+  return rle;
+}
+
+function rozwinOdwrot(rle) {
+  const out = [];
+  if (!Array.isArray(rle)) return out;
+  for (const p of rle) {
+    if (!Array.isArray(p)) continue;
+    const n = Math.min(ODWROT_KROKI, Math.max(0, p[0] | 0));
+    for (let i = 0; i < n && out.length < ODWROT_KROKI; i++) out.push(p[1] & 7);
+  }
+  return out;
+}
+
+function stepWorm(state, w, controllable, ster) {
   if (!w.alive) return;
   const t = state.terrain;
 
   if (controllable && w.onGround) {
     let dir = 0;
-    if (state.input.left) dir = -1;
-    else if (state.input.right) dir = 1;
+    if (ster.left) dir = -1;
+    else if (ster.right) dir = 1;
     if (dir !== 0) {
       obroc(w, dir);
       const nx = w.x + dir * WALK_SPEED * DT;
@@ -405,10 +491,13 @@ function stepWorm(state, w, controllable) {
       if (g !== null && !headBlocked(t, nx, g)) {
         w.x = nx;
         w.y = g;
-      } else if (g === null) {
+      } else if (g === null && !cialoWSkale(t, nx, w.y)) {
+        // naprawdę krawędź (pod nogami pusto) — schodzimy i spadamy
         w.x = nx;
         w.onGround = false;
       }
+      // g === null przy pełnej skale obok = stroma ściana: stoimy.
+      // Wcześniej robal wchodził wtedy w skałę i przenikał przez zbocze.
     }
   }
 
@@ -449,7 +538,7 @@ function moveAxis(state, w, dx, dy) {
       w.vy = 0;
       return;
     }
-    if (ix !== 0 && T.solidAt(t, nx, ny - WORM_H * 0.5)) {
+    if (ix !== 0 && (T.solidAt(t, nx, ny - WORM_H * 0.5) || T.solidAt(t, nx, ny - WORM_H + 2) || T.solidAt(t, nx, ny - 3))) {
       // ściana: spróbuj wejść na nią, jeśli to tylko próg
       const g = T.findGround(t, nx, ny, MAX_STEP, 0);
       if (g !== null && !headBlocked(t, nx, g)) {
@@ -655,6 +744,11 @@ export function rozpocznijTure(state) {
   state.charging = false;
   state.power = 0;
   state.cel = null;
+  state.odwrotKrok = 0;
+  state.odwrotPlan = null;
+  state.odwrotNagranie = null;
+  state.odwrotAkcja = null;
+  state.skokWKolejce = false;
   state.projectiles = [];
   state.wind = windFor(state.seed, state.turnNumber);
   state.input = pusteWejscie();

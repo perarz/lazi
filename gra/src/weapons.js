@@ -77,7 +77,7 @@ export const WEAPONS = {
     radius: 78,
     damage: 72,
     knockback: 380,
-    fuse: 4,
+    fuse: 5,              // 3,5 s ucieczki + chwila na odbiegnięcie
     bezMocy: true,
     amunicja: 2,
     opis: 'Podłóż i uciekaj — 4 s'

@@ -89,6 +89,10 @@ export function zloz(zdarzenia) {
         p.faza = 'gra';
         p.seed = z.seed >>> 0;
         p.gracze = z.gracze;
+        // Log jest zerowany przy nowej partii — lista lobby startuje od graczy
+        // partii w tej samej kolejności, więc gospodarz zostaje ten sam.
+        p.wLobby = z.gracze.filter((g) => g && typeof g.id === 'string')
+          .map((g) => ({ id: g.id, name: String(g.name || '?'), color: g.color }));
         p.odliczanieDo = null;
         p.startSt = z.st || 0;
         p.kolejnosc = S.kolejnoscTur(p.seed, p.gracze.map((g) => g.id));
@@ -187,6 +191,14 @@ export function mogeGrac(r, pokoj) {
   if (r.obserwator || st.phase !== 'aim' || r.mojaAkcja) return false;
   if (!pokoj || pokoj.seed !== r.seed || pokoj.tura !== st.turnNumber) return false;
   if (pokoj.aktywny !== r.mojeId || pokoj.akcje.has(st.turnNumber)) return false;
+  const w = S.activeWorm(st);
+  return !!w && w.alive && w.id === r.mojeId;
+}
+
+/* Ucieczka po dynamicie: chodzić i skakać wolno, strzelać już nie. */
+export function mogeUciekac(r) {
+  const st = r.state;
+  if (r.obserwator || st.phase !== 'odwrot' || !st.odwrotNagranie) return false;
   const w = S.activeWorm(st);
   return !!w && w.alive && w.id === r.mojeId;
 }

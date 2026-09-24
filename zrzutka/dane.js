@@ -318,6 +318,27 @@ window.ZRZUTKA_DANE = {
             'Chwila, gdzie moja armia?',
             'Uczę się! Serio.'
           ]
+        },
+        quber: {
+          nick: 'Quber',
+          cele: [
+            { kwota: 250, nazwa: 'Nowe scutum dla każdego włócznika' },
+            { kwota: 800, nazwa: 'Legion w pełnym składzie (ani jednej dziury w żółwiu)' },
+            { kwota: 2500, nazwa: 'Triumf w Rzymie z przejazdem przez bazę wroga' }
+          ],
+          reakcje: [
+            'Tarcze w górę! Dzięki.',
+            'Żółw rośnie. Za każdego srebrnika jedna tarcza.',
+            'Ave, mecenasie!',
+            'Zanotowałem. W sumie notuję wszystko.'
+          ],
+          zaczepki: [
+            'Tarcza przy tarczy.',
+            'Testudo! Formować szyk!',
+            'Nie przejdziesz. Serio, spróbuj.',
+            'Krok. Krok. Krok.',
+            'Wszystko widziałem. I zapisałem.'
+          ]
         }
       }
     }
@@ -333,6 +354,7 @@ window.ZRZUTKA_DANE = {
     { id: 'wieloryb', ikona: '🐋', nazwa: 'Wieloryb', opis: 'Łącznie 50 000 V-dolców.' },
     { id: 'earningsy', ikona: '💸', nazwa: 'Inwestor w earningsy', opis: 'Wesprzyj grind Apolla w Fortnite.' },
     { id: 'haracz', ikona: '⚔️', nazwa: 'Haracz dla Kozaka', opis: 'Zapłać Kozakowi za święty spokój.' },
+    { id: 'testudo', ikona: '🐢', nazwa: 'Tarcza dla żółwia', opis: 'Wesprzyj Qubera i jego Rzymian.' },
     { id: 'nauczyciel', ikona: '📜', nazwa: 'Nauczyciel Hanów', opis: 'Wesprzyj Froxy\'ego w nauce 0 A.D.' },
     { id: 'spichlerz', ikona: '🌾', nazwa: 'Pełny spichlerz', opis: 'Wesprzyj boom Apolla w 0 A.D.' },
     { id: 'weteran', ikona: '🎖️', nazwa: 'Emerytura dla weterana', opis: 'Wesprzyj Laziego.' },

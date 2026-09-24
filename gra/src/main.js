@@ -268,9 +268,11 @@ function odswiezLobby() {
   const teraz = Date.now();
   if (!pokoj.wLobby.some((g) => g.id === mojeId) && teraz - ostatnieZgloszenie > PONOW_PO) zglosSie();
 
-  // Gospodarzem lobby jest obecny gracz o najmniejszym id — bez uzgadniania.
-  const idki = obecni.map((g) => g.id).sort();
-  const gospodarz = idki.length > 0 && idki[0] === mojeId;
+  // Gospodarzem lobby jest ten z obecnych, kto dołączył najwcześniej —
+  // kolejność zgłoszeń jest w logu taka sama u wszystkich. Nowy gracz nie
+  // przejmuje więc roli (wcześniej wygrywało najmniejsze losowe id).
+  const gospId = obecni.length > 0 ? obecni[0].id : null;
+  const gospodarz = gospId === mojeId;
 
   const lista = el('lista-graczy');
   lista.replaceChildren();
@@ -284,7 +286,7 @@ function odswiezLobby() {
     imie.className = 'imie';
     imie.textContent = g.name;
     li.append(kropka, imie);
-    if (g.id === idki[0]) li.append(znacznik('GOSPODARZ'));
+    if (g.id === gospId) li.append(znacznik('GOSPODARZ'));
     if (g.id === mojeId) li.append(znacznik('TY'));
     lista.append(li);
   }
@@ -387,6 +389,7 @@ function zbudujGre() {
     sterowanie = attachInput({
       getState: () => (rg ? rg.state : null),
       mogeGrac: () => !!rg && P.mogeGrac(rg, pokoj),
+      mogeUciekac: () => !!rg && P.mogeUciekac(rg),
       plotno,
       przyciski: el('dotyk'),
       ekranNaSwiat: (sx, sy) => R.ekranNaSwiat(renderer, kamera, sx, sy),
@@ -531,11 +534,17 @@ function petla(teraz) {
   stepFx(fx, dt);
 
   renderer.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  // trzęsienie po wybuchu: przesuwamy tylko obraz, kamera zostaje na miejscu
+  const tx = wstrzas > 0.3 ? (Math.random() - 0.5) * wstrzas / kamera.zoom : 0;
+  const ty = wstrzas > 0.3 ? (Math.random() - 0.5) * wstrzas / kamera.zoom : 0;
+  kamera.x += tx; kamera.y += ty;
   R.draw(renderer, st, kamera, fx, dt, {
     mojeId,
     rozlaczeni: rozlaczeni(),
     celNalotu: celNalotu(moge)
   });
+  kamera.x -= tx; kamera.y -= ty;
+  wstrzas *= Math.max(0, 1 - dt * 7);
   odswiezHud(moge, teraz);
 }
 
@@ -662,7 +671,7 @@ function wybierzBron(id) {
     if ((akt.amunicja[id] ?? 1) <= 0) { pokazInfo(w.name + ': brak amunicji.'); return; }
     if (st.charging) return;
     st.weapon = id;
-    if (w.celowany) pokazInfo(dotykowy() ? 'Dotknij mapy, żeby wskazać cel nalotu, potem OGNIA.' : 'Kliknij na mapie cel nalotu, potem spacja.');
+    if (w.celowany) pokazInfo(dotykowy() ? 'Dotknij mapy, żeby wskazać cel nalotu, potem OGNIA.' : 'Kliknij na mapie cel nalotu, potem przytrzymaj F.');
   }
   rysujBronie();
 }
@@ -671,8 +680,9 @@ function ustawKamere(teraz) {
   const st = rg.state;
   const z = bazowyZoom() * zoomGracza;
   kamera.tzoom = z;
-  if (st.projectiles.length > 0) {
+  if (st.projectiles.length > 0 && st.phase !== 'odwrot') {
     // Lecący pocisk zawsze wygrywa z ręcznym przesunięciem.
+    // (W czasie ucieczki po dynamicie kamera zostaje przy uciekającym.)
     const p = st.projectiles[0];
     R.focusCamera(kamera, p.x, p.y, z * 0.92);
     recznaKameraDo = 0;
@@ -695,7 +705,7 @@ function ustawKamere(teraz) {
    płynny dojazd nie nadąża, więc dociągamy kamerę od razu. */
 function trzymajWKadrze() {
   const st = rg.state;
-  if (performance.now() < recznaKameraDo || st.projectiles.length > 0) return;
+  if (performance.now() < recznaKameraDo || (st.projectiles.length > 0 && st.phase !== 'odwrot')) return;
   const w = S.activeWorm(st);
   if (!w || !w.alive) return;
   const v = w.widok || w;
@@ -719,6 +729,7 @@ function obsluzZdarzenia() {
     switch (e.type) {
       case 'wybuch':
         emitExplosion(fx, e.x, e.y, e.r);
+        wstrzas = Math.min(14, wstrzas + e.r * 0.16);
         R.repaintRect(renderer, st.terrain, { x0: e.x - e.r - 3, x1: e.x + e.r + 3 });
         break;
       case 'strzal': emitSpark(fx, e.x, e.y, 14); break;
@@ -811,15 +822,20 @@ function rysujBronie() {
   }
 }
 
-let ostatniPodpisBroni = '', ostatniPodpisGraczy = '';
+let wstrzas = 0;                 // siła trzęsienia ekranu po wybuchu (px), tylko grafika
+let ostatniPodpisBroni = '', ostatniPodpisGraczy = '', bylaUcieczka = false;
 
 function odswiezHud(moge, teraz) {
   const st = rg.state;
   const akt = S.activeWorm(st);
   const rozl = rozlaczeni();
 
-  document.body.classList.toggle('moja-tura', moge);
-  el('dotyk').hidden = !(moge && dotykowy());
+  const uciekam = P.mogeUciekac(rg);
+  document.body.classList.toggle('moja-tura', moge || uciekam);
+  document.body.classList.toggle('ucieczka', uciekam);
+  el('dotyk').hidden = !((moge || uciekam) && dotykowy());
+  if (uciekam && !bylaUcieczka) napis('UCIEKAJ!', false);
+  bylaUcieczka = uciekam;
 
   const ja = st.worms.find((w) => w.id === mojeId);
   const podpisBroni = [moge, st.weapon, mojaBron, ja ? JSON.stringify(ja.amunicja) : ''].join('|');
@@ -863,7 +879,9 @@ function odswiezHud(moge, teraz) {
   const sek = Math.max(0, Math.ceil(st.turnTimeLeft));
   const synchronizacja = czekamOd !== null && teraz - czekamOd > 1500;
   zegar.classList.toggle('sync', synchronizacja);
-  zegar.textContent = synchronizacja ? 'SYNC…' : st.phase !== 'aim' ? '–' : sek;
+  const ucieczka = st.phase === 'odwrot' ? Math.max(0, S.ODWROT_S - st.odwrotKrok * S.DT) : null;
+  zegar.textContent = synchronizacja ? 'SYNC…' : ucieczka !== null ? ucieczka.toFixed(1) : st.phase !== 'aim' ? '–' : sek;
+  zegar.classList.toggle('ucieczka', ucieczka !== null);
   zegar.classList.toggle('malo', !synchronizacja && st.phase === 'aim' && sek <= 5);
 
   const slup = el('wiatr-slup');

@@ -5,6 +5,18 @@
 (function () {
   var historia = [
     {
+      wersja: '3.4', data: '2026-09-24', tytul: 'Ucieczka po dynamicie i Quber',
+      zmiany: [
+        'Po podłożeniu dynamitu masz 3,5 s na ucieczkę (odliczanie nad laską i na zegarze).',
+        'Spacja to teraz skok. Strzał: przytrzymaj F albo Enter.',
+        'Robal nie przechodzi już przez strome ściany.',
+        'Gospodarz lobby zostaje gospodarzem, gdy ktoś nowy dołączy.',
+        'Nowa grafika robali, trzęsienie ekranu po wybuchach.',
+        'Nowy wojownik 0 A.D.: Quber aka Kapuś i jego rzymski żółw.',
+        'Powiadomienia o wpłatach znikają szybciej i nie powtarzają starych wpłat.'
+      ]
+    },
+    {
       wersja: '3.3', data: '2026-09-24', tytul: 'Log zmian i porządki',
       zmiany: [
         'Numer wersji w rogu strony i ta strona z historią zmian.',

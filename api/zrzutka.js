@@ -43,7 +43,7 @@ function znajdzKonfiguracje() {
    klientowi, więc trzyma własną, krótką listę. */
 const GRACZE = {
   fortnite: { maks: 1000000, gracze: ['powpow', 'krayo', 'karp', 'apollo'] },
-  zeroad: { maks: 100000, gracze: ['kozak', 'lazi', 'stozhinio', 'nolli', 'apollo', 'froxy'] }
+  zeroad: { maks: 100000, gracze: ['kozak', 'lazi', 'stozhinio', 'nolli', 'apollo', 'froxy', 'quber'] }
 };
 
 const KLUCZ_SUMY = 'zrzutka:sumy';

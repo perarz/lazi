@@ -114,6 +114,13 @@
       <path d="M13.5 17.5h6l-1.2 5.5h-3.6z" fill="#a0763a" stroke="#5e4220" stroke-width="0.7"></path>
       <path d="M14 17.3q2.8-3.4 5.5 0" fill="none" stroke="#5e4220" stroke-width="0.8"></path>
     </symbol>
+    <!-- rzymska tarcza (scutum) z orłem — żółw Qubera -->
+    <symbol id="scutum" viewBox="0 0 26 40">
+      <rect x="1" y="1" width="24" height="38" rx="4" fill="#a3161a" stroke="#e0b53a" stroke-width="1.6"></rect>
+      <path d="M13 3v34M3 20h20" stroke="#e0b53a" stroke-width="1.2" opacity="0.8"></path>
+      <circle cx="13" cy="20" r="4.2" fill="url(#laur-zloto)" stroke="#8a6a1a" stroke-width="0.8"></circle>
+      <path d="M6 12l7-4 7 4M6 28l7 4 7-4" fill="none" stroke="#e0b53a" stroke-width="1.2"></path>
+    </symbol>
     <symbol id="ikona-drewno" viewBox="0 0 24 24">
       <rect x="2" y="7.5" width="18" height="10" rx="5" fill="#8a5a2b" stroke="#50320f" stroke-width="1"></rect>
       <path d="M5 10.5h9M6 14.5h8" stroke="#6b4420" stroke-width="1" stroke-linecap="round"></path>
@@ -229,7 +236,7 @@
         <button class="tytul-pill" type="button" data-do-profilu>
           Twój tytuł: <b data-tytul="fortnite">Bot</b>
           <span class="tytul-kropka">·</span>
-          odznaki <b data-odznaki-licznik>0/18</b>
+          odznaki <b data-odznaki-licznik>0/19</b>
         </button>
         <svg class="hero-moneta hero-moneta-1" aria-hidden="true"><use href="#vbuck"></use></svg>
         <svg class="hero-moneta hero-moneta-2" aria-hidden="true"><use href="#vbuck"></use></svg>
@@ -650,7 +657,7 @@
           <span class="h1-b">dla wojowników</span>
         </h1>
         <p class="hero-pod">
-          Sześciu wojowników z lobby <b>0 A.D.</b> i sześć zupełnie różnych powodów, żeby im pomóc.
+          Siedmiu wojowników z lobby <b>0 A.D.</b> i siedem zupełnie różnych powodów, żeby im pomóc.
           Wybierz wojownika, kliknij <b>Wesprzyj</b> i przypieczętuj darowiznę srebrnikami.
           Każdy srebrnik trafia prosto do jego zasobu metalu.
         </p>
@@ -668,15 +675,15 @@
           <span class="surowiec surowiec-metal" role="listitem" title="Metal — srebrniki zebrane przez fundację">
             <svg aria-hidden="true"><use href="#srebrnik"></use></svg><b id="metal">0</b><small>metal</small>
           </span>
-          <span class="surowiec" role="listitem" title="Populacja — sześciu wojowników i obywatelki Apolla, Stozhinio ma plan na 300">
-            <svg aria-hidden="true"><use href="#ikona-populacja"></use></svg><b>156/300</b><small>populacja</small>
+          <span class="surowiec" role="listitem" title="Populacja — siedmiu wojowników, obywatelki Apolla i żółw Qubera, Stozhinio ma plan na 300">
+            <svg aria-hidden="true"><use href="#ikona-populacja"></use></svg><b>157/300</b><small>populacja</small>
           </span>
         </div>
 
         <button class="tytul-pill" type="button" data-do-profilu>
           Twój tytuł: <b data-tytul="zeroad">Obywatelka przy farmie</b>
           <span class="tytul-kropka">·</span>
-          odznaki <b data-odznaki-licznik>0/18</b>
+          odznaki <b data-odznaki-licznik>0/19</b>
         </button>
         <svg class="hero-moneta hero-moneta-1" aria-hidden="true"><use href="#srebrnik"></use></svg>
         <svg class="hero-moneta hero-moneta-2" aria-hidden="true"><use href="#srebrnik"></use></svg>
@@ -1357,6 +1364,115 @@
             </div>
           </div>
         </article>
+        <!-- ================= Quber ================= -->
+        <article class="karta" data-gracz="quber" data-kolor="cesarski">
+          <div class="karta-obraz">
+            <div class="promienie" aria-hidden="true"></div>
+            <svg class="awatar" viewBox="0 0 160 160" role="img" aria-label="Quber jako rzymski legionista w hełmie z czerwonym grzebieniem, z wielką tarczą, a za nim żółw z tarcz">
+              <!-- żółw: rząd tarcz i włóczni po obu stronach -->
+              <g class="zolw">
+                <use href="#scutum" x="-42" y="106" width="26" height="40"></use>
+                <use href="#scutum" x="-20" y="110" width="26" height="40"></use>
+                <use href="#scutum" x="2" y="114" width="26" height="40"></use>
+                <use href="#scutum" x="134" y="114" width="26" height="40"></use>
+                <use href="#scutum" x="156" y="110" width="26" height="40"></use>
+                <use href="#scutum" x="178" y="106" width="26" height="40"></use>
+                <g stroke="#5e4220" stroke-width="1.6" stroke-linecap="round">
+                  <path d="M-29 106l-10-26M-7 110l-10-26M15 114l-10-26M147 114l10-26M169 110l10-26M191 106l10-26"></path>
+                </g>
+                <g fill="#cfd6dc" stroke="#6a7278" stroke-width="0.8">
+                  <path d="M-39 80l-1.6-8 4.6 6.2z"></path><path d="M-17 84l-1.6-8 4.6 6.2z"></path><path d="M5 88l-1.6-8 4.6 6.2z"></path>
+                  <path d="M157 88l1.6-8-4.6 6.2z"></path><path d="M179 84l1.6-8-4.6 6.2z"></path><path d="M201 80l1.6-8-4.6 6.2z"></path>
+                </g>
+              </g>
+              <g class="postac">
+                <!-- czerwony płaszcz i zbroja płytowa -->
+                <path d="M28 160c3-28 22-43 52-43s49 15 52 43z" fill="#9e1a1a"></path>
+                <path d="M46 160c2-22 14-36 34-36s32 14 34 36z" fill="#b8bec6" stroke="#6a7278" stroke-width="1.6"></path>
+                <path d="M50 138h60M48 147h64M53 130h54" stroke="#7d858e" stroke-width="2"></path>
+                <circle cx="62" cy="124" r="3.6" fill="url(#laur-zloto)" stroke="#8a6a1a"></circle>
+                <circle cx="98" cy="124" r="3.6" fill="url(#laur-zloto)" stroke="#8a6a1a"></circle>
+                <rect x="71" y="100" width="18" height="24" rx="6" fill="#cf9a70"></rect>
+                <ellipse cx="80" cy="86" rx="24" ry="26" fill="#e3ad85"></ellipse>
+                <!-- hełm (galea) z grzebieniem i osłonami policzków -->
+                <path d="M55 84c-2-22 10-34 25-34s27 12 25 34l-5-2c0-16-8-24-20-24s-20 8-20 24z" fill="#c9923a" stroke="#7a5418" stroke-width="1.6"></path>
+                <path d="M55 82l2 22 8 4-1-22zM105 82l-2 22-8 4 1-22z" fill="#c9923a" stroke="#7a5418" stroke-width="1.4"></path>
+                <path d="M54 79q26-8 52 0" fill="none" stroke="#7a5418" stroke-width="3"></path>
+                <path d="M66 50c0-14 28-14 28 0c-2-4-6-6-14-6s-12 2-14 6z" fill="#d42a1f"></path>
+                <path d="M64 51q16-26 32 0" fill="none" stroke="#d42a1f" stroke-width="7" stroke-linecap="round"></path>
+                <!-- skupiony, pewny siebie -->
+                <path d="M65 83l10 2M95 83l-10 2" stroke="#3a2210" stroke-width="3" stroke-linecap="round"></path>
+                <g class="oko"><ellipse cx="71" cy="91" rx="3" ry="3.4" fill="#1d1d1d"></ellipse></g>
+                <g class="oko"><ellipse cx="89" cy="91" rx="3" ry="3.4" fill="#1d1d1d"></ellipse></g>
+                <path d="M80.5 93q-2 5 1 7" fill="none" stroke="#b77c56" stroke-width="1.6" stroke-linecap="round"></path>
+                <path d="M72 105q8 4 16-1" fill="none" stroke="#6b2a1a" stroke-width="2.6" stroke-linecap="round"></path>
+              </g>
+              <!-- wielka tarcza z orłem i włócznia -->
+              <g class="tarcza">
+                <path d="M110 64l4 96" stroke="#5e4220" stroke-width="3" stroke-linecap="round"></path>
+                <path d="M110 64l-3-12 6 11z" fill="#cfd6dc" stroke="#6a7278" stroke-width="1"></path>
+                <use href="#scutum" x="98" y="98" width="42" height="62"></use>
+              </g>
+            </svg>
+            <span class="ranga">Legionista</span>
+            <span class="korona" hidden>Ulubieniec mecenasów</span>
+            <div class="dymek" aria-live="polite"></div>
+          </div>
+
+          <div class="karta-tresc">
+            <h2 class="nick">Quber</h2>
+            <p class="aka">aka <b>Kapuś</b></p>
+            <ul class="metryka">
+              <li><span>Cywilizacja</span><b>Rzymianie</b></li>
+              <li><span>Taktyka</span><b>żółw (testudo)</b></li>
+              <li><span>Siła</span><b>8/10 — naprawdę mocny</b></li>
+            </ul>
+            <p class="haslo">Tarcza przy tarczy. Włócznia przy włóczni. Nikt nie przejdzie.</p>
+
+            <div class="opis">
+              <p>
+                Gra <b>Rzymianami</b> i robi z nich żółwia: ciasno ustawieni włócznicy, tarcza przy
+                tarczy, krok po kroku przez całą mapę. Strzały się odbijają, konnica nadziewa się
+                na włócznie, a przeciwnik patrzy, jak ta skorupa powoli wjeżdża mu do bazy.
+              </p>
+              <p>
+                Jest naprawdę mocny — na naszej skali 8/10. Nie gra efektownie, gra skutecznie:
+                zanim ktoś znajdzie dziurę w szyku, żółw stoi już pod jego centrum miasta.
+                Skąd przydomek „Kapuś”? Tego żółw nie zdradza.
+              </p>
+              <p>
+                Srebrniki pójdą na nowe tarcze. Żółw ciągle rośnie.
+              </p>
+            </div>
+
+            <ul class="staty">
+              <li><span class="stat-nazwa">Żółw (formacja)</span><span class="pasek-stat" data-v="11"><i></i></span><span class="stat-wart stat-ponad">XI/X</span></li>
+              <li><span class="stat-nazwa">Siła</span><span class="pasek-stat" data-v="8"><i></i></span><span class="stat-wart">VIII/X</span></li>
+              <li><span class="stat-nazwa">Cierpliwość</span><span class="pasek-stat" data-v="9"><i></i></span><span class="stat-wart">IX/X</span></li>
+              <li><span class="stat-nazwa">Szybkość</span><span class="pasek-stat" data-v="3"><i></i></span><span class="stat-wart">III/X</span></li>
+            </ul>
+
+            <div class="zbiorka">
+              <div class="zebrano">
+                <span class="zebrano-opis">Metal w skarbcu</span>
+                <span class="zebrano-kwota"><svg class="vb" aria-hidden="true"><use href="#srebrnik"></use></svg><span data-kwota>0</span></span>
+              </div>
+              <div class="cel">
+                <div class="cel-gora">
+                  <span class="cel-etap" data-cel-etap>Faza miasteczka</span>
+                  <span class="cel-kwota"><svg class="vb" aria-hidden="true"><use href="#srebrnik"></use></svg><span data-cel-kwota>250</span></span>
+                </div>
+                <div class="cel-nazwa" data-cel-nazwa>Nowe scutum dla każdego włócznika</div>
+                <div class="cel-pasek"><div class="cel-wypelnienie" data-cel-pasek></div></div>
+                <div class="cel-brakuje" data-cel-brakuje></div>
+              </div>
+              <button class="btn-wesprzyj" type="button">
+                <svg class="vb" aria-hidden="true"><use href="#srebrnik"></use></svg>
+                Wesprzyj
+              </button>
+            </div>
+          </div>
+        </article>
       </div>
     </section>
 
@@ -1409,7 +1525,7 @@
         </div>
       </div>
 
-      <h3 class="odznaki-tytul">Odznaki <span id="odznaki-licznik">0/18</span></h3>
+      <h3 class="odznaki-tytul">Odznaki <span id="odznaki-licznik">0/19</span></h3>
       <ul class="odznaki" id="odznaki"></ul>
     </section>
   </main>
