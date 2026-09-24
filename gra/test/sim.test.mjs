@@ -180,6 +180,12 @@ test('strzelba trafia robala po prostej', () => {
   // Stawiamy cel tuż obok na tej samej wysokości, nad ziemią.
   b.x = a.x + 60 * a.facing;
   b.y = a.y;
+  // Na nierównej mapie między nimi może stać skała — czyścimy linię strzału.
+  for (let y = Math.round(a.y) - 30; y < Math.round(a.y) - 2; y++) {
+    for (let x = Math.round(Math.min(a.x, b.x)) - 10; x <= Math.round(Math.max(a.x, b.x)) + 10; x++) {
+      st.terrain.mask[y * T.WORLD_W + x] = 0;
+    }
+  }
   st.weapon = 'strzelba';
   S.ustawCelownik(st, a.facing > 0 ? 0 : Math.PI);
   assert(S.startCharging(st), 'nie da sie strzelic ze strzelby');

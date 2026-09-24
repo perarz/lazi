@@ -1,0 +1,30 @@
+:root { --tlo: #0b0908; --karta: #17110d; --obwodka: rgba(255, 140, 60, 0.28); --tekst: #f4e6d6; --akcent: #ffb347; }
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  min-height: 100vh; background: radial-gradient(ellipse 120% 60% at 50% 110%, #5a1604 0%, #1a0703 45%, var(--tlo) 75%) fixed;
+  color: var(--tekst); font: 16px/1.55 system-ui, sans-serif;
+  padding: calc(24px + env(safe-area-inset-top, 0px)) 16px 48px;
+}
+.gora, .lista { max-width: 720px; margin: 0 auto; }
+.nawigacja { display: flex; gap: 8px; margin-bottom: 28px; }
+.nawigacja a {
+  color: var(--tekst); text-decoration: none; font-size: 14px; padding: 6px 12px;
+  border: 1px solid var(--obwodka); border-radius: 999px; background: rgba(0, 0, 0, 0.3);
+}
+.nawigacja a:hover { border-color: var(--akcent); color: var(--akcent); }
+h1 { font-family: 'Russo One', system-ui, sans-serif; font-size: clamp(32px, 8vw, 52px); letter-spacing: 0.03em; }
+.pod { opacity: 0.75; margin: 4px 0 28px; }
+.pod b { color: var(--akcent); }
+.lista { display: flex; flex-direction: column; gap: 14px; }
+.wpis { background: var(--karta); border: 1px solid var(--obwodka); border-radius: 14px; padding: 16px 18px; }
+.wpis.najnowszy { border-color: var(--akcent); box-shadow: 0 0 28px rgba(255, 150, 40, 0.18); }
+.wpis-nag { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; margin-bottom: 8px; }
+.nr {
+  font-family: 'Russo One', system-ui, sans-serif; font-size: 13px; color: #1a0d04;
+  background: var(--akcent); border-radius: 6px; padding: 1px 8px;
+}
+h2 { font-family: 'Russo One', system-ui, sans-serif; font-size: 19px; font-weight: 400; flex: 1; min-width: 0; }
+time { font-size: 13px; opacity: 0.6; }
+ul { padding-left: 20px; }
+li { margin: 3px 0; }
+li::marker { color: var(--akcent); }

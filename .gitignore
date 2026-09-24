@@ -1,0 +1,6 @@
+# sekrety i pliki lokalne — nigdy do repo
+.env
+.env.*
+.vercel
+node_modules/
+*.log

@@ -59,6 +59,32 @@ const dotykowy = () => document.body.classList.contains('dotykowy');
 if (window.matchMedia && window.matchMedia('(pointer: coarse)').matches) document.body.classList.add('dotykowy');
 window.addEventListener('touchstart', () => document.body.classList.add('dotykowy'), { passive: true, once: true });
 
+/* Co gracz zobaczy na starcie partii — styl mapy wynika z seeda. */
+const OPISY_MAP = {
+  gory: 'Mapa: Góry — ostre szczyty, z góry widać wszystko, ale i ciebie widać.',
+  archipelag: 'Mapa: Archipelag — między wyspami jest lawa. Skacz ostrożnie.',
+  kaniony: 'Mapa: Kaniony — wąwozy do samej lawy i skalne łuki.',
+  jaskinie: 'Mapa: Jaskinie — tunele, nawisy i pływające skały. Granat się przyda.'
+};
+
+/* Statystyki gracza liczone wyłącznie w przeglądarce (localStorage) —
+   zero dodatkowych zapytań do serwera. */
+let tura = { nr: -1, kto: null, suma: 0 };       // obrażenia zadane w bieżącej turze
+let partia = { obrazenia: 0, fragi: 0, liczona: false };
+function wczytajStaty() {
+  try {
+    const z = JSON.parse(czytaj('arena:staty'));
+    if (z && typeof z === 'object') return { partie: 0, wygrane: 0, obrazenia: 0, fragi: 0, rekordTury: 0, ...z };
+  } catch { /* zepsuty zapis */ }
+  return { partie: 0, wygrane: 0, obrazenia: 0, fragi: 0, rekordTury: 0 };
+}
+function opisStatow() {
+  const s = wczytajStaty();
+  if (!s.partie) return '';
+  return 'Twoje statystyki: ' + s.partie + ' partii, ' + s.wygrane + ' wygranych, ' +
+    s.fragi + ' fragów, ' + s.obrazenia + ' obrażeń (rekord tury: ' + s.rekordTury + ').';
+}
+
 function czytaj(k) { try { return localStorage.getItem(k); } catch { return null; } }
 function zapisz(k, v) { try { localStorage.setItem(k, v); } catch { /* tryb prywatny */ } }
 
@@ -300,6 +326,7 @@ function odswiezLobby() {
     box.hidden = true;
   }
 
+  el('moje-staty').textContent = opisStatow();
   el('btn-start').disabled = obecni.length < 2 || wToku;
   el('info-lobby').textContent = Date.now() < infoLobby.do
     ? infoLobby.tekst
@@ -395,8 +422,13 @@ function zbudujGre() {
   odswiezPelnyEkran();
   pasy.pomiar = -1e9;
   pasy.swieze = true;
+  tura = { nr: -1, kto: null, suma: 0 };
+  partia = { obrazenia: 0, fragi: 0, liczona: false };
+  const opisMapy = OPISY_MAP[rg.state.terrain.styl];
   if (dotykowy() && window.innerHeight > window.innerWidth * 1.2) {
     pokazInfo('Obróć telefon poziomo — zobaczysz więcej areny.');
+  } else if (opisMapy) {
+    pokazInfo(opisMapy);
   }
 
   ostatniCzas = performance.now();
@@ -580,6 +612,14 @@ function pokazTure() {
   if (!akt) return;
   const moja = akt.id === mojeId && !rg.obserwator;
   napis(moja ? 'TWOJA TURA' : 'Tura: ' + akt.name, !moja);
+  if (tura.kto && tura.nr !== st.turnNumber && tura.suma >= 50) {
+    pokazInfo((tura.kto.id === mojeId ? 'Twój strzał' : 'Strzał ' + tura.kto.name) + ': ' + tura.suma + ' obrażeń' + (tura.suma >= 100 ? ' — MASAKRA!' : '!'));
+    if (tura.kto.id === mojeId && !rg.obserwator) {
+      const staty = wczytajStaty();
+      if (tura.suma > staty.rekordTury) { staty.rekordTury = tura.suma; zapisz('arena:staty', JSON.stringify(staty)); }
+    }
+    tura = { nr: -1, kto: null, suma: 0 };
+  }
   recznaKameraDo = 0;
   if (moja) {
     // Ostatnio wybrana broń — o ile jest jeszcze amunicja.
@@ -685,8 +725,22 @@ function obsluzZdarzenia() {
       case 'odbicie': emitSpark(fx, e.x, e.y, 5); break;
       case 'plusk': emitSpark(fx, e.x, e.y, 18); break;
       case 'smuga': emitSmuga(fx, e.x0, e.y0, e.x1, e.y1); break;
-      case 'obrazenia': emitTekst(fx, e.x, e.y - 34, '-' + e.amount, '#ff7a55'); break;
-      case 'smierc': emitTekst(fx, e.x, e.y - 50, e.cause === 'lawa' ? 'do lawy!' : 'RIP', '#ffd93b', 17); break;
+      case 'obrazenia': {
+        emitTekst(fx, e.x, e.y - 34, '-' + e.amount, '#ff7a55');
+        const akt = S.activeWorm(st);
+        if (akt && e.wormId !== akt.id) {
+          if (tura.nr !== st.turnNumber) tura = { nr: st.turnNumber, kto: akt, suma: 0 };
+          tura.suma += e.amount;
+          if (akt.id === mojeId && !rg.obserwator) partia.obrazenia += e.amount;
+        }
+        break;
+      }
+      case 'smierc': {
+        emitTekst(fx, e.x, e.y - 50, e.cause === 'lawa' ? 'do lawy!' : 'RIP', '#ffd93b', 17);
+        const akt = S.activeWorm(st);
+        if (akt && akt.id === mojeId && e.wormId !== mojeId && !rg.obserwator) partia.fragi++;
+        break;
+      }
       case 'odszedl':
         emitSpark(fx, e.x, e.y - 10, 20);
         emitTekst(fx, e.x, e.y - 40, 'wyszedł', '#ffe9c8', 14);
@@ -700,9 +754,22 @@ function obsluzZdarzenia() {
 function pokazKoniec(winnerId) {
   const w = rg.state.worms.find((x) => x.id === winnerId);
   el('koniec-tytul').textContent = w ? (w.id === mojeId ? 'WYGRYWASZ!' : 'WYGRYWA ' + w.name.toUpperCase()) : 'REMIS';
-  el('koniec-opis').textContent = w
+  let opis = w
     ? 'Ostatni GOAT na arenie. Reszta poszła z dymem.'
     : 'Nikt nie przeżył. Bywa.';
+  const gralem = rg.state.worms.some((x) => x.id === mojeId);
+  if (gralem && !partia.liczona) {
+    partia.liczona = true;
+    const staty = wczytajStaty();
+    staty.partie++;
+    if (w && w.id === mojeId) staty.wygrane++;
+    staty.obrazenia += partia.obrazenia;
+    staty.fragi += partia.fragi;
+    if (tura.kto && tura.kto.id === mojeId && tura.suma > staty.rekordTury) staty.rekordTury = tura.suma;
+    zapisz('arena:staty', JSON.stringify(staty));
+    opis += ' Ty w tej partii: ' + partia.obrazenia + ' obrażeń, ' + partia.fragi + ' fragów.';
+  }
+  el('koniec-opis').textContent = opis;
   el('ekran-koniec').hidden = false;
   hud.hidden = true;
   document.body.classList.remove('moja-tura');

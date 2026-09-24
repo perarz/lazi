@@ -182,6 +182,15 @@ html.online .tylko-offline { display: none !important; }
 }
 
 .kat .vb { font-size: 1.25rem; }
+.kat-arena .vb { color: #ffb347; }
+.kat-arena { position: relative; }
+/* kropka „nowość” przy zakładce gry */
+.kat-arena::after {
+  content: "";
+  position: absolute; top: 4px; right: 4px;
+  width: 7px; height: 7px; border-radius: 50%;
+  background: #ff3b1f; box-shadow: 0 0 8px #ff3b1f;
+}
 .kat:hover { color: var(--c-tekst); background: rgba(255, 255, 255, 0.08); }
 .kat:active { transform: scale(0.96); }
 
@@ -266,6 +275,9 @@ html.online .tylko-offline { display: none !important; }
    żeby duże sumy nie wypychały przycisku dźwięku poza ekran */
 @media (max-width: 420px) {
   .logo { display: none; }
+  .kat-arena span { display: none; }
+  .kat:not(.kat-arena) .vb { display: none; }
+  .kat { padding: 7px 8px; }
   .kategorie { margin-left: 0; }
 }
 

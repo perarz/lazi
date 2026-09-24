@@ -197,16 +197,18 @@ module.exports = async function handler(req, res) {
     return res.status(405).json({ blad: 'zla-metoda' });
   } catch (e) {
     if (e && e.brakKonfiguracji) {
+      // nazwy (nigdy wartości) podobnych zmiennych — tylko do logów Vercela
+      console.error('Brak konfiguracji Redisa. Podobne zmienne:', nazwyPodobnychZmiennych());
       return res.status(503).json({
         blad: 'brak-konfiguracji',
         opis: 'Nie znaleziono pary zmiennych z adresem i tokenem Redisa. ' +
-              'Podepnij bazę z Vercel Marketplace do tego projektu (Production + Preview).',
-        // same nazwy, żeby dało się zdiagnozować literówkę w prefiksie —
-        // wartości nie wychodzą nigdy poza serwer
-        widzianeZmienne: nazwyPodobnychZmiennych()
+              'Podepnij bazę z Vercel Marketplace do tego projektu (Production + Preview).'
       });
     }
     if (e instanceof SyntaxError) return res.status(400).json({ blad: 'zly-json' });
-    return res.status(500).json({ blad: 'serwer', opis: String((e && e.message) || e).slice(0, 200) });
+    // Szczegóły tylko do logów Vercela — komunikat z Redisa czy fetcha
+    // może zawierać adres bazy, więc do przeglądarki idzie sam kod błędu.
+    console.error('[' + (req.url || 'api') + ']', e);
+    return res.status(500).json({ blad: 'serwer' });
   }
 };
