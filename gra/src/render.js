@@ -21,7 +21,8 @@ export function createRenderer(canvas) {
     tctx: terrainCanvas.getContext('2d'),
     viewW: 0,
     viewH: 0,
-    time: 0
+    time: 0,
+    zrzuty: new Map()          // id skrzynki → chwila zrzutu (animacja spadochronu)
   };
 }
 
@@ -199,6 +200,7 @@ export function draw(r, state, cam, fx, dt, opcje = {}) {
   if (opcje.celNalotu) drawCel(ctx, opcje.celNalotu, r.time);
 
   const akt = activeOf(state);
+  for (const c of state.skrzynki || []) drawSkrzynka(ctx, r, c);
   for (const p of state.projectiles) drawProjectile(ctx, p);
   for (const w of state.worms) {
     if (!w.alive) continue;
@@ -330,6 +332,62 @@ function drawCel(ctx, cel, time) {
   ctx.setLineDash([]);
 }
 
+/* Zrzut na spadochronie: przez pierwsze 1,6 s skrzynka opada z nieba
+   (tylko obraz — w symulacji już leży na gruncie). */
+export function zrzutAnimacja(r, id) {
+  r.zrzuty.set(id, r.time);
+  if (r.zrzuty.size > 20) r.zrzuty.delete(r.zrzuty.keys().next().value);
+}
+
+function drawSkrzynka(ctx, r, c) {
+  const t0 = r.zrzuty.get(c.id);
+  const f = t0 === undefined ? 1 : Math.min(1, (r.time - t0) / 1.6);
+  const spad = (1 - f) * 420;
+  ctx.save();
+  ctx.translate(c.x + Math.sin(r.time * 3 + c.id) * (1 - f) * 10, c.y - spad);
+  if (f < 1) {
+    // spadochron
+    ctx.strokeStyle = 'rgba(255,240,220,0.8)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(-8, -14); ctx.lineTo(-16, -36);
+    ctx.moveTo(8, -14); ctx.lineTo(16, -36);
+    ctx.stroke();
+    ctx.fillStyle = c.typ === 'apteczka' ? '#f4f1ea' : '#e0a93a';
+    ctx.beginPath();
+    ctx.arc(0, -34, 19, Math.PI, 0);
+    ctx.fill();
+    ctx.fillStyle = c.typ === 'apteczka' ? '#d8261c' : '#8a5a1a';
+    ctx.fillRect(-4, -52, 8, 18);
+  }
+  const bujanie = f >= 1 ? Math.sin(r.time * 2.4 + c.id) * 1.2 : 0;
+  ctx.translate(0, bujanie);
+  if (c.typ === 'apteczka') {
+    ctx.fillStyle = '#f4f1ea';
+    ctx.fillRect(-9, -16, 18, 16);
+    ctx.fillStyle = '#d8261c';
+    ctx.fillRect(-2.5, -13, 5, 10);
+    ctx.fillRect(-6, -10.5, 12, 5);
+  } else {
+    ctx.fillStyle = '#9a6a2e';
+    ctx.fillRect(-10, -16, 20, 16);
+    ctx.strokeStyle = '#5a3a14';
+    ctx.lineWidth = 1.5;
+    ctx.strokeRect(-9.5, -15.5, 19, 15);
+    ctx.beginPath();
+    ctx.moveTo(-9, -15); ctx.lineTo(9, -1);
+    ctx.moveTo(9, -15); ctx.lineTo(-9, -1);
+    ctx.stroke();
+    if (f >= 1) {
+      ctx.fillStyle = '#ffd23b';
+      ctx.font = 'bold 9px system-ui, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('AMMO', 0, -19);
+    }
+  }
+  ctx.restore();
+}
+
 function drawProjectile(ctx, p) {
   const weapon = WEAPONS[p.weapon];
   ctx.save();
@@ -369,6 +427,29 @@ function drawProjectile(ctx, p) {
       const napis = Math.ceil(p.fuse).toString();
       ctx.strokeText(napis, 0, -22);
       ctx.fillText(napis, 0, -22);
+    }
+    ctx.restore();
+    return;
+  }
+
+  if (weapon.kind === 'wiertlo') {
+    // świder: korpus i obracający się gwint z przodu
+    ctx.rotate(Math.atan2(p.vy, p.vx));
+    const t = performance.now() / 40;
+    ctx.fillStyle = '#6d7680';
+    ctx.fillRect(-12, -5, 10, 10);
+    ctx.fillStyle = '#b8c2cc';
+    ctx.beginPath();
+    ctx.moveTo(-2, -6); ctx.lineTo(12, 0); ctx.lineTo(-2, 6);
+    ctx.fill();
+    ctx.strokeStyle = '#4a525a';
+    ctx.lineWidth = 1.4;
+    for (let k = 0; k < 3; k++) {
+      const x = -1 + ((t + k * 4) % 12);
+      const h = 6 * (1 - x / 12);
+      ctx.beginPath();
+      ctx.moveTo(x, -h); ctx.lineTo(x + 2, h);
+      ctx.stroke();
     }
     ctx.restore();
     return;
@@ -521,12 +602,19 @@ function drawWorm(ctx, w, isActive, time, o) {
   // broń w łapach aktywnego robala, ustawiona wzdłuż celownika
   if (isActive && o.bron) {
     const rura = o.bron === 'bazooka' || o.bron === 'salwa';
-    const dl = o.bron === 'strzelba' ? 16 : rura ? 18 : o.bron === 'kij' ? 17 : 0;
+    const dl = o.bron === 'strzelba' ? 16 : rura ? 18 : o.bron === 'kij' ? 17 : o.bron === 'wiertlo' ? 15 : 0;
     if (dl) {
       ctx.save();
       ctx.translate(cx + facing * 2, cy + 3);
       ctx.rotate(angle);
-      if (o.bron === 'kij') {
+      if (o.bron === 'wiertlo') {
+        ctx.fillStyle = '#6d7680';
+        ctx.fillRect(-4, -3, 8, 6);
+        ctx.fillStyle = '#b8c2cc';
+        ctx.beginPath();
+        ctx.moveTo(4, -3.5); ctx.lineTo(dl, 0); ctx.lineTo(4, 3.5);
+        ctx.fill();
+      } else if (o.bron === 'kij') {
         // kij bejsbolowy: grubieje ku końcowi
         ctx.fillStyle = '#c8955a';
         ctx.beginPath();

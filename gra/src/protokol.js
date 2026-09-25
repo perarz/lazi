@@ -354,6 +354,7 @@ function zastosujAkcje(r, a) {
   } else {
     przebudowa = S.ustawKratery(st, a.kratery);
     if (Array.isArray(a.robale)) S.ustawRobale(st, a.robale);
+    if (Array.isArray(a.skrzynki)) S.ustawSkrzynki(st, a.skrzynki);
     if (st.phase === 'koniec') st.phase = 'settle';
     S.applyPas(st);
   }
@@ -421,7 +422,7 @@ function wejdzWStan(r, stan) {
    krater z wybuchu zwłok). Potem gram go dokładnie tak jak odbiorcy. */
 function mojPas(r, powod) {
   const st = r.state;
-  const z = { t: 'pas', nr: st.turnNumber, id: r.mojeId, powod, robale: S.stanRobali(st), kratery: S.plaskieKratery(st) };
+  const z = { t: 'pas', nr: st.turnNumber, id: r.mojeId, powod, robale: S.stanRobali(st), kratery: S.plaskieKratery(st), skrzynki: S.stanSkrzynek(st) };
   r.mojaAkcja = z;
   zastosujAkcje(r, z);
 }

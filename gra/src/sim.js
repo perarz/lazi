@@ -12,7 +12,7 @@
 
 import { mulberry32, hashNumbers, hashTekstu } from './rng.js';
 import * as T from './terrain.js';
-import { WEAPONS, startowaAmunicja } from './weapons.js';
+import { WEAPONS, WEAPON_ORDER, startowaAmunicja } from './weapons.js';
 
 export const DT = 1 / 120;          // stały krok symulacji, render interpoluje
 
@@ -49,6 +49,13 @@ const LAWA_MIN = 260;
 
 /* Pięć odłamków kasetówki — stała tabela, żadnej losowości. */
 const ODLAMKI = [[-160, -220], [-80, -290], [0, -330], [80, -290], [160, -220]];
+
+/* Zrzuty zaopatrzenia: od drugiej rundy, najwyżej tyle skrzynek naraz. */
+const SKRZYNKI_MAX = 3;
+const SKRZYNKA_SZANSA = 40;         // % szans na zrzut na początku tury
+export const APTECZKA_HP = 35;
+const HP_MAX = 150;
+const ZAPAS_BRONIE = WEAPON_ORDER.filter((id) => WEAPONS[id].amunicja !== undefined);
 
 const pusteWejscie = () => ({ left: false, right: false, aimUp: false, aimDown: false });
 
@@ -102,6 +109,7 @@ export function createGame(seed, players, opcje = {}) {
     lava: T.LAVA_Y,
     projectiles: [],
     nextProjectileId: 1,
+    skrzynki: [],              // zrzuty: { id, typ: 'apteczka' | 'zapas', x, y }
     weapon: 'bazooka',
     power: 0,
     charging: false,
@@ -245,6 +253,7 @@ export function przygotujStrzal(state) {
     power,
     robale: stanRobali(state),
     kratery: plaskieKratery(state),
+    skrzynki: stanSkrzynek(state),
     start: obliczStart(w, weapon, w.angle, power),
     cel: weapon.celowany && state.cel ? { x: state.cel.x, y: state.cel.y } : null
   };
@@ -259,6 +268,9 @@ function obliczStart(w, weapon, angle, power) {
   const mx = w.x + c * 18;
   const my = w.y - WORM_H * 0.55 + s * 18;
   if (weapon.kind === 'hitscan') return { x: mx, y: my, vx: c, vy: s };
+  if (weapon.kind === 'wiertlo') {
+    return { x: w.x + c * 8, y: w.y - WORM_H * 0.5 + s * 8, vx: c * weapon.speed, vy: s * weapon.speed };
+  }
   if (weapon.kind === 'kij') return { x: w.x + c * 12, y: w.y - WORM_H * 0.55 + s * 12, vx: c, vy: s };
   if (weapon.kind === 'salwa') {
     // trzy wektory liczone u strzelającego — odbiorca nie liczy trygonometrii
@@ -279,6 +291,7 @@ function obliczStart(w, weapon, angle, power) {
 export function zastosujStrzal(state, action) {
   const przebudowa = ustawKratery(state, action.kratery);
   if (action.robale) ustawRobale(state, action.robale);
+  if (action.skrzynki) ustawSkrzynki(state, action.skrzynki);
   state.weapon = action.weapon;
   applyFire(state, action);
   return przebudowa;
@@ -349,8 +362,9 @@ function spawnProjectile(state, weapon, x, y, vx, vy, ownerId) {
     id: state.nextProjectileId++,
     weapon: weapon.id,
     x: x + 0, y: y + 0, vx: vx + 0, vy: vy + 0,
-    fuse: weapon.fuse,
-    ownerId
+    fuse: weapon.kind === 'wiertlo' ? weapon.czas : weapon.fuse,
+    ownerId,
+    krok: 0
   });
 }
 
@@ -474,6 +488,7 @@ export function step(state) {
   const steruje = state.phase === 'aim' || state.phase === 'odwrot';
   for (const w of state.worms) stepWorm(state, w, w === act && steruje, ster);
   stepProjectiles(state);
+  stepSkrzynki(state);
 
   if (state.phase === 'odwrot' && state.odwrotKrok >= ODWROT_KROKI) {
     state.phase = 'flight';
@@ -644,6 +659,10 @@ function stepProjectiles(state) {
       krokOwcy(state, p, weapon, i);
       continue;
     }
+    if (weapon.kind === 'wiertlo') {
+      krokWiertla(state, p, weapon, i);
+      continue;
+    }
 
     p.vx += state.wind * weapon.windFactor * DT;
     p.vy += GRAVITY * weapon.gravityFactor * DT;
@@ -742,6 +761,26 @@ function krokOwcy(state, p, weapon, i) {
   }
 }
 
+/* Wiertło: jedzie prosto (bez grawitacji i wiatru) i co kilka kroków wycina
+   kółko — powstaje tunel. Trafiony robal albo koniec czasu = mały wybuch. */
+function krokWiertla(state, p, weapon, i) {
+  p.x += p.vx * DT;
+  p.y += p.vy * DT;
+  if (p.krok % 8 === 0) {
+    T.carve(state.terrain, p.x, p.y, weapon.promien);
+    state.events.push({ type: 'wiercenie', x: Math.round(p.x), y: Math.round(p.y), r: weapon.promien });
+  }
+  p.krok++;
+  const trafiony = state.worms.find(
+    (w) => w.alive && w.id !== p.ownerId && Math.abs(w.x - p.x) < 10 && p.y > w.y - WORM_H - 2 && p.y < w.y + 2
+  );
+  if (trafiony) { detonate(state, p, i); return; }
+  if (p.y > state.lava || p.y < -200 || p.x < -80 || p.x > T.WORLD_W + 80) {
+    state.projectiles.splice(i, 1);
+    if (p.y > state.lava) state.events.push({ type: 'plusk', x: p.x, y: state.lava });
+  }
+}
+
 function bounce(state, p, weapon) {
   const n = surfaceNormal(state.terrain, p.x, p.y);
   const dot = p.vx * n.x + p.vy * n.y;
@@ -780,6 +819,14 @@ function detonate(state, p, index) {
 export function explode(state, x, y, weapon) {
   T.carve(state.terrain, x, y, weapon.radius);
   state.events.push({ type: 'wybuch', x, y, r: weapon.radius });
+  for (let i = state.skrzynki.length - 1; i >= 0; i--) {
+    const c = state.skrzynki[i];
+    const dx = c.x - x, dy = c.y - 8 - y;
+    if (dx * dx + dy * dy <= (weapon.radius + 8) * (weapon.radius + 8)) {
+      state.skrzynki.splice(i, 1);
+      state.events.push({ type: 'skrzynkaRozbita', x: c.x, y: c.y });
+    }
+  }
 
   const reach = weapon.radius * 1.7;
   for (const w of state.worms) {
@@ -861,7 +908,57 @@ function nextTurn(state) {
       state.events.push({ type: 'lawa', y: nowa });
     }
   }
+  zrzutZaopatrzenia(state);
   rozpocznijTure(state);
+}
+
+/* Na początku tury czasem spada skrzynka. Wszystko z seeda i numeru tury,
+   więc każdy klient zrzuca to samo w tym samym miejscu — zero ruchu w sieci.
+   Skrzynka ląduje od razu na gruncie (spadanie na spadochronie to tylko
+   animacja w render.js). */
+function zrzutZaopatrzenia(state) {
+  if (state.turnNumber < state.order.length || state.skrzynki.length >= SKRZYNKI_MAX) return;
+  const rng = mulberry32((state.seed ^ Math.imul(state.turnNumber + 1, 0x27d4eb2d)) >>> 0);
+  if (Math.floor(rng() * 100) >= SKRZYNKA_SZANSA) return;
+  const typ = rng() < 0.6 ? 'apteczka' : 'zapas';
+  for (let proba = 0; proba < 12; proba++) {
+    const x = Math.round(T.WORLD_W * (0.1 + rng() * 0.8));
+    const y = T.findGround(state.terrain, x, 0, 0, state.lava - 12);
+    if (y === null || y > state.lava - 16) continue;
+    if (state.worms.some((w) => w.alive && Math.abs(w.x - x) < 40)) continue;
+    state.skrzynki.push({ id: state.turnNumber, typ, x, y });
+    state.events.push({ type: 'zrzut', id: state.turnNumber, typ, x, y });
+    return;
+  }
+}
+
+/* Skrzynki spadają, gdy wybuch wytnie grunt spod nich, toną w lawie,
+   a robal, który w nie wejdzie, zbiera zawartość. */
+function stepSkrzynki(state) {
+  const t = state.terrain;
+  for (let i = state.skrzynki.length - 1; i >= 0; i--) {
+    const c = state.skrzynki[i];
+    if (!T.solidAt(t, c.x, c.y + 1)) {
+      c.y += 2;
+      if (c.y > state.lava) {
+        state.skrzynki.splice(i, 1);
+        state.events.push({ type: 'plusk', x: c.x, y: state.lava });
+        continue;
+      }
+    }
+    const w = state.worms.find((r) => r.alive && Math.abs(r.x - c.x) < 14 && c.y > r.y - WORM_H - 6 && c.y < r.y + 10);
+    if (!w) continue;
+    state.skrzynki.splice(i, 1);
+    if (c.typ === 'apteczka') {
+      const ile = Math.min(APTECZKA_HP, HP_MAX - w.hp);
+      w.hp += ile;
+      state.events.push({ type: 'skrzynka', typ: c.typ, wormId: w.id, x: c.x, y: c.y, hp: ile });
+    } else {
+      const bron = ZAPAS_BRONIE[(Math.imul(c.id + 7, 0x9e3779b1) >>> 0) % ZAPAS_BRONIE.length];
+      w.amunicja[bron] = (w.amunicja[bron] || 0) + 1;
+      state.events.push({ type: 'skrzynka', typ: c.typ, wormId: w.id, x: c.x, y: c.y, bron });
+    }
+  }
 }
 
 /* Pola, które na starcie każdej tury są zawsze takie same. */
@@ -921,6 +1018,17 @@ export function ustawRobale(state, robale) {
   }
 }
 
+export function stanSkrzynek(state) {
+  return state.skrzynki.map((c) => ({ id: c.id, typ: c.typ, x: c.x, y: c.y }));
+}
+
+export function ustawSkrzynki(state, lista) {
+  if (!Array.isArray(lista)) return;
+  state.skrzynki = lista
+    .filter((c) => c && (c.typ === 'apteczka' || c.typ === 'zapas'))
+    .map((c) => ({ id: c.id | 0, typ: c.typ, x: c.x | 0, y: c.y | 0 }));
+}
+
 export function plaskieKratery(state) {
   const kratery = [];
   for (const c of state.terrain.craters) kratery.push(c.x, c.y, c.r);
@@ -941,6 +1049,7 @@ export function snapshot(state) {
     winner: state.winner,
     over,
     lava: state.lava,
+    skrzynki: stanSkrzynek(state),
     aktywny: akt ? akt.id : null
   };
 }
@@ -958,6 +1067,7 @@ export function stanPoTurze(state, usun = []) {
     turnNumber: state.turnNumber,
     winner: state.winner,
     lava: state.lava,
+    skrzynki: stanSkrzynek(state),
     phase: 'koniec',
     events: [],
     projectiles: [],
@@ -999,6 +1109,8 @@ export function zastosujSnapshot(state, snap) {
   state.turnNumber = snap.turnNumber;
   state.winner = snap.winner ?? null;
   state.lava = typeof snap.lava === 'number' ? snap.lava : T.LAVA_Y;
+  state.skrzynki = [];
+  ustawSkrzynki(state, snap.skrzynki);
   state.projectiles = [];
   state.akcjeDoWyslania.length = 0;
   if (snap.over) {

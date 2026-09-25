@@ -109,9 +109,8 @@ export function createTerrain(seed) {
   //     więc powstają nawisy, łuki i półki zamiast gładkiej linii ---
   const n1 = szum2D(Math.floor(rng() * 2147483647));
   const n2 = szum2D(Math.floor(rng() * 2147483647));
-  const n3 = szum2D(Math.floor(rng() * 2147483647));
+  rng(); // dawny szum tuneli — zostawiony, żeby nie przesuwać losowań
   const nawisy = styl === 'jaskinie' ? 150 : styl === 'gory' ? 120 : 95;
-  const tunele = styl === 'jaskinie' ? 0.06 : 0.035;
   const PAS = 190;                              // do tej głębokości pod powierzchnią działa szum
 
   for (let x = 0; x < WORLD_W; x++) {
@@ -128,11 +127,6 @@ export function createTerrain(seed) {
           + (n2(x / 34, y / 34) - 0.5) * 38;
         mask[i] = g > 0 ? 1 : 0;
       }
-      // kręte tunele: wąski pas wokół połowy wartości szumu
-      if (mask[i] && glebokosc > 45 && y < LAVA_Y - 25) {
-        const t = n3(x / 150, y / 62) - 0.5;
-        if (t < tunele && t > -tunele) mask[i] = 0;
-      }
     }
   }
 
@@ -144,6 +138,16 @@ export function createTerrain(seed) {
     if (top > LAVA_Y - 150) continue;
     const cy = randRange(rng, top + 90, Math.max(top + 100, LAVA_Y - 60));
     ksztaltEllipsy(mask, n2, cx, cy, randRange(rng, 55, 150), randRange(rng, 28, 70), 0);
+  }
+  // --- czasem duża jaskinia: szeroka hala z podłogą, zamiast cienkich tuneli ---
+  const duze = styl === 'jaskinie' ? randInt(rng, 1, 2) : (rng() < 0.55 ? 1 : 0);
+  for (let i = 0; i < duze; i++) {
+    const cx = randRange(rng, WORLD_W * 0.25, WORLD_W * 0.75);
+    const top = surface[Math.floor(cx)];
+    if (top > LAVA_Y - 250) continue;
+    const ry = randRange(rng, 55, Math.min(105, (LAVA_Y - top - 130) / 2));
+    const cy = randRange(rng, top + 60 + ry, LAVA_Y - 70 - ry);
+    ksztaltEllipsy(mask, n2, cx, cy, randRange(rng, 170, 280), ry, 0);
   }
   const skaly = styl === 'gory' ? randInt(rng, 1, 2) : randInt(rng, 2, 4);
   for (let i = 0; i < skaly; i++) {
@@ -272,9 +276,26 @@ export function spawnPoints(t, count, seed) {
       best = { x, y };
       break;
     }
-    points.push(best || { x: Math.round(margin + (span * (i + 0.5)) / count), y: 200 });
+    // W wycinku nie ma gruntu (np. przerwa między wyspami) — bierzemy dobry
+    // grunt z całej mapy, jak najdalej od pozostałych. Nigdy nie w powietrzu.
+    points.push(best || zapasowyStart(t, points, margin));
   }
   return points;
+}
+
+function zapasowyStart(t, points, margin) {
+  let best = null, bestOdl = -1;
+  for (let wymog = 0; wymog < 2 && !best; wymog++) {
+    for (let x = Math.round(margin * 0.5); x < WORLD_W - margin * 0.5; x += 6) {
+      const y = wymog === 0 ? gruntPodNiebem(t, x) : findGround(t, x, 0, 0, LAVA_Y - 30);
+      if (y === null || y > LAVA_Y - 60) continue;
+      if (solidAt(t, x, y - 20) || solidAt(t, x, y - 10)) continue;
+      let odl = 1e9;
+      for (const p of points) odl = Math.min(odl, Math.abs(p.x - x));
+      if (odl > bestOdl) { bestOdl = odl; best = { x, y }; }
+    }
+  }
+  return best || { x: WORLD_W >> 1, y: findGround(t, WORLD_W >> 1, 0, 0, WORLD_H) ?? LAVA_Y - 80 };
 }
 
 /* Pierwszy grunt od góry, który nie jest cienką pływającą skałą —

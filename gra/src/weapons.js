@@ -156,6 +156,22 @@ export const WEAPONS = {
     amunicja: 2,
     opis: 'Trzy rakiety naraz, ładuj moc'
   },
+  wiertlo: {
+    id: 'wiertlo',
+    name: 'Wiertło',
+    key: '-',
+    kind: 'wiertlo',       // jedzie prosto w stronę celownika i drąży tunel
+    speed: 150,
+    czas: 1.3,             // s wiercenia (ok. 195 px), potem mały wybuch
+    promien: 12,           // promień tunelu
+    radius: 22,
+    damage: 20,
+    knockback: 140,
+    fuse: null,
+    bezMocy: true,
+    amunicja: 2,
+    opis: 'Wierci tunel w stronę celownika'
+  },
 
   /* --- pociski pomocnicze --- */
   odlamek: {
@@ -199,7 +215,7 @@ export const WEAPONS = {
   }
 };
 
-export const WEAPON_ORDER = ['bazooka', 'granat', 'strzelba', 'kasetowa', 'dynamit', 'nalot', 'owca', 'kij', 'teleport', 'salwa'];
+export const WEAPON_ORDER = ['bazooka', 'granat', 'strzelba', 'kasetowa', 'dynamit', 'nalot', 'owca', 'kij', 'teleport', 'salwa', 'wiertlo'];
 
 /* Startowy zapas dla broni z limitem — ta sama wartość u każdego klienta. */
 export function startowaAmunicja() {

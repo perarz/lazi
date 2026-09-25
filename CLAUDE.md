@@ -116,8 +116,10 @@ Przekroczenie limitu = strona i gra przestają działać dla wszystkich. Dlatego
 - Trygonometria tylko u strzelającego: `obliczStart()` liczy wektor(y) startowe, które lecą w zdarzeniu
   (`start`, np. wachlarz salwy `start.salwa`). Odbiorca nic nie przelicza.
 - `-0` normalizujemy (`x + 0`) — JSON zamienia `-0` na `0`.
-- Mapa nie leci przez sieć: seed + lista kraterów. Generator 2D (nawisy, tunele, pływające skały),
+- Mapa nie leci przez sieć: seed + lista kraterów. Generator 2D (nawisy, czasem wielka jaskinia, komory, pływające skały),
   4 style z seeda: góry, archipelag, kaniony, jaskinie. Kopia bazowej maski jest cache'owana.
+- `spawnPoints` nigdy nie stawia robala w powietrzu: gdy w wycinku gracza nie ma gruntu (przerwa
+  między wyspami), szuka gruntu na całej mapie (`zapasowyStart`). Test sprawdza to na wielu seedach.
 
 ### Protokół tury
 - Wspólny log zdarzeń w Redisie. Pierwszy `strzal`/`pas` danej tury jest **kanoniczny**.
@@ -134,14 +136,23 @@ Przekroczenie limitu = strona i gra przestają działać dla wszystkich. Dlatego
 
 ### Rozgrywka
 - Sterowanie: **A/D** ruch, **Spacja** skok, **W/S** lub mysz celowanie, **F/Enter** (przytrzymaj) strzał,
-  **1–0** broń. Na telefonie przyciski dotykowe + celowanie palcem, szczypanie = zoom.
+  **1–0** i **-** broń. Na telefonie przyciski dotykowe + celowanie palcem, szczypanie = zoom.
 - W powietrzu da się skręcać (sterowanie w locie, `POWIETRZE_*` w `sim.js`), ale nie przebić odrzutu.
-- Bronie (`weapons.js`, kolejność = klawisze 1–0): bazooka, granat, strzelba, kasetówka, dynamit
+- Bronie (`weapons.js`, kolejność = klawisze 1–0, potem -): bazooka, granat, strzelba, kasetówka, dynamit
   (lont 6 s), nalot (celowany), owca (biega, przeskakuje przeszkody, wybucha przy wrogu), kij
-  (odrzut), teleport (celowany), salwa „Blitzkrieg” (3 rakietki). Część ma limit amunicji.
+  (odrzut), teleport (celowany), salwa „Blitzkrieg” (3 rakietki), wiertło (jedzie prosto bez grawitacji, co 8 kroków `carve` → tunel,
+  zdarzenie `wiercenie` przemalowuje teren). Część ma limit amunicji.
+- **Zrzuty** (`state.skrzynki`): na starcie tury od 2. rundy, 40% szans, max 3 naraz — wszystko z seeda
+  i numeru tury w `nextTurn` (`zrzutZaopatrzenia`), więc zero dodatkowego ruchu w sieci. Skrzynka leży
+  od razu na gruncie (spadochron to tylko animacja w `render.js`). Apteczka +35 HP (max 150), zapas +1
+  do broni z limitem. Skrzynki lecą w snapshocie, w strzale i w pasie (robal może zebrać skrzynkę
+  przed strzałem, a odbiorca nie symuluje jego chodzenia).
 - Lawa podnosi się po kilku rundach (nagła śmierć). Kamera może wyjechać trochę za mapę i trzyma
   robala w wolnym pasie między panelami a dolnym HUD-em.
 - Statystyki i osiągnięcia tylko w `localStorage` (bez serwera). Osiągnięć jest 18.
+
+- Kamera (`main.js`, `pociskDoKamery`) pamięta śledzony pocisk i puszcza go dopiero po 0,6 s
+  powolności — bez tego wolny dynamit/odbijający się granat powodował trzęsienie (skakanie pocisk↔robal).
 
 ### Jak dodać…
 - **Broń**: wpis w `WEAPONS` + `WEAPON_ORDER` → obsługa w `sim.js` (`obliczStart`, `applyFire`,
