@@ -30,6 +30,10 @@ export const ZASTEPCZY_STAN = 4;      // s czekania na stan od autora akcji
 export const START_ZWLOKA = 3;        // s na załadowanie planszy po starcie partii
 export const DOGON_PO = 2;            // s — starszego stanu nie animujemy, tylko do niego skaczemy
 export const PORZUCONA_PO = S.TURN_TIME + GRACE_PAS + 35;   // s ciszy = partia porzucona
+export const ODLICZANIE_S = 20;       // s od zebrania się 2+ graczy do startu partii
+/* Startu nie da się przyspieszyć (od 4.1 nie ma przycisku „Zaczynamy”). Termin
+   krótszy niż tyle sekund od stempla serwera to wpis ze starej wersji gry. */
+const ODLICZANIE_MIN_S = ODLICZANIE_S - 5;
 
 export function kluczAkcji(a) {
   return a ? a.t + ':' + a.id : null;
@@ -80,8 +84,9 @@ export function zloz(zdarzenia) {
       case 'odliczanie':
         // Wygrywa OSTATNI opublikowany termin (patrz historia: wariant
         // „najwcześniejszy wygrywa” zakleszczał się na starym wpisie).
+        // Termin „na zaraz” (dawny przycisk przyspieszenia) jest pomijany.
         if (z.anuluj) p.odliczanieDo = null;
-        else if (typeof z.do === 'number') p.odliczanieDo = z.do;
+        else if (typeof z.do === 'number' && !(z.st && z.do - z.st < ODLICZANIE_MIN_S * 1000)) p.odliczanieDo = z.do;
         break;
 
       case 'nowa': {

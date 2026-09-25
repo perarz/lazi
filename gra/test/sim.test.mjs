@@ -7,6 +7,7 @@ import * as T from '../src/terrain.js';
 import * as S from '../src/sim.js';
 import { WEAPONS, WEAPON_ORDER } from '../src/weapons.js';
 import { nowaPartiaOs, zdarzenieOs, koniecTuryOs, koniecPartiiOs } from '../src/osiagniecia-reguly.js';
+import * as R from '../src/render.js';     // tylko kamera (czysta matematyka, bez DOM)
 
 let passed = 0, failed = 0;
 
@@ -779,6 +780,30 @@ test('kazde id z regul jest na liscie osiagniec', () => {
     assert(uzyte.has(id), 'regula nie uzywa: ' + id);
   }
   assert(naLiscie.size === 18, 'na liscie jest ' + naLiscie.size);
+});
+
+console.log('\nKAMERA');
+
+test('oddalanie nie rzuca kamera na srodek mapy — granice zmieniaja sie plynnie', () => {
+  // Robal przy lewym brzegu, ekran 1280×800. Zoom schodzi przez próg, przy którym
+  // widok robi się szerszy od mapy — dawniej kamera skakała tam o ~380 px w jednej klatce.
+  const cam = R.createCamera();
+  cam.x = cam.tx = 300; cam.y = cam.ty = 600; cam.zoom = cam.tzoom = 1.1;
+  let poprz = null, maks = 0;
+  for (let i = 0; i < 400; i++) {
+    cam.tx = 300; cam.ty = 600;                       // śledzenie robala co klatkę, jak w main.js
+    cam.tzoom = Math.max(0.35, 1.1 - i * 0.004);
+    R.updateCamera(cam, 1 / 60, 1280, 800, 60);
+    if (poprz !== null) maks = Math.max(maks, Math.abs(cam.x - poprz));
+    poprz = cam.x;
+  }
+  assert(maks < 20, 'kamera skoczyla o ' + maks.toFixed(1) + ' px w jednej klatce');
+  assert(Math.abs(cam.x - T.WORLD_W / 2) < 1, 'przy calej mapie w kadrze kamera nie stoi na srodku: ' + cam.x);
+  // przy zwykłym zoomie kamera trzyma robala (granica nie przeszkadza)
+  const c2 = R.createCamera();
+  c2.x = c2.tx = 900; c2.zoom = c2.tzoom = 1;
+  R.updateCamera(c2, 1 / 60, 1280, 800, 60);
+  assert(c2.x === 900, 'kamera nie trzyma robala przy zwyklym zoomie: ' + c2.x);
 });
 
 console.log('\n' + (failed === 0

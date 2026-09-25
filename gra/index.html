@@ -53,12 +53,30 @@
       <span class="osiagniecie-opis" id="osiagniecie-opis"></span>
     </div>
 
+    <!-- ekwipunek: siatka broni jak w Worms Armageddon (budowana w src/ekwipunek.js) -->
+    <div class="ekw-tlo" id="ekw-tlo" hidden></div>
+    <div class="ekwipunek" id="ekwipunek" role="dialog" aria-label="Ekwipunek" hidden>
+      <div class="ekw-gora">
+        <b class="ekw-tytul">Ekwipunek</b>
+        <span class="ekw-opis" id="ekw-opis"></span>
+        <button type="button" class="ekw-zamknij" id="ekw-zamknij" aria-label="Zamknij ekwipunek">✕</button>
+      </div>
+      <div class="ekw-siatka" id="ekw-siatka"></div>
+    </div>
+
     <div class="hud-dol">
-      <div class="bronie" id="bronie"></div>
-      <div class="moc"><div class="moc-wypelnienie" id="moc-wypelnienie"></div></div>
+      <div class="pasek-broni">
+        <button type="button" class="bron-wybrana" id="btn-bron" aria-haspopup="dialog" aria-expanded="false" aria-controls="ekwipunek" title="Ekwipunek — Q albo prawy przycisk myszy">
+          <span class="bron-ikona" id="bron-ikona"></span>
+          <span class="bron-tekst"><small>Broń</small><b id="bron-nazwa">Bazooka</b></span>
+          <span class="zapas" id="bron-zapas" hidden></span>
+          <span class="bron-strzalka" aria-hidden="true">▲</span>
+        </button>
+        <div class="moc"><div class="moc-wypelnienie" id="moc-wypelnienie"></div></div>
+      </div>
       <div class="pomoc">
         <b>A</b>/<b>D</b> ruch &nbsp; <b>Spacja</b> skok &nbsp; <b>W</b>/<b>S</b> albo mysz: celowanie &nbsp;
-        <b>1-0</b> broń &nbsp; <b>F</b> lub <b>Enter</b> (przytrzymaj) strzał
+        <b>Q</b> / <b>PPM</b> ekwipunek &nbsp; <b>1-0</b> broń &nbsp; <b>F</b> lub <b>Enter</b> (przytrzymaj) strzał
       </div>
     </div>
 
@@ -66,7 +84,6 @@
     <div class="dotyk" id="dotyk" hidden>
       <div class="dotyk-lewy">
         <button type="button" data-akcja="left" aria-label="Idź w lewo">◀</button>
-        <button type="button" data-akcja="jump" aria-label="Skok">⤒</button>
         <button type="button" data-akcja="right" aria-label="Idź w prawo">▶</button>
       </div>
       <div class="dotyk-prawy">
@@ -74,7 +91,14 @@
           <button type="button" data-akcja="aimUp" aria-label="Celownik w górę">▲</button>
           <button type="button" data-akcja="aimDown" aria-label="Celownik w dół">▼</button>
         </div>
-        <button type="button" class="dotyk-ogien" data-akcja="fire" aria-label="Strzał — przytrzymaj, żeby naładować">OGNIA</button>
+        <!-- skok nad OGNIA: prawy kciuk skacze i strzela, lewy tylko chodzi -->
+        <div class="dotyk-strzal">
+          <button type="button" class="dotyk-skok" data-akcja="jump" aria-label="Skok">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l7 8h-4.5v5h-5v-5H5z" fill="currentColor"></path><path d="M6 20.5h12" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"></path></svg>
+            <span>SKOK</span>
+          </button>
+          <button type="button" class="dotyk-ogien" data-akcja="fire" aria-label="Strzał — przytrzymaj, żeby naładować">OGNIA</button>
+        </div>
       </div>
     </div>
   </div>
@@ -88,6 +112,15 @@
 
       <div class="pole">
         <input id="input-nazwa" type="text" maxlength="14" placeholder="Twoja nazwa" autocomplete="off" enterkeyhint="go">
+      </div>
+
+      <!-- kolor robala: ten sam w grze, przy nicku w lobby i na liście graczy -->
+      <div class="wybor-koloru">
+        <canvas class="podglad-robala" id="podglad-robala" aria-hidden="true"></canvas>
+        <div class="kolory-kolumna">
+          <p class="kolory-etykieta" id="kolory-etykieta">Kolor robala</p>
+          <div class="kolory" id="kolory" role="radiogroup" aria-labelledby="kolory-etykieta"></div>
+        </div>
       </div>
       <button id="btn-wejdz" class="glowny" disabled>Wchodzę</button>
       <p class="info" id="info-nazwa"></p>
@@ -114,7 +147,6 @@
         Start za <b id="odliczanie-sek">20</b> s
       </div>
 
-      <button id="btn-start" class="glowny" disabled>Zaczynamy</button>
       <p class="info" id="info-lobby"></p>
       <p class="info staty" id="moje-staty"></p>
       <details class="osiagniecia">

@@ -16,7 +16,7 @@ Stos technologiczny:
 - Bez bundlera, bez `package.json` i bez zależności npm. Zwykłe pliki HTML/CSS/JS, gra jako moduły ES,
   zrzutka jako klasyczne skrypty.
 
-Obecna wersja: **4.0 „Sezon 2”** (`wersja.js`).
+Obecna wersja: **4.1 „Nowe poziomy, zwarte karty i ekwipunek w Arenie”** (`wersja.js`).
 
 ---
 
@@ -120,7 +120,7 @@ przestają działać dla wszystkich. Użytkownik pilnuje licznika (np. „mam 10
 
 | Ścieżka | Co to jest |
 |---|---|
-| `index.html` | Strona główna: zrzutka. **Karty graczy z awatarami SVG i opisami są tu**, plus sprite z symbolami (`#vbuck`, `#srebrnik`, `#scutum`, `#obywatelka`, ikony surowców) i wspólnymi gradientami. Są tu też okno wpłaty (`#okno`), okno sezonu (`#okno-sezon`) i ekran zdobycia celu |
+| `index.html` | Strona główna: zrzutka. **Karty graczy z awatarami SVG i opisami są tu**, plus sprite z symbolami (`#vbuck`, `#srebrnik`, `#scutum`, `#obywatelka`, ikony surowców, `#battle-bus`, `#panorama`) i wspólnymi gradientami. Są tu też okno wpłaty (`#okno`), okno sezonu (`#okno-sezon`) i ekran zdobycia celu |
 | `zrzutka/dane.js` | Kategorie (limity, teksty, `walcz`), gracze (cele, reakcje, zaczepki), odznaki (19), rangi — dane dla `app.js` |
 | `zrzutka/app.js` | Logika strony: kategorie `#fortnite` / `#0ad`, suwak kwoty, wpłaty, liczniki, odznaki, profil, osiągnięcia z Areny, synchronizacja z API, sezony, Hall of Fame |
 | `zrzutka/minigry.js`, `minigry.css` | Minigierki przed wpłatą: ramka i 4 gry (sekcja 5.3) |
@@ -143,7 +143,7 @@ przestają działać dla wszystkich. Użytkownik pilnuje licznika (np. „mam 10
 | `zrzutka:minigra-blokada` | Czas końca 10-sekundowej blokady po przegranej |
 | `zrzutka:sezon1` | Archiwum sezonu 1 (pobrane raz) |
 | `zrzutka:sezon2-intro` | `'1'` = okno sezonu już się samo pokazało |
-| `arena:id`, `arena:nazwa`, `arena:bron`, `arena:staty`, `arena:osiagniecia` | Arena |
+| `arena:id`, `arena:nazwa`, `arena:kolor`, `arena:bron`, `arena:staty`, `arena:osiagniecia` | Arena (`arena:kolor` = kolor robala wybrany przy wejściu) |
 
 ---
 
@@ -272,11 +272,39 @@ Lekcje z kalibracji:
 - **Odznak jest 19** (`dane.js`), m.in. „Hojny mecenas” (2000 naraz w Fortnite / 1000 w 0 A.D.) i
   „Combo” (3 wpłaty w 2 minuty, bo każdą trzeba wygrać). Progi odznak pilnuj względem limitu 2000.
 - **Nowy gracz**:
-  1. Karta w `index.html`: awatar SVG 160×160, opis, staty, cele.
-  2. Wpis w `zrzutka/dane.js` w tej samej kategorii.
+  1. Karta w `index.html` według budowy z 5.7: awatar SVG 160×160, opis, staty, cele.
+  2. Wpis w `zrzutka/dane.js` w tej samej kategorii — **6 celów** (sekcja 5.7).
   3. Id w `GRACZE` w `api/zrzutka.js`, inaczej serwer odrzuci wpłaty.
   4. Ewentualnie odznaka.
   5. Popraw teksty z liczbą wojowników i licznik odznak.
+
+### 5.7 Karty graczy i poziomy celów (od 4.1)
+- **Poziomy**: każdy gracz ma 6 celów w `dane.js` (pierwsze trzy do ~3 tys., potem 10 000, 20 000, 50 000).
+  Nazwy etapów są w `kategorie[kat].etapy`:
+  - Fortnite: rangi z rankedów `Brąz, Srebro, Złoto, Diament, Champion, Unreal`; `etapNumerowany: true`
+    daje na karcie „Cel 3/6 · Złoto”;
+  - 0 A.D.: `Faza miasteczka, Faza miasta, Cud świata, Zdobycie relikwii, Królobójstwo, Podbój świata`
+    (fazy i warunki zwycięstwa z gry), na karcie sama nazwa.
+  - Nazwy celów są żartobliwe i trzymają się charakteru postaci, z nawiązaniami do prawdziwych gier
+    (Karnet Bojowy, FNCS, World Cup / agoge, reformy Mariusza, Ministerstwo Hanów, słonie przez Alpy).
+  - Ścieżkę poziomów pod paskiem (`ol.cel-poziomy`, kropki/medaliony z rzymską cyfrą) buduje `app.js`
+    (`zbudujPoziomy`, `rysujPoziomy`) — w HTML jej nie ma.
+- **Budowa karty** (`index.html`, wszystkie karty tak samo):
+  - `.karta-obraz`: `.promienie`, `svg.awatar`, `.ranga`, `.korona`, `.dymek`. Portret ma proporcje 16/10.
+  - `.karta-tresc`: `header.karta-glowa` (`h2.nick` + `p.aka`), zaraz po nim `p.haslo`, potem `ul.metryka`,
+    `div.opis`, `ul.staty` (4 statystyki, siatka 2×2), `div.zbiorka`.
+  - Fortnite: `.karta-glowa` leży na dole portretu jak nazwa na kafelku w sklepie (ujemny margines,
+    `pointer-events: none`, więc stuknięcie dalej zaczepia portret); rzadkość w lewym górnym rogu.
+    0 A.D.: nagłówek wyśrodkowany pod łukowym oknem, portret powiększony (103%), wstęga z rangą na dole okna.
+  - Opis z więcej niż jednym akapitem `app.js` sam zwija (`zwijanyOpis`): widać pierwszy akapit
+    i przycisk „Czytaj dalej” / „Czytaj kronikę dalej”. Nie dopisuj przycisku w HTML.
+  - Karta jest kontenerem (`container-type: inline-size`) — rozmiar nicku zależy od szerokości karty (`cqw`).
+- **Portrety**: na ramionach jest poświata w kolorze rzadkości (`path.obrys` tuż po ścieżce z `url(#cien-ciala)`).
+  Tła postaci (autobus, fotel, słoń, góry, markiza, zboże, pagoda, sztandar) mają klasę `tlo-postaci`
+  i są ukryte w małych portretach (okno wpłaty, Hall of Fame). Rekwizyty przed postacią (kilof, krzak,
+  laska, konewka, ping) zostają. Tło może wychodzić poza viewBox: na karcie widać mniej więcej x od −56 do 216.
+- Nagłówki: `.hero-niebo` z przelatującym Battle Busem (Fortnite, symbol `#battle-bus`) i `.hero-panorama`
+  z budowlami (0 A.D., symbol `#panorama`). Nad kartami jest `.sekcja-tytul`.
 - **Nowa minigierka**:
   1. Obiekt gry według API z 5.3.
   2. Wpis w `GRY[kat]`.
@@ -307,11 +335,12 @@ Lekcje z kalibracji:
 | `src/rng.js` | `mulberry32`, szum, `hashNumbers`, `hashTekstu` |
 | `src/protokol.js` | Protokół sieciowy (bez DOM) — kto ma turę, co jest kanoniczne, kto wyrzuca nieobecnych |
 | `src/net.js` | Polling `/api/arena`, obecność, zegar serwera, `sendBeacon` przy zamknięciu karty |
-| `src/main.js` | Lobby, HUD, kamera, pętla gry, zdarzenia → efekty, statystyki, osiągnięcia (UI) |
-| `src/input.js` | Klawiatura, przyciski dotykowe, przeciąganie/szczypanie |
-| `src/render.js`, `src/fx.js` | Grafika (tu wolno trygonometrię i `Math.random`) |
+| `src/main.js` | Lobby (kolory graczy), HUD, kamera, pętla gry, zdarzenia → efekty, statystyki, osiągnięcia (UI) |
+| `src/ekwipunek.js` | Ekwipunek broni jak w Worms Armageddon: rzędy (`GRUPY`), ikony SVG broni, otwieranie/zamykanie |
+| `src/input.js` | Klawiatura, przyciski dotykowe, przeciąganie/szczypanie, PPM/Q = ekwipunek |
+| `src/render.js`, `src/fx.js` | Grafika (tu wolno trygonometrię i `Math.random`); w `render.js` też kamera i podgląd robala na ekranie wejścia |
 | `src/osiagniecia-reguly.js` | Reguły osiągnięć — czyste funkcje |
-| `test/sim.test.mjs`, `test/protokol.test.mjs` | Testy w Node (63 i 10) |
+| `test/sim.test.mjs`, `test/protokol.test.mjs` | Testy w Node (64 i 11) |
 
 ### Determinizm (święta zasada)
 - Symulacja (`sim.js`, `terrain.js`) używa tylko:
@@ -343,14 +372,23 @@ Lekcje z kalibracji:
   - Po ~90 s bez sieci gracz wylatuje.
 - **Gospodarz lobby** to obecny gracz, który dołączył najwcześniej (kolejność `dolacz`). Lista lobby
   przeżywa nową partię (jest seedowana z `gracze` w zdarzeniu `nowa`).
+- **Start partii** (od 4.1): gospodarz publikuje odliczanie `ODLICZANIE_S` (20 s, `protokol.js`) i ono zawsze
+  leci do końca — nie ma przycisku „Zaczynamy”. `zloz` pomija termin krótszy niż 15 s od stempla serwera
+  (wpis ze starej, nieodświeżonej karty).
+- **Kolory**: gracz wybiera kolor robala przy wejściu (`PALETA` w `main.js`, 12 kolorów, `arena:kolor`),
+  kolor leci w `dolacz`. Przy kolizji `rozdzielKolory` zostawia go temu, kto dołączył wcześniej, reszta
+  dostaje pierwszy wolny (lobby mówi o tym graczowi). Nick nad robalem jest rysowany w jego kolorze.
 - Zamknięcie karty wysyła `sendBeacon` z `wyjdz` (text/plain). Przycisk „Opuść grę” robi to samo.
 
 ### Rozgrywka
 - **Sterowanie**:
   - **A/D** ruch, **Spacja** skok, **W/S** lub mysz celowanie, **F/Enter** (przytrzymaj) strzał.
   - **1–0**, **-** i **=** wybierają broń.
-  - Na telefonie: przyciski dotykowe, celowanie palcem, szczypanie = zoom.
-  - Pasek broni w poziomie ma siatkę 6×2.
+  - **Ekwipunek** (`ekwipunek.js`): przycisk z aktualną bronią na dole HUD-u, **Q** albo **prawy przycisk
+    myszy** otwiera siatkę broni w rzędach (Rakiety, Granaty, Na wroga, Sprzęt; nowa broń bez rzędu trafia
+    do „Inne”). Wybór albo stuknięcie obok (`#ekw-tlo`) zamyka; Escape też. Widz może wybrać broń na swoją turę.
+  - Na telefonie: przyciski dotykowe, celowanie palcem, szczypanie = zoom. Lewa grupa to ◀ ▶, prawa to
+    celownik ▲▼ i **SKOK nad OGNIA**. W czasie ucieczki (`body.ucieczka`) znika celownik i OGNIA, skok zostaje.
 - W powietrzu da się skręcać (`POWIETRZE_*` w `sim.js`), ale nie da się przebić odrzutu.
 - Tura trwa 30 s (`TURN_TIME`). Lawa podnosi się po 6 rundach (`LAWA_PO_RUNDACH`, nagła śmierć).
 
@@ -381,10 +419,16 @@ Lekcje z kalibracji:
   - Wybuch niszczy skrzynki.
   - Skrzynki lecą w snapshocie, w strzale i w pasie, bo robal może zebrać skrzynkę przed strzałem,
     a odbiorca nie symuluje jego chodzenia.
-- **Kamera** (`main.js`):
+- **Kamera** (`main.js`, granice w `render.js`):
   - `pociskDoKamery` pamięta śledzony pocisk i puszcza go dopiero po 0,6 s powolności. Bez tego wolny dynamit
     albo odbijający się granat powodował trzęsienie, bo kamera skakała między pociskiem a robalem.
   - Kamera może wyjechać trochę za mapę i trzyma robala w wolnym pasie między panelami a dolnym HUD-em.
+  - `ograniczKamere` liczy granice w sposób ciągły: przy oddalaniu zakres się zwęża, aż przy całej mapie
+    w kadrze zostaje środek. Dawniej po przekroczeniu szerokości mapy kamera w jednej klatce skakała na środek
+    (test „oddalanie nie rzuca kamera…”). Zoom (kółko, szczypanie) nie wyłącza śledzenia robala; kółko
+    zoomuje proporcjonalnie do `deltaY`, bo touchpad sypie dziesiątkami zdarzeń.
+  - `pasyHud` mierzy grupy przycisków dotykowych osobno: boczne (telefon poziomo) nie zabierają środka
+    ekranu, tylko pilnują marginesu z boku (`pasy.bok`).
 - Statystyki i osiągnięcia (18) są tylko w `localStorage`, bez serwera.
 
 ### Jak dodać…
@@ -392,7 +436,8 @@ Lekcje z kalibracji:
   1. Wpis w `WEAPONS` i `WEAPON_ORDER`.
   2. Obsługa w `sim.js` (`obliczStart`, `applyFire`, ewentualnie `stepProjectiles`).
   3. Rysowanie w `render.js`, także broń w łapach.
-  4. Klawisz w `input.js`.
+  4. Klawisz w `input.js`, ikona w `IKONY` i miejsce w `GRUPY` w `ekwipunek.js` (bez tego broń trafi
+     do rzędu „Inne” z ikoną bazooki).
   5. Test działania. Broń dopisze się sama do testu „odbiorca odtwarza strzał co do bitu” (pętla po `WEAPON_ORDER`).
      Broń z `amunicja: 0` albo celowana wymaga ustawień w tym teście.
 - **Osiągnięcie**:
@@ -427,14 +472,15 @@ Lekcje z kalibracji:
   - 3.10 most
   - 3.10.1–3.10.2 minigierki i suwak
   - **4.0 sezon 2** + minigierki 0 A.D.
+  - **4.1** 6 poziomów celów (do 50 000), zwarte karty i podrasowane portrety, ekwipunek i kolory w Arenie
 
 ---
 
 ## 9. Testy i sprawdzanie
 
 ```
-node gra/test/sim.test.mjs        # symulacja, bronie, determinizm, skrzynki, spawny, osiągnięcia (63)
-node gra/test/protokol.test.mjs   # protokół z atrapą serwera, lagiem, rozłączeniami (10, trwa ~1–2 min)
+node gra/test/sim.test.mjs        # symulacja, bronie, determinizm, skrzynki, spawny, osiągnięcia, kamera (64)
+node gra/test/protokol.test.mjs   # protokół z atrapą serwera, lagiem, rozłączeniami, odliczanie (11, trwa ~1–2 min)
 ```
 Obie muszą przejść przed pushem. Dodatkowo `node --check` na zmienionych plikach JS.
 Test protokołu gra losowe partie. Zmiana listy broni zmienia ich przebieg. Jeśli padnie test zależny od
@@ -443,6 +489,11 @@ długości partii (np. „za mało strzałów”), sprawdź przyczynę, zanim zm
 **E2E i zrzuty**
 - Robimy je Playwrightem. Chromium jest w `/opt/pw-browsers`, moduł ładujesz przez
   `require(execSync('npm root -g') + '/playwright')`.
+  - Na Windowsie (komputer Nolliego) nie ma tego środowiska: wystarczy `npm install playwright-core`
+    w scratchpadzie i `chromium.launch({ executablePath: 'C:/Program Files/Google/Chrome/Application/chrome.exe' })`
+    — bez pobierania przeglądarek. Wbudowana przeglądarka aplikacji psuje zrzuty przewiniętej strony przy
+    emulowanym rozmiarze ekranu, więc do zrzutów używaj Playwrighta.
+  - Kilku graczy Areny = kilka kontekstów przeglądarki (osobny `localStorage`, więc osobne `arena:id`).
 - Skrypty trzymaj w scratchpadzie, nie w repo.
 
 - **Atrapa serwera** (Node, ~60 linii):

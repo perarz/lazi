@@ -411,10 +411,63 @@
     return { nr: cele.length, cel: null };
   }
 
-  function etykietaEtapu(kat, nr, ile) {
+  // 0 A.D.: sama nazwa fazy; Fortnite: „Cel 3/6 · Złoto” (numer + ranga)
+  function nazwaEtapu(kat, nr) {
     var etapy = KAT[kat].etapy;
-    if (etapy) return etapy[nr] || etapy[etapy.length - 1];
-    return 'Cel ' + (nr + 1) + '/' + ile;
+    return etapy ? etapy[Math.min(nr, etapy.length - 1)] : '';
+  }
+
+  function etykietaEtapu(kat, nr, ile) {
+    var nazwa = nazwaEtapu(kat, nr);
+    if (nazwa && !KAT[kat].etapNumerowany) return nazwa;
+    return 'Cel ' + (nr + 1) + '/' + ile + (nazwa ? ' · ' + nazwa : '');
+  }
+
+  /* Ścieżka poziomów pod paskiem celu: zdobyte, bieżący i kolejne. */
+  function zbudujPoziomy(k) {
+    var cele = k.gracz.cele;
+    var ol = elem('ol', 'cel-poziomy');
+    ol.setAttribute('aria-hidden', 'true');
+    cele.forEach(function (c, i) {
+      var li = elem('li', null, k.kat === 'zeroad' ? rzymska(i + 1) : String(i + 1));
+      li.title = nazwaEtapu(k.kat, i) + ': ' + c.nazwa + ' — ' + fmt(c.kwota);
+      ol.appendChild(li);
+    });
+    return ol;
+  }
+
+  function rysujPoziomy(k, nr) {
+    if (!k.poziomy) return;
+    Array.prototype.forEach.call(k.poziomy.children, function (li, i) {
+      li.className = i < nr ? 'zdobyty' : i === nr ? 'obecny' : '';
+    });
+  }
+
+  /* Długi opis: widać pierwszy akapit, resztę rozwija przycisk. Nic nie ginie —
+     karta jest po prostu niższa, a treść jest jedno stuknięcie dalej. */
+  function zwijanyOpis(k) {
+    var opis = $('.opis', k.el);
+    var akapity = opis ? $$('p', opis) : [];
+    if (akapity.length < 2) return;
+    var id = 'opis-' + k.kat + '-' + k.id;
+    opis.id = id;
+    opis.classList.add('zwiniety');
+    var b = elem('button', 'opis-wiecej');
+    b.type = 'button';
+    b.setAttribute('aria-controls', id);
+    function napis() {
+      var zwiniety = opis.classList.contains('zwiniety');
+      b.setAttribute('aria-expanded', zwiniety ? 'false' : 'true');
+      b.textContent = zwiniety
+        ? (k.kat === 'zeroad' ? 'Czytaj kronikę dalej' : 'Czytaj dalej')
+        : 'Zwiń';
+    }
+    b.addEventListener('click', function () {
+      opis.classList.toggle('zwiniety');
+      napis();
+    });
+    napis();
+    opis.insertAdjacentElement('afterend', b);
   }
 
   function ustawPasek(pasek, ulamek, odZera) {
@@ -433,6 +486,7 @@
     var cele = KAT[k.kat].gracze[k.id].cele;
     var ac = aktualnyCel(k.kat, k.id, suma);
 
+    rysujPoziomy(k, ac.nr);
     k.brakuje.textContent = '';
     if (ac.cel) {
       var brak = ac.cel.kwota - suma;
@@ -440,8 +494,11 @@
       k.celNazwa.textContent = ac.cel.nazwa;
       k.celKwota.textContent = fmt(ac.cel.kwota);
       k.brakuje.appendChild(document.createTextNode('Brakuje jeszcze '));
-      k.brakuje.appendChild(elem('b', null, fmt(brak)));
-      k.brakuje.appendChild(document.createTextNode(' ' + odmiana(k.kat, brak)));
+      // kwota z jednostką w jednej linii — „V-dolców” nie łamie się na myślniku
+      var ile = elem('span', 'bez-lamania');
+      ile.appendChild(elem('b', null, fmt(brak)));
+      ile.appendChild(document.createTextNode(' ' + odmiana(k.kat, brak)));
+      k.brakuje.appendChild(ile);
       ustawPasek(k.pasek, suma / ac.cel.kwota, odZera);
     } else {
       k.etap.textContent = k.kat === 'zeroad' ? 'Imperium zbudowane' : 'Wszystkie cele zdobyte';
@@ -482,6 +539,9 @@
       };
       karty[kat + ':' + id] = k;
       kartyKat[kat].push(k);
+      k.poziomy = zbudujPoziomy(k);
+      k.brakuje.parentNode.insertBefore(k.poziomy, k.brakuje);
+      zwijanyOpis(k);
       rysujCel(k);
 
       $('.btn-wesprzyj', el).addEventListener('click', function () { otworzOkno(k); });

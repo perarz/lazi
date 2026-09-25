@@ -154,24 +154,32 @@ export function updateCamera(cam, dt, viewW, viewH, dol = 0) {
   cam.x += (cam.tx - cam.x) * k;
   cam.y += (cam.ty - cam.y) * k;
   cam.zoom += (cam.tzoom - cam.zoom) * k;
+  ograniczKamere(cam, viewW, viewH, dol);
+}
 
+/* Granice kamery zmieniają się z zoomem w sposób ciągły: im bardziej oddalona,
+   tym węższy zakres, aż przy całej mapie w kadrze zostaje sam środek.
+   Dawniej po przekroczeniu szerokości mapy kamera w jednej klatce skakała
+   na środek i gubiła śledzonego robala. */
+export function ograniczKamere(cam, viewW, viewH, dol = 0) {
   const halfW = viewW / (2 * cam.zoom);
   const halfH = viewH / (2 * cam.zoom);
-  const minX = halfW - Math.min(ZAPAS_BOK, halfW * 0.8);
-  const maxX = WORLD_W - minX;
-  const minY = halfH - Math.min(ZAPAS_NIEBO, halfH);
-  const maxY = WORLD_H - (viewH / 2 - dol) / cam.zoom;
-  if (halfW * 2 < WORLD_W) {
+  const zapasX = Math.min(ZAPAS_BOK, halfW * 0.8);
+  const minX = halfW - zapasX;
+  const maxX = WORLD_W - halfW + zapasX;
+  if (minX <= maxX) {
     cam.x = Math.max(minX, Math.min(maxX, cam.x));
     cam.tx = Math.max(minX, Math.min(maxX, cam.tx));
   } else {
-    cam.x = WORLD_W / 2;
+    cam.x = cam.tx = WORLD_W / 2;
   }
-  if (halfH * 2 < WORLD_H) {
+  const minY = halfH - Math.min(ZAPAS_NIEBO, halfH);
+  const maxY = WORLD_H - (viewH / 2 - dol) / cam.zoom;
+  if (minY <= maxY) {
     cam.y = Math.min(maxY, Math.max(minY, cam.y));
     cam.ty = Math.min(maxY, Math.max(minY, cam.ty));
   } else {
-    cam.y = Math.max(WORLD_H / 2, maxY);
+    cam.y = cam.ty = maxY;       // dno świata zostaje tuż nad dolnym HUD-em
   }
 }
 
@@ -687,11 +695,48 @@ function drawWorm(ctx, w, isActive, time, o) {
   ctx.fillStyle = w.hp > 50 ? '#5ec26a' : w.hp > 22 ? '#ffb020' : '#ff3b23';
   ctx.fillRect(cx - barW / 2, top, (barW * w.hp) / 100, 4);
 
-  const nazwa = w.name + (o.rozlaczony ? ' (brak sieci)' : '');
-  ctx.font = '600 11px system-ui, sans-serif';
+  // nick w kolorze gracza (wybranym przy wejściu), z ciemną obwódką dla czytelności
+  const nazwa = (o.ja ? '▸ ' : '') + w.name + (o.rozlaczony ? ' (brak sieci)' : '');
+  ctx.font = (o.ja ? '800' : '700') + ' 11px system-ui, sans-serif';
   ctx.textAlign = 'center';
-  ctx.fillStyle = 'rgba(0,0,0,0.7)';
-  ctx.fillText(nazwa, cx, top - 5);
-  ctx.fillStyle = o.ja ? '#fff6cf' : '#ffe9c8';
+  ctx.lineJoin = 'round';
+  ctx.lineWidth = 3;
+  ctx.strokeStyle = 'rgba(0,0,0,0.78)';
+  ctx.strokeText(nazwa, cx, top - 6);
+  ctx.fillStyle = w.color || '#ffe9c8';
   ctx.fillText(nazwa, cx, top - 6);
+}
+
+/* Podgląd robala na ekranie wejścia (wybór koloru): ten sam rysunek co w grze,
+   na kawałku gruntu, z bazooką w łapach i nickiem w wybranym kolorze. */
+export function rysujPodgladRobala(canvas, { kolor, nazwa, czas = 0 }) {
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const W = canvas.clientWidth || 150, H = canvas.clientHeight || 110;
+  if (canvas.width !== Math.round(W * dpr) || canvas.height !== Math.round(H * dpr)) {
+    canvas.width = Math.round(W * dpr);
+    canvas.height = Math.round(H * dpr);
+  }
+  const ctx = canvas.getContext('2d');
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const niebo = ctx.createLinearGradient(0, 0, 0, H);
+  niebo.addColorStop(0, '#120806');
+  niebo.addColorStop(1, '#4a1404');
+  ctx.fillStyle = niebo;
+  ctx.fillRect(0, 0, W, H);
+  // grunt: skorupa i warstwy skały jak na mapie „Góry”
+  const g = H * 0.8;
+  ctx.fillStyle = '#704a3a';
+  ctx.fillRect(0, g, W, H - g);
+  ctx.fillStyle = '#d66e28';
+  ctx.fillRect(0, g, W, 3);
+  ctx.fillStyle = '#ffc46e';
+  ctx.fillRect(0, g, W, 1.2);
+  // od stóp do nicku robal ma ok. 50 px świata — tyle musi się zmieścić nad gruntem
+  const skala = Math.max(0.5, Math.min(2.4, (g - 4) / 50, W / 90));
+  ctx.save();
+  ctx.translate(W * 0.42, g);
+  ctx.scale(skala, skala);
+  const robal = { x: 0, y: 0, facing: 1, angle: -0.5 + Math.sin(czas * 1.2) * 0.12, color: kolor, hp: 100, name: nazwa || 'Ty', widok: null };
+  drawWorm(ctx, robal, true, czas, { ja: false, bron: 'bazooka', moc: 0 });
+  ctx.restore();
 }

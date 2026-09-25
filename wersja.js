@@ -5,6 +5,19 @@
 (function () {
   var historia = [
     {
+      wersja: '4.1', data: '2026-09-25', tytul: 'Nowe poziomy, zwarte karty i ekwipunek w Arenie',
+      zmiany: [
+        'Każdy gracz ma teraz 6 celów: po dotychczasowych dochodzą progi 10 000, 20 000 i 50 000. W Fortnite poziomy to rangi (Brąz → Unreal), w 0 A.D. — od fazy miasteczka przez relikwię i królobójstwo po podbój świata.',
+        'Nowe, niższe karty graczy: nick na portrecie jak w sklepie Fortnite, statystyki 2×2, dłuższy opis pod „Czytaj dalej” i ścieżka poziomów pod paskiem celu.',
+        'Podrasowane portrety: kilof PowPowa, Battle Bus i „999 ms” u Krayo, krzak Karpia, fotel gamingowy Apolla, słoń Kozaka, laska Laziego, konewka Stozhinia, stragan Nolliego, pole zboża Apolla, pagoda Froxy\'ego i sztandar SPQR Qubera.',
+        'Odświeżone nagłówki: nad Fortnite przelatuje Battle Bus, pod nagłówkiem 0 A.D. stoi panorama starożytnych budowli.',
+        'Arena: broń wybierasz z rozwijanego ekwipunku jak w Worms Armageddon (przycisk z bronią, Q albo prawy przycisk myszy) zamiast z długiego paska.',
+        'Arena na telefonie: przycisk skoku stoi teraz nad OGNIA i działa też w czasie ucieczki po strzale.',
+        'Arena: kamera przy oddalaniu nie gubi już gracza i nie przeskakuje na środek mapy. Kółko myszy i touchpad zoomują płynnie.',
+        'Arena: przy wejściu wybierasz kolor robala — w tym kolorze jest też Twój nick. Startu partii nie da się już przyspieszyć, odliczanie leci do końca.'
+      ]
+    },
+    {
       wersja: '4.0', data: '2026-09-25', tytul: 'Sezon 2',
       zmiany: [
         'Startuje sezon 2! Wszystkie liczniki wyzerowane — odznaki zostają.',

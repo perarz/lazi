@@ -103,12 +103,34 @@
     0 16px 26px rgba(0, 0, 0, 0.45);
 }
 
-/* ------------------------------------------------------------ karty */
+/* tytuł sekcji jak nagłówek działu w sklepie z przedmiotami */
+[data-motyw="fortnite"] .sekcja-tytul h2 {
+  display: inline-block;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  color: #ffffff;
+  text-shadow: 0 3px 0 #0b2a8c, 0 6px 14px rgba(0, 0, 0, 0.35);
+  transform: rotate(-1.5deg);
+}
+
+[data-motyw="fortnite"] .sekcja-tytul h2::after {
+  content: "";
+  display: block;
+  height: 5px;
+  margin: 4px -6px 0;
+  background: linear-gradient(90deg, #ffe34d, #ffd400);
+  transform: skewX(-18deg);
+  box-shadow: 3px 3px 0 rgba(5, 15, 60, 0.55);
+}
+
+[data-motyw="fortnite"] .sekcja-tytul p { color: #aec0f5; }
+
+/* ------------------------------------------------------------ karty: kafelki ze sklepu z przedmiotami */
 
 [data-motyw="fortnite"] .karta {
-  background: linear-gradient(180deg, #102672, #0b1a52);
-  border: 3px solid var(--rz);
-  border-radius: 8px;
+  background: linear-gradient(180deg, #11297a 0%, #0c1c58 55%, #0a1648 100%);
+  border: 2px solid var(--rz);
+  border-radius: 12px;
   box-shadow:
     0 14px 34px rgba(3, 10, 40, 0.5),
     0 0 0 1px rgba(255, 255, 255, 0.06) inset;
@@ -123,10 +145,40 @@
 }
 
 [data-motyw="fortnite"] .karta-obraz {
-  background: radial-gradient(circle at 50% 42%, var(--r1) 0%, var(--r2) 52%, var(--r3) 100%);
+  background:
+    radial-gradient(ellipse 60% 45% at 50% 30%, rgba(255, 255, 255, 0.28), transparent 70%),
+    radial-gradient(circle at 50% 42%, var(--r1) 0%, var(--r2) 52%, var(--r3) 100%);
 }
 
-[data-motyw="fortnite"] .ranga { transform: skewX(-10deg); }
+/* połysk kafelka: ukośna smuga światła przelatuje przy najechaniu */
+[data-motyw="fortnite"] .karta-obraz::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background: linear-gradient(115deg, transparent 38%, rgba(255, 255, 255, 0.26) 49%, transparent 60%);
+  transform: translateX(-130%);
+}
+
+[data-motyw="fortnite"] .karta:hover .karta-obraz::before { animation: smuga 0.9s ease-out; }
+@keyframes smuga { to { transform: translateX(130%); } }
+
+/* dół obrazka przygaszony pod tabliczkę z nickiem */
+[data-motyw="fortnite"] .karta-obraz::after {
+  background: linear-gradient(180deg, transparent 48%, rgba(5, 12, 45, 0.5) 70%, rgba(5, 12, 45, 0.95) 100%);
+}
+
+/* tabliczka z nickiem na obrazku — stuknięcie przechodzi do portretu (zaczepka) */
+[data-motyw="fortnite"] .karta-glowa {
+  z-index: 2;
+  margin: calc(-1 * clamp(62px, 20cqw, 76px)) -16px 0;
+  padding: 0 16px 11px;
+  pointer-events: none;
+}
+
+[data-motyw="fortnite"] .ranga { top: 10px; bottom: auto; left: 10px; transform: skewX(-10deg); }
+[data-motyw="fortnite"] .korona { top: 10px; bottom: auto; right: 10px; }
 
 [data-motyw="fortnite"] .dymek {
   font-weight: 700;
@@ -139,13 +191,18 @@
 
 [data-motyw="fortnite"] .dymek a { color: #1b4fd6; }
 
+/* pasek rzadkości pod obrazkiem — jak pod kafelkiem w sklepie */
 [data-motyw="fortnite"] .karta-tresc { border-top: 4px solid var(--rz); }
 
 [data-motyw="fortnite"] .nick {
-  font-size: clamp(2rem, 6vw, 2.5rem);
+  font-size: clamp(1.7rem, 9.4cqw, 2.4rem);     /* od szerokości karty, nie ekranu */
   text-transform: uppercase;
   letter-spacing: 0.01em;
+  text-shadow: 0 3px 0 rgba(4, 10, 40, 0.85), 0 0 18px rgba(0, 0, 0, 0.45);
 }
+
+[data-motyw="fortnite"] .aka { color: #c9d6ff; text-shadow: 0 1px 3px rgba(0, 0, 0, 0.7); }
+[data-motyw="fortnite"] .aka b { color: #ffffff; }
 
 [data-motyw="fortnite"] .haslo { color: #ffe34d; }
 
@@ -167,6 +224,26 @@
 [data-motyw="fortnite"] .cel-etap { color: #3cb6f7; }
 [data-motyw="fortnite"] .cel-pasek { background: rgba(255, 255, 255, 0.1); transform: skewX(-12deg); }
 [data-motyw="fortnite"] .cel-wypelnienie { box-shadow: 0 0 14px rgba(60, 182, 247, 0.6); }
+
+/* poziomy celu jak paski postępu Karnetu: złote zdobyte, niebieski bieżący */
+[data-motyw="fortnite"] .cel-poziomy li {
+  width: 16px;
+  height: 9px;
+  font-size: 0;
+  background: rgba(255, 255, 255, 0.13);
+  border-radius: 2px;
+  transform: skewX(-14deg);
+}
+
+[data-motyw="fortnite"] .cel-poziomy li.zdobyty {
+  background: linear-gradient(180deg, #fff38a, #f5c400);
+  box-shadow: 0 0 6px rgba(255, 220, 60, 0.6);
+}
+
+[data-motyw="fortnite"] .cel-poziomy li.obecny {
+  background: #3cb6f7;
+  box-shadow: 0 0 8px rgba(60, 182, 247, 0.85);
+}
 
 /* żółte skośne przyciski */
 [data-motyw="fortnite"] .btn-wesprzyj,

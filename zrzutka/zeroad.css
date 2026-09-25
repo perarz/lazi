@@ -201,6 +201,51 @@
   border-color: rgba(212, 168, 84, 0.45);
 }
 
+/* panorama budowli u dołu nagłówka: świątynia, akwedukt, pagoda, piramida, mury —
+   na tle żaru pochodni */
+[data-motyw="zeroad"] .hero { padding-bottom: clamp(46px, 9vw, 96px); }
+[data-motyw="zeroad"] .hero-panorama { color: #140c06; opacity: 0.92; }
+[data-motyw="zeroad"] .hero::before {
+  content: "";
+  position: absolute;
+  z-index: -2;
+  left: 8%;
+  right: 8%;
+  bottom: 0;
+  height: clamp(80px, 14vw, 150px);
+  background: radial-gradient(ellipse 60% 100% at 50% 100%, rgba(255, 150, 60, 0.28), transparent 70%);
+  pointer-events: none;
+}
+
+/* tytuł sekcji: złoty napis między ornamentami */
+[data-motyw="zeroad"] .sekcja-tytul h2 {
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
+  font-weight: 900;
+  color: #f0c75e;
+  text-shadow: 0 2px 0 #2a1a0a, 0 8px 18px rgba(0, 0, 0, 0.5);
+}
+
+[data-motyw="zeroad"] .sekcja-tytul h2::before,
+[data-motyw="zeroad"] .sekcja-tytul h2::after {
+  content: "";
+  width: clamp(28px, 7vw, 70px);
+  height: 10px;
+  background:
+    radial-gradient(circle, #f0c75e 3px, transparent 4px) right center / 10px 10px no-repeat,
+    linear-gradient(90deg, transparent, #b8893a) left center / calc(100% - 8px) 2px no-repeat;
+}
+
+[data-motyw="zeroad"] .sekcja-tytul h2::after { transform: scaleX(-1); }
+
+@media (max-width: 460px) {
+  [data-motyw="zeroad"] .sekcja-tytul h2 { gap: 8px; font-size: 1.3rem; }
+  [data-motyw="zeroad"] .sekcja-tytul h2::before,
+  [data-motyw="zeroad"] .sekcja-tytul h2::after { width: 18px; }
+}
+[data-motyw="zeroad"] .sekcja-tytul p { font-style: italic; font-size: 0.98rem; color: #c8b088; }
+
 /* ------------------------------------------------------------ karty z pergaminu */
 
 [data-motyw="zeroad"] .gracze { gap: clamp(26px, 4vw, 36px); }
@@ -240,6 +285,9 @@
   box-shadow: 0 0 0 3px #b8893a, inset 0 0 36px rgba(0, 0, 0, 0.6);
 }
 
+/* postać większa niż w Fortnite — dół sylwetki i tak chowa się pod wstęgą z rangą */
+[data-motyw="zeroad"] .karta-obraz .awatar { height: 103%; bottom: -7%; }
+
 [data-motyw="zeroad"] .promienie {
   background: repeating-conic-gradient(from 0deg at 50% 50%,
     rgba(255, 230, 160, 0.14) 0deg 6deg,
@@ -249,7 +297,7 @@
 /* wstęga z rangą */
 [data-motyw="zeroad"] .ranga {
   left: 50%;
-  bottom: 8px;
+  bottom: 5px;
   padding: 3px 26px;
   font-family: 'Cinzel', Georgia, serif;
   font-weight: 700;
@@ -289,35 +337,58 @@
 
 [data-motyw="zeroad"] .dymek a { color: #8a1c12; font-style: normal; }
 
-[data-motyw="zeroad"] .karta-tresc { padding: 14px 22px 22px; }
+[data-motyw="zeroad"] .karta-tresc { padding: 10px 20px 20px; }
+
+/* nagłówek jak w kronice: wyśrodkowany pod oknem, z ornamentem */
+[data-motyw="zeroad"] .karta-glowa { text-align: center; }
+
+[data-motyw="zeroad"] .karta-glowa::after {
+  content: "";
+  display: block;
+  width: min(150px, 60%);
+  height: 8px;
+  margin: 6px auto 0;
+  background:
+    radial-gradient(circle, #8a1c12 2.6px, transparent 3.6px) center / 10px 8px no-repeat,
+    linear-gradient(90deg, transparent, rgba(90, 60, 30, 0.55) 22%, rgba(90, 60, 30, 0.55) 78%, transparent) center / 100% 1px no-repeat;
+}
 
 [data-motyw="zeroad"] .nick {
   font-weight: 900;
-  font-size: clamp(1.8rem, 5.5vw, 2.3rem);
+  font-size: clamp(1.6rem, 9cqw, 2.1rem);
   color: #3b1f0a;
   text-shadow: 0 1px 0 rgba(255, 255, 255, 0.55);
 }
 
-[data-motyw="zeroad"] .aka { font-style: italic; font-size: 1rem; }
+[data-motyw="zeroad"] .aka { font-style: italic; font-size: 0.98rem; }
 
-[data-motyw="zeroad"] .metryka { font-size: 0.92rem; }
-[data-motyw="zeroad"] .metryka span { font-size: 0.7rem; }
+[data-motyw="zeroad"] .metryka { font-size: 0.87rem; }
+[data-motyw="zeroad"] .metryka span { font-size: 0.64rem; }
 
 [data-motyw="zeroad"] .haslo {
-  font-size: 1.08rem;
+  text-align: center;
+  font-size: 1rem;
   font-weight: 700;
   color: #8a1c12;
 }
 
-[data-motyw="zeroad"] .opis { font-size: 1.04rem; line-height: 1.45; }
+[data-motyw="zeroad"] .opis { font-size: 0.96rem; line-height: 1.38; }
+
+[data-motyw="zeroad"] .opis-wiecej {
+  font-family: 'Cinzel', Georgia, serif;
+  font-size: 0.76rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #8a1c12;
+}
 
 /* inicjał jak w kronice */
 [data-motyw="zeroad"] .opis p:first-child::first-letter {
   float: left;
-  margin: 4px 8px 0 0;
+  margin: 4px 7px 0 0;
   font-family: 'Cinzel Decorative', Georgia, serif;
   font-weight: 900;
-  font-size: 3.3em;
+  font-size: 2.9em;
   line-height: 0.8;
   color: #8a1c12;
   text-shadow: 1px 1px 0 #d4a53e;
@@ -328,8 +399,8 @@
   border: 1px solid rgba(90, 60, 30, 0.25);
 }
 
-[data-motyw="zeroad"] .stat-nazwa { font-size: 0.72rem; }
-[data-motyw="zeroad"] .stat-wart { font-weight: 700; font-size: 0.88rem; color: #3b1f0a; }
+[data-motyw="zeroad"] .stat-nazwa { font-size: 0.62rem; letter-spacing: 0.02em; }
+[data-motyw="zeroad"] .stat-wart { font-weight: 700; font-size: 0.84rem; color: #3b1f0a; }
 [data-motyw="zeroad"] .stat-ponad { color: #8a1c12; }
 
 [data-motyw="zeroad"] .pasek-stat {
@@ -349,7 +420,7 @@
   box-shadow: 0 0 10px rgba(217, 56, 46, 0.6);
 }
 
-[data-motyw="zeroad"] .zebrano-kwota { font-weight: 700; color: #2b1b0c; }
+[data-motyw="zeroad"] .zebrano-kwota { font-weight: 700; font-size: clamp(1.5rem, 5.4vw, 1.9rem); color: #2b1b0c; }
 
 [data-motyw="zeroad"] .cel {
   background: rgba(90, 60, 30, 0.1);
@@ -358,14 +429,39 @@
 
 [data-motyw="zeroad"] .cel-etap { color: #8a1c12; }
 [data-motyw="zeroad"] .cel-kwota { font-weight: 700; }
-[data-motyw="zeroad"] .cel-nazwa { font-size: 1.02rem; }
+[data-motyw="zeroad"] .cel-nazwa { font-size: 0.98rem; }
 
 [data-motyw="zeroad"] .cel-pasek {
   background: rgba(60, 40, 20, 0.2);
   box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.3);
 }
 
-[data-motyw="zeroad"] .cel-brakuje { font-size: 0.9rem; }
+[data-motyw="zeroad"] .cel-brakuje { font-size: 0.86rem; }
+
+/* poziomy celu jako medaliony z rzymską cyfrą: złote zdobyte, pieczęć przy bieżącym */
+[data-motyw="zeroad"] .cel-poziomy li {
+  width: 20px;
+  height: 20px;
+  font-family: 'Cinzel', Georgia, serif;
+  font-size: 0.52rem;
+  color: #7a5f3e;
+  background: rgba(90, 60, 30, 0.1);
+  border: 1px solid rgba(90, 60, 30, 0.42);
+  border-radius: 50%;
+}
+
+[data-motyw="zeroad"] .cel-poziomy li.zdobyty {
+  color: #3b1f0a;
+  background: radial-gradient(circle at 38% 32%, #fff4c0, #d4a53e 58%, #a8761a);
+  border-color: #7a5418;
+}
+
+[data-motyw="zeroad"] .cel-poziomy li.obecny {
+  color: #fbe7b0;
+  background: radial-gradient(circle at 38% 32%, #d0453a, #7a120c 70%);
+  border-color: #3a0a06;
+  box-shadow: 0 0 0 2px rgba(212, 165, 62, 0.45);
+}
 
 /* przycisk z czerwonej skóry ze złotym obszyciem */
 [data-motyw="zeroad"] .btn-wesprzyj,
