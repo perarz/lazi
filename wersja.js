@@ -5,6 +5,15 @@
 (function () {
   var historia = [
     {
+      wersja: '3.10.1', data: '2026-09-25', tytul: 'Minigierki przed wpłatą (Fortnite)',
+      zmiany: [
+        'V-dolce trzeba teraz wygrać! Wpłata do 1000: „Skok z Battle Busa” — wyląduj w podświetlonym miejscu.',
+        'Wpłata 1001–2000: „Build fight w burzy” — przetrwaj burzę i ostrzał, stawiając ściany.',
+        'Im większa kwota, tym trudniej. Po przegranej 10 s przerwy.',
+        'Jedna wpłata to teraz najwyżej 2000 (w obu kategoriach). Odznaki „Hojny mecenas” i „Combo” dostosowane.'
+      ]
+    },
+    {
       wersja: '3.10', data: '2026-09-25', tytul: 'Most i kij ze zrzutu',
       zmiany: [
         'Nowa broń: Most (klawisz „=”, 3 sztuki) — wskaż miejsce blisko robala i postaw stalową belkę. Można po niej chodzić, a wybuch ją przetnie.',

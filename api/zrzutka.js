@@ -42,8 +42,8 @@ function znajdzKonfiguracje() {
 /* Gracze i limity muszą się zgadzać z zrzutka/dane.js — serwer nie ufa
    klientowi, więc trzyma własną, krótką listę. */
 const GRACZE = {
-  fortnite: { maks: 1000000, gracze: ['powpow', 'krayo', 'karp', 'apollo'] },
-  zeroad: { maks: 100000, gracze: ['kozak', 'lazi', 'stozhinio', 'nolli', 'apollo', 'froxy', 'quber'] }
+  fortnite: { maks: 2000, gracze: ['powpow', 'krayo', 'karp', 'apollo'] },
+  zeroad: { maks: 2000, gracze: ['kozak', 'lazi', 'stozhinio', 'nolli', 'apollo', 'froxy', 'quber'] }
 };
 
 const KLUCZ_SUMY = 'zrzutka:sumy';
