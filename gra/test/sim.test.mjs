@@ -78,6 +78,21 @@ test('spawny leza na gruncie i nad lawa', () => {
   }
 });
 
+test('spawny zawsze na gruncie, takze na archipelagu z 6 graczami', () => {
+  let archipelagi = 0;
+  for (let k = 1; k <= 120 && archipelagi < 12; k++) {
+    const seed = (k * 2654435761) >>> 0;
+    const t = T.createTerrain(seed);
+    if (t.styl !== 'archipelag' && k > 6) continue;
+    if (t.styl === 'archipelag') archipelagi++;
+    for (const p of T.spawnPoints(t, 6, seed)) {
+      assert(T.solidAt(t, p.x, p.y + 1) && !T.solidAt(t, p.x, p.y), 'spawn w powietrzu: seed ' + seed + ' ' + JSON.stringify(p));
+      assert(p.y < T.LAVA_Y - 30, 'spawn nad sama lawa: seed ' + seed);
+    }
+  }
+  assert(archipelagi >= 5, 'za malo archipelagow w probce: ' + archipelagi);
+});
+
 console.log('\nFIZYKA I STEROWANIE');
 
 test('robal spada i laduje na powierzchni', () => {
@@ -352,6 +367,93 @@ test('blitzkrieg wystrzeliwuje trzy rakiety', () => {
   st.power = 0.7;
   S.releaseFire(st);
   assert(st.projectiles.length === 3 && st.projectiles.every((p) => p.weapon === 'rakietka'), 'pociski: ' + st.projectiles.map((p) => p.weapon));
+});
+
+test('wiertlo drazy tunel w strone celownika', () => {
+  const st = S.createGame(21, players(2), { sieciowa: true });
+  const a = S.activeWorm(st);
+  const b = st.worms.find((w) => w !== a);
+  b.x = a.x > T.WORLD_W / 2 ? 150 : T.WORLD_W - 150;  // wróg daleko
+  const x0 = Math.round(a.x), y0 = Math.round(a.y);
+  for (let x = x0 - 40; x <= x0 + 220; x++) for (let y = y0 - 60; y < y0 + 260; y++) st.terrain.mask[y * T.WORLD_W + x] = y > y0 ? 1 : 0;
+  a.facing = 1;
+  st.weapon = 'wiertlo';
+  S.ustawCelownik(st, 0.9);                         // skos w dół, w prawo
+  assert(S.startCharging(st), 'wiertlo nie rusza');
+  S.releaseFire(st);
+  assert(st.projectiles.length === 1, 'brak wiertla');
+  doKonca(st);
+  // środek toru po ok. 100 px drogi jest pusty
+  const tx = x0 + Math.round(Math.cos(0.9) * 100), ty = y0 - 10 + Math.round(Math.sin(0.9) * 100);
+  assert(!T.solidAt(st.terrain, tx, ty), 'brak tunelu w ' + tx + ',' + ty);
+  assert(st.terrain.craters.length > 10, 'za malo wyciec: ' + st.terrain.craters.length);
+});
+
+/* Tura do przodu bez strzału, z przyjęciem stanu kanonicznego. */
+function nastepnaTura(st) {
+  S.applyPas(st);
+  doKonca(st);
+  S.zastosujSnapshot(st, przezSiec(S.stanPoTurze(st)));
+}
+
+test('zrzuty skrzynek: te same u kazdego, apteczka leczy', () => {
+  const a = S.createGame(4242, players(3), { sieciowa: true });
+  const b = S.createGame(4242, players(3), { sieciowa: true });
+  for (let i = 0; i < 40 && a.skrzynki.length === 0; i++) { nastepnaTura(a); nastepnaTura(b); }
+  assert(a.skrzynki.length > 0, 'przez 40 tur nic nie spadlo');
+  assert(JSON.stringify(a.skrzynki) === JSON.stringify(b.skrzynki), 'rozne skrzynki u graczy');
+  const c = a.skrzynki[0];
+  assert(T.solidAt(a.terrain, c.x, c.y + 1), 'skrzynka wisi w powietrzu');
+  const w = S.activeWorm(a);
+  w.hp = 50;
+  c.typ = 'apteczka';
+  w.x = c.x; w.y = c.y; w.vx = 0; w.vy = 0;
+  a.events.length = 0;
+  S.step(a);
+  assert(w.hp === 50 + S.APTECZKA_HP, 'apteczka nie wyleczyla, hp=' + w.hp);
+  assert(!a.skrzynki.includes(c), 'skrzynka nie zniknela');
+  assert(a.events.some((e) => e.type === 'skrzynka'), 'brak zdarzenia');
+});
+
+test('skrzynka z zapasem dodaje amunicje, wybuch niszczy skrzynke', () => {
+  const st = S.createGame(21, players(2), { sieciowa: true });
+  const w = S.activeWorm(st);
+  polka(st, w, 200);
+  w.y = Math.round(w.y); w.onGround = true;
+  const suma = () => Object.values(w.amunicja).reduce((x, y) => x + y, 0);
+  const przed = suma();
+  st.skrzynki.push({ id: 9, typ: 'zapas', x: Math.round(w.x), y: w.y });
+  S.step(st);
+  assert(suma() === przed + 1, 'zapas nie dodal amunicji');
+  st.skrzynki.push({ id: 10, typ: 'apteczka', x: Math.round(w.x) + 120, y: w.y });
+  S.explode(st, w.x + 120, w.y - 5, WEAPONS.bazooka);
+  assert(st.skrzynki.length === 0, 'wybuch nie rozbil skrzynki');
+});
+
+test('skrzynka zebrana przed strzalem dociera do odbiorcy', () => {
+  const a = S.createGame(21, players(2), { sieciowa: true });
+  const b = S.createGame(21, players(2), { sieciowa: true });
+  const w = S.activeWorm(a);
+  polka(a, w, 200); polka(b, S.activeWorm(b), 200);
+  for (const st of [a, b]) {
+    const r = S.activeWorm(st);
+    r.y = Math.round(r.y); r.onGround = true; r.hp = 60;
+    st.skrzynki.push({ id: 3, typ: 'apteczka', x: Math.round(r.x) + 30, y: r.y });
+  }
+  a.input.right = true;
+  run(a, 0.8);                                      // wchodzi w skrzynkę tylko u strzelca
+  a.input.right = false;
+  assert(a.skrzynki.length === 0 && w.hp > 60, 'strzelec nie zebral skrzynki');
+  a.weapon = 'bazooka';
+  S.ustawCelownik(a, -1.2);
+  S.startCharging(a);
+  a.power = 0.5;
+  S.releaseFire(a);
+  for (let i = 0; i < 2000 && a.akcjeDoWyslania.length === 0; i++) S.step(a);
+  S.zastosujStrzal(b, przezSiec(a.akcjeDoWyslania[0]));
+  doKonca(a); doKonca(b);
+  assert(b.skrzynki.length === 0, 'odbiorca dalej widzi skrzynke');
+  assert(S.stateHash(a) === S.stateHash(b), 'rozjazd po zebraniu skrzynki');
 });
 
 test('amunicja sie konczy', () => {

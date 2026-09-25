@@ -421,7 +421,7 @@ button:disabled { opacity: 0.35; cursor: not-allowed; }
   .moc { width: 100%; }
 }
 
-/* Telefon poziomo: środek ekranu to robal, więc bronie (siatka 5×2) i pasek
+/* Telefon poziomo: środek ekranu to robal, więc bronie (siatka 6×2) i pasek
    mocy siedzą na dole, w wolnym pasie między lewymi a prawymi przyciskami. */
 @media (orientation: landscape) and (max-height: 500px) {
   body.dotykowy.moja-tura .hud-dol {
@@ -431,7 +431,7 @@ button:disabled { opacity: 0.35; cursor: not-allowed; }
     gap: 5px;
   }
   body.dotykowy.moja-tura .bronie {
-    display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 4px;
+    display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 4px;
     overflow: visible; width: 100%;
   }
   body.dotykowy.moja-tura .bron {

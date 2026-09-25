@@ -5,6 +5,16 @@
 (function () {
   var historia = [
     {
+      wersja: '3.9', data: '2026-09-25', tytul: 'Wiertło, zrzuty i wielkie jaskinie',
+      zmiany: [
+        'Nowa broń: Wiertło (klawisz „-”) — drąży tunel w stronę celownika i wybucha na końcu.',
+        'Zrzuty z nieba: apteczka (+35 HP) i skrzynka z amunicją — wejdź w nią, żeby zebrać. Wybuch ją niszczy.',
+        'Zamiast cienkich tuneli mapy mają czasem wielkie jaskinie.',
+        'Naprawione: gracze nie startują już w powietrzu nad lawą.',
+        'Naprawione: kamera nie trzęsie się przy dynamicie i odbijającym się granacie.'
+      ]
+    },
+    {
       wersja: '3.8', data: '2026-09-25', tytul: 'Skręcanie w locie i żwawsza owca',
       zmiany: [
         'Po skoku możesz skręcać w powietrzu (A/D albo strzałki).',

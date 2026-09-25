@@ -65,7 +65,7 @@ const OPISY_MAP = {
   gory: 'Mapa: Góry — ostre szczyty, z góry widać wszystko, ale i ciebie widać.',
   archipelag: 'Mapa: Archipelag — między wyspami jest lawa. Skacz ostrożnie.',
   kaniony: 'Mapa: Kaniony — wąwozy do samej lawy i skalne łuki.',
-  jaskinie: 'Mapa: Jaskinie — tunele, nawisy i pływające skały. Granat się przyda.'
+  jaskinie: 'Mapa: Jaskinie — wielkie groty, nawisy i pływające skały. Granat się przyda.'
 };
 
 /* Statystyki gracza liczone wyłącznie w przeglądarce (localStorage) —
@@ -757,15 +757,44 @@ function wybierzBron(id) {
   rysujBronie();
 }
 
+/* Który pocisk śledzi kamera. Pamiętamy wybór (ten sam obiekt, dopóki leci)
+   i zmieniamy go z opóźnieniem — inaczej przy wolno spadającym dynamicie albo
+   odbijającym się granacie kamera skakała co klatkę między pociskiem a robalem. */
+let sledzony = null;          // śledzony pocisk
+let wolnyOd = 0;              // od kiedy ten pocisk jest wolny (ms), 0 = szybki
+const SZYBKI = 150 * 150;     // (px/s)² — od tej prędkości pocisk przejmuje kamerę w czasie ucieczki
+const WOLNY = 40 * 40;
+
+function pociskDoKamery(teraz) {
+  const st = rg.state;
+  if (st.projectiles.length === 0) { sledzony = null; return null; }
+  if (sledzony && !st.projectiles.includes(sledzony)) sledzony = null;
+  const v2 = (p) => p.vx * p.vx + p.vy * p.vy;
+  if (st.phase !== 'odwrot') {
+    // lot po ucieczce: zawsze jakiś pocisk — trzymamy się tego samego
+    if (!sledzony) sledzony = st.projectiles.find((p) => v2(p) > WOLNY) || st.projectiles[0];
+    wolnyOd = 0;
+    return sledzony;
+  }
+  // ucieczka: pocisk tylko, kiedy naprawdę leci; wolny odpuszczamy po chwili
+  if (!sledzony) {
+    const p = st.projectiles.find((q) => v2(q) > SZYBKI);
+    if (p) { sledzony = p; wolnyOd = 0; }
+    return sledzony;
+  }
+  if (v2(sledzony) > WOLNY) wolnyOd = 0;
+  else if (!wolnyOd) wolnyOd = teraz;
+  else if (teraz - wolnyOd > 600) { sledzony = null; wolnyOd = 0; }
+  return sledzony;
+}
+
 function ustawKamere(teraz) {
   const st = rg.state;
   const z = bazowyZoom() * zoomGracza;
   kamera.tzoom = z;
-  const lecacy = st.projectiles.find((p) => p.vx * p.vx + p.vy * p.vy > 900);
-  if (st.projectiles.length > 0 && (st.phase !== 'odwrot' || lecacy)) {
+  const p = pociskDoKamery(teraz);
+  if (p) {
     // Lecący pocisk zawsze wygrywa z ręcznym przesunięciem.
-    // (W czasie ucieczki po dynamicie kamera zostaje przy uciekającym.)
-    const p = lecacy || st.projectiles[0];
     R.focusCamera(kamera, p.x, p.y, z * 0.92);
     recznaKameraDo = 0;
     return;
@@ -787,8 +816,7 @@ function ustawKamere(teraz) {
    płynny dojazd nie nadąża, więc dociągamy kamerę od razu. */
 function trzymajWKadrze() {
   const st = rg.state;
-  const lecacy = st.projectiles.some((p) => p.vx * p.vx + p.vy * p.vy > 900);
-  if (performance.now() < recznaKameraDo || (st.projectiles.length > 0 && (st.phase !== 'odwrot' || lecacy))) return;
+  if (performance.now() < recznaKameraDo || sledzony) return;
   const w = S.activeWorm(st);
   if (!w || !w.alive) return;
   const v = w.widok || w;
@@ -832,6 +860,20 @@ function obsluzZdarzenia() {
         emitSpark(fx, e.x1, e.y1 - 10, 24);
         break;
       case 'plusk': emitSpark(fx, e.x, e.y, 18); break;
+      case 'wiercenie':
+        emitSpark(fx, e.x, e.y, 3);
+        R.repaintRect(renderer, st.terrain, { x0: e.x - e.r - 3, x1: e.x + e.r + 3 });
+        break;
+      case 'zrzut':
+        R.zrzutAnimacja(renderer, e.id);
+        pokazInfo(e.typ === 'apteczka' ? 'Zrzut: apteczka! 🩹' : 'Zrzut: zaopatrzenie! 📦');
+        break;
+      case 'skrzynka':
+        emitSpark(fx, e.x, e.y - 8, 16);
+        emitTekst(fx, e.x, e.y - 30, e.typ === 'apteczka' ? '+' + e.hp + ' HP' : '+1 ' + WEAPONS[e.bron].name,
+          e.typ === 'apteczka' ? '#7dff9a' : '#ffd23b', 16);
+        break;
+      case 'skrzynkaRozbita': emitSpark(fx, e.x, e.y - 8, 10); break;
       case 'smuga': emitSmuga(fx, e.x0, e.y0, e.x1, e.y1); break;
       case 'obrazenia': {
         emitTekst(fx, e.x, e.y - 34, '-' + e.amount, '#ff7a55');
