@@ -119,14 +119,15 @@ export const WEAPONS = {
     id: 'kij',
     name: 'Kij',
     key: '8',
-    kind: 'kij',           // cios wręcz: mało obrażeń, ogromny odrzut
+    kind: 'kij',           // cios wręcz: mało obrażeń, duży odrzut
     zasieg: 24,
-    damage: 18,
-    knockback: 560,
+    damage: 15,
+    knockback: 360,
     radius: 0,
     fuse: null,
     bezMocy: true,
-    opis: 'Home run — wybij kogoś w lawę'
+    amunicja: 0,           // tylko ze skrzynek z zaopatrzeniem
+    opis: 'Tylko ze zrzutu — wybij kogoś w lawę'
   },
   teleport: {
     id: 'teleport',
@@ -172,6 +173,23 @@ export const WEAPONS = {
     amunicja: 2,
     opis: 'Wierci tunel w stronę celownika'
   },
+  most: {
+    id: 'most',
+    name: 'Most',
+    key: '=',
+    kind: 'most',          // stalowa belka we wskazanym miejscu
+    dlugosc: 90,
+    grubosc: 7,
+    zasiegBudowy: 260,     // jak daleko od robala wolno postawić
+    radius: 0,
+    damage: 0,
+    knockback: 0,
+    fuse: null,
+    bezMocy: true,
+    celowany: true,
+    amunicja: 3,
+    opis: 'Kliknij miejsce na mapie, potem strzał'
+  },
 
   /* --- pociski pomocnicze --- */
   odlamek: {
@@ -215,7 +233,7 @@ export const WEAPONS = {
   }
 };
 
-export const WEAPON_ORDER = ['bazooka', 'granat', 'strzelba', 'kasetowa', 'dynamit', 'nalot', 'owca', 'kij', 'teleport', 'salwa', 'wiertlo'];
+export const WEAPON_ORDER = ['bazooka', 'granat', 'strzelba', 'kasetowa', 'dynamit', 'nalot', 'owca', 'kij', 'teleport', 'salwa', 'wiertlo', 'most'];
 
 /* Startowy zapas dla broni z limitem — ta sama wartość u każdego klienta. */
 export function startowaAmunicja() {

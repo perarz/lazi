@@ -55,7 +55,7 @@ const SKRZYNKI_MAX = 3;
 const SKRZYNKA_SZANSA = 40;         // % szans na zrzut na początku tury
 export const APTECZKA_HP = 35;
 const HP_MAX = 150;
-const ZAPAS_BRONIE = WEAPON_ORDER.filter((id) => WEAPONS[id].amunicja !== undefined);
+const INNE_ZAPASY = WEAPON_ORDER.filter((id) => WEAPONS[id].amunicja !== undefined && id !== 'kij');
 
 const pusteWejscie = () => ({ left: false, right: false, aimUp: false, aimDown: false });
 
@@ -206,7 +206,22 @@ export function mozeStrzelic(state, weaponId) {
   const zapas = w.amunicja[weaponId];
   if (zapas !== undefined && zapas <= 0) return false;
   if (weapon.celowany && !state.cel) return false;
+  if (weapon.kind === 'most' && powodBrakuMostu(state, w, state.cel)) return false;
   return true;
+}
+
+/* Czy w tym miejscu da się postawić most — null znaczy, że tak.
+   Sprawdza tylko strzelec (odbiorca stawia most z kanonicznej akcji). */
+export function powodBrakuMostu(state, w, cel) {
+  if (!cel) return 'brak celu';
+  const weapon = WEAPONS.most;
+  const dx = cel.x - w.x, dy = cel.y - (w.y - WORM_H * 0.5);
+  if (dx * dx + dy * dy > weapon.zasiegBudowy * weapon.zasiegBudowy) return 'za daleko';
+  if (cel.y > state.lava - 12 || cel.y < 20) return 'nie tutaj';
+  const kolizja = state.worms.some((r) => r.alive &&
+    Math.abs(r.x - cel.x) < T.MOST_DL / 2 + 6 && cel.y + T.MOST_GR > r.y - WORM_H - 2 && cel.y < r.y + 1);
+  if (kolizja) return 'robal na drodze';
+  return null;
 }
 
 export function startCharging(state) {
@@ -261,7 +276,7 @@ export function przygotujStrzal(state) {
 
 function obliczStart(w, weapon, angle, power) {
   if (weapon.kind === 'podkladany') return { x: w.x, y: w.y - WORM_H * 0.5, vx: 0, vy: 0 };
-  if (weapon.kind === 'nalot' || weapon.kind === 'teleport') return null;
+  if (weapon.kind === 'nalot' || weapon.kind === 'teleport' || weapon.kind === 'most') return null;
   const kier = w.facing >= 0 ? 1 : -1;
   if (weapon.kind === 'owca') return { x: w.x + kier * 10, y: w.y - 2, vx: kier, vy: 0 };
   const c = Math.cos(angle), s = Math.sin(angle);
@@ -326,6 +341,12 @@ export function applyFire(state, action) {
     ciosKijem(state, w, start, weapon);
   } else if (weapon.kind === 'teleport') {
     teleportuj(state, w, action.cel);
+  } else if (weapon.kind === 'most') {
+    const cel = action.cel;
+    if (cel) {
+      const r = T.carve(state.terrain, cel.x, cel.y, -1);
+      state.events.push({ type: 'most', x: Math.round(cel.x), y: Math.round(cel.y), x0: r.x0, x1: r.x1 });
+    }
   } else if (weapon.kind === 'salwa') {
     for (const [vx, vy] of (start.salwa || [[start.vx, start.vy]])) {
       spawnProjectile(state, WEAPONS.rakietka, start.x, start.y, vx, vy, w.id);
@@ -954,7 +975,9 @@ function stepSkrzynki(state) {
       w.hp += ile;
       state.events.push({ type: 'skrzynka', typ: c.typ, wormId: w.id, x: c.x, y: c.y, hp: ile });
     } else {
-      const bron = ZAPAS_BRONIE[(Math.imul(c.id + 7, 0x9e3779b1) >>> 0) % ZAPAS_BRONIE.length];
+      // kij jest tylko w skrzynkach, więc wypada w co trzeciej
+      const los = Math.imul(c.id + 7, 0x9e3779b1) >>> 0;
+      const bron = los % 3 === 0 ? 'kij' : INNE_ZAPASY[(los >>> 4) % INNE_ZAPASY.length];
       w.amunicja[bron] = (w.amunicja[bron] || 0) + 1;
       state.events.push({ type: 'skrzynka', typ: c.typ, wormId: w.id, x: c.x, y: c.y, bron });
     }

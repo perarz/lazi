@@ -73,6 +73,16 @@ function paintColumns(r, terrain, x0, x1) {
       const o = (y * w + col) * 4;
 
       if (!solid) { d[o + 3] = 0; continue; }
+      if (solid === 2) {
+        // most: stalowa belka z nitami co 10 px
+        // dźwigar: ciemne pasy góra/dół i kratownica (ukośne żebra) w środku
+        const brzeg = depth <= 1 || (y + 1 < WORLD_H && mask[i + WORLD_W] !== 2);
+        const rz = depth - 1;
+        const zebro = ((x - rz * 2) % 12 + 12) % 12 < 2 || ((x + rz * 2) % 12 + 12) % 12 < 2;
+        const v = brzeg ? 0.6 : zebro ? 1.3 : 0.82;
+        d[o] = Math.min(255, 196 * v); d[o + 1] = Math.min(255, 92 * v); d[o + 2] = Math.min(255, 38 * v); d[o + 3] = 255;
+        continue;
+      }
 
       // deterministyczne, tanie ziarno — faktura skały
       let h = (x * 374761393 + y * 668265263) | 0;
@@ -304,6 +314,17 @@ function drawLava(ctx, time, poziom) {
 
 function drawCel(ctx, cel, time) {
   const r = 14 + Math.sin(time * 6) * 2;
+  if (cel.most) {
+    // zarys belki, zielony gdy da się postawić, czerwony gdy nie
+    ctx.fillStyle = cel.zle ? 'rgba(255,60,40,0.35)' : 'rgba(255,170,70,0.35)';
+    ctx.strokeStyle = cel.zle ? '#ff3b23' : '#ffb347';
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash([5, 4]);
+    ctx.fillRect(cel.x - 45, cel.y, 90, 7);
+    ctx.strokeRect(cel.x - 45, cel.y, 90, 7);
+    ctx.setLineDash([]);
+    return;
+  }
   if (cel.teleport) {
     // portal: wirujące fioletowe pierścienie tam, gdzie robal się pojawi
     for (let i = 0; i < 3; i++) {

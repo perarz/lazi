@@ -341,6 +341,8 @@ test('kij wybija wroga z ogromnym odrzutem', () => {
   b.x = a.x + 16; b.y = a.y; b.onGround = true;
   st.weapon = 'kij';
   S.ustawCelownik(st, -0.4);
+  assert(!S.startCharging(st), 'kij bez skrzynki nie powinien dzialac');
+  a.amunicja.kij = 1;
   assert(S.startCharging(st), 'kij nie dziala');
   S.releaseFire(st);
   assert(b.hp === 100 - WEAPONS.kij.damage, 'kij: hp=' + b.hp);
@@ -454,6 +456,51 @@ test('skrzynka zebrana przed strzalem dociera do odbiorcy', () => {
   doKonca(a); doKonca(b);
   assert(b.skrzynki.length === 0, 'odbiorca dalej widzi skrzynke');
   assert(S.stateHash(a) === S.stateHash(b), 'rozjazd po zebraniu skrzynki');
+});
+
+test('most stawia belke, po ktorej da sie chodzic, i przezywa rebuild', () => {
+  const st = S.createGame(21, players(2), { sieciowa: true });
+  const a = S.activeWorm(st);
+  polka(st, a, 200);
+  a.y = Math.round(a.y); a.onGround = true;
+  const cx = Math.round(a.x) + 80, cy = a.y - 40;
+  st.weapon = 'most';
+  S.ustawCel(st, a.x + 20, a.y - 10);
+  assert(!S.startCharging(st), 'most na robalu nie powinien powstac');
+  S.ustawCel(st, a.x + 900, cy);
+  assert(!S.startCharging(st), 'most za daleko nie powinien powstac');
+  S.ustawCel(st, cx, cy);
+  assert(S.startCharging(st), 'most nie powstal');
+  S.releaseFire(st);
+  assert(T.solidAt(st.terrain, cx, cy + 3) && T.solidAt(st.terrain, cx - 40, cy + 6), 'brak belki');
+  assert(st.terrain.mask[(cy + 3) * T.WORLD_W + cx] === 2, 'belka nie ma wartosci 2');
+  assert(a.amunicja.most === WEAPONS.most.amunicja - 1, 'nie zuzyto mostu');
+  // odbudowa z listy kraterów: most, a potem wybuch, który go przecina
+  const t1 = T.createTerrain(77);
+  T.carve(t1, 1000, 60, -1);
+  T.carve(t1, 1030, 63, 10);
+  const t2 = T.rebuild(77, t1.craters);
+  assert(T.countSolid(t2) === T.countSolid(t1) && t2.mask[62 * T.WORLD_W + 980] === 2, 'rebuild zgubil most');
+  assert(!T.solidAt(t2, 1030, 63), 'wybuch po moscie nie przecial belki');
+  // robal postawiony na moście stoi
+  a.x = cx; a.y = cy - 1; a.vx = 0; a.vy = 0; a.onGround = false;
+  run(st, 1);
+  assert(Math.abs(a.y - (cy - 1)) < 1.5 && a.onGround, 'robal spadl z mostu, y=' + a.y);
+});
+
+test('kij tylko ze skrzynki: na starcie 0, skrzynki go dają', () => {
+  const st = S.createGame(21, players(2), { sieciowa: true });
+  assert(st.worms.every((w) => w.amunicja.kij === 0), 'kij na starcie');
+  const w = S.activeWorm(st);
+  polka(st, w, 200);
+  w.y = Math.round(w.y); w.onGround = true;
+  let kije = 0;
+  for (let id = 0; id < 30; id++) {
+    st.skrzynki.push({ id, typ: 'zapas', x: Math.round(w.x), y: w.y });
+    S.step(st);
+  }
+  kije = w.amunicja.kij;
+  assert(kije >= 5 && kije <= 15, 'kij ze skrzynek: ' + kije + '/30');
 });
 
 test('amunicja sie konczy', () => {
@@ -579,7 +626,9 @@ for (const bron of WEAPON_ORDER) {
       run(a, 0.15);                         // strzał w trakcie skoku
       a.weapon = bron;
       const cel = a.worms.find((w) => w.id !== kto.id);
-      if (WEAPONS[bron].celowany) S.ustawCel(a, cel.x, cel.y);
+      if (bron === 'most') S.ustawCel(a, kto.x + (cel.x > kto.x ? 70 : -70), kto.y - 70);
+      else if (WEAPONS[bron].celowany) S.ustawCel(a, cel.x, cel.y);
+      if (bron === 'kij') S.activeWorm(a).amunicja.kij = 1;
       S.ustawCelownik(a, Math.atan2(-0.8, cel.x > kto.x ? 1 : -1));
       assert(S.startCharging(a), 'nie da sie strzelic: ' + bron);
       run(a, 0.5);

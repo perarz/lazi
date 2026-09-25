@@ -136,12 +136,16 @@ Przekroczenie limitu = strona i gra przestają działać dla wszystkich. Dlatego
 
 ### Rozgrywka
 - Sterowanie: **A/D** ruch, **Spacja** skok, **W/S** lub mysz celowanie, **F/Enter** (przytrzymaj) strzał,
-  **1–0** i **-** broń. Na telefonie przyciski dotykowe + celowanie palcem, szczypanie = zoom.
+  **1–0**, **-** i **=** broń. Na telefonie przyciski dotykowe + celowanie palcem, szczypanie = zoom.
 - W powietrzu da się skręcać (sterowanie w locie, `POWIETRZE_*` w `sim.js`), ale nie przebić odrzutu.
-- Bronie (`weapons.js`, kolejność = klawisze 1–0, potem -): bazooka, granat, strzelba, kasetówka, dynamit
+- Bronie (`weapons.js`, kolejność = klawisze 1–0, potem - i =): bazooka, granat, strzelba, kasetówka, dynamit
   (lont 6 s), nalot (celowany), owca (biega, przeskakuje przeszkody, wybucha przy wrogu), kij
-  (odrzut), teleport (celowany), salwa „Blitzkrieg” (3 rakietki), wiertło (jedzie prosto bez grawitacji, co 8 kroków `carve` → tunel,
-  zdarzenie `wiercenie` przemalowuje teren). Część ma limit amunicji.
+  (odrzut; `amunicja: 0` — tylko ze skrzynek, co trzecia skrzynka „zapas” go daje), teleport (celowany), salwa „Blitzkrieg” (3 rakietki), wiertło (jedzie prosto bez grawitacji, co 8 kroków `carve` → tunel,
+  zdarzenie `wiercenie` przemalowuje teren), most (celowany, belka 90×7 px, do 260 px od robala,
+  nie na robalu — `powodBrakuMostu`). Część ma limit amunicji.
+- **Most w terenie**: siedzi na liście kraterów jako `{x, y, r: -1}` (`carve` z ujemnym r → `zbudujMost`),
+  więc `rebuild()` odtwarza go w tej samej kolejności co wybuchy. W masce ma wartość **2** (`solidAt`
+  sprawdza `!== 0`, render maluje 2 jako stalowy dźwigar). Nie zakładaj, że maska ma tylko 0/1.
 - **Zrzuty** (`state.skrzynki`): na starcie tury od 2. rundy, 40% szans, max 3 naraz — wszystko z seeda
   i numeru tury w `nextTurn` (`zrzutZaopatrzenia`), więc zero dodatkowego ruchu w sieci. Skrzynka leży
   od razu na gruncie (spadochron to tylko animacja w `render.js`). Apteczka +35 HP (max 150), zapas +1
