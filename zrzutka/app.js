@@ -991,6 +991,7 @@
     tekst.textContent = '';
 
     if (!ac.cel) {
+      opiszMinigre(k, ok ? ile : 0);
       teraz.style.setProperty('--p', 1);
       po.style.setProperty('--p', 0);
       tekst.textContent = 'Wszystkie cele zdobyte — każda wpłata to już czysta wdzięczność.';
@@ -1002,6 +1003,7 @@
     po.style.setProperty('--od', t);
     po.style.setProperty('--p', ok ? Math.min(1, (suma + ile) / ac.cel.kwota) - t : 0);
 
+    opiszMinigre(k, ok ? ile : 0);
     if (!ok) {
       tekst.textContent = 'Wpisz kwotę, a pokażę, ile brakuje do celu.';
       return;
@@ -1022,6 +1024,19 @@
       tekst.appendChild(elem('b', null, fmt(brak)));
       tekst.appendChild(document.createTextNode(' ' + odmiana(k.kat, brak) + '.'));
     }
+  }
+
+  // pod kwotą: jaka minigierka czeka na tę wpłatę i jak trudna
+  function opiszMinigre(k, ile) {
+    var p = $('#okno-minigra');
+    var MG = window.ZRZUTKA_MINIGRY;
+    p.textContent = '';
+    var w = MG && ile > 0 ? MG.dlaKwoty(k.kat, ile) : null;
+    if (!w) { p.hidden = true; return; }
+    p.hidden = false;
+    p.appendChild(document.createTextNode('🎮 Najpierw minigierka: '));
+    p.appendChild(elem('b', null, w.gra.nazwa));
+    p.appendChild(document.createTextNode(w.trudna ? ' (trudna — im więcej, tym ciężej)' : ' (łatwa — im więcej, tym trudniej)'));
   }
 
   poleIle.addEventListener('input', function () {
@@ -1093,6 +1108,33 @@
       wplac(k, ile, nick || t.nickPusty, msg, start);
     }
 
+    // przed wpłatą minigierka (jeśli kategoria ją ma) — wpłata leci dopiero po wygranej
+    var MG = window.ZRZUTKA_MINIGRY;
+    if (MG && MG.dlaKwoty(k.kat, ile)) {
+      var czekaj = MG.pozostalaBlokada();
+      if (czekaj > 0) {
+        wysylanie = false;
+        return pokazBlad('Po przegranej chwila przerwy — spróbuj za ' + czekaj + ' s.');
+      }
+      zamknijOkno();
+      MG.graj({
+        kat: k.kat,
+        ile: ile,
+        kwotaTekst: fmt(ile) + ' ' + odmiana(k.kat, ile),
+        dla: k.gracz.nick,
+        naWygrana: function (start) {
+          wplac(k, ile, nick || t.nickPusty, msg, start || { x: innerWidth / 2, y: innerHeight / 2 });
+        },
+        naRezygnacje: function () {
+          // wracamy do okna z tą samą kwotą — gracz może ją zmniejszyć
+          wysylanie = false;
+          if (typeof okno.showModal === 'function') okno.showModal();
+          else okno.setAttribute('open', '');
+        }
+      });
+      return;
+    }
+
     if (k.kat === 'zeroad' && animowac) pieczetuj(wyslij);
     else wyslij(srodek($('#btn-wyslij')));
   });
@@ -1121,9 +1163,9 @@
     lotyTrwa++;
     wyslijNaSerwer(wpis);
 
-    // trzy wpłaty w 20 sekund to combo
+    // trzy wpłaty w 2 minuty to combo (każdą trzeba wygrać w minigierce)
     var teraz = Date.now();
-    ostatnieWplaty = ostatnieWplaty.filter(function (t) { return teraz - t < 20000; });
+    ostatnieWplaty = ostatnieWplaty.filter(function (t) { return teraz - t < 120000; });
     ostatnieWplaty.push(teraz);
     var combo = ostatnieWplaty.length >= 3 ? ostatnieWplaty.length : 0;
 

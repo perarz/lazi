@@ -1,0 +1,209 @@
+/* ============================================================
+   Minigierki przed wpłatą — pełnoekranowa nakładka.
+   Kolory z aktywnego motywu (--c-popup, --c-akcent…).
+   ============================================================ */
+
+html.minigra-otwarta,
+html.minigra-otwarta body { overflow: hidden; }
+
+.minigra {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  flex-direction: column;
+  background: rgba(4, 8, 30, 0.92);
+  animation: minigra-wejscie 0.25s ease-out;
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+}
+
+@keyframes minigra-wejscie {
+  from { opacity: 0; transform: scale(1.03); }
+  to { opacity: 1; transform: none; }
+}
+
+.minigra-gora {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 12px;
+  background: var(--c-pasek);
+  border-bottom: 1px solid var(--c-pasek-ramka);
+}
+
+.minigra-tytul {
+  font-family: var(--f-display);
+  font-size: clamp(18px, 4.6vw, 26px);
+  color: var(--c-akcent);
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.minigra-x {
+  width: 38px;
+  height: 38px;
+  border: 1px solid var(--c-panel-ramka);
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.3);
+  color: var(--c-tekst);
+  font-size: 24px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.minigra-scena {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.minigra-plotno {
+  display: block;
+  width: 100%;
+  height: 100%;
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.minigra-podpowiedz {
+  position: absolute;
+  left: 50%;
+  bottom: 14px;
+  transform: translateX(-50%);
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: rgba(10, 22, 70, 0.72);
+  color: #fff;
+  font: 600 14px var(--f-tekst);
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.minigra-podpowiedz:empty { display: none; }
+
+.minigra-panel {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: min(440px, calc(100% - 32px));
+  max-height: calc(100% - 24px);
+  overflow: auto;
+  padding: 20px 20px 18px;
+  border: 1px solid var(--c-panel-ramka);
+  border-radius: var(--r-panel);
+  background: var(--c-popup);
+  color: var(--c-okno-tekst);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.55);
+  text-align: center;
+}
+
+.minigra-panel[hidden] { display: none; }
+
+.minigra-panel-nad {
+  margin: 0 0 6px;
+  color: var(--c-okno-tekst-2);
+  font-size: 14px;
+}
+
+.minigra-panel-tytul {
+  margin: 0 0 12px;
+  font-family: var(--f-display);
+  font-size: clamp(24px, 6vw, 34px);
+  color: var(--c-akcent);
+  line-height: 1.05;
+  text-transform: uppercase;
+}
+
+.minigra-panel-tytul.wygrana { color: #7dff9a; }
+.minigra-panel-tytul.przegrana { color: var(--c-blad); }
+
+.minigra-trudnosc { margin: 0 0 12px; text-align: left; }
+
+.minigra-trudnosc-napis {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+  color: var(--c-okno-tekst-2);
+  margin-bottom: 4px;
+}
+
+.minigra-trudnosc-napis b { color: var(--c-okno-tekst); }
+
+.minigra-trudnosc-pas {
+  height: 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.14);
+  overflow: hidden;
+}
+
+.minigra-trudnosc-pas i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #5ee06a, #ffe34d);
+}
+
+.minigra-trudnosc-pas i.trudna { background: linear-gradient(90deg, #ffb02e, #ff3b3b 70%, #b3002d); }
+
+.minigra-opis {
+  margin: 0 0 16px;
+  padding-left: 1.3em;
+  text-align: left;
+  font-size: 14.5px;
+  line-height: 1.45;
+}
+
+.minigra-opis li + li { margin-top: 4px; }
+
+.minigra-info {
+  margin: 4px 0 14px;
+  font-size: 13px;
+  color: var(--c-okno-tekst-3);
+}
+
+.minigra-przyciski {
+  display: flex;
+  gap: 10px;
+}
+
+.minigra-btn {
+  flex: 1;
+  min-height: 46px;
+  padding: 0 14px;
+  border: 1px solid var(--c-pole-ramka);
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.28);
+  color: var(--c-okno-tekst);
+  font: 700 16px var(--f-tekst);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.minigra-btn.glowny {
+  flex: 1.4;
+  border-color: transparent;
+  background: var(--c-kat-aktywna);
+  color: var(--c-kat-aktywna-tekst);
+}
+
+.minigra-btn:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+/* informacja o minigierce pod kwotą w oknie wpłaty */
+.okno-minigra {
+  margin: 8px 0 0;
+  font-size: 13px;
+  color: var(--c-okno-tekst-2);
+}
+
+.okno-minigra b { color: var(--c-okno-tekst); }
+
+@media (prefers-reduced-motion: reduce) {
+  .minigra { animation: none; }
+}

@@ -15,9 +15,9 @@ window.ZRZUTKA_DANE = {
       nazwa: 'Fortnite',
       ikona: 'vbuck',
       formy: ['V-dolec', 'V-dolce', 'V-dolców'],   // 1 / 2-4 / 5+
-      szybkie: [100, 500, 1000, 2800, 5000, 13500],
-      maks: 1000000,
-      hojnie: 13500,
+      szybkie: [50, 100, 250, 500, 1000, 2000],
+      maks: 2000,
+      hojnie: 2000,
       etapy: null,                                 // cele numerowane zwykle: „Cel 1/3”
       teksty: {
         oknoNad: 'Dofinansowanie dla',
@@ -142,8 +142,8 @@ window.ZRZUTKA_DANE = {
       nazwa: '0 A.D.',
       ikona: 'srebrnik',
       formy: ['srebrnik', 'srebrniki', 'srebrników'],
-      szybkie: [10, 50, 100, 300, 500, 1000],
-      maks: 100000,
+      szybkie: [10, 50, 100, 500, 1000, 2000],
+      maks: 2000,
       hojnie: 1000,
       // w 0 A.D. rośnie się fazami — cele to kolejne awanse
       etapy: ['Faza miasteczka', 'Faza miasta', 'Cud świata'],
@@ -348,7 +348,7 @@ window.ZRZUTKA_DANE = {
   odznaki: [
     { id: 'pierwsza', ikona: '🪙', nazwa: 'Pierwsza wpłata', opis: 'Wrzuć cokolwiek komukolwiek.' },
     { id: 'grosz', ikona: '🥉', nazwa: 'Groszowy sponsor', opis: 'Wpłać dokładnie 1 V-dolca albo 1 srebrnika.' },
-    { id: 'hojny', ikona: '💎', nazwa: 'Hojny mecenas', opis: 'Jednorazowo 13 500 V-dolców albo 1000 srebrników.' },
+    { id: 'hojny', ikona: '💎', nazwa: 'Hojny mecenas', opis: 'Jednorazowo 2000 V-dolców albo 1000 srebrników.' },
     { id: 'krayo', ikona: '🤡', nazwa: 'Litość dla Krayo', opis: 'Wesprzyj gracza, który nie umie grać.' },
     { id: 'mecenas-fn', ikona: '🎮', nazwa: 'Mecenas noobów', opis: 'Wesprzyj wszystkich graczy Fortnite.' },
     { id: 'wieloryb', ikona: '🐋', nazwa: 'Wieloryb', opis: 'Łącznie 50 000 V-dolców.' },
@@ -361,7 +361,7 @@ window.ZRZUTKA_DANE = {
     { id: 'sparta', ikona: '🛡️', nazwa: 'This is Sparta', opis: 'Wpłać Stozhiniowi bardzo spartańską kwotę.', ukryta: true },
     { id: 'skarbnik', ikona: '👑', nazwa: 'Królewski skarbnik', opis: 'Wesprzyj wszystkich wojowników 0 A.D.' },
     { id: 'dwa-swiaty', ikona: '🌍', nazwa: 'Dwa światy', opis: 'Wpłać w obu kategoriach.' },
-    { id: 'combo', ikona: '⚡', nazwa: 'Combo', opis: 'Trzy wpłaty w 20 sekund.' },
+    { id: 'combo', ikona: '⚡', nazwa: 'Combo', opis: 'Trzy wpłaty w 2 minuty.' },
     { id: 'zaczepialski', ikona: '👉', nazwa: 'Zaczepialski', opis: 'Zaczep graczy 15 razy (klikaj w portrety).' },
     { id: 'wkurzyciel', ikona: '😡', nazwa: 'Wkurzyłeś Kozaka', opis: 'Doprowadź Kozaka do furii. Odważnie.' },
     { id: 'archeolog', ikona: '🏺', nazwa: 'Archeolog', opis: 'Odkryj dowód z czasów świetności Laziego.', ukryta: true }
