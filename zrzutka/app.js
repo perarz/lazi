@@ -14,6 +14,7 @@
   var KAT = DANE.kategorie;
 
   var KLUCZ = 'zrzutka-v2';
+  var SEZON = 2;                // nowy sezon = wyzerowane sumy i „moje” wpłaty; odznaki zostają
   var KLUCZ_V1 = 'vdolce-zrzutka-v1';
   var KLUCZ_NICK = 'zrzutka-nick';
   var KLUCZ_DZWIEK = 'zrzutka-dzwiek';
@@ -110,7 +111,7 @@
   function pustyStan() {
     // sumy — wspólne (z serwera, a bez niego lokalne); moje — tylko wpłaty
     // z tej przeglądarki, z nich liczą się odznaki i tytuły sponsora
-    var s = { sumy: {}, moje: {}, wplaty: [], odznaki: {}, zaczepki: 0 };
+    var s = { sezon: SEZON, sumy: {}, moje: {}, wplaty: [], odznaki: {}, zaczepki: 0 };
     Object.keys(KAT).forEach(function (kat) {
       s.sumy[kat] = {};
       s.moje[kat] = {};
@@ -132,7 +133,9 @@
       if (z && typeof z === 'object') {
         // zapis sprzed wspólnych sum nie ma „moje” — wtedy wszystko było własne
         var moje = z.moje && typeof z.moje === 'object' ? z.moje : z.sumy;
-        Object.keys(s.sumy).forEach(function (kat) {
+        // zapis z poprzedniego sezonu: bierzemy tylko odznaki i zaczepki
+        var tenSezon = z.sezon === SEZON;
+        if (tenSezon) Object.keys(s.sumy).forEach(function (kat) {
           Object.keys(s.sumy[kat]).forEach(function (id) {
             var v = Number(z.sumy && z.sumy[kat] && z.sumy[kat][id]);
             if (isFinite(v) && v > 0) s.sumy[kat][id] = Math.floor(v);
@@ -140,7 +143,7 @@
             if (isFinite(m) && m > 0) s.moje[kat][id] = Math.floor(m);
           });
         });
-        if (Array.isArray(z.wplaty)) s.wplaty = z.wplaty.filter(poprawnaWplata).slice(0, MAX_WPLAT);
+        if (tenSezon && Array.isArray(z.wplaty)) s.wplaty = z.wplaty.filter(poprawnaWplata).slice(0, MAX_WPLAT);
         if (z.odznaki && typeof z.odznaki === 'object') {
           Object.keys(z.odznaki).forEach(function (id) {
             if (odznakaPoId[id]) s.odznaki[id] = Number(z.odznaki[id]) || Date.now();
@@ -1753,4 +1756,157 @@
   zastosujKategorie(kategoriaZHasha());
   sprawdzOdznaki();
   pobierzZSerwera(false);
+
+  /* ---------------------------------------------------------
+     Sezon 1 — Hall of Fame
+     Archiwum się nie zmienia: pobieramy je raz (GET ?sezon=1, cache Vercela)
+     i trzymamy w localStorage na zawsze. Przy pierwszej wizycie w sezonie 2
+     okno otwiera się samo — tylko jeśli archiwum dało się pobrać.
+     --------------------------------------------------------- */
+
+  var KLUCZ_SEZON1 = 'zrzutka:sezon1';
+  var KLUCZ_INTRO = 'zrzutka:sezon2-intro';
+  var oknoSezon = $('#okno-sezon');
+
+  function archiwumSezonu1(gotowe) {
+    try {
+      var z = JSON.parse(localStorage.getItem(KLUCZ_SEZON1));
+      if (z && z.sumy) return gotowe(z);
+    } catch (e) { /* brak albo zepsute */ }
+    if (!window.fetch) return gotowe(null);
+    fetch(ADRES_API + '?sezon=1')
+      .then(function (r) { return r.ok ? r.json() : Promise.reject(r.status); })
+      .then(function (d) {
+        if (!d || !d.sumy) return gotowe(null);
+        var zapis = { sumy: d.sumy, wplaty: Array.isArray(d.wplaty) ? d.wplaty.filter(poprawnaWplata) : [] };
+        try { localStorage.setItem(KLUCZ_SEZON1, JSON.stringify(zapis)); } catch (e) { /* trudno */ }
+        gotowe(zapis);
+      })
+      .catch(function () { gotowe(null); });
+  }
+
+  function portret(kat, id) {
+    var k = karty[kat + ':' + id];
+    var awatar = k && $('.awatar', k.el);
+    if (!awatar) return elem('span', 'sezon-portret');
+    var kopia = awatar.cloneNode(true);
+    kopia.removeAttribute('class');
+    kopia.removeAttribute('role');
+    kopia.setAttribute('aria-hidden', 'true');
+    var box = elem('span', 'sezon-portret');
+    box.appendChild(kopia);
+    return box;
+  }
+
+  function rysujSezon(dane) {
+    var box = $('#sezon-wyniki');
+    box.textContent = '';
+    if (!dane) {
+      box.appendChild(elem('p', 'sezon-pusto', 'Nie udało się pobrać wyników sezonu 1 — spróbuj później.'));
+      return;
+    }
+    Object.keys(KAT).forEach(function (kat) {
+      var cfg = KAT[kat];
+      var sumy = dane.sumy[kat] || {};
+      var ranking = Object.keys(cfg.gracze).map(function (id) {
+        return { id: id, gracz: cfg.gracze[id], suma: Math.max(0, Math.floor(Number(sumy[id]) || 0)) };
+      }).sort(function (a, b) { return b.suma - a.suma; });
+      var sekcja = elem('section', 'sezon-kat');
+      sekcja.setAttribute('data-kat', kat);
+      var naglowek = elem('h3', 'sezon-kat-tytul');
+      naglowek.appendChild(ikona(cfg.ikona, 'vb'));
+      naglowek.appendChild(document.createTextNode(cfg.nazwa));
+      var razem = ranking.reduce(function (a, r) { return a + r.suma; }, 0);
+      naglowek.appendChild(elem('small', null, 'razem ' + fmt(razem)));
+      sekcja.appendChild(naglowek);
+
+      if (!razem) {
+        sekcja.appendChild(elem('p', 'sezon-pusto', 'W tej kategorii nikt nic nie wpłacił.'));
+        box.appendChild(sekcja);
+        return;
+      }
+      // podium: 2 · 1 · 3
+      var podium = elem('div', 'sezon-podium');
+      [1, 0, 2].forEach(function (miejsce) {
+        var r = ranking[miejsce];
+        if (!r || !r.suma) return;
+        var stopien = elem('div', 'sezon-stopien m' + (miejsce + 1));
+        stopien.appendChild(portret(kat, r.id));
+        stopien.appendChild(elem('span', 'sezon-nick', r.gracz.nick));
+        var kwota = elem('span', 'sezon-kwota');
+        kwota.appendChild(ikona(cfg.ikona, 'vb'));
+        kwota.appendChild(document.createTextNode(fmt(r.suma)));
+        stopien.appendChild(kwota);
+        var blok = elem('div', 'sezon-blok', ['🥇', '🥈', '🥉'][miejsce]);
+        stopien.appendChild(blok);
+        podium.appendChild(stopien);
+      });
+      sekcja.appendChild(podium);
+      var reszta = ranking.slice(3).filter(function (r) { return r.suma > 0; });
+      if (reszta.length) {
+        var lista = elem('ol', 'sezon-reszta');
+        lista.setAttribute('start', '4');
+        reszta.forEach(function (r) {
+          var li = elem('li');
+          li.appendChild(elem('span', null, r.gracz.nick));
+          li.appendChild(elem('b', null, fmt(r.suma)));
+          lista.appendChild(li);
+        });
+        sekcja.appendChild(lista);
+      }
+      box.appendChild(sekcja);
+    });
+
+    // największe pojedyncze wpłaty z końcówki sezonu (serwer trzymał ostatnie 60)
+    var top = (dane.wplaty || []).slice().sort(function (a, b) { return b.ile - a.ile; }).slice(0, 3);
+    if (top.length) {
+      var hojni = elem('section', 'sezon-kat sezon-hojni');
+      hojni.appendChild(elem('h3', 'sezon-kat-tytul', '💸 Najhojniejsze wpłaty końcówki sezonu'));
+      var ol = elem('ol', 'sezon-reszta');
+      top.forEach(function (w) {
+        var li = elem('li');
+        var kto = elem('span');
+        kto.appendChild(elem('b', null, w.kto));
+        kto.appendChild(document.createTextNode(' → ' + KAT[w.kat].gracze[w.komu].nick));
+        li.appendChild(kto);
+        var ile = elem('b');
+        ile.appendChild(ikona(KAT[w.kat].ikona, 'vb'));
+        ile.appendChild(document.createTextNode(fmt(w.ile)));
+        li.appendChild(ile);
+        ol.appendChild(li);
+      });
+      hojni.appendChild(ol);
+      box.appendChild(hojni);
+    }
+  }
+
+  function otworzSezon(intro) {
+    $('#sezon-nad').hidden = !intro;
+    $('#sezon-wyniki').textContent = '';
+    $('#sezon-wyniki').appendChild(elem('p', 'sezon-pusto', 'Ładuję kronikę sezonu 1…'));
+    if (typeof oknoSezon.showModal === 'function') { if (!oknoSezon.open) oknoSezon.showModal(); }
+    else oknoSezon.setAttribute('open', '');
+    archiwumSezonu1(rysujSezon);
+  }
+
+  function zamknijSezon() {
+    if (typeof oknoSezon.close === 'function' && oknoSezon.open) oknoSezon.close();
+    else oknoSezon.removeAttribute('open');
+  }
+
+  $$('[data-sezon-okno]').forEach(function (b) { b.addEventListener('click', function () { otworzSezon(false); }); });
+  $('#sezon-x').addEventListener('click', zamknijSezon);
+  $('#sezon-ok').addEventListener('click', zamknijSezon);
+  oknoSezon.addEventListener('click', function (e) { if (e.target === oknoSezon) zamknijSezon(); });
+
+  // pierwsza wizyta w sezonie 2: okno otwiera się samo (raz), jeśli archiwum jest dostępne
+  if (czytajUstawienie(KLUCZ_INTRO) !== '1') {
+    setTimeout(function () {
+      archiwumSezonu1(function (dane) {
+        if (!dane || (okno && okno.open) || document.querySelector('.minigra')) return;
+        zapiszUstawienie(KLUCZ_INTRO, '1');
+        otworzSezon(true);
+      });
+    }, 1400);
+  }
 })();

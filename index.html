@@ -17,6 +17,7 @@
   <link rel="stylesheet" href="zrzutka/fortnite.css">
   <link rel="stylesheet" href="zrzutka/zeroad.css">
   <link rel="stylesheet" href="zrzutka/minigry.css">
+  <link rel="stylesheet" href="zrzutka/sezon.css">
 </head>
 <body>
   <!-- Ikony i ozdoby używane w wielu miejscach przez <use href="#…">.
@@ -189,6 +190,7 @@
       <svg class="vb" data-dla="zeroad" aria-hidden="true"><use href="#srebrnik"></use></svg>
       <span data-dla="fortnite">Zrzutka</span>
       <span data-dla="zeroad">Skarbiec</span>
+      <span class="logo-sezon" title="Sezon 2">S2</span>
     </a>
 
     <nav class="kategorie" aria-label="Kategorie zrzutki">
@@ -241,6 +243,9 @@
          ===================================================== -->
     <section class="kategoria" data-kategoria="fortnite" data-dla="fortnite" aria-label="Fortnite: V-dolce dla noobów">
       <div class="hero">
+        <button class="sezon-pill" type="button" data-sezon-okno>
+          <span class="sezon-pill-znak">S2</span> Sezon 2 trwa <span class="sezon-pill-link">🏆 Kto wygrał sezon 1?</span>
+        </button>
         <p class="hero-nad">Fundacja Pomocy Początkującym Graczom</p>
         <h1>
           <span class="h1-a">V-dolce</span>
@@ -678,6 +683,9 @@
          ===================================================== -->
     <section class="kategoria" data-kategoria="zeroad" data-dla="zeroad" aria-label="0 A.D.: srebrniki dla wojowników">
       <div class="hero">
+        <button class="sezon-pill" type="button" data-sezon-okno>
+          <span class="sezon-pill-znak">S2</span> Sezon II trwa <span class="sezon-pill-link">🏆 Kronika sezonu I</span>
+        </button>
         <p class="hero-nad">Królewska Fundacja Wspierania Wojowników 0&nbsp;A.D.</p>
         <h1>
           <span class="h1-a">Srebrniki</span>
@@ -1654,6 +1662,18 @@
 
       <svg class="okno-pieczec" id="okno-pieczec" aria-hidden="true"><use href="#pieczec"></use></svg>
     </form>
+  </dialog>
+
+  <!-- sezon 1: podium i największe wpłaty (dane z archiwum, raz na przeglądarkę) -->
+  <dialog class="okno okno-sezon" id="okno-sezon" aria-labelledby="sezon-tytul">
+    <div class="sezon-tresc">
+      <button class="okno-x" id="sezon-x" type="button" aria-label="Zamknij">&times;</button>
+      <p class="sezon-nad" id="sezon-nad">Sezon 2 wystartował!</p>
+      <h2 class="sezon-tytul" id="sezon-tytul">Hall of Fame · Sezon 1</h2>
+      <p class="sezon-opis">Liczniki wyzerowane, wszyscy zaczynają od zera. Tak skończył się sezon 1:</p>
+      <div class="sezon-wyniki" id="sezon-wyniki" aria-live="polite"></div>
+      <button class="btn-sezon-ok" id="sezon-ok" type="button">Lecimy z sezonem 2!</button>
+    </div>
   </dialog>
 
   <!-- ekran zdobycia celu -->

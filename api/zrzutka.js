@@ -46,8 +46,15 @@ const GRACZE = {
   zeroad: { maks: 2000, gracze: ['kozak', 'lazi', 'stozhinio', 'nolli', 'apollo', 'froxy', 'quber'] }
 };
 
-const KLUCZ_SUMY = 'zrzutka:sumy';
-const KLUCZ_WPLATY = 'zrzutka:wplaty';
+/* Sezony: bieżący zapisuje pod własnymi kluczami, poprzednie zostają
+   w Redisie jako archiwum (tylko do odczytu, GET ?sezon=N). */
+const SEZON = 2;
+const KLUCZE = {
+  1: { sumy: 'zrzutka:sumy', wplaty: 'zrzutka:wplaty' },
+  2: { sumy: 'zrzutka:s2:sumy', wplaty: 'zrzutka:s2:wplaty' }
+};
+const KLUCZ_SUMY = KLUCZE[SEZON].sumy;
+const KLUCZ_WPLATY = KLUCZE[SEZON].wplaty;
 const MAX_WPLAT = 60;
 const OKNO_LIMITU = 60;       // sekund
 const LIMIT_NA_OKNO = 30;     // wpłat na IP w oknie — dla beki wystarczy
@@ -80,10 +87,11 @@ function czystyTekst(s, max) {
   return s.replace(/[\u0000-\u001f\u007f]/g, '').replace(/\s+/g, ' ').trim().slice(0, max);
 }
 
-async function stan() {
+async function stan(sezon = SEZON) {
+  const k = KLUCZE[sezon];
   const [sumyPlaskie, surowe] = await pipeline([
-    ['HGETALL', KLUCZ_SUMY],
-    ['LRANGE', KLUCZ_WPLATY, '0', String(MAX_WPLAT - 1)]
+    ['HGETALL', k.sumy],
+    ['LRANGE', k.wplaty, '0', String(MAX_WPLAT - 1)]
   ]);
 
   const sumy = {};
@@ -102,7 +110,7 @@ async function stan() {
   for (const s of surowe || []) {
     try { wplaty.push(JSON.parse(s)); } catch { /* pomijamy uszkodzony wpis */ }
   }
-  return { sumy, wplaty, teraz: Date.now() };
+  return { sumy, wplaty, teraz: Date.now(), sezon };
 }
 
 module.exports = async function handler(req, res) {
@@ -110,6 +118,14 @@ module.exports = async function handler(req, res) {
 
   try {
     if (req.method === 'GET') {
+      // archiwum zakończonego sezonu się nie zmienia — niech trzyma je cache Vercela,
+      // wtedy Redis dostaje to zapytanie najwyżej raz na tydzień
+      const q = req.query && req.query.sezon !== undefined ? Number(req.query.sezon) : SEZON;
+      if (q !== SEZON) {
+        if (!KLUCZE[q] || q > SEZON) return res.status(404).json({ blad: 'nie-ma-sezonu' });
+        res.setHeader('Cache-Control', 'public, max-age=86400, s-maxage=604800');
+        return res.status(200).json(await stan(q));
+      }
       return res.status(200).json(await stan());
     }
 

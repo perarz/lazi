@@ -820,8 +820,484 @@
     }
   };
 
+  /* =========================================================
+     0 A.D. 1 · Ekonomia Nolliego (łatwa)
+     ========================================================= */
+  var ZASOBY = [
+    { id: 'jagody', pkt: 1, waga: 4 },
+    { id: 'drewno', pkt: 1, waga: 4 },
+    { id: 'kamien', pkt: 2, waga: 2 },
+    { id: 'zloto', pkt: 3, waga: 1 }
+  ];
+  var SERIF = 'Cinzel, Georgia, serif';
+
+  function napisSerif(g, tekst, x, y, rozmiar, kolor, obrys, wyrownanie) {
+    g.font = '700 ' + Math.round(rozmiar) + 'px ' + SERIF;
+    g.textAlign = wyrownanie || 'center';
+    g.textBaseline = 'middle';
+    if (obrys) { g.lineJoin = 'round'; g.lineWidth = Math.max(2, rozmiar * 0.2); g.strokeStyle = obrys; g.strokeText(tekst, x, y); }
+    g.fillStyle = kolor;
+    g.fillText(tekst, x, y);
+  }
+
+  function pergaminHud(g, W, u, lewy, srodek, prawy, alarm) {
+    var gr = g.createLinearGradient(0, u * 2, 0, u * 11);
+    gr.addColorStop(0, '#f3e2b8');
+    gr.addColorStop(1, '#d9bf86');
+    g.fillStyle = gr;
+    zaokr(g, u * 2, u * 2, W - u * 4, u * 9, u * 1.5);
+    g.fill();
+    g.strokeStyle = '#6b4a22';
+    g.lineWidth = Math.max(1.5, u * 0.35);
+    g.stroke();
+    napisSerif(g, lewy, u * 5, u * 6.5, u * 3.6, '#3b1f0a', null, 'left');
+    napisSerif(g, srodek, W / 2, u * 6.5, u * 3.8, alarm ? '#8a1c12' : '#3b1f0a');
+    napisSerif(g, prawy, W - u * 5, u * 6.5, u * 3.6, '#3b1f0a', null, 'right');
+  }
+
+  var ekonomia = {
+    nazwa: 'Ekonomia Nolliego',
+    ikona: '🌾',
+    opis: [
+      'Na łące pojawiają się zasoby — stukaj je, zanim znikną.',
+      'Jagody i drewno = 1, kamień = 2, złoto = 3 punkty.',
+      'Nie stukaj wilków — zjedzą ci obywatelkę (−3). Uzbieraj cel przed końcem czasu.'
+    ],
+    start: function (env) {
+      var W = env.W, H = env.H, u = env.u, t = env.t;
+      var cel = Math.round(lerp(16, 40, t));
+      var czasGry = lerp(26, 21, t);
+      var zycieZasobu = lerp(2.3, 0.95, t);
+      var coIle = lerp(0.55, 0.36, t);
+      var szansaWilka = lerp(0.08, 0.24, t);
+      var gora = u * 13;
+      var punkty = 0, czas = 0, doZasobu = 0.3, koniec = false, licznik = 0;
+      var rzeczy = [];
+      var cz = czasteczki(), nap = napisy();
+      var trawa = [];
+      for (var i = 0; i < 60; i++) trawa.push({ x: los(0, W), y: los(gora, H), s: los(0.6, 1.4) });
+      var sciezka = [];
+      for (var k = 0; k <= 8; k++) sciezka.push({ x: W * 0.5 + Math.sin(k * 0.9) * W * 0.12, y: gora + (H - gora) * k / 8 });
+
+      function losujZasob() {
+        var suma = 0, r;
+        ZASOBY.forEach(function (z) { suma += z.waga; });
+        r = Math.random() * suma;
+        for (var i = 0; i < ZASOBY.length; i++) { r -= ZASOBY[i].waga; if (r <= 0) return ZASOBY[i]; }
+        return ZASOBY[0];
+      }
+
+      function nowaRzecz() {
+        var r = u * 6;
+        for (var proba = 0; proba < 12; proba++) {
+          var x = los(r + u * 2, W - r - u * 2), y = los(gora + r + u * 2, H - r - u * 2);
+          var wolne = rzeczy.every(function (q) { var dx = q.x - x, dy = q.y - y; return dx * dx + dy * dy > r * r * 4.5; });
+          if (!wolne) continue;
+          var wilk = Math.random() < szansaWilka;
+          rzeczy.push({ id: ++licznik, x: x, y: y, wilk: wilk, zasob: wilk ? null : losujZasob(), zycie: zycieZasobu * los(0.85, 1.2), faza: 0, zebrana: 0 });
+          return;
+        }
+      }
+
+      function stuk(p) {
+        if (koniec) return;
+        for (var i = rzeczy.length - 1; i >= 0; i--) {
+          var q = rzeczy[i];
+          if (q.zebrana || q.faza < 0.3) continue;
+          var dx = p.x - q.x, dy = p.y - q.y;
+          if (dx * dx + dy * dy > u * u * 49) continue;
+          q.zebrana = 0.35;
+          if (q.wilk) {
+            punkty = Math.max(0, punkty - 3);
+            nap.dodaj('Wilk! −3', q.x, q.y - u * 5, '#ff6b5a', u * 4.4);
+            cz.dodaj(q.x, q.y, 14, ['#6b6b6b', '#a33', '#ddd'], u * 35, { r: u * 0.6 });
+          } else {
+            punkty += q.zasob.pkt;
+            nap.dodaj('+' + q.zasob.pkt, q.x, q.y - u * 5, q.zasob.id === 'zloto' ? '#ffe066' : '#fff4d0', u * 4.4);
+            cz.dodaj(q.x, q.y, 10, q.zasob.id === 'zloto' ? ['#ffe066', '#fff'] : q.zasob.id === 'jagody' ? ['#c2185b', '#6a1b9a'] : q.zasob.id === 'kamien' ? ['#9e9e9e', '#cfcfcf'] : ['#8d6e63', '#c8a27a'], u * 30, { r: u * 0.6 });
+            if (punkty >= cel) { koniec = true; env.wygrana(); }
+          }
+          return;
+        }
+      }
+
+      function rysujZasob(g, q, s) {
+        var id = q.zasob.id;
+        if (id === 'jagody') {
+          g.fillStyle = '#2e7d32';
+          g.beginPath(); g.arc(0, 0, u * 4 * s, 0, 6.283); g.arc(u * 2.6 * s, u * 0.8 * s, u * 3 * s, 0, 6.283); g.arc(-u * 2.6 * s, u * 1 * s, u * 3 * s, 0, 6.283); g.fill();
+          g.fillStyle = '#c2185b';
+          [[-1.5, -1], [1, -1.8], [2.4, 1], [-2.6, 1.6], [0.2, 1.2], [-0.4, -2.6]].forEach(function (b) {
+            g.beginPath(); g.arc(b[0] * u * s, b[1] * u * s, u * 0.85 * s, 0, 6.283); g.fill();
+          });
+        } else if (id === 'drewno') {
+          g.fillStyle = '#6d4c41';
+          g.fillRect(-u * 0.8 * s, 0, u * 1.6 * s, u * 4 * s);
+          g.fillStyle = '#1b5e20';
+          g.beginPath(); g.moveTo(0, -u * 6 * s); g.lineTo(u * 4.2 * s, u * 1 * s); g.lineTo(-u * 4.2 * s, u * 1 * s); g.fill();
+          g.fillStyle = '#2e7d32';
+          g.beginPath(); g.moveTo(0, -u * 8 * s); g.lineTo(u * 3.2 * s, -u * 2 * s); g.lineTo(-u * 3.2 * s, -u * 2 * s); g.fill();
+        } else if (id === 'kamien') {
+          g.fillStyle = '#8d8d8d';
+          g.beginPath(); g.moveTo(-u * 4 * s, u * 2 * s); g.lineTo(-u * 2.6 * s, -u * 2.4 * s); g.lineTo(u * 1 * s, -u * 3.4 * s); g.lineTo(u * 4 * s, -u * 0.6 * s); g.lineTo(u * 3.4 * s, u * 2.4 * s); g.closePath(); g.fill();
+          g.fillStyle = '#bdbdbd';
+          g.beginPath(); g.moveTo(-u * 2.4 * s, -u * 1.8 * s); g.lineTo(u * 0.8 * s, -u * 2.8 * s); g.lineTo(u * 0.2 * s, -u * 0.6 * s); g.closePath(); g.fill();
+        } else {
+          g.fillStyle = '#7b6a55';
+          g.beginPath(); g.moveTo(-u * 4 * s, u * 2 * s); g.lineTo(-u * 2.2 * s, -u * 2.6 * s); g.lineTo(u * 2 * s, -u * 3 * s); g.lineTo(u * 4 * s, u * 2 * s); g.closePath(); g.fill();
+          g.fillStyle = '#ffd54f';
+          [[-1.6, -0.6], [0.8, -1.6], [1.8, 0.8], [-0.4, 1]].forEach(function (b) {
+            g.beginPath(); g.moveTo(b[0] * u * s, (b[1] - 0.9) * u * s); g.lineTo((b[0] + 0.8) * u * s, b[1] * u * s); g.lineTo(b[0] * u * s, (b[1] + 0.9) * u * s); g.lineTo((b[0] - 0.8) * u * s, b[1] * u * s); g.fill();
+          });
+        }
+      }
+
+      function rysujWilka(g, s, czasW) {
+        g.fillStyle = '#5d5d66';
+        g.beginPath(); g.ellipse(0, u * 0.5 * s, u * 4.2 * s, u * 2.2 * s, 0, 0, 6.283); g.fill();
+        g.beginPath(); g.ellipse(u * 3.8 * s, -u * 1.2 * s, u * 2 * s, u * 1.6 * s, 0, 0, 6.283); g.fill();
+        g.beginPath(); g.moveTo(u * 3 * s, -u * 2.4 * s); g.lineTo(u * 3.6 * s, -u * 4 * s); g.lineTo(u * 4.2 * s, -u * 2.4 * s); g.fill();
+        g.fillStyle = '#ffeb3b';
+        g.beginPath(); g.arc(u * 4.4 * s, -u * 1.4 * s, u * 0.45 * s, 0, 6.283); g.fill();
+        g.strokeStyle = '#5d5d66';
+        g.lineWidth = u * 0.8 * s;
+        g.beginPath(); g.moveTo(-u * 4 * s, 0); g.lineTo(-u * 6 * s, -u * 1.5 * s + Math.sin(czasW * 10) * u * 0.6); g.stroke();
+      }
+
+      return {
+        krok: function (dt) {
+          cz.krok(dt);
+          nap.krok(dt);
+          if (koniec) return;
+          czas += dt;
+          doZasobu -= dt;
+          if (doZasobu <= 0) { nowaRzecz(); doZasobu = coIle * los(0.7, 1.3); }
+          for (var i = rzeczy.length - 1; i >= 0; i--) {
+            var q = rzeczy[i];
+            if (q.zebrana) { q.zebrana -= dt; if (q.zebrana <= 0) rzeczy.splice(i, 1); continue; }
+            q.zycie -= dt;
+            q.faza = q.zycie > 0 ? Math.min(1, q.faza + dt * 7) : q.faza - dt * 5;
+            if (q.faza <= 0 && q.zycie <= 0) rzeczy.splice(i, 1);
+          }
+          if (czas >= czasGry) { koniec = true; env.przegrana('Zima nadeszła — zebrałeś ' + punkty + ' z ' + cel + '. Spichlerz pusty.'); }
+        },
+        rysuj: function (g) {
+          g.fillStyle = '#7da34a';
+          g.fillRect(0, 0, W, H);
+          // ścieżka i trawa
+          g.strokeStyle = 'rgba(160, 120, 70, 0.55)';
+          g.lineWidth = u * 7;
+          g.lineCap = 'round';
+          g.beginPath();
+          sciezka.forEach(function (p, i) { if (i) g.lineTo(p.x, p.y); else g.moveTo(p.x, p.y); });
+          g.stroke();
+          g.strokeStyle = 'rgba(40, 80, 20, 0.45)';
+          g.lineWidth = Math.max(1, u * 0.3);
+          trawa.forEach(function (p) {
+            g.beginPath(); g.moveTo(p.x, p.y); g.lineTo(p.x - u * 0.5 * p.s, p.y - u * 1.4 * p.s);
+            g.moveTo(p.x, p.y); g.lineTo(p.x + u * 0.6 * p.s, p.y - u * 1.2 * p.s); g.stroke();
+          });
+          // spichlerz Nolliego
+          g.save();
+          g.translate(W - u * 11, H - u * 10);
+          g.fillStyle = '#a1774a'; g.fillRect(-u * 6, -u * 4, u * 12, u * 8);
+          g.fillStyle = '#6d3f1f'; g.beginPath(); g.moveTo(-u * 7.5, -u * 4); g.lineTo(0, -u * 9); g.lineTo(u * 7.5, -u * 4); g.fill();
+          g.fillStyle = '#3e2412'; g.fillRect(-u * 1.6, -u * 0.5, u * 3.2, u * 4.5);
+          g.restore();
+          rzeczy.forEach(function (q) {
+            var s = q.zebrana ? 1 + (0.35 - q.zebrana) * 2 : q.faza;
+            if (s <= 0) return;
+            g.save();
+            g.globalAlpha = q.zebrana ? Math.max(0, q.zebrana * 3) : 1;
+            g.translate(q.x, q.y);
+            g.fillStyle = 'rgba(0,0,0,0.18)';
+            g.beginPath(); g.ellipse(0, u * 3 * s, u * 4.5 * s, u * 1.4 * s, 0, 0, 6.283); g.fill();
+            if (q.wilk) rysujWilka(g, s, czas); else rysujZasob(g, q, s);
+            // pierścień upływu czasu
+            if (!q.zebrana && q.zycie > 0) {
+              g.strokeStyle = q.wilk ? 'rgba(200, 40, 30, 0.8)' : 'rgba(255, 244, 208, 0.85)';
+              g.lineWidth = u * 0.45;
+              g.beginPath(); g.arc(0, 0, u * 6.2, -Math.PI / 2, -Math.PI / 2 + 6.283 * Math.max(0, q.zycie / zycieZasobu)); g.stroke();
+            }
+            g.restore();
+          });
+          cz.rysuj(g);
+          nap.rysuj(g);
+          var zostalo = Math.max(0, czasGry - czas);
+          pergaminHud(g, W, u, '🌾 ' + punkty + ' / ' + cel, '⏳ ' + zostalo.toFixed(1) + ' s', '', zostalo < 5);
+          g.fillStyle = 'rgba(80, 50, 20, 0.35)';
+          zaokr(g, W - u * 22, u * 5.2, u * 17, u * 2.6, u * 1.3); g.fill();
+          g.fillStyle = '#6b8e23';
+          zaokr(g, W - u * 22, u * 5.2, u * 17 * Math.min(1, punkty / cel), u * 2.6, u * 1.3); g.fill();
+        },
+        wcisniete: function (p) { stuk(p); },
+        ruch: function () {},
+        puszczone: function () {},
+        klawisz: function () {},
+        podpowiedz: function () { return czas < 2.5 ? 'Stukaj zasoby, omijaj wilki' : ''; },
+        debug: function () {
+          return { punkty: punkty, cel: cel, rzeczy: rzeczy.map(function (q) { return { id: q.id, x: q.x, y: q.y, wilk: q.wilk, faza: q.faza, zebrana: q.zebrana, pkt: q.wilk ? 0 : q.zasob.pkt }; }) };
+        }
+      };
+    }
+  };
+
+  /* =========================================================
+     0 A.D. 2 · Żółw Qubera (trudna)
+     ========================================================= */
+  var STRONY = [
+    { nazwa: 'N', dx: 0, dy: -1 },
+    { nazwa: 'E', dx: 1, dy: 0 },
+    { nazwa: 'S', dx: 0, dy: 1 },
+    { nazwa: 'W', dx: -1, dy: 0 }
+  ];
+
+  var zolw = {
+    nazwa: 'Żółw Qubera',
+    ikona: '🛡️',
+    opis: [
+      'Łucznicy szyją z czterech stron. Stuknij stronę ekranu (albo strzałki / przesuń palcem), żeby obrócić tarcze.',
+      'Łucznik, który się świeci, zaraz strzeli — tarcze muszą patrzeć w jego stronę, gdy strzały dolecą.',
+      'Szarżę konnicy też przyjmij frontem. Przetrwaj wszystkie salwy.'
+    ],
+    start: function (env) {
+      var W = env.W, H = env.H, u = env.u, t = env.t;
+      var gora = u * 13;
+      var cx = W / 2, cy = (H + gora) / 2;
+      var ileSalw = Math.round(lerp(10, 18, t));
+      var zolnierze = Math.round(lerp(6, 4, t));
+      var maksZolnierzy = zolnierze;
+      var ostrzezenie = lerp(1.15, 0.6, t);
+      var lot = lerp(0.75, 0.45, t);
+      var przerwa = lerp(1.35, 0.6, t);
+      var szansaPodwojnej = t < 0.3 ? 0 : lerp(0.15, 0.35, t);
+      var szansaZmylki = t < 0.25 ? 0 : lerp(0.1, 0.3, t);
+      var szansaSzarzy = t < 0.2 ? 0 : lerp(0.12, 0.25, t);
+      var kier = 0, katWidok = -Math.PI / 2;
+      var salwy = [], czas = 0, doSalwy = 1.2, wyslane = 0, odparte = 0, koniec = false, wstrzas = 0, blysk = 0;
+      var cz = czasteczki(), nap = napisy();
+      var zasiegX = W / 2 - u * 6, zasiegY = (H - gora) / 2 - u * 6;
+      var licznikSalw = 0;
+
+      function punktStrony(s, dalej) {
+        var d = dalej || 1;
+        return { x: cx + STRONY[s].dx * zasiegX * d, y: cy + STRONY[s].dy * zasiegY * d };
+      }
+
+      function nowaSalwa() {
+        var szarza = Math.random() < szansaSzarzy;
+        var s = Math.floor(Math.random() * 4);
+        if (s === kier && Math.random() < 0.6) s = (s + 1 + Math.floor(Math.random() * 3)) % 4;   // najczęściej z innej strony
+        salwy.push({ id: ++licznikSalw, strona: s, typ: szarza ? 'szarza' : 'luk', faza: 'celuje', czas: szarza ? ostrzezenie * 1.8 : ostrzezenie, lot: szarza ? lot * 1.6 : lot, prawdziwa: true });
+        wyslane++;
+        // podwójna: druga prawdziwa salwa z innej strony, trafia chwilę po pierwszej
+        if (!szarza && wyslane < ileSalw && Math.random() < szansaPodwojnej) {
+          var d2 = (s + 1 + Math.floor(Math.random() * 3)) % 4;
+          salwy.push({ id: ++licznikSalw, strona: d2, typ: 'luk', faza: 'celuje', czas: ostrzezenie + lerp(0.75, 0.5, t), lot: lot, prawdziwa: true });
+          wyslane++;
+        }
+        // zmyłka: łucznik z innej strony też napina, ale nie strzela
+        if (!szarza && Math.random() < szansaZmylki) {
+          var z = (s + 1 + Math.floor(Math.random() * 3)) % 4;
+          salwy.push({ id: ++licznikSalw, strona: z, typ: 'luk', faza: 'celuje', czas: ostrzezenie * 0.8, lot: lot, prawdziwa: false });
+        }
+      }
+
+      function obroc(s) {
+        if (koniec || s === kier) return;
+        kier = s;
+        cz.dodaj(cx + STRONY[s].dx * u * 8, cy + STRONY[s].dy * u * 8, 6, ['#f0c75e', '#fff4d0'], u * 20, { r: u * 0.5 });
+      }
+
+      function trafienie(sal) {
+        if (sal.strona === kier) {
+          odparte++;
+          nap.dodaj(sal.typ === 'szarza' ? 'Włócznie!' : 'Blok!', cx + STRONY[sal.strona].dx * u * 10, cy + STRONY[sal.strona].dy * u * 10, '#fff4d0', u * 4.4);
+          cz.dodaj(cx + STRONY[sal.strona].dx * u * 9, cy + STRONY[sal.strona].dy * u * 9, 12, ['#c8a27a', '#f0c75e', '#fff'], u * 30, { r: u * 0.5, kwadrat: true });
+        } else {
+          var strata = sal.typ === 'szarza' ? 2 : 1;
+          zolnierze = Math.max(0, zolnierze - strata);
+          wstrzas = u * (sal.typ === 'szarza' ? 2 : 1.2);
+          blysk = 0.3;
+          nap.dodaj('−' + strata + ' ⚔', cx, cy - u * 12, '#ff6b5a', u * 4.4);
+          cz.dodaj(cx, cy, 16, ['#b71c1c', '#ff8a65'], u * 35, { r: u * 0.6 });
+          if (zolnierze <= 0) { koniec = true; env.przegrana('Formacja rozbita! ' + (sal.typ === 'szarza' ? 'Konnica wjechała w bok.' : 'Strzały przeszły bokiem.')); }
+        }
+      }
+
+      function rysujLucznika(g, x, y, kat, napiety, czasL) {
+        g.save();
+        g.translate(x, y);
+        g.rotate(kat);
+        g.fillStyle = 'rgba(0,0,0,0.2)';
+        g.beginPath(); g.ellipse(u * 0.4, u * 0.4, u * 2.4, u * 1.8, 0, 0, 6.283); g.fill();
+        g.fillStyle = '#4e6b2f';
+        g.beginPath(); g.ellipse(0, 0, u * 1.8, u * 2.2, 0, 0, 6.283); g.fill();
+        g.fillStyle = '#e0b48a';
+        g.beginPath(); g.arc(u * 0.3, 0, u * 1.1, 0, 6.283); g.fill();
+        g.strokeStyle = '#6d4c41';
+        g.lineWidth = u * 0.45;
+        var napiecie = napiety ? u * 1.2 + Math.sin(czasL * 30) * u * 0.1 : 0;
+        g.beginPath(); g.arc(u * 1.6, 0, u * 2.6, -1.1, 1.1); g.stroke();
+        g.strokeStyle = '#eee';
+        g.lineWidth = u * 0.2;
+        g.beginPath(); g.moveTo(u * 1.6 + Math.cos(-1.1) * u * 2.6, Math.sin(-1.1) * u * 2.6); g.lineTo(u * 1.2 - napiecie, 0); g.lineTo(u * 1.6 + Math.cos(1.1) * u * 2.6, Math.sin(1.1) * u * 2.6); g.stroke();
+        g.restore();
+      }
+
+      function rysujJezdzca(g, x, y, kat) {
+        g.save();
+        g.translate(x, y);
+        g.rotate(kat);
+        g.fillStyle = '#6d4c41';
+        g.beginPath(); g.ellipse(0, 0, u * 4, u * 1.8, 0, 0, 6.283); g.fill();
+        g.beginPath(); g.ellipse(u * 3.8, 0, u * 1.6, u * 1, 0, 0, 6.283); g.fill();
+        g.fillStyle = '#8e2a1e';
+        g.beginPath(); g.arc(-u * 0.4, 0, u * 1.5, 0, 6.283); g.fill();
+        g.strokeStyle = '#ccc';
+        g.lineWidth = u * 0.35;
+        g.beginPath(); g.moveTo(-u * 1, -u * 1); g.lineTo(u * 6, -u * 1.6); g.stroke();
+        g.restore();
+      }
+
+      return {
+        krok: function (dt) {
+          cz.krok(dt);
+          nap.krok(dt);
+          wstrzas = Math.max(0, wstrzas - dt * u * 8);
+          blysk = Math.max(0, blysk - dt);
+          var cel = -Math.PI / 2 + kier * Math.PI / 2;
+          var roznica = Math.atan2(Math.sin(cel - katWidok), Math.cos(cel - katWidok));
+          katWidok += roznica * Math.min(1, dt * 18);
+          if (koniec) return;
+          czas += dt;
+          if (wyslane < ileSalw) {
+            doSalwy -= dt;
+            if (doSalwy <= 0) { nowaSalwa(); doSalwy = przerwa * los(0.8, 1.25) + ostrzezenie * 0.4; }
+          }
+          for (var i = salwy.length - 1; i >= 0; i--) {
+            var s = salwy[i];
+            s.czas -= dt;
+            if (s.faza === 'celuje' && s.czas <= 0) {
+              if (!s.prawdziwa) { salwy.splice(i, 1); continue; }
+              s.faza = 'leci';
+              s.czas = s.lot;
+            } else if (s.faza === 'leci' && s.czas <= 0) {
+              salwy.splice(i, 1);
+              trafienie(s);
+              if (koniec) return;
+            }
+          }
+          if (wyslane >= ileSalw && salwy.length === 0 && !koniec) { koniec = true; env.wygrana(); }
+        },
+        rysuj: function (g) {
+          g.save();
+          if (wstrzas > 0) g.translate(los(-1, 1) * wstrzas, los(-1, 1) * wstrzas);
+          // pole bitwy: ziemia i trawa
+          g.fillStyle = '#9c8a5a';
+          g.fillRect(-20, -20, W + 40, H + 40);
+          var gr = g.createRadialGradient(cx, cy, u * 5, cx, cy, Math.max(W, H) * 0.7);
+          gr.addColorStop(0, 'rgba(120, 90, 50, 0.6)');
+          gr.addColorStop(1, 'rgba(90, 120, 50, 0.7)');
+          g.fillStyle = gr;
+          g.fillRect(-20, -20, W + 40, H + 40);
+          // łucznicy na czterech stronach
+          for (var s = 0; s < 4; s++) {
+            var p = punktStrony(s, 1.02);
+            var aktywny = salwy.find(function (x) { return x.strona === s && x.faza === 'celuje'; });
+            if (aktywny) {
+              g.fillStyle = 'rgba(255, 80, 40,' + (0.25 + Math.sin(czas * 20) * 0.15) + ')';
+              g.beginPath(); g.arc(p.x, p.y, u * 7, 0, 6.283); g.fill();
+            }
+            var kat = Math.atan2(cy - p.y, cx - p.x);
+            var px = -Math.sin(kat), py = Math.cos(kat);
+            for (var l = -1; l <= 1; l++) rysujLucznika(g, p.x + px * l * u * 5, p.y + py * l * u * 5, kat, !!aktywny, czas);
+            if (aktywny) napisSerif(g, '!', p.x - Math.cos(kat) * u * 1, p.y - Math.sin(kat) * u * 1 - u * 6, u * 5, '#b71c1c', '#fff4d0');
+          }
+          // lecące strzały i szarże
+          salwy.forEach(function (sal) {
+            var start = punktStrony(sal.strona, 1), kat = Math.atan2(cy - start.y, cx - start.x);
+            if (sal.typ === 'szarza') {
+              var postep = sal.faza === 'leci' ? 1 - sal.czas / sal.lot : -0.15 * (sal.czas / (ostrzezenie * 1.8));
+              var qx = start.x + (cx - start.x) * Math.max(-0.2, postep) * 0.82, qy = start.y + (cy - start.y) * Math.max(-0.2, postep) * 0.82;
+              var px2 = -Math.sin(kat), py2 = Math.cos(kat);
+              for (var j = -1; j <= 1; j++) rysujJezdzca(g, qx + px2 * j * u * 5 - Math.cos(kat) * Math.abs(j) * u * 3, qy + py2 * j * u * 5 - Math.sin(kat) * Math.abs(j) * u * 3, kat);
+              return;
+            }
+            if (sal.faza !== 'leci') return;
+            var f = 1 - sal.czas / sal.lot;
+            var px3 = -Math.sin(kat), py3 = Math.cos(kat);
+            g.strokeStyle = '#3e2412';
+            g.lineWidth = Math.max(1, u * 0.3);
+            for (var a = -2; a <= 2; a++) {
+              var ax = start.x + (cx - start.x) * f * 0.85 + px3 * a * u * 2.2, ay = start.y + (cy - start.y) * f * 0.85 + py3 * a * u * 2.2 - Math.sin(f * Math.PI) * u * 4;
+              g.beginPath(); g.moveTo(ax, ay); g.lineTo(ax - Math.cos(kat) * u * 3, ay - Math.sin(kat) * u * 3); g.stroke();
+              g.fillStyle = '#ddd';
+              g.beginPath(); g.arc(ax, ay, u * 0.35, 0, 6.283); g.fill();
+            }
+          });
+          // formacja żółwia: legioniści z tarczami skierowanymi w stronę frontu
+          g.save();
+          g.translate(cx, cy);
+          g.rotate(katWidok + Math.PI / 2);
+          var rozstaw = u * 4.2;
+          var miejsca = [];
+          for (var r = -1; r <= 1; r++) for (var c = -1; c <= 1; c++) miejsca.push([c, r]);
+          miejsca.forEach(function (m, idx) {
+            var zywy = idx < Math.ceil(zolnierze / maksZolnierzy * 9);
+            var x = m[0] * rozstaw, y = m[1] * rozstaw;
+            g.fillStyle = zywy ? '#8e2a1e' : 'rgba(80, 50, 30, 0.35)';
+            zaokr(g, x - u * 1.8, y - u * 1.8, u * 3.6, u * 3.6, u * 0.8); g.fill();
+            if (zywy) {
+              g.strokeStyle = '#f0c75e';
+              g.lineWidth = u * 0.35;
+              g.stroke();
+              g.fillStyle = '#c9a44a';
+              g.beginPath(); g.arc(x, y, u * 0.6, 0, 6.283); g.fill();
+            }
+          });
+          // front: rząd tarcz i włóczni
+          g.fillStyle = '#a4301f';
+          zaokr(g, -rozstaw * 1.55, -rozstaw * 1.75, rozstaw * 3.1, u * 1.6, u * 0.6); g.fill();
+          g.strokeStyle = '#f0c75e';
+          g.lineWidth = u * 0.4;
+          g.stroke();
+          g.strokeStyle = '#cfcfcf';
+          g.lineWidth = u * 0.3;
+          for (var w = -1; w <= 1; w++) { g.beginPath(); g.moveTo(w * rozstaw, -rozstaw * 1.6); g.lineTo(w * rozstaw, -rozstaw * 2.6); g.stroke(); }
+          g.restore();
+          if (blysk > 0) { g.fillStyle = 'rgba(180, 20, 10,' + blysk + ')'; g.fillRect(-20, -20, W + 40, H + 40); }
+          cz.rysuj(g);
+          nap.rysuj(g);
+          g.restore();
+          pergaminHud(g, W, u, '🛡 ' + zolnierze, 'Salwa ' + Math.min(wyslane, ileSalw) + ' / ' + ileSalw, '🏹 ' + odparte, zolnierze <= 1);
+        },
+        wcisniete: function (p) {
+          var dx = p.x - cx, dy = p.y - cy;
+          if (Math.abs(dx) / zasiegX > Math.abs(dy) / zasiegY) obroc(dx > 0 ? 1 : 3);
+          else obroc(dy > 0 ? 2 : 0);
+        },
+        ruch: function () {},
+        puszczone: function () {},
+        klawisz: function (k, wdol) {
+          if (!wdol) return;
+          if (k === 'ArrowUp' || k === 'w') obroc(0);
+          else if (k === 'ArrowRight' || k === 'd') obroc(1);
+          else if (k === 'ArrowDown' || k === 's') obroc(2);
+          else if (k === 'ArrowLeft' || k === 'a') obroc(3);
+        },
+        podpowiedz: function () { return czas < 3 ? 'Stuknij stronę, z której strzelają' : ''; },
+        debug: function () {
+          return { zolnierze: zolnierze, kier: kier, wyslane: wyslane, ileSalw: ileSalw, cx: cx, cy: cy, zasiegX: zasiegX, zasiegY: zasiegY,
+            salwy: salwy.map(function (s) { return { id: s.id, strona: s.strona, faza: s.faza, czas: s.czas, prawdziwa: s.prawdziwa, typ: s.typ }; }) };
+        }
+      };
+    }
+  };
+
   var GRY = {
-    fortnite: [snajper, budowanieWBurzy]
+    fortnite: [snajper, budowanieWBurzy],
+    zeroad: [ekonomia, zolw]
   };
 
   /* =========================================================
@@ -868,6 +1344,11 @@
     ];
   }
 
+  var TEKSTY_RAMKI = {
+    fortnite: { walcz: 'Walcz!', wygrana: 'Victory Royale!', przegrana: 'Wyeliminowany', konfetti: ['#ffe34d', '#3cb6f7', '#ff4fa3', '#7dff9a', '#ffffff'] },
+    zeroad: { walcz: 'Do boju!', wygrana: 'Zwycięstwo!', przegrana: 'Klęska', konfetti: ['#f0c75e', '#8a1c12', '#fff4d0', '#6b8e23', '#c9a44a'] }
+  };
+
   function nazwaTrudnosci(t, trudna) {
     if (!trudna) return t < 0.25 ? 'Luz' : t < 0.6 ? 'Spoko' : t < 0.9 ? 'Konkret' : 'Pot na czole';
     return t < 0.25 ? 'Trudno' : t < 0.6 ? 'Ciężko' : t < 0.9 ? 'Bardzo ciężko' : 'KOSZMAR';
@@ -878,6 +1359,7 @@
     var wybor = dlaKwoty(opcje.kat, opcje.ile);
     if (!wybor) { opcje.naWygrana(null); return; }
     var gra = wybor.gra;
+    var tr = TEKSTY_RAMKI[opcje.kat] || TEKSTY_RAMKI.fortnite;
 
     var nak = el('div', 'minigra');
     nak.setAttribute('role', 'dialog');
@@ -972,7 +1454,7 @@
       var lista = el('ol', 'minigra-opis');
       gra.opis.forEach(function (o) { lista.appendChild(el('li', null, o)); });
       var przyciski = el('div', 'minigra-przyciski');
-      var btnGraj = el('button', 'minigra-btn glowny', 'Walcz!');
+      var btnGraj = el('button', 'minigra-btn glowny', tr.walcz);
       btnGraj.type = 'button';
       var nie = el('button', 'minigra-btn', 'Wróć');
       nie.type = 'button';
@@ -1039,11 +1521,11 @@
     function wygrana() {
       if (zamknieta) return;
       for (var i = 0; i < 4; i++) {
-        konfetti.dodaj(W * (0.2 + i * 0.2), H * 0.35, 30, ['#ffe34d', '#3cb6f7', '#ff4fa3', '#7dff9a', '#ffffff'], Math.min(W, H) * 0.9,
+        konfetti.dodaj(W * (0.2 + i * 0.2), H * 0.35, 30, tr.konfetti, Math.min(W, H) * 0.9,
           { r: Math.min(W, H) / 110, grawitacja: Math.min(W, H) * 0.9, wGore: Math.min(W, H) * 0.5, zycie: 2.2, kwadrat: true });
       }
       var ikona = el('div', 'minigra-panel-ikona', '🏆');
-      var h = el('h3', 'minigra-panel-tytul wygrana', 'Victory Royale!');
+      var h = el('h3', 'minigra-panel-tytul wygrana', tr.wygrana);
       var p = el('p', 'minigra-panel-nad');
       p.appendChild(el('b', null, opcje.kwotaTekst));
       p.appendChild(document.createTextNode(' leci do: ' + opcje.dla));
@@ -1059,8 +1541,8 @@
     function przegrana(powod) {
       if (zamknieta) return;
       ustawBlokade();
-      var ikona = el('div', 'minigra-panel-ikona', '💀');
-      var h = el('h3', 'minigra-panel-tytul przegrana', 'Wyeliminowany');
+      var ikona = el('div', 'minigra-panel-ikona', opcje.kat === 'zeroad' ? '⚰️' : '💀');
+      var h = el('h3', 'minigra-panel-tytul przegrana', tr.przegrana);
       var p = el('p', 'minigra-panel-nad', powod);
       var info = el('p', 'minigra-info', 'Wpłata nie poszła. Spróbuj jeszcze raz.');
       var przyciski = el('div', 'minigra-przyciski');

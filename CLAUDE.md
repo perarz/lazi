@@ -68,6 +68,11 @@ Przekroczenie limitu = strona i gra przestają działać dla wszystkich. Dlatego
 - `api/arena.js`: 200 zapisów / 10 s na IP (gracze za jednym Wi-Fi mają wspólne IP!), log max 4000
   zdarzeń (potem reset i nowa „epoka”), ciało ≤ 24 KB, TTL 6 h.
 - `api/zrzutka.js`: 30 wpłat / 60 s na IP, lista ostatnich 60 wpłat.
+- **Sezony zrzutki**: `SEZON` i `KLUCZE` w `api/zrzutka.js`. Bieżący sezon pisze do własnych kluczy
+  (sezon 2: `zrzutka:s2:sumy`, `zrzutka:s2:wplaty`), stare zostają jako archiwum. `GET ?sezon=N` oddaje
+  archiwum z `Cache-Control: s-maxage=604800` (cache Vercela), a klient trzyma je w `localStorage` na
+  zawsze — Hall of Fame praktycznie nie kosztuje komend. Nowy sezon = nowy wpis w `KLUCZE`, podbicie
+  `SEZON` w API i w `app.js` (+ ewentualnie nowe okno z wynikami).
 
 ---
 
@@ -78,6 +83,7 @@ Przekroczenie limitu = strona i gra przestają działać dla wszystkich. Dlatego
 | `index.html` | Strona główna: zrzutka. **Karty graczy z awatarami SVG i opisami są tu**, plus sprite z symbolami (`#vbuck`, `#srebrnik`, `#scutum`, `#obywatelka`) i wspólnymi gradientami |
 | `zrzutka/dane.js` | Gracze (cele, reakcje, zaczepki), odznaki, rangi — dane dla `app.js` |
 | `zrzutka/minigry.js`, `minigry.css` | Minigierki przed wpłatą (sekcja 6) |
+| `zrzutka/sezon.css` | Plakietki sezonu i okno Hall of Fame |
 | `zrzutka/app.js` | Logika strony: kategorie `#fortnite` / `#0ad`, wpłaty, liczniki, odznaki, profil, sekcja osiągnięć z Areny |
 | `zrzutka/baza.css`, `fortnite.css`, `zeroad.css`, `motyw.js` | Szkielet, dwa motywy, ustawienie motywu przed malowaniem |
 | `gra/` | **Arena GOATów** (sekcja 5) |
@@ -89,8 +95,9 @@ Przekroczenie limitu = strona i gra przestają działać dla wszystkich. Dlatego
 | `api/arena.js` | Serwer gry: log zdarzeń, obecność, zamek startu partii |
 | `vercel.json` | Nagłówki bezpieczeństwa |
 
-**Klucze `localStorage`**: `zrzutka-v2` (wpłaty, odznaki), `arena:id`, `arena:nazwa`, `arena:bron`,
-`arena:staty`, `arena:osiagniecia`.
+**Klucze `localStorage`**: `zrzutka-v2` (wpłaty, odznaki; pole `sezon` — zapis z innego sezonu zostawia
+tylko odznaki i zaczepki), `zrzutka:minigra-blokada`, `zrzutka:sezon1` (archiwum sezonu 1, pobrane raz),
+`zrzutka:sezon2-intro`, `arena:id`, `arena:nazwa`, `arena:bron`, `arena:staty`, `arena:osiagniecia`.
 
 ---
 
@@ -188,15 +195,22 @@ Przekroczenie limitu = strona i gra przestają działać dla wszystkich. Dlatego
   (`localStorage['zrzutka:minigra-blokada']`). Limit jednej wpłaty: 2000 (`maks` w `dane.js` i w `api/zrzutka.js`).
   Gry: `GRY[kat] = [łatwa, trudna]`; gra = `{ nazwa, opis[], start(env) }` → `{ krok, rysuj, wcisniete,
   ruch, puszczone(p, stukniecie), najazd?, klawisz, podpowiedz, debug }`, gra ma też `ikona`. Fortnite:
-  „Snajper z Tilted” (łatwa) i „Build fight w burzy” (trudna). Ramka robi ekran startu, odliczanie 3-2-1,
+  „Snajper z Tilted” (łatwa) i „Build fight w burzy” (trudna); 0 A.D.: „Ekonomia Nolliego” (łatwa: stukanie
+  zasobów, wilki = −3) i „Żółw Qubera” (trudna: obracanie tarcz na 4 strony, salwy, zmyłki, podwójne salwy,
+  szarże). Teksty ramki per kategoria: `TEKSTY_RAMKI`. Ramka robi ekran startu, odliczanie 3-2-1,
   konfetti i blokadę. Kalibracja botami w Node (`_gry` + `debug()`): Build fight — bot z pełną wiedzą ~100%
   przy t=0 i ~15–20% przy t=1; Snajper — „ludzki” bot (reakcja 0,45–0,6 s, 20% pudeł) ~100% przy t=0
-  i ~80–90% przy t=1. Tu wolno `Math.random` (to nie Arena).
+  i ~80–90% przy t=1; Ekonomia — bot 2,2 stuknięcia/s ~75% przy t=1; Żółw — bot z opóźnionym widzeniem
+  (reakcja 0,4–0,5 s, 0,2 s między stuknięciami) ~100% do t=0,5, przy t=1 ~40% (szybki) / ~0% (przeciętny).
+  Tu wolno `Math.random` (to nie Arena).
   Pułapki: pełny okrąg „pod prąd” w canvasie to `arc(x, y, r, 2π, 0, true)` (od 0 do 2π daje zero);
   rozmiar sceny mierz `offsetWidth` (getBoundingClientRect łapie animację scale).
 - **Okno wpłaty**: kwota z suwaka `#suwak` (pole `#pole-ile` i szybkie kwoty są ukryte, ale zostają źródłem
   wartości — `ustawKwote()` synchronizuje wszystko). Nad suwakiem strefy gier z `ZRZUTKA_MINIGRY.strefy(kat)`,
   pod nim wskaźnik gry i trudności. Tekst przycisku: `teksty.walcz`, gdy kategoria ma minigierki.
+- **Sezon 2 / Hall of Fame**: plakietka `.sezon-pill` w obu nagłówkach i `S2` przy logo (`zrzutka/sezon.css`),
+  okno `#okno-sezon` — podium (portrety klonowane z kart), reszta rankingu, największe wpłaty z ostatnich 60.
+  Przy pierwszej wizycie otwiera się samo (raz, tylko gdy archiwum się pobrało).
 - **Nowy gracz** = karta w `index.html` (awatar SVG 160×160, opis, staty, cele) + wpis w
   `zrzutka/dane.js` (w tej samej kategorii) + id w `GRACZE` w `api/zrzutka.js` (inaczej serwer odrzuci
   wpłaty) + ewentualnie odznaka. Zaktualizuj teksty z liczbą wojowników i licznik odznak.
