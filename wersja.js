@@ -5,6 +5,16 @@
 (function () {
   var historia = [
     {
+      wersja: '4.0', data: '2026-09-25', tytul: 'Sezon 2',
+      zmiany: [
+        'Startuje sezon 2! Wszystkie liczniki wyzerowane — odznaki zostają.',
+        'Hall of Fame sezonu 1: podium w obu kategoriach i największe wpłaty (plakietka „Sezon 2” nad tytułem).',
+        'Srebrniki też trzeba wywalczyć: „Ekonomia Nolliego” do 1000 — zbieraj zasoby, omijaj wilki.',
+        'Powyżej 1000: „Żółw Qubera” — obracaj tarcze w stronę salw i szarż. Przy 2000 to prawdziwa rzeź.',
+        'Przycisk w 0 A.D.: „Stań do bitwy o srebrniki”.'
+      ]
+    },
+    {
       wersja: '3.10.2', data: '2026-09-25', tytul: 'Suwak, Snajper z Tilted i ładniejsze gry',
       zmiany: [
         'Nowe okno wpłaty: kwotę wybierasz suwakiem, a nad nim widać, która gra czeka (🎯 do 1000, 🔨 powyżej). Przycisk to teraz „Zawalcz o V-dolce”.',

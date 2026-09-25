@@ -155,6 +155,7 @@ window.ZRZUTKA_DANE = {
         nickPusty: 'Anonimowy mecenas',
         wiadomosc: 'Słowo do wojownika',
         wyslij: 'Przypieczętuj darowiznę',
+        walcz: 'Stań do bitwy o srebrniki',
         brakKwoty: 'Wpisz, ile srebrników chcesz przekazać.',
         ujemna: 'Grabież? W tej fundacji? Nigdy!',
         zero: 'Zero srebrników? Nawet Nolli daje więcej, a on wszystko chowa.',

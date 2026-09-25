@@ -1,0 +1,255 @@
+/* ============================================================
+   Sezon 2: plakietki i okno „Hall of Fame · Sezon 1”
+   Kolory z aktywnego motywu.
+   ============================================================ */
+
+/* S2 przy logo */
+.logo-sezon {
+  display: inline-block;
+  margin-left: 4px;
+  padding: 1px 6px;
+  border-radius: 6px;
+  font: 800 11px var(--f-tekst);
+  letter-spacing: 0.04em;
+  color: var(--c-kat-aktywna-tekst);
+  background: var(--c-kat-aktywna);
+  vertical-align: middle;
+  transform: translateY(-2px) rotate(-6deg);
+}
+
+/* pigułka w nagłówku kategorii */
+.sezon-pill {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  width: fit-content;
+  max-width: 100%;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  margin: 0 auto 12px;
+  padding: 6px 14px 6px 6px;
+  border: 1px solid var(--c-panel-ramka);
+  border-radius: 999px;
+  background: var(--c-panel);
+  color: var(--c-tekst);
+  font: 600 14px var(--f-tekst);
+  cursor: pointer;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
+  transition: transform 0.15s ease, border-color 0.15s ease;
+}
+
+.sezon-pill:hover { transform: translateY(-2px); border-color: var(--c-akcent); }
+
+.sezon-pill-znak {
+  display: inline-grid;
+  place-items: center;
+  min-width: 30px;
+  height: 26px;
+  padding: 0 6px;
+  border-radius: 999px;
+  font-weight: 800;
+  color: var(--c-kat-aktywna-tekst);
+  background: var(--c-kat-aktywna);
+}
+
+.sezon-pill-link {
+  color: var(--c-akcent);
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+[data-motyw="zeroad"] .sezon-pill { font-family: var(--f-etykieta); }
+
+/* ------------------------------------------------------------ okno */
+
+.okno-sezon { width: min(560px, calc(100vw - 24px)); }
+
+.sezon-tresc {
+  position: relative;
+  padding: 22px 20px 20px;
+  text-align: center;
+}
+
+.sezon-nad {
+  display: inline-block;
+  margin: 0 0 8px;
+  padding: 4px 12px;
+  border-radius: 999px;
+  font: 800 13px var(--f-tekst);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--c-kat-aktywna-tekst);
+  background: var(--c-kat-aktywna);
+}
+
+.sezon-nad[hidden] { display: none; }
+
+.sezon-tytul {
+  margin: 0 0 6px;
+  font-family: var(--f-display);
+  font-size: clamp(1.6rem, 6vw, 2.2rem);
+  line-height: 1.05;
+  color: var(--c-okno-tekst);
+}
+
+[data-motyw="fortnite"] .sezon-tytul { text-transform: uppercase; }
+
+.sezon-opis {
+  margin: 0 0 14px;
+  color: var(--c-okno-tekst-2);
+  font-size: 0.95rem;
+}
+
+.sezon-kat {
+  margin: 0 0 16px;
+  padding: 12px 12px 10px;
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.18);
+}
+
+[data-motyw="zeroad"] .sezon-kat { background: rgba(90, 60, 25, 0.12); border: 1px solid rgba(90, 60, 25, 0.25); }
+
+.sezon-kat-tytul {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin: 0 0 10px;
+  font-family: var(--f-display);
+  font-size: 1.15rem;
+  color: var(--c-okno-tekst);
+}
+
+.sezon-kat-tytul .vb { font-size: 1.2em; }
+.sezon-kat-tytul small { font: 500 0.8rem var(--f-tekst); color: var(--c-okno-tekst-3); }
+
+/* podium 2 · 1 · 3 */
+.sezon-podium {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 8px;
+}
+
+.sezon-stopien {
+  flex: 1;
+  max-width: 150px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+}
+
+.sezon-portret {
+  width: 64px;
+  height: 64px;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 3px solid var(--c-okno-akcent);
+  background: rgba(0, 0, 0, 0.25);
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.35);
+}
+
+.sezon-stopien.m1 .sezon-portret { width: 84px; height: 84px; border-color: #ffd23b; box-shadow: 0 0 0 3px rgba(255, 210, 59, 0.35), 0 8px 20px rgba(0, 0, 0, 0.4); }
+
+.sezon-portret svg { display: block; width: 100%; height: 100%; }
+/* w portrecie na podium bez animacji mrugania i furii */
+.sezon-portret .furia, .sezon-portret .rumieniec { opacity: 0; }
+
+.sezon-nick {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 800;
+  font-size: 0.95rem;
+  color: var(--c-okno-tekst);
+}
+
+.sezon-kwota {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--f-liczby);
+  font-size: 1rem;
+  color: var(--c-okno-tekst-2);
+}
+
+.sezon-kwota .vb { font-size: 1.1em; }
+
+.sezon-blok {
+  width: 100%;
+  display: grid;
+  place-items: center;
+  margin-top: 4px;
+  border-radius: 8px 8px 0 0;
+  font-size: 1.6rem;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.22), rgba(255, 255, 255, 0.06));
+}
+
+.sezon-stopien.m1 .sezon-blok { height: 64px; background: linear-gradient(180deg, rgba(255, 210, 59, 0.55), rgba(255, 210, 59, 0.12)); }
+.sezon-stopien.m2 .sezon-blok { height: 44px; }
+.sezon-stopien.m3 .sezon-blok { height: 30px; }
+
+.sezon-reszta {
+  margin: 10px 0 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: miejsce 3;
+  text-align: left;
+}
+
+.sezon-hojni .sezon-reszta { counter-reset: miejsce 0; margin-top: 0; }
+
+.sezon-reszta li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 6px 8px;
+  border-top: 1px solid rgba(128, 128, 128, 0.2);
+  counter-increment: miejsce;
+  color: var(--c-okno-tekst-2);
+}
+
+.sezon-reszta li::before {
+  content: counter(miejsce) '.';
+  min-width: 1.6em;
+  font-weight: 800;
+  color: var(--c-okno-tekst-3);
+}
+
+.sezon-reszta li > span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sezon-reszta li b { color: var(--c-okno-tekst); display: inline-flex; align-items: center; gap: 4px; }
+.sezon-reszta .vb { font-size: 1.05em; }
+
+.sezon-pusto {
+  margin: 8px 0;
+  color: var(--c-okno-tekst-3);
+  font-style: italic;
+}
+
+.btn-sezon-ok {
+  width: 100%;
+  min-height: 48px;
+  margin-top: 4px;
+  border: 0;
+  border-radius: 10px;
+  font: 800 1.05rem var(--f-tekst);
+  color: var(--c-kat-aktywna-tekst);
+  background: var(--c-kat-aktywna);
+  cursor: pointer;
+  box-shadow: 0 4px 0 rgba(0, 0, 0, 0.3);
+}
+
+.btn-sezon-ok:active { transform: translateY(2px); box-shadow: 0 2px 0 rgba(0, 0, 0, 0.3); }
+
+@media (max-width: 420px) {
+  .sezon-portret { width: 52px; height: 52px; }
+  .sezon-stopien.m1 .sezon-portret { width: 68px; height: 68px; }
+  .sezon-pill { font-size: 13px; }
+}
