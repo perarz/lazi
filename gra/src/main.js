@@ -636,9 +636,14 @@ function netCtx() {
 function celNalotu(moge) {
   const st = rg.state;
   if (st.phase !== 'aim') return null;
-  if (moge) return WEAPONS[st.weapon]?.celowany && st.cel ? { ...st.cel, teleport: st.weapon === 'teleport' } : null;
+  if (moge) {
+    if (!WEAPONS[st.weapon]?.celowany || !st.cel) return null;
+    const most = st.weapon === 'most';
+    const akt = S.activeWorm(st);
+    return { ...st.cel, teleport: st.weapon === 'teleport', most, zle: most && !!akt && !!S.powodBrakuMostu(st, akt, st.cel) };
+  }
   const akt = S.activeWorm(st);
-  return akt && akt.widok && akt.widok.cel ? { ...akt.widok.cel, teleport: akt.widok.bron === 'teleport' } : null;
+  return akt && akt.widok && akt.widok.cel ? { ...akt.widok.cel, teleport: akt.widok.bron === 'teleport', most: akt.widok.bron === 'most' } : null;
 }
 
 /* Cudza tura: pozycja i celownik z podglądu na żywo, wygładzone. Sama
@@ -746,11 +751,14 @@ function wybierzBron(id) {
   if (rg && P.mogeGrac(rg, pokoj)) {
     const st = rg.state;
     const akt = S.activeWorm(st);
-    if ((akt.amunicja[id] ?? 1) <= 0) { pokazInfo(w.name + ': brak amunicji.'); return; }
+    if ((akt.amunicja[id] ?? 1) <= 0) {
+      pokazInfo(id === 'kij' ? 'Kij tylko ze skrzynki z zaopatrzeniem!' : w.name + ': brak amunicji.');
+      return;
+    }
     if (st.charging) return;
     st.weapon = id;
     if (w.celowany) {
-      const co = id === 'teleport' ? 'miejsce teleportu' : 'cel nalotu';
+      const co = id === 'teleport' ? 'miejsce teleportu' : id === 'most' ? 'miejsce mostu (blisko robala)' : 'cel nalotu';
       pokazInfo(dotykowy() ? 'Dotknij mapy, żeby wskazać ' + co + ', potem OGNIA.' : 'Kliknij na mapie ' + co + ', potem przytrzymaj F.');
     }
   }
@@ -872,6 +880,10 @@ function obsluzZdarzenia() {
         emitSpark(fx, e.x, e.y - 8, 16);
         emitTekst(fx, e.x, e.y - 30, e.typ === 'apteczka' ? '+' + e.hp + ' HP' : '+1 ' + WEAPONS[e.bron].name,
           e.typ === 'apteczka' ? '#7dff9a' : '#ffd23b', 16);
+        break;
+      case 'most':
+        emitSpark(fx, e.x, e.y, 10);
+        R.repaintRect(renderer, st.terrain, { x0: e.x0 - 2, x1: e.x1 + 2 });
         break;
       case 'skrzynkaRozbita': emitSpark(fx, e.x, e.y - 8, 10); break;
       case 'smuga': emitSmuga(fx, e.x0, e.y0, e.x1, e.y1); break;

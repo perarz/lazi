@@ -5,6 +5,14 @@
 (function () {
   var historia = [
     {
+      wersja: '3.10', data: '2026-09-25', tytul: 'Most i kij ze zrzutu',
+      zmiany: [
+        'Nowa broń: Most (klawisz „=”, 3 sztuki) — wskaż miejsce blisko robala i postaw stalową belkę. Można po niej chodzić, a wybuch ją przetnie.',
+        'Kij bejsbolowy jest teraz tylko w skrzynkach z zaopatrzeniem (mniej więcej co trzecia go ma).',
+        'Kij osłabiony: mniejszy odrzut i trochę mniej obrażeń.'
+      ]
+    },
+    {
       wersja: '3.9', data: '2026-09-25', tytul: 'Wiertło, zrzuty i wielkie jaskinie',
       zmiany: [
         'Nowa broń: Wiertło (klawisz „-”) — drąży tunel w stronę celownika i wybucha na końcu.',

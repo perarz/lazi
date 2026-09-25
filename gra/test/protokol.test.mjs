@@ -220,7 +220,8 @@ function partia({ seed = 1, n = 3, klienci = {}, zdarzenia = [], maksSek = 900, 
     const p = P.zloz(serwer.log);
     if (p.faza === 'koniec' || p.tura >= doTury) {
       // jeszcze chwila, żeby wszyscy przyjęli ostatni stan i dokończyli animację
-      for (let i = 0; i < 60 * 15; i++) { serwer.czas += KLATKA; for (const k of przebieg.wszyscy) k.tik(); }
+      // (25 s: ostatni strzał może przyjść ~5 s po ucieczce, potem 5 s ucieczki u odbiorcy i lot)
+      for (let i = 0; i < 60 * 25; i++) { serwer.czas += KLATKA; for (const k of przebieg.wszyscy) k.tik(); }
       break;
     }
   }
@@ -285,7 +286,7 @@ await test('szesciu graczy z duzymi opoznieniami', () => {
 });
 
 await test('zaden strzal nie przepada (kazda akcja strzal w logu ma swoj wybuch u wszystkich)', () => {
-  const pr = partia({ seed: 3, n: 2, doTury: 20 });
+  const pr = partia({ seed: 4, n: 2, doTury: 20 })  // seed z długą partią — test liczy strzały;
   const strzaly = [...pr.pokoj.akcje.values()].filter((a) => a.t === 'strzal').length;
   const wyslane = pr.klienci.reduce((s, k) => s + k.wyslane.filter((z) => z.t === 'strzal').length, 0);
   assert(strzaly > 5, 'za malo strzalow w partii: ' + strzaly);

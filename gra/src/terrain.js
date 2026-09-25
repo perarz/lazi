@@ -216,6 +216,7 @@ export function rebuild(seed, craters) {
 /* Wybicie krateru. Zwraca dirty rect, żeby render przemalował tylko tyle,
    ile trzeba, zamiast całej mapy. */
 export function carve(t, cx, cy, r) {
+  if (r < 0) return zbudujMost(t, cx, cy, r);
   // Zaokrąglamy przed wycięciem, a nie przy zapisie do sieci: inaczej
   // rebuild() u drugiego gracza wyciąłby krater minimalnie gdzie indziej.
   cx = Math.round(cx); cy = Math.round(cy); r = Math.round(r);
@@ -232,6 +233,24 @@ export function carve(t, cx, cy, r) {
       const dx = x - cx;
       if (dx * dx + dy * dy <= r2) t.mask[row + x] = 0;
     }
+  }
+  t.craters.push({ x: cx, y: cy, r });
+  return { x0, y0, x1, y1 };
+}
+
+/* Most: pozioma belka MOST_DL × MOST_GR ze środkiem górnej krawędzi w (cx, cy).
+   Trzymany na liście kraterów z r = -1, więc rebuild() stawia go w tej samej
+   kolejności względem wybuchów. W masce ma wartość 2 (render maluje go jak stal). */
+export const MOST_DL = 90, MOST_GR = 7;
+function zbudujMost(t, cx, cy, r) {
+  cx = Math.round(cx); cy = Math.round(cy); r = -1;
+  const x0 = Math.max(0, cx - MOST_DL / 2);
+  const x1 = Math.min(WORLD_W - 1, cx + MOST_DL / 2 - 1);
+  const y0 = Math.max(0, cy);
+  const y1 = Math.min(WORLD_H - 1, cy + MOST_GR - 1);
+  for (let y = y0; y <= y1; y++) {
+    const row = y * WORLD_W;
+    for (let x = x0; x <= x1; x++) if (!t.mask[row + x]) t.mask[row + x] = 2;
   }
   t.craters.push({ x: cx, y: cy, r });
   return { x0, y0, x1, y1 };
