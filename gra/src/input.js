@@ -7,7 +7,9 @@
 
    Na planszy:
    - w swojej turze przeciągnięcie celuje (albo wskazuje cel nalotu),
-   - poza nią przesuwa kamerę; dwa palce albo kółko myszy — zoom. */
+   - poza nią przesuwa kamerę; dwa palce albo kółko myszy — zoom
+     (zoom nie odbiera kamery śledzonemu robalowi),
+   - prawy przycisk myszy (albo Q) otwiera ekwipunek (ekwipunek.js). */
 
 import * as S from './sim.js';
 import { WEAPONS, WEAPON_ORDER } from './weapons.js';
@@ -59,6 +61,13 @@ export function attachInput(opts) {
   function onDown(e) {
     if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) return;
     if (!stan()) return;
+
+    // Ekwipunek: Q otwiera i zamyka, Escape zamyka. W otwartym panelu Enter
+    // i spacja „klikają” broń pod fokusem, a nie strzelają ani nie skaczą.
+    if (e.code === 'Escape') { opts.zamknijEkwipunek?.(); return; }
+    if (e.code === 'KeyQ') { e.preventDefault(); if (!e.repeat) opts.onEkwipunek?.(); return; }
+    const wPanelu = !!(e.target && e.target.closest && e.target.closest('.ekwipunek'));
+    if (wPanelu && (e.code === 'Enter' || e.code === 'NumpadEnter' || e.code === 'Space')) return;
 
     // Strzał: przytrzymaj F albo Enter. Spacja to skok — tak jak w innych grach,
     // wcześniejsze „spacja = strzał” myliło graczy.
@@ -161,6 +170,8 @@ export function attachInput(opts) {
   }
 
   plotno.addEventListener('pointerdown', (e) => {
+    // prawy przycisk myszy otwiera ekwipunek — jak w Worms Armageddon
+    if (e.pointerType === 'mouse' && e.button === 2) { e.preventDefault(); opts.onEkwipunek?.(); return; }
     if (e.pointerType === 'mouse' && e.button !== 0) return;
     e.preventDefault();
     try { plotno.setPointerCapture(e.pointerId); } catch { /* nic */ }
@@ -207,9 +218,13 @@ export function attachInput(opts) {
   plotno.addEventListener('pointercancel', koniecWskaznika);
   plotno.addEventListener('contextmenu', (e) => e.preventDefault());
 
+  // Zoom proporcjonalny do obrotu kółka. Touchpad sypie dziesiątkami drobnych
+  // zdarzeń na sekundę — stały krok na zdarzenie wystrzeliwał zoom od razu do limitu.
   plotno.addEventListener('wheel', (e) => {
     e.preventDefault();
-    opts.onZoom?.(e.deltaY < 0 ? 1.12 : 1 / 1.12);
+    const px = e.deltaMode === 1 ? e.deltaY * 16 : e.deltaMode === 2 ? e.deltaY * 400 : e.deltaY;
+    const krok = Math.max(-240, Math.min(240, px));
+    if (krok) opts.onZoom?.(Math.exp(-krok * 0.0012));
   }, { passive: false });
 
   window.addEventListener('keydown', onDown);

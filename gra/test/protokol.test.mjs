@@ -474,6 +474,21 @@ await test('karta w tle przez minute: po powrocie dogania log bez rozjazdu', () 
   assert(schowany.r.statystyki.skoki > 0, 'powracajacy nie skoczyl do najnowszego stanu');
 });
 
+console.log('\nLOBBY');
+
+await test('odliczanie do startu: zwykly termin dziala, przyspieszenie „na zaraz” jest pomijane', () => {
+  const st = 1_000_000;
+  const pelny = { t: 'odliczanie', do: st + P.ODLICZANIE_S * 1000, st };
+  assert(P.zloz([pelny]).odliczanieDo === pelny.do, 'zwykle odliczanie nie przeszlo');
+  // stary przycisk „Zaczynamy” wysyłał termin za 0,8 s — ma nie skrócić odliczania
+  const p = P.zloz([pelny, { t: 'odliczanie', do: st + 1800, st: st + 1000 }]);
+  assert(p.odliczanieDo === pelny.do, 'przyspieszenie przeszlo: termin ' + (p.odliczanieDo - st) + ' ms');
+  // nowy pełny termin (np. po anulowaniu) nadal wygrywa jako ostatni
+  const pozniej = { t: 'odliczanie', do: st + 5000 + P.ODLICZANIE_S * 1000, st: st + 5000 };
+  assert(P.zloz([pelny, pozniej]).odliczanieDo === pozniej.do, 'ostatni pelny termin nie wygral');
+  assert(P.zloz([pelny, { t: 'odliczanie', anuluj: true, st: st + 500 }]).odliczanieDo === null, 'anulowanie nie dziala');
+});
+
 console.log('\n' + (failed === 0
   ? '\x1b[32mWszystkie testy przeszly (' + passed + ')\x1b[0m'
   : '\x1b[31m' + failed + ' bledow, ' + passed + ' ok\x1b[0m') + '\n');

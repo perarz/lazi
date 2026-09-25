@@ -9,15 +9,24 @@ import * as P from './protokol.js';
 import * as R from './render.js';
 import { createFx, stepFx, emitExplosion, emitTrail, emitSpark, emitTekst, emitSmuga } from './fx.js';
 import { attachInput } from './input.js';
-import { WEAPONS, WEAPON_ORDER } from './weapons.js';
+import { WEAPONS, startowaAmunicja } from './weapons.js';
 import { createNet } from './net.js';
 import { nowaPartiaOs, zdarzenieOs, koniecTuryOs, koniecPartiiOs } from './osiagniecia-reguly.js';
+import { createEkwipunek, ikonaBroni } from './ekwipunek.js';
 
-const KOLORY = ['#ff7a1e', '#4ea3ff', '#5ec26a', '#e04fd0', '#ffd93b', '#9b8cff'];
+/* Kolory robali do wyboru przy wejściu. Kolejność ma znaczenie: przy
+   kolizji dostaje się pierwszy wolny, więc najbardziej różne są na początku. */
+const PALETA = [
+  ['#ff7a1e', 'pomarańczowy'], ['#4ea3ff', 'niebieski'], ['#5ec26a', 'zielony'],
+  ['#e04fd0', 'fioletowy'], ['#ffd93b', 'żółty'], ['#9b8cff', 'lawendowy'],
+  ['#ff4d5e', 'czerwony'], ['#2fdcc8', 'turkusowy'], ['#ff9ecb', 'różowy'],
+  ['#b5ee3c', 'limonkowy'], ['#f1f1f6', 'biały'], ['#aab4c0', 'srebrny']
+];
+const KOLORY = PALETA.map((k) => k[0]);
 
-/* Kolor z hasha id bywa wspólny dla dwóch graczy — przy starcie partii
-   (i na liście w lobby) każdy dostaje swój: pierwszy chętny zachowuje
-   ulubiony, reszta bierze pierwszy wolny. Obowiązują kolory z `nowa`. */
+/* Dwóch graczy może wybrać ten sam kolor — przy starcie partii (i na liście
+   w lobby) pierwszy chętny zachowuje swój, reszta bierze pierwszy wolny.
+   Obowiązują kolory z `nowa`. */
 function rozdzielKolory(gracze) {
   const zajete = new Set();
   return gracze.map((g) => {
@@ -27,7 +36,6 @@ function rozdzielKolory(gracze) {
     return { id: g.id, name: g.name, color };
   });
 }
-const ODLICZANIE = 20;
 const MAX_GRACZY = 6;
 /* odswiezLobby() chodzi co 500 ms, a stan z sieci przychodzi co ~3 s.
    Bez tej blokady każda „samolecząca” wysyłka (zgłoszenie siebie,
@@ -37,6 +45,15 @@ const PONOW_PO = 6000;
 const el = (id) => document.getElementById(id);
 const plotno = el('plotno');
 const hud = el('hud');
+const ekwipunek = createEkwipunek({
+  panel: el('ekwipunek'),
+  tlo: el('ekw-tlo'),
+  siatka: el('ekw-siatka'),
+  opis: el('ekw-opis'),
+  przycisk: el('btn-bron'),
+  zamknij: el('ekw-zamknij'),
+  onWybierz: (id) => wybierzBron(id)
+});
 
 let mojeId = null, mojaNazwa = '', mojKolor = KOLORY[0];
 let net = null, pokoj = null;
@@ -125,7 +142,7 @@ function opisStatow() {
     s.fragi + ' fragów, ' + s.obrazenia + ' obrażeń (rekord tury: ' + s.rekordTury + ').';
 }
 
-let podpisOsiagniec = '';
+let podpisOsiagniec = null;         // null: lista jeszcze nie narysowana (także gdy nic nie zdobyto)
 function rysujOsiagnieciaLobby() {
   if (!OSIAGNIECIA) return;
   const zdobyte = OSIAGNIECIA.wczytaj();
@@ -194,18 +211,28 @@ const bazowyZoom = () => Math.max(0.42, Math.min(1.5, Math.min(renderer.viewW / 
    i przyciski dotykowe. Kamera trzyma robala w wolnym pasie pomiędzy.
    Pomiar co pół sekundy (to odczyt układu strony), a wynik dochodzi
    płynnie, żeby świat nie skakał, gdy przyciski pojawiają się w turze. */
-const pasy = { gora: 0, dol: 0, cel: { gora: 0, dol: 0 }, pomiar: -1e9, swieze: true };
+const pasy = { gora: 0, dol: 0, bok: 0, cel: { gora: 0, dol: 0, bok: 0 }, pomiar: -1e9, swieze: true };
 function pasyHud(teraz, dt) {
   if (teraz - pasy.pomiar > 500) {
     pasy.pomiar = teraz;
-    const H = renderer.viewH;
-    let gora = H;
-    for (const e of [el('dotyk'), hud.querySelector('.hud-dol')]) {
-      if (!e || e.hidden) continue;
+    const W = renderer.viewW, H = renderer.viewH;
+    let gora = H, bok = 0;
+    // Grupy przycisków dotykowych mierzymy osobno: te przy bokach nie zasłaniają
+    // środka ekranu, gdzie stoi robal — pilnujemy tylko, żeby nie wszedł pod nie z boku.
+    const dotyk = el('dotyk');
+    const elementy = [hud.querySelector('.hud-dol')];
+    if (dotyk && !dotyk.hidden) elementy.push(...dotyk.children);
+    const boczne = [];
+    for (const e of elementy) {
       const r = e.getBoundingClientRect();
-      if (r.height > 0) gora = Math.min(gora, r.top);
+      if (r.height <= 0 || r.width <= 0) continue;
+      if (r.left < W * 0.62 && r.right > W * 0.38) gora = Math.min(gora, r.top);
+      else boczne.push(r);
     }
+    // boczna grupa liczy się tylko, jeśli wystaje ponad dolny pas (telefon poziomo)
+    for (const r of boczne) if (r.top < gora) bok = Math.max(bok, r.left < W / 2 ? r.right : W - r.left);
     pasy.cel.dol = Math.max(0, Math.min(H * 0.5, H - gora));
+    pasy.cel.bok = Math.min(W * 0.32, bok);
     const g = hud.querySelector('.hud-gora').getBoundingClientRect();
     pasy.cel.gora = Math.max(0, Math.min(H * 0.35, g.bottom));
   }
@@ -213,10 +240,12 @@ function pasyHud(teraz, dt) {
     pasy.swieze = false;
     pasy.gora = pasy.cel.gora;
     pasy.dol = pasy.cel.dol;
+    pasy.bok = pasy.cel.bok;
   } else {
     const k = Math.min(1, dt * 4);
     pasy.gora += (pasy.cel.gora - pasy.gora) * k;
     pasy.dol += (pasy.cel.dol - pasy.dol) * k;
+    pasy.bok += (pasy.cel.bok - pasy.bok) * k;
   }
   return pasy;
 }
@@ -237,6 +266,57 @@ inputNazwa.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !btnWej
 btnWejdz.addEventListener('click', wejdz);
 sprawdzNazwe();
 
+/* Kolor robala wybiera się tylko tutaj, przy wejściu. Zapamiętany w
+   localStorage; za pierwszym razem — kolor z hasha id, jak dawniej. */
+mojKolor = (() => {
+  const z = czytaj('arena:kolor');
+  return KOLORY.includes(z) ? z : KOLORY[Math.abs(hashTekstu(wczytajId())) % KOLORY.length];
+})();
+
+const boxKolorow = el('kolory');
+for (const [kolor, nazwa] of PALETA) {
+  const b = document.createElement('button');
+  b.type = 'button';
+  b.className = 'kolor';
+  b.style.setProperty('--kolor', kolor);
+  b.dataset.kolor = kolor;
+  b.setAttribute('role', 'radio');
+  b.setAttribute('aria-label', nazwa);
+  b.title = nazwa;
+  b.addEventListener('click', () => {
+    mojKolor = kolor;
+    zapisz('arena:kolor', kolor);
+    zaznaczKolor();
+  });
+  boxKolorow.append(b);
+}
+function zaznaczKolor() {
+  for (const b of boxKolorow.children) {
+    const tak = b.dataset.kolor === mojKolor;
+    b.setAttribute('aria-checked', tak ? 'true' : 'false');
+    b.tabIndex = tak ? 0 : -1;
+  }
+}
+zaznaczKolor();
+// strzałki przesuwają wybór jak w zwykłej grupie radiowej
+boxKolorow.addEventListener('keydown', (e) => {
+  const kier = e.key === 'ArrowRight' || e.key === 'ArrowDown' ? 1 : e.key === 'ArrowLeft' || e.key === 'ArrowUp' ? -1 : 0;
+  if (!kier) return;
+  e.preventDefault();
+  const i = (KOLORY.indexOf(mojKolor) + kier + KOLORY.length) % KOLORY.length;
+  boxKolorow.children[i].click();
+  boxKolorow.children[i].focus();
+});
+
+/* Podgląd robala w wybranym kolorze — rysowany tym samym kodem co w grze. */
+const podgladRobala = el('podglad-robala');
+function petlaPodgladu(t) {
+  if (el('ekran-nazwa').hidden) return;
+  R.rysujPodgladRobala(podgladRobala, { kolor: mojKolor, nazwa: inputNazwa.value.trim() || 'Ty', czas: t / 1000 });
+  requestAnimationFrame(petlaPodgladu);
+}
+requestAnimationFrame(petlaPodgladu);
+
 function zglosSie() {
   ostatnieZgloszenie = Date.now();
   return net.wyslij({ t: 'dolacz', id: mojeId, name: mojaNazwa, color: mojKolor });
@@ -246,8 +326,8 @@ async function wejdz() {
   mojaNazwa = inputNazwa.value.trim().slice(0, 14);
   if (mojaNazwa.length < 2) return;
   zapisz('arena:nazwa', mojaNazwa);
+  zapisz('arena:kolor', mojKolor);
   mojeId = wczytajId();
-  mojKolor = KOLORY[Math.abs(hashTekstu(mojeId)) % KOLORY.length];
 
   btnWejdz.disabled = true;
   el('info-nazwa').textContent = 'Łączę z lobby…';
@@ -346,15 +426,20 @@ function odswiezLobby() {
 
   const lista = el('lista-graczy');
   lista.replaceChildren();
+  let mojKolorZajety = false;
   for (const g of rozdzielKolory(obecni)) {
     const li = document.createElement('li');
-    if (g.id === mojeId) li.classList.add('ja');
+    if (g.id === mojeId) {
+      li.classList.add('ja');
+      mojKolorZajety = g.color !== mojKolor;
+    }
     const kropka = document.createElement('span');
     kropka.className = 'kropka';
     kropka.style.background = g.color;
     const imie = document.createElement('span');
     imie.className = 'imie';
     imie.textContent = g.name;
+    imie.style.color = g.color;
     li.append(kropka, imie);
     if (g.id === gospId) li.append(znacznik('GOSPODARZ'));
     if (g.id === mojeId) li.append(znacznik('TY'));
@@ -380,7 +465,7 @@ function odswiezLobby() {
   if (gospodarz && !startWToku && !wToku && teraz - ostatnieOdliczanie > PONOW_PO) {
     if (obecni.length >= 2 && termin === null) {
       ostatnieOdliczanie = teraz;
-      net.wyslij({ t: 'odliczanie', do: net.czas() + ODLICZANIE * 1000 });
+      net.wyslij({ t: 'odliczanie', do: net.czas() + P.ODLICZANIE_S * 1000 });
     } else if (obecni.length < 2 && termin !== null) {
       ostatnieOdliczanie = teraz;
       net.wyslij({ t: 'odliczanie', anuluj: true });
@@ -400,10 +485,13 @@ function odswiezLobby() {
 
   el('moje-staty').textContent = opisStatow();
   rysujOsiagnieciaLobby();
-  el('btn-start').disabled = obecni.length < 2 || wToku;
+  // Startu nie da się przyspieszyć — odliczanie leci zawsze do końca.
   el('info-lobby').textContent = Date.now() < infoLobby.do
     ? infoLobby.tekst
-    : wToku ? '' : 'Każdy może przyspieszyć start.';
+    : wToku ? ''
+      : mojKolorZajety ? 'Ktoś był szybszy z Twoim kolorem — w tej partii grasz innym.'
+        : obecni.length < 2 ? 'Partia ruszy sama, gdy w lobby będą co najmniej dwie osoby.'
+          : 'Partia ruszy sama po odliczaniu.';
 }
 
 function znacznik(tekst) {
@@ -412,12 +500,6 @@ function znacznik(tekst) {
   z.textContent = tekst;
   return z;
 }
-
-el('btn-start').addEventListener('click', async () => {
-  el('btn-start').disabled = true;
-  await net.wyslij({ t: 'odliczanie', do: net.czas() + 800 });
-  odswiezLobby();
-});
 
 el('btn-ogladaj').addEventListener('click', () => {
   opuszczonySeed = null;
@@ -465,6 +547,8 @@ function zbudujGre() {
       przyciski: el('dotyk'),
       ekranNaSwiat: (sx, sy) => R.ekranNaSwiat(renderer, kamera, sx, sy),
       onBron: wybierzBron,
+      onEkwipunek: () => ekwipunek.przelacz(),
+      zamknijEkwipunek: () => ekwipunek.zamknij(),
       onPodpowiedz: pokazInfo,
       onPrzesun: (dx, dy) => {
         kamera.tx -= dx / kamera.zoom;
@@ -475,7 +559,10 @@ function zbudujGre() {
       },
       onZoom: (f) => {
         zoomGracza = Math.max(0.55, Math.min(2.2, zoomGracza * f));
-        recznaKameraDo = Math.max(recznaKameraDo, performance.now() + 1500);
+        // Zoom nie zabiera kamery robalowi — dawniej po oddaleniu przez 1,5 s nikt
+        // nie był śledzony. Przedłużamy tylko ręczny tryb, jeśli ktoś przesuwał kamerę.
+        const teraz = performance.now();
+        if (teraz < recznaKameraDo) recznaKameraDo = Math.max(recznaKameraDo, teraz + 1500);
       }
     });
   }
@@ -512,6 +599,7 @@ function zbudujGre() {
 function zakonczGre() {
   rg = null;
   sterowanie?.zwolnij();
+  ekwipunek.zamknij();
   hud.hidden = true;
   document.body.classList.remove('moja-tura');
   el('ekran-koniec').hidden = true;
@@ -752,6 +840,7 @@ function wybierzBron(id) {
     const st = rg.state;
     const akt = S.activeWorm(st);
     if ((akt.amunicja[id] ?? 1) <= 0) {
+      // ekwipunek zostaje otwarty — można od razu wybrać coś innego
       pokazInfo(id === 'kij' ? 'Kij tylko ze skrzynki z zaopatrzeniem!' : w.name + ': brak amunicji.');
       return;
     }
@@ -762,6 +851,7 @@ function wybierzBron(id) {
       pokazInfo(dotykowy() ? 'Dotknij mapy, żeby wskazać ' + co + ', potem OGNIA.' : 'Kliknij na mapie ' + co + ', potem przytrzymaj F.');
     }
   }
+  ekwipunek.zamknij();
   rysujBronie();
 }
 
@@ -831,7 +921,7 @@ function trzymajWKadrze() {
   const z = kamera.zoom, W = renderer.viewW, H = renderer.viewH;
   const sx = (v.x - kamera.x) * z + W / 2;
   const sy = (v.y - kamera.y) * z + H / 2;
-  const bok = Math.min(W * 0.2, 150);
+  const bok = Math.max(Math.min(W * 0.2, 150), pasy.bok + 12);   // nie pod boczne przyciski
   const gora = pasy.gora + 34 * z;         // nad stopami robal ma jeszcze głowę i podpis
   const dol = H - pasy.dol - 6;
   if (sx < bok) kamera.x -= (bok - sx) / z;
@@ -941,44 +1031,31 @@ function pokazKoniec(winnerId) {
   nowe.hidden = partia.nowe.length === 0;
   el('koniec-opis').textContent = opis;
   el('ekran-koniec').hidden = false;
+  ekwipunek.zamknij();
   hud.hidden = true;
   document.body.classList.remove('moja-tura');
 }
 
 /* ---------- HUD ---------- */
 
+/* Przycisk z aktualną bronią (otwiera ekwipunek) i sama siatka broni.
+   Widz nie ma robala — pokazujemy mu startowe zapasy. */
 function rysujBronie() {
-  const box = el('bronie');
-  box.replaceChildren();
   const st = rg ? rg.state : null;
   const moge = !!rg && P.mogeGrac(rg, pokoj);
   const ja = st ? st.worms.find((w) => w.id === mojeId) : null;
   const wybrana = moge ? st.weapon : mojaBron;
-  for (const id of WEAPON_ORDER) {
-    const w = WEAPONS[id];
-    const b = document.createElement('button');
-    b.type = 'button';
-    b.className = 'bron';
-    const zapas = ja ? ja.amunicja[id] : undefined;
-    if (id === wybrana) b.classList.add('wybrana');
-    if (zapas !== undefined && zapas <= 0) b.classList.add('pusta');
-    if (!moge) b.classList.add('nieaktywna');
-    b.title = w.opis || w.name;
-    const k = document.createElement('span');
-    k.className = 'klawisz';
-    k.textContent = w.key;
-    const n = document.createElement('span');
-    n.textContent = w.name;
-    b.append(k, n);
-    if (zapas !== undefined) {
-      const z = document.createElement('span');
-      z.className = 'zapas';
-      z.textContent = '×' + zapas;
-      b.append(z);
-    }
-    b.addEventListener('click', () => wybierzBron(id));
-    box.append(b);
-  }
+  const w = WEAPONS[wybrana] || WEAPONS.bazooka;
+  const amunicja = ja ? ja.amunicja : startowaAmunicja();
+  const zapas = amunicja[wybrana];
+  el('bron-ikona').replaceChildren(ikonaBroni(w.id));
+  el('bron-nazwa').textContent = w.name;
+  const z = el('bron-zapas');
+  z.hidden = zapas === undefined;
+  z.textContent = '×' + zapas;
+  z.classList.toggle('zero', zapas !== undefined && zapas <= 0);
+  el('btn-bron').classList.toggle('nieaktywna', !moge);
+  ekwipunek.rysuj({ wybrana, amunicja, moge });
 }
 
 let wstrzas = 0;                 // siła trzęsienia ekranu po wybuchu (px), tylko grafika
@@ -995,6 +1072,8 @@ function odswiezHud(moge, teraz) {
   el('dotyk').hidden = !((moge || uciekam) && dotykowy());
   if (uciekam && !bylaUcieczka) napis(st.weapon === 'dynamit' ? 'UCIEKAJ!' : 'RUCH!', false);
   bylaUcieczka = uciekam;
+  // po strzale (ładowanie, ucieczka) ekwipunek nie ma już czego wybierać
+  if (ekwipunek.otwarty && (uciekam || (moge && st.charging))) ekwipunek.zamknij();
 
   const ja = st.worms.find((w) => w.id === mojeId);
   const podpisBroni = [moge, st.weapon, mojaBron, ja ? JSON.stringify(ja.amunicja) : ''].join('|');

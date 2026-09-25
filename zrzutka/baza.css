@@ -293,10 +293,75 @@ main {
 
 .hero {
   position: relative;
+  isolation: isolate;                 /* tła nagłówka (autobus, panorama) pod tekstem */
+  overflow-x: clip;                   /* bujające się monety przy brzegu nie poszerzają strony */
   max-width: 1000px;
   margin: 0 auto;
-  padding: clamp(36px, 7vw, 80px) 16px clamp(28px, 5vw, 52px);
+  padding: clamp(36px, 7vw, 80px) 16px clamp(22px, 4vw, 40px);
   text-align: center;
+}
+
+/* niebo nad nagłówkiem: przelatuje nim Battle Bus (Fortnite) — nic nie wystaje poza stronę */
+.hero-niebo {
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  container-type: inline-size;
+}
+
+.hero-autobus {
+  position: absolute;
+  top: clamp(4px, 3vw, 34px);
+  left: 0;
+  width: clamp(84px, 13vw, 140px);
+  height: clamp(64px, 10vw, 108px);
+  filter: drop-shadow(0 10px 14px rgba(0, 0, 0, 0.3));
+  animation: autobus-lot 26s linear infinite;
+  animation-delay: -5s;
+}
+
+@keyframes autobus-lot {
+  0%   { transform: translate(-170px, 24px) rotate(-4deg); }
+  50%  { transform: translate(calc(50cqw - 70px), 2px) rotate(-2deg); }
+  100% { transform: translate(calc(100cqw + 40px), 16px) rotate(-4deg); }
+}
+
+/* panorama starożytnych budowli u dołu nagłówka (0 A.D.) */
+.hero-panorama {
+  position: absolute;
+  z-index: -1;
+  left: 0;
+  bottom: 0;
+  width: 100%;
+  height: clamp(64px, 11vw, 116px);
+  pointer-events: none;
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 14%, #000 86%, transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 14%, #000 86%, transparent);
+}
+
+/* tytuł sekcji nad kartami */
+.sekcja-tytul {
+  position: relative;
+  z-index: 1;
+  max-width: 1200px;
+  margin: 0 auto clamp(14px, 2.6vw, 24px);
+  padding: 0 16px;
+  text-align: center;
+}
+
+.sekcja-tytul h2 {
+  font-family: var(--f-display);
+  font-weight: 400;
+  font-size: clamp(1.35rem, 4vw, 1.85rem);
+  line-height: 1.1;
+}
+
+.sekcja-tytul p {
+  margin-top: 4px;
+  font-size: 0.86rem;
+  color: var(--c-tekst-3);
 }
 
 .hero-nad {
@@ -420,9 +485,13 @@ h1 span { display: block; }
   100% { box-shadow: 0 0 0 0 transparent, 0 0 0 0 transparent; }
 }
 
+.karta {
+  container-type: inline-size;       /* układ karty zależy od jej szerokości, nie ekranu */
+}
+
 .karta-obraz {
   position: relative;
-  aspect-ratio: 16 / 11;
+  aspect-ratio: 16 / 10;
   overflow: hidden;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
@@ -484,6 +553,15 @@ h1 span { display: block; }
 /* …chyba że element ma w SVG obrót wokół podanego punktu (rotate(a x y)) —
    wtedy punkt ma być w układzie awatara, nie własnego pudełka */
 .awatar .bez-pudla { transform-box: view-box; }
+
+/* poświata na ramionach w kolorze rzadkości — sylwetka odcina się od tła */
+.awatar .obrys {
+  fill: none;
+  stroke: var(--r1);
+  stroke-width: 2.4;
+  stroke-linecap: round;
+  opacity: 0.6;
+}
 
 /* oddech i mruganie */
 .postac {
@@ -617,6 +695,29 @@ h1 span { display: block; }
   75% { transform: translateY(-80%) scaleX(0.1); }
 }
 
+/* PowPow: opaska powiewa, kilof macha przy wpłacie */
+.opaska { transform-origin: 0% 50%; animation: opaska 1.5s ease-in-out infinite alternate; }
+@keyframes opaska { from { transform: rotate(-5deg); } to { transform: rotate(8deg) scaleX(1.06); } }
+.kilof { transform-origin: 70% 100%; }
+.karta.reaguje .kilof { animation: kilof 0.45s ease-in-out 2; }
+@keyframes kilof { 50% { transform: rotate(-14deg); } }
+
+/* Krayo: Battle Bus dryfuje w tle, ping miga */
+.autobus { animation: autobus 7s ease-in-out infinite alternate; }
+@keyframes autobus { from { transform: translate(-6px, 0); } to { transform: translate(8px, -3px); } }
+.ping path, .ping circle { animation: ping 1.1s steps(2, jump-none) infinite; }
+@keyframes ping { 50% { opacity: 0.25; } }
+
+/* Śliski Karp: krzak szeleści przy zaczepce i wpłacie */
+.krzak { transform-origin: 50% 100%; }
+.karta.reaguje .krzak,
+.karta.zaczepiony .krzak { animation: krzak 0.3s ease-in-out 3; }
+@keyframes krzak { 33% { transform: skewX(4deg); } 66% { transform: skewX(-4deg); } }
+
+/* w małych portretach (okno wpłaty, Hall of Fame) tła postaci tylko przeszkadzają */
+.okno-awatar .tlo-postaci,
+.sezon-portret .tlo-postaci { display: none; }
+
 /* Apollo (Fortnite): pasek earningsów mieni się, licznik eliminacji podskakuje */
 .earningsy-pasek { animation: earningsy 2.4s ease-in-out infinite; }
 @keyframes earningsy { 50% { fill: #fff6b8; } }
@@ -749,23 +850,26 @@ h1 span { display: block; }
   color: inherit;
 }
 
-/* treść karty */
+/* treść karty — zwarta: nagłówek, hasło, metryka, opis (rozwijany), staty 2×2, zbiórka */
 .karta-tresc {
   display: flex;
   flex-direction: column;
   flex: 1;
-  padding: 16px 18px 18px;
+  padding: 12px 16px 16px;
 }
+
+.karta-glowa { position: relative; }
 
 .nick {
   font-family: var(--f-display);
   font-weight: 400;
-  line-height: 1.05;
+  line-height: 1;
 }
 
 .aka {
-  margin-top: 4px;
-  font-size: 0.9rem;
+  margin-top: 3px;
+  font-size: 0.86rem;
+  line-height: 1.25;
   color: var(--c-karta-tekst-3);
 }
 
@@ -774,9 +878,9 @@ h1 span { display: block; }
 .metryka {
   list-style: none;
   display: grid;
-  gap: 3px;
-  margin-top: 10px;
-  font-size: 0.82rem;
+  gap: 2px;
+  margin-top: 8px;
+  font-size: 0.8rem;
 }
 
 .metryka li {
@@ -812,50 +916,96 @@ h1 span { display: block; }
 }
 
 .haslo {
-  margin-top: 12px;
+  margin-top: 8px;
   font-style: italic;
   font-weight: 500;
+  line-height: 1.3;
 }
 
 .opis {
   margin-top: 8px;
-  font-size: 0.94rem;
+  font-size: 0.9rem;
+  line-height: 1.45;
   color: var(--c-karta-tekst-2);
 }
 
-.opis p + p { margin-top: 8px; }
+.opis p + p { margin-top: 6px; }
 .opis b { color: var(--c-karta-tekst); }
 
-/* statystyki */
+/* zwinięty opis: pierwszy akapit, reszta pod przyciskiem „Czytaj dalej” */
+.opis.zwiniety p + p { display: none; }
+.opis:not(.zwiniety) p + p { animation: akapit 0.35s ease-out; }
+@keyframes akapit { from { opacity: 0; transform: translateY(-4px); } }
+
+.opis-wiecej {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  margin-top: 2px;
+  padding: 2px 0;
+  font-weight: 700;
+  font-size: 0.82rem;
+  color: var(--c-akcent);
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+
+.opis-wiecej::after {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: translateY(-2px) rotate(45deg);
+  transition: transform 0.2s;
+}
+
+.opis-wiecej[aria-expanded="true"]::after { transform: translateY(2px) rotate(-135deg); }
+.opis-wiecej:hover { text-decoration: underline; text-underline-offset: 3px; }
+.opis-wiecej:focus-visible { outline: 2px solid var(--c-akcent); outline-offset: 2px; border-radius: 3px; }
+
+/* statystyki: siatka 2×2 — nazwa i wartość nad paskiem */
 .staty {
   list-style: none;
   display: grid;
-  gap: 6px;
-  margin-top: 14px;
-  padding: 12px;
+  grid-template-columns: 1fr 1fr;
+  gap: 9px 16px;
+  margin-top: 10px;
+  padding: 10px 12px 11px;
   border-radius: 6px;
 }
 
 .staty li {
   display: grid;
-  grid-template-columns: 8.8em 1fr 3.6em;
-  align-items: center;
-  gap: 10px;
+  grid-template-columns: 1fr auto;
+  align-items: end;
+  gap: 4px 6px;
+  min-width: 0;
   font-size: 0.8rem;
 }
 
 .stat-nazwa {
+  grid-column: 1;
+  grid-row: 1;
+  min-width: 0;
   font-family: var(--f-etykieta);
   font-weight: 700;
+  font-size: 0.68rem;
   letter-spacing: 0.04em;
-  line-height: 1.2;
+  line-height: 1.15;
   text-transform: uppercase;
   color: var(--c-karta-tekst-2);
 }
 
 .stat-wart {
+  grid-column: 2;
+  grid-row: 1;
   font-family: var(--f-liczby);
-  font-size: 0.95rem;
+  font-size: 0.86rem;
+  line-height: 1;
   text-align: right;
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
@@ -864,7 +1014,9 @@ h1 span { display: block; }
 .pasek-stat {
   --v: 0;
   position: relative;
-  height: 10px;
+  grid-column: 1 / -1;
+  grid-row: 2;
+  height: 7px;
   background: var(--c-stat-tlo);
 }
 
@@ -898,12 +1050,12 @@ h1 span { display: block; }
 /* zbiórka */
 .zbiorka {
   margin-top: auto;
-  padding-top: 16px;
+  padding-top: 12px;
 }
 
 .zebrano {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
   gap: 10px;
 }
@@ -922,8 +1074,8 @@ h1 span { display: block; }
   align-items: center;
   gap: 8px;
   font-family: var(--f-liczby);
-  font-size: clamp(2rem, 7vw, 2.5rem);
-  line-height: 1.1;
+  font-size: clamp(1.7rem, 6vw, 2.1rem);
+  line-height: 1.05;
   font-variant-numeric: tabular-nums;
 }
 
@@ -932,11 +1084,20 @@ h1 span { display: block; }
   transform-origin: 50% 50%;
 }
 
+/* cel: etap i kwota, nazwa, pasek, a pod nim ścieżka poziomów i „brakuje” */
 .cel {
-  margin-top: 8px;
-  padding: 10px 12px 12px;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  column-gap: 10px;
+  margin-top: 6px;
+  padding: 8px 11px 9px;
   border-radius: 6px;
 }
+
+.cel-gora,
+.cel-nazwa,
+.cel-pasek { grid-column: 1 / -1; }
 
 .cel-gora {
   display: flex;
@@ -962,19 +1123,40 @@ h1 span { display: block; }
 }
 
 .cel-nazwa {
-  margin-top: 2px;
+  margin-top: 1px;
   font-weight: 700;
-  font-size: 0.95rem;
-  line-height: 1.3;
+  font-size: 0.92rem;
+  line-height: 1.25;
 }
 
 .cel-pasek {
   position: relative;
-  height: 14px;
-  margin-top: 8px;
+  height: 12px;
+  margin-top: 7px;
   overflow: hidden;
   border-radius: 3px;
 }
+
+/* ścieżka poziomów: zdobyte, bieżący (pulsuje) i kolejne — wygląd w motywach */
+.cel-poziomy {
+  grid-column: 1;
+  display: flex;
+  gap: 3px;
+  margin-top: 7px;
+  list-style: none;
+}
+
+.cel-poziomy li {
+  display: grid;
+  place-items: center;
+  flex: none;
+  font-family: var(--f-etykieta);
+  font-weight: 800;
+  line-height: 1;
+}
+
+.cel-poziomy li.obecny { animation: poziom 1.6s ease-in-out infinite; }
+@keyframes poziom { 50% { filter: brightness(1.45); } }
 
 .cel-wypelnienie {
   --p: 0;
@@ -1002,13 +1184,17 @@ h1 span { display: block; }
 .cel-wypelnienie.bez-animacji { transition: none; }
 
 .cel-brakuje {
-  margin-top: 6px;
+  grid-column: 2;
+  margin-top: 7px;
   min-height: 1.3em;
-  font-size: 0.8rem;
+  font-size: 0.78rem;
+  line-height: 1.25;
+  text-align: right;
   color: var(--c-karta-tekst-3);
 }
 
 .cel-brakuje b { color: var(--c-karta-tekst); }
+.bez-lamania { white-space: nowrap; }
 
 .btn-wesprzyj,
 .btn-wyslij {
@@ -1018,8 +1204,8 @@ h1 span { display: block; }
   justify-content: center;
   gap: 10px;
   width: 100%;
-  margin-top: 14px;
-  padding: 0.55em 1em;
+  margin-top: 12px;
+  padding: 0.5em 1em;
   line-height: 1.1;
   cursor: pointer;
   transition: transform 0.12s ease, filter 0.15s ease;
@@ -1250,7 +1436,7 @@ h1 span { display: block; }
 }
 
 .odznaki-tytul span { color: var(--c-akcent); }
-.arena-zacheta { margin: -6px 0 12px; font-size: 0.85rem; color: var(--c-tekst-3); }
+.arena-zacheta { margin: 4px 0 0; font-size: 0.85rem; text-align: center; color: var(--c-tekst-3); }
 .arena-zacheta a { color: var(--c-akcent); }
 
 .odznaki {
@@ -1881,7 +2067,15 @@ h1 span { display: block; }
   .pot,
   .lampion,
   .znak-pytania,
+  .opaska,
+  .autobus,
+  .ping path,
+  .ping circle,
+  .hero-autobus,
+  .cel-poziomy li.obecny,
+  .opis p,
   .karta.armia .tlum { animation: none !important; }
+  .hero-autobus { display: none; }
   .tlo-monety { display: none; }
   .karta,
   .awatar { transition: none; }

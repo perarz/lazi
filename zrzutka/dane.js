@@ -18,7 +18,9 @@ window.ZRZUTKA_DANE = {
       szybkie: [50, 100, 250, 500, 1000, 2000],
       maks: 2000,
       hojnie: 2000,
-      etapy: null,                                 // cele numerowane zwykle: „Cel 1/3”
+      // poziomy celów jak rangi w rankedach Fortnite — na karcie „Cel 3/6 · Złoto”
+      etapy: ['Brąz', 'Srebro', 'Złoto', 'Diament', 'Champion', 'Unreal'],
+      etapNumerowany: true,
       teksty: {
         oknoNad: 'Dofinansowanie dla',
         ile: 'Ile V-dolców?',
@@ -52,7 +54,10 @@ window.ZRZUTKA_DANE = {
           cele: [
             { kwota: 950, nazwa: 'Karnet Bojowy' },
             { kwota: 2800, nazwa: 'Legendarna skórka do full boxa' },
-            { kwota: 13500, nazwa: 'Bilet na Fortnite World Cup (w marzeniach)' }
+            { kwota: 5000, nazwa: 'Monitor 240 Hz, żeby widzieć, kto wbija mu do boxa' },
+            { kwota: 10000, nazwa: 'Trener od rankedów (zaczynają od jutra, serio)' },
+            { kwota: 20000, nazwa: 'Wpisowe na FNCS — z Krayo w duo (albo i nie)' },
+            { kwota: 50000, nazwa: 'Bilet na Fortnite World Cup (w marzeniach)' }
           ],
           reakcje: [
             'Z radości postawiłem full boxa. Na środku pustego pola.',
@@ -74,7 +79,10 @@ window.ZRZUTKA_DANE = {
           cele: [
             { kwota: 800, nazwa: 'Jakakolwiek skórka, żeby nie brali go za bota' },
             { kwota: 2000, nazwa: 'Myszka, która „nie laguje”' },
-            { kwota: 5000, nazwa: 'Korepetycje z budowania u PowPowa' }
+            { kwota: 5000, nazwa: 'Korepetycje z budowania u PowPowa' },
+            { kwota: 10000, nazwa: 'Światłowód, żeby w końcu przestało lagować (nie przestanie)' },
+            { kwota: 20000, nazwa: 'Prywatne lobby z samymi botami i pierwsze Victory Royale' },
+            { kwota: 50000, nazwa: 'Emotka „lagowało mi” w sklepie z przedmiotami' }
           ],
           reakcje: [
             'Kupiłem skórkę i zginąłem, zanim wyskoczyłem z autobusu. Dzięki!',
@@ -96,7 +104,10 @@ window.ZRZUTKA_DANE = {
           cele: [
             { kwota: 950, nazwa: 'Karnet Bojowy (wnuczek pomoże kliknąć)' },
             { kwota: 3000, nazwa: 'Nowe okulary do celowania' },
-            { kwota: 10000, nazwa: 'Fotel gamingowy z podparciem na krzyż' }
+            { kwota: 5000, nazwa: 'Telewizor 85 cali, żeby widzieć wroga bez okularów' },
+            { kwota: 10000, nazwa: 'Fotel gamingowy z podparciem na krzyż' },
+            { kwota: 20000, nazwa: 'Własna wyspa w trybie kreatywnym: same krzaki' },
+            { kwota: 50000, nazwa: 'Skórka „Śliski Karp” w sklepie (karp w zestawie)' }
           ],
           reakcje: [
             'Dziękuję, synku. Tylko gdzie się to klika?',
@@ -117,8 +128,11 @@ window.ZRZUTKA_DANE = {
           nick: 'Apollo',
           cele: [
             { kwota: 1000, nazwa: 'Zapas energetyków na tydzień grindu' },
+            { kwota: 3000, nazwa: 'Myszka 8000 Hz — edytuje szybciej, niż myśli' },
             { kwota: 5000, nazwa: 'Wpisowe na cash cupa' },
-            { kwota: 20000, nazwa: 'Pierwsze earningsy (już prawie!)' }
+            { kwota: 10000, nazwa: 'Bootcamp w gaming housie (sen opcjonalny)' },
+            { kwota: 20000, nazwa: 'Pierwsze earningsy (już prawie!)' },
+            { kwota: 50000, nazwa: 'Finał FNCS i zdjęcie z pucharem' }
           ],
           reakcje: [
             'Dzięki. Wracam na grind.',
@@ -146,8 +160,9 @@ window.ZRZUTKA_DANE = {
       szybkie: [10, 50, 100, 500, 1000, 2000],
       maks: 2000,
       hojnie: 1000,
-      // w 0 A.D. rośnie się fazami — cele to kolejne awanse
-      etapy: ['Faza miasteczka', 'Faza miasta', 'Cud świata'],
+      // w 0 A.D. rośnie się fazami, a potem wygrywa — cele to kolejne awanse
+      // i warunki zwycięstwa z gry (relikwia, królobójstwo, podbój)
+      etapy: ['Faza miasteczka', 'Faza miasta', 'Cud świata', 'Zdobycie relikwii', 'Królobójstwo', 'Podbój świata'],
       teksty: {
         oknoNad: 'Akt darowizny dla',
         ile: 'Ile srebrników?',
@@ -181,7 +196,10 @@ window.ZRZUTKA_DANE = {
           cele: [
             { kwota: 250, nazwa: 'Melisa na uspokojenie (dla przeciwników)' },
             { kwota: 800, nazwa: 'Słoń bojowy, żeby dosiadać go na spokojnie' },
-            { kwota: 2500, nazwa: 'Cud świata z jego posągiem' }
+            { kwota: 2500, nazwa: 'Cud świata z jego posągiem' },
+            { kwota: 10000, nazwa: 'Stado słoni bojowych — na spokojnie, przez Alpy' },
+            { kwota: 20000, nazwa: 'Zakaz pisania „ez” w całym lobby' },
+            { kwota: 50000, nazwa: 'Własna cywilizacja w 0 A.D.: Kozacy (spokojni do czasu)' }
           ],
           reakcje: [
             'Przyjmuję. Twoja wioska może spać spokojnie.',
@@ -214,7 +232,10 @@ window.ZRZUTKA_DANE = {
           cele: [
             { kwota: 150, nazwa: 'Laska do podpierania się w lobby' },
             { kwota: 500, nazwa: 'Emerytura kombatancka z Alphy 23' },
-            { kwota: 1500, nazwa: 'Wehikuł czasu do czasów świetności' }
+            { kwota: 1500, nazwa: 'Wehikuł czasu do czasów świetności' },
+            { kwota: 10000, nazwa: 'Konnica, która dojedzie, zanim on wyjdzie do lobby' },
+            { kwota: 20000, nazwa: 'Sanatorium dla weteranów rushu (nadgarstek gratis)' },
+            { kwota: 50000, nazwa: 'Pomnik przed centrum miasta i ranking 1910 z powrotem' }
           ],
           reakcje: [
             'Jak za dawnych lat! …dobra, idę do lobby.',
@@ -236,7 +257,10 @@ window.ZRZUTKA_DANE = {
           cele: [
             { kwota: 300, nazwa: '300 Spartan (po srebrniku za sztukę)' },
             { kwota: 900, nazwa: 'Syssition i nowe czerwone peleryny' },
-            { kwota: 2500, nazwa: 'Własne Termopile' }
+            { kwota: 2500, nazwa: 'Własne Termopile' },
+            { kwota: 10000, nazwa: 'Agoge dla całej wioski — nawet obywatelki z włóczniami' },
+            { kwota: 20000, nazwa: 'Leonidas na stałe w drużynie (ani kroku w tył)' },
+            { kwota: 50000, nazwa: 'Ogródek działkowy wielkości Peloponezu' }
           ],
           reakcje: [
             'Dziękuję, spokojnie przeznaczę na farmy.',
@@ -261,7 +285,10 @@ window.ZRZUTKA_DANE = {
           cele: [
             { kwota: 250, nazwa: 'Kurs ataku dla początkujących babć' },
             { kwota: 700, nazwa: 'Szósty targ (pięć to za mało)' },
-            { kwota: 2000, nazwa: 'Armia, której nie będzie się bał użyć' }
+            { kwota: 2000, nazwa: 'Armia, której nie będzie się bał użyć' },
+            { kwota: 10000, nazwa: 'Szlak handlowy przez całą mapę (z opłatą za przejazd)' },
+            { kwota: 20000, nazwa: 'Bank centralny 0 A.D. — kredyt dla Laziego na 300%' },
+            { kwota: 50000, nazwa: 'Wykupienie całej mapy bez jednego wystrzału' }
           ],
           reakcje: [
             'Do skarbca. Na razie.',
@@ -282,7 +309,10 @@ window.ZRZUTKA_DANE = {
           cele: [
             { kwota: 200, nazwa: 'Kolejne 50 obywatelek (przecież to za mało)' },
             { kwota: 700, nazwa: 'Spichlerz tak wielki, że widać go z drugiego końca mapy' },
-            { kwota: 2000, nazwa: 'Armia z 20. minuty — tym razem już w 12.' }
+            { kwota: 2000, nazwa: 'Armia z 20. minuty — tym razem już w 12.' },
+            { kwota: 10000, nazwa: 'Populacja 300/300 — same obywatelki' },
+            { kwota: 20000, nazwa: 'Farmy na całej mapie i chleb dla każdego w lobby' },
+            { kwota: 50000, nazwa: 'Cud świata w kształcie bochenka chleba' }
           ],
           reakcje: [
             'Dzięki! Wyszkolę za to jeszcze dziesięć obywatelek.',
@@ -305,7 +335,10 @@ window.ZRZUTKA_DANE = {
           cele: [
             { kwota: 100, nazwa: 'Poradnik 0 A.D. — wydanie dla Hanów' },
             { kwota: 400, nazwa: 'Lekcje mikro u Kozaka (jeśli go nie wkurzy)' },
-            { kwota: 1200, nazwa: 'Wielki Mur wokół bazy, żeby zdążyć wszystko ogarnąć' }
+            { kwota: 1200, nazwa: 'Wielki Mur wokół bazy, żeby zdążyć wszystko ogarnąć' },
+            { kwota: 10000, nazwa: 'Ministerstwo pełne urzędników, którzy ogarną ekonomię za niego' },
+            { kwota: 20000, nazwa: 'Terakotowa armia — na wypadek, gdyby prawdziwa znów stała w lesie' },
+            { kwota: 50000, nazwa: 'Mandat Niebios i faza miasta przed Kozakiem' }
           ],
           reakcje: [
             'Dzięki! Wydam na… o, to już faza miasta? Super!',
@@ -326,7 +359,10 @@ window.ZRZUTKA_DANE = {
           cele: [
             { kwota: 250, nazwa: 'Nowe scutum dla każdego włócznika' },
             { kwota: 800, nazwa: 'Legion w pełnym składzie (ani jednej dziury w żółwiu)' },
-            { kwota: 2500, nazwa: 'Triumf w Rzymie z przejazdem przez bazę wroga' }
+            { kwota: 2500, nazwa: 'Triumf w Rzymie z przejazdem przez bazę wroga' },
+            { kwota: 10000, nazwa: 'Reformy Mariusza i zapasowy żółw w koszarach' },
+            { kwota: 20000, nazwa: 'Via Appia prosto pod centrum miasta wroga' },
+            { kwota: 50000, nazwa: 'Pax Romana: całe lobby pod jedną tarczą' }
           ],
           reakcje: [
             'Tarcze w górę! Dzięki.',
