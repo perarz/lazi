@@ -23,11 +23,17 @@ Obecna wersja: **4.1 „Nowe poziomy, zwarte karty i ekwipunek w Arenie”** (`w
 ## 0. Pierwsze 5 minut
 
 1. Przeczytaj sekcje 1–3. Zasady i budżet Redisa są ważniejsze niż cokolwiek innego.
-2. Ustaw gałąź. Jeśli PR z `claude/epic-rubin-ejixox` jest już scalony:
-   `git fetch origin master && git checkout -B claude/epic-rubin-ejixox origin/master`.
+2. Ustaw gałąź: `git fetch origin && git switch claude/epic-rubin-ejixox && git merge --ff-only origin/master`.
+   - Gdy ostatni PR z gałęzi jest scalony, master ją zawiera, więc to zwykłe przewinięcie. Jeśli PR jest
+     jeszcze otwarty (przewinięcie się nie uda), pracuj dalej na gałęzi i dopisuj do tej samej wersji.
+   - W świeżym klonie `git switch` sam założy lokalną gałąź śledzącą `origin/claude/epic-rubin-ejixox`.
+   - **Nie używaj** `git checkout -B claude/epic-rubin-ejixox origin/master`: ustawia śledzenie mastera,
+     więc gołe `git push` poszłoby prosto na produkcję. Pushuj zawsze jawnie: `git push -u origin claude/epic-rubin-ejixox`.
 3. Przed pushem uruchom testy Areny (sekcja 9), nawet przy zmianach tylko w zrzutce. Są szybkie i łapią regresje.
 4. Każdą zmianę widoczną dla gracza sprawdź zrzutem na telefonie (Playwright, sekcja 9).
 5. Dopisz wpis w `wersja.js` (sekcja 8) i uzupełnij ten plik, jeśli zmieniło się coś, co warto wiedzieć.
+6. Prośba o rozwój Areny? Zacznij od „Plan rozwoju” w sekcji 7: są tam uzgodnione pomysły, uwagi techniczne
+   i otwarte pytania. Zrobione punkty przenoś z planu do właściwych opisów i wykreślaj z listy.
 
 ---
 
@@ -39,7 +45,8 @@ Obecna wersja: **4.1 „Nowe poziomy, zwarte karty i ekwipunek w Arenie”** (`w
 3. **Testy przed pushem**: `node gra/test/sim.test.mjs` i `node gra/test/protokol.test.mjs`, do tego
    `node --check` na zmienionych plikach JS.
 4. **Wpis w logu zmian** (`wersja.js`) przy każdej zmianie widocznej dla użytkownika.
-5. **Na `master` tylko na prośbę** („daj na main”, „wrzuć na maina”, „wrzuć”). To jest wdrożenie na produkcję.
+5. **Na GitHuba (push, PR, merge) i na `master` tylko na wyraźną prośbę** („wrzuć”, „daj na main”,
+   „wrzuć na maina”, „wrzuć to na github do main”). Merge do `master` to wdrożenie na produkcję.
 6. **Po polsku**: odpowiedzi, teksty na stronie, komentarze, nazwy zmiennych i commity.
 7. **Sprawdzaj wizualnie** zrzutami Playwrightem, na desktopie i na telefonie. Użytkownik gra głównie z telefonu.
 8. **Trudność minigierek kalibruj botem**, nie na oko (sekcja 5.4).
@@ -50,9 +57,13 @@ Obecna wersja: **4.1 „Nowe poziomy, zwarte karty i ekwipunek w Arenie”** (`w
 
 ## 2. Komunikacja i sposób pracy
 
+- Nad stroną pracuje właściciel repo (`perarz`) i **Nolli** (konto `NolliDs`, Windows, repo w `D:\Nolli\Games\lazi`).
+  Nolli jest też jedną z postaci na stronie (0 A.D., „podstępny ekonomista”). Kto pisze, zobaczysz w `gh auth status`.
 - Użytkownik pisze po polsku, często bez polskich znaków, zwykle z telefonu.
   - Odpowiadaj po polsku, konkretnie i bez żargonu: co się zmieniło z punktu widzenia gracza.
   - Na końcu podaj krótko, co sprawdziłeś (testy, zrzuty, bot).
+  - Duże paczki zmian przychodzą jako „UPDATE x.y” z listą punktów (zrzutka + Arena) i prośbą, żeby najpierw
+    poznać cały kontekst i styl strony. Wtedy numer wersji w `wersja.js` to właśnie x.y.
 - Gdy prośba jest niejasna, przyjmij rozsądną interpretację i powiedz, jak ją zrozumiałeś.
   - Pytaj tylko o to, czego nie da się sensownie założyć (wygląd prawdziwej osoby, zakres resetu danych itp.).
   - Pytania zadawaj zbiorczo, najlepiej z propozycją domyślną.
@@ -60,8 +71,19 @@ Obecna wersja: **4.1 „Nowe poziomy, zwarte karty i ekwipunek w Arenie”** (`w
   („najpierw daj pomysły”), nie koduj od razu.
 - Duże rzeczy dziel na etapy, jeśli użytkownik tak chce (np. „etap 1 → sprawdzam → etap 2”).
 - **Gałąź i wdrożenie**:
-  - Rozwijaj na `claude/epic-rubin-ejixox`, pushuj po każdej skończonej rzeczy.
-  - Na prośbę o wdrożenie: PR `claude/epic-rubin-ejixox` → `master` z opisem po polsku, potem merge metodą „merge”.
+  - Rozwijaj na `claude/epic-rubin-ejixox` (ustawienie gałęzi: sekcja 0).
+  - **Nic nie wysyłaj na GitHuba, dopóki użytkownik nie poprosi** („nie wrzucaj na githuba nic, dopóki ci
+    nie powiem”). Skończoną pracę zostaw w katalogu roboczym, pokaż zrzuty i zapytaj, czy wrzucić.
+  - Na prośbę o wdrożenie:
+    1. testy i `node --check` (sekcja 9);
+    2. commit po polsku (w stylu „4.1: …”, z listą zmian);
+    3. `git push -u origin claude/epic-rubin-ejixox`;
+    4. PR do `master` z opisem po polsku (co się zmieniło dla gracza + co sprawdzone);
+    5. merge metodą „merge” (`gh pr merge N --merge`). W trybie auto aplikacja może zablokować merge jako
+       „Merge Without Review” — nie obchodź tego. Powiedz użytkownikowi, że PR czeka, i scal dopiero po jego
+       wyraźnym „scal” (albo niech kliknie Merge sam).
+  - Po merge: `git fetch origin`, przewiń gałąź i lokalny master (`git merge --ff-only origin/master`,
+    `git fetch origin master:master`).
   - Po wdrożeniu przypomnij, że trzeba odświeżyć stronę, a kto ma otwartą Arenę, musi ją przeładować.
 - Humor strony: jajcarski, ale życzliwy. Śmiejemy się z grania, nie z ludzi.
   - Pochodzenie graczy podajemy tylko tak, jak podał je właściciel (etykieta w profilu).
@@ -289,6 +311,10 @@ Lekcje z kalibracji:
     (Karnet Bojowy, FNCS, World Cup / agoge, reformy Mariusza, Ministerstwo Hanów, słonie przez Alpy).
   - Ścieżkę poziomów pod paskiem (`ol.cel-poziomy`, kropki/medaliony z rzymską cyfrą) buduje `app.js`
     (`zbudujPoziomy`, `rysujPoziomy`) — w HTML jej nie ma.
+  - `etapy` mają mieć tyle nazw, ile celów (przy braku bierze się ostatnią). Pasek celu liczy od zera do kwoty
+    bieżącego celu, więc przy zmianie progów w trakcie sezonu karta sama pokaże nowy etap.
+  - Startowe teksty celu w HTML (`data-cel-etap`, `data-cel-kwota`, `data-cel-nazwa`) trzymaj zgodne
+    z pierwszym celem — `app.js` i tak je nadpisuje, ale bez JS widać właśnie je.
 - **Budowa karty** (`index.html`, wszystkie karty tak samo):
   - `.karta-obraz`: `.promienie`, `svg.awatar`, `.ranga`, `.korona`, `.dymek`. Portret ma proporcje 16/10.
   - `.karta-tresc`: `header.karta-glowa` (`h2.nick` + `p.aka`), zaraz po nim `p.haslo`, potem `ul.metryka`,
@@ -316,11 +342,17 @@ Lekcje z kalibracji:
 ---
 
 ## 6. Wygląd i UX: zasady, które się sprawdziły
-- Mobile first. Sprawdzaj iPhone 13 w pionie (390×844) i poziomie oraz desktop 1280.
-  Żadnego poziomego przewijania strony.
+- Mobile first. Sprawdzaj iPhone 13 w pionie (390×844) i poziomie oraz desktop 1280 (Fortnite ma 4 kolumny
+  od 1500 px — sprawdź też 1600). Żadnego poziomego przewijania strony: na telefonie
+  `document.documentElement.scrollWidth` ma być równe `clientWidth`.
 - Duże cele dotyku (≥ 44 px). Na telefonie bez klawiatury: suwaki, przyciski −/+, stuknięcia.
+- **Karty graczy mają być zwarte** (w 4.1 użytkownik prosił o ściśnięcie w pionie bez wycinania treści).
+  Nowe rzeczy w karcie dokładaj tak, żeby jej nie wydłużać: siatka zamiast listy, długi tekst pod „Czytaj dalej”.
+  Obecnie na telefonie karta ma ok. 800 px (Fortnite) i 870–970 px (0 A.D.) — pilnuj, żeby nie urosła.
+- W Arenie na telefonie najczęstsze akcje są pod prawym kciukiem (celownik, SKOK, OGNIA), lewy tylko chodzi.
 - Portrety graczy to rozbudowane SVG w `index.html`. Przy zmianach uważaj na pułapkę z `transform-box` (sekcja 9).
-- Animacje respektują `prefers-reduced-motion`.
+  Portret podrasowuje się rekwizytem albo tłem, które pasuje do żartu o postaci (5.7), bez zmieniania twarzy.
+- Animacje respektują `prefers-reduced-motion` — nową animację dopisz do listy wyjątków na końcu `baza.css`.
 
 ---
 
@@ -450,6 +482,60 @@ Lekcje z kalibracji:
   3. W akcjach `strzal`/`pas`, jeśli gracz może to zmienić przed strzałem.
   4. Test „odbiorca = strzelec”.
 
+### Plan rozwoju: bliżej Worms Armageddon (propozycja po 4.1, czeka na decyzję)
+Plan przedstawiony użytkownikowi 2026-09-25. **Nic z tego jeszcze nie jest zrobione.** Użytkownik nie wybrał
+kolejności — zapytaj, zanim zaczniesz. Każdy etap to osobna wersja z testami i zrzutami. Etapy 1–3 nie dodają
+żadnych cyklicznych zapytań (dane doklejone do `dolacz`, `nowa`, strzału).
+
+**Etap 1 — klimat Wormsów (wersja 4.2, małe ryzyko)**
+- **Dźwięki**: Arena jest dziś całkiem niema. Syntezowane Web Audio jak `dzwieki` w `zrzutka/app.js`
+  (bez plików): wybuch, wystrzał, odbicie granatu, owca, lont, plusk lawy, zrzut, dżingiel tury, „ała”.
+  Podpięte pod zdarzenia w `obsluzZdarzenia`; wyciszenie w `localStorage` (np. `arena:dzwiek`).
+- **Nagrobki**: tylko `render.js` — martwy robal (`!alive && !odszedl`) ma w stanie swoje x, y.
+- **Dymki z tekstami** przy trafieniu, eliminacji i wpadnięciu do lawy; lokalnie, jak `emitTekst` w `fx.js`.
+- **Czapki postaci ze zrzutki** wybierane przy wejściu obok koloru (rogi Kozaka, hełm Stozhinia, opaska
+  PowPowa, karp, kapelusz Nolliego, okulary Froxy'ego, galea Qubera, wieniec Apolla, „?” Krayo). Lecą
+  w `dolacz` i w `nowa.gracze` jak kolor, rysuje je `drawWorm`. Z czapką robal mówi teksty postaci z `dane.js`.
+- **Lont granatu 1–5 s** (jak w WA): wybór w ekwipunku, wartość w akcji `strzal`, `spawnProjectile`
+  bierze ją zamiast `weapon.fuse`. Deterministyczne, bo leci gotowa liczba.
+- **Podsumowanie partii** na ekranie końca: obrażenia, fragi, najlepszy strzał — liczone lokalnie ze zdarzeń.
+
+**Etap 2 — drużyny (wersja 5.0, największa zmiana)**
+- **2–4 robale na gracza**, tury drużyn na zmianę, w drużynie kolejny żywy robal, paski HP drużyn,
+  broń „wybór robala”. Dotyka protokołu: dziś `aktywny` (w `snapshot` i `zloz`) to id robala = id gracza,
+  a `mogeGrac` porównuje `w.id === r.mojeId`. Przy drużynach trzeba rozdzielić „gracz z turą” (do
+  `mozeDzialac`) i „aktywny robal”, dać robalom id właściciela, `kolejnoscTur` po drużynach, więcej
+  punktów w `spawnPoints`. Testy protokołu do przerobienia. Stan tury przy 6×4 robalach to ok. 5 KB (limit 24 KB).
+- **Ustawienia partii u gospodarza lobby**: liczba robali, czas tury, HP startowe, zestaw broni, styl mapy,
+  początek nagłej śmierci. Jadą w `nowa`; podgląd w lobby przez rzadkie zdarzenie w logu (kilka zapisów na partię).
+- **Miny i beczki** od startu, rozmieszczone z seeda; stan jak skrzynki (przepis „Coś w stanie gry”).
+  Mina wybucha po zbliżeniu robala, beczka od wybuchu obok (reakcje łańcuchowe).
+- **Skrzynki**: pułapka (wybucha po otwarciu) i skrzynka z narzędziami.
+
+**Etap 3 — ruch i nowe bronie (5.1+)**
+- **Plecak odrzutowy, spadochron, potem lina ninja.** Przed strzałem to zwykły ruch lokalny, jak chodzenie:
+  odbiorca dostaje stan robali w `strzal`/`pas`, więc protokół się nie zmienia. W podglądzie `ruch` można
+  dokleić punkt zaczepienia liny. W ucieczce (`odwrot`) na razie niedostępne, bo nagranie RLE tego nie umie.
+- **Klasyki WA**: Święty granat, bananowa bomba, rakieta samonaprowadzająca (skręt przez wektor i `sqrt`,
+  bez trygonometrii), moździerz, Uzi, trzęsienie ziemi, Armagedon (deszcz meteorów jak nalot).
+- **Bronie ekipy**: Babcia Nolliego (wolna „owca”, „atakuje jak babcia”), Spartańskie kopnięcie („THIS IS
+  SPARTA”, wariant kija), Szarża słoni Kozaka (trzy duże „owce”), Full box PowPowa (4 belki wokół robala —
+  potrzebny pionowy wariant `zbudujMost`). Blitzkrieg Laziego już jest.
+- Przy ponad 12 broniach: klawisze F1–F4 przełączają broń w rzędzie ekwipunku (`GRUPY`), jak w WA.
+
+**Etap 4 — większe, do osobnej decyzji**
+- **Trening z botem offline** (`createGame(…, { sieciowa: false })` i lokalna pętla): bot przelicza kilka
+  strzałów na kopii stanu i wybiera najlepszy; poziomy np. „bot Krayo” i „bot Kozak”. Zero kosztu serwera.
+- **Powtórka najlepszego strzału** w zwolnionym tempie: `poczatekSnap` + kanoniczna akcja, przeliczone lokalnie.
+- **Nowe motywy map** (lód, pustynia, rzymskie ruiny, woda zamiast lawy): palety w `render.js`, kształty w `terrain.js`.
+- **Wspólny ranking Areny** na stronie zrzutki: jeden zapis na koniec partii jest tani, ale odczyt dołożony
+  do odświeżania zrzutki co 10 s kosztuje — czytać tylko na żądanie. Najpierw policz budżet (sekcja 3).
+- **Emotki w grze** („gg”, „ez”, „lag!”): każda to zapis do serwera, więc z limitem (np. 1 na 10 s na gracza).
+
+**Rekomendacja z planu**: najpierw Etap 1 (dźwięki robią największą różnicę), potem drużyny; bronie z Etapu 3
+dorzucać po kilka w wersji. **Otwarte pytania do użytkownika**: od czego zaczynamy; ile robali domyślnie
+w drużynie (2 czy 3); czy robimy czapki i bronie z postaci ekipy; czy wspólny ranking jest wart kosztu Redisa.
+
 ---
 
 ## 8. Wersje i log zmian
@@ -502,15 +588,28 @@ długości partii (np. „za mało strzałów”), sprawdź przyczynę, zanim zm
   - ma atrapę Upstasha w pamięci na drugim porcie (`/pipeline`, lista komend → `[{result}]`).
     Obsługiwane komendy: `LRANGE/RPUSH/LPUSH/LTRIM/DEL/EXPIRE/INCR/SET NX EX/HSET/HGETALL/HINCRBY/HDEL`;
   - dostaje `UPSTASH_REDIS_REST_URL=http://localhost:PORT+1` i dowolny token w env **przed** `require` API.
+  - Wariant z 4.1: atrapa Redisa na tym samym porcie pod `/__redis` (URL `http://127.0.0.1:PORT/__redis`)
+    i `GET /__reset`, który czyści bazę między przebiegami (znikają też „duchy” z lobby).
   - Do testów sezonów wstaw dane pod `zrzutka:sumy` / `zrzutka:wplaty` (sezon 1) przy starcie.
 - **Scenariusz Areny**: 2 przeglądarki desktop + telefon („iPhone 13 landscape”), porównanie
   `window.__arena().hash` na granicy każdej tury.
+  - Start: obaj wpisują nick i wybierają kolor (drugi ten sam co pierwszy, żeby sprawdzić kolizję), potem
+    ok. 20 s odliczania. Kto ma turę: `__arena().aktywny === __arena().mojeId`.
+  - Tura telefonu: desktop strzela (przytrzymaj F ~0,35 s) i czekasz, aż `aktywny` zmieni się na telefon.
+  - Długie przytrzymanie OGNIA na dotyku: CDP `Input.dispatchTouchEvent` (`touchStart`, pauza, `touchEnd`).
+    `tap()` Playwrighta jest za krótki — odpala słaby strzał od razu.
+  - Kamera przy zoomie: sztuczne `WheelEvent` na `#plotno` i pomiar `__arena().kamera` co klatkę
+    (`robal` = pozycja robala na ekranie, `recznie` = czy kamera przestała śledzić). Skok > kilku px to błąd.
 - **Scenariusz zrzutki**:
   1. `addInitScript` z zapisem „starego sezonu” w `localStorage`.
   2. Sprawdź, czy okno sezonu otwiera się samo raz, czy liczniki są na zero, a odznaki zostały.
   3. Ustaw suwak przez `evaluate` (`value` + `dispatchEvent(new Event('input'))`).
   4. Zagraj botem przez `window.__minigra().d` i sprawdź sumę po wygranej. Poczekaj ~7 s na animację licznika.
   5. Sprawdź przegraną: blokada i przycisk „Rewanż”.
+  - Do testu samych poziomów i kart można pominąć minigierkę: `delete window.ZRZUTKA_MINIGRY` przed wysłaniem
+    (wpłata idzie wtedy od razu). Sprawdź `[data-cel-etap]`, klasy `.cel-poziomy li` i ekran zdobycia celu.
+  - Hall of Fame: wstaw dane sezonu 1 do atrapy (`HSET zrzutka:sumy fortnite:krayo 5400 …` przez `/pipeline`)
+    i otwórz okno plakietką sezonu (`click({ force: true })`).
 - Do samych zrzutów strony wystarczy `python3 -m http.server` (bez API strona działa lokalnie).
 - **Kalibracja minigier**: boty w Node (sekcja 5.4). Uruchamiaj 60–100 partii na każdy poziom `t`.
 
@@ -535,6 +634,21 @@ długości partii (np. „za mało strzałów”), sprawdź przyczynę, zanim zm
 - Na nierównych mapach testy stawiają „półkę” (czyszczą teren wokół robala), zanim sprawdzą broń.
 - Z tego środowiska zwykle **nie ma sieci do produkcji** (`*.vercel.app`). Nie planuj pracy, która wymaga
   odczytu prawdziwych danych. Dane produkcyjne czyta dopiero wdrożony kod (np. archiwum sezonu).
+- Zrzut pojedynczej karty łapie przyklejony pasek nawigacji. Na zrzutach wstrzyknij
+  `.pasek { position: static }` (`addStyleTag` działa tylko z `bypassCSP: true` w kontekście).
+- Zmiana samego hasha w otwartej stronie (`#fortnite` → `#0ad`) odpala kurtynę. Do zrzutów drugiej kategorii
+  ładuj nowy adres, np. `/?x=1#0ad`.
+- Obracający się element przy brzegu (moneta w nagłówku) poszerza stronę o parę pikseli, bo transform liczy się
+  do obszaru przewijania. Dlatego `.hero` ma `overflow-x: clip`.
+- W SVG portretów atrybut prezentacji nie przyjmie `var(--…)`, a `style=` blokuje CSP. Kolor z motywu dawaj
+  przez klasę i CSS (np. `.awatar .obrys { stroke: var(--r1) }`).
+- Ozdoby `position: absolute` w nagłówku malują się nad zwykłym tekstem. Tła nagłówka mają `z-index: -1`,
+  a `.hero` ma `isolation: isolate`.
+- Git na Windowsie ma `core.autocrlf=true`, więc kopia robocza jest w CRLF. Skrypt, który przepisuje `index.html`,
+  ma zostawić CRLF (inaczej wyjdą mieszane końce linii — git i tak je znormalizuje przy commicie).
+- W konsoli widać 404 na `favicon.ico` — strona nie ma ikonki, to nie błąd.
+- `tap()` w Playwrightcie trafia w środek elementu. Tło ekwipunku (`#ekw-tlo`) w środku zasłania panel —
+  stukaj w róg (`position: { x: 12, y: 12 }`).
 
 **Diagnostyka w przeglądarce**:
 - `window.__arena()`: hash stanu, tura, faza, kamera, statystyki sieci.
