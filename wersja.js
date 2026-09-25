@@ -5,6 +5,13 @@
 (function () {
   var historia = [
     {
+      wersja: '3.8', data: '2026-09-25', tytul: 'Skręcanie w locie i żwawsza owca',
+      zmiany: [
+        'Po skoku możesz skręcać w powietrzu (A/D albo strzałki).',
+        'Owca biega szybciej, przeskakuje przeszkody i nie zacina się na stromiznach.'
+      ]
+    },
+    {
       wersja: '3.7', data: '2026-09-24', tytul: 'Ruch po strzale i nowe bronie',
       zmiany: [
         'Po każdym strzale masz 5 s na ruch — schowaj się albo odskocz od wybuchu.',

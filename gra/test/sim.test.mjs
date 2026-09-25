@@ -283,6 +283,40 @@ test('owca biegnie do wroga i wybucha', () => {
   assert(b.hp < 100, 'owca nie zranila wroga, hp=' + b.hp);
 });
 
+test('owca biegnie daleko i przeskakuje przeszkody', () => {
+  const st = S.createGame(21, players(2), { sieciowa: true });
+  const a = S.activeWorm(st);
+  const b = st.worms.find((w) => w !== a);
+  polka(st, a, 260);
+  a.y = Math.round(a.y); a.onGround = true; a.facing = 1;
+  b.x = a.x - 200;                                   // wróg daleko za plecami — owca go nie złapie
+  // próg 14 px na drodze owcy
+  for (let x = Math.round(a.x) + 60; x < Math.round(a.x) + 90; x++) {
+    for (let y = Math.round(a.y) - 14; y <= Math.round(a.y); y++) st.terrain.mask[y * T.WORLD_W + x] = 1;
+  }
+  st.weapon = 'owca';
+  S.startCharging(st);
+  S.releaseFire(st);
+  let maxX = 0;
+  for (let i = 0; i < 3.5 / S.DT && st.projectiles.length; i++) {
+    S.step(st);
+    maxX = Math.max(maxX, st.projectiles[0] ? st.projectiles[0].x - a.x : maxX);
+  }
+  assert(maxX > 150, 'owca przebiegla tylko ' + Math.round(maxX) + ' px');
+});
+
+test('w locie po skoku mozna skrecac', () => {
+  const st = S.createGame(21, players(2), { sieciowa: true });
+  const a = S.activeWorm(st);
+  polka(st, a, 200);
+  a.y = Math.round(a.y); a.onGround = true; a.facing = 1;
+  S.jump(st);
+  st.input.left = true;                             // skok w prawo, w locie w lewo
+  run(st, 0.35);
+  assert(a.vx < 0, 'w locie nie da sie skrecic, vx=' + a.vx);
+  assert(a.facing === -1, 'robal nie obrocil sie w locie');
+});
+
 test('kij wybija wroga z ogromnym odrzutem', () => {
   const st = S.createGame(21, players(2), { sieciowa: true });
   const a = S.activeWorm(st);

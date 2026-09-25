@@ -1,78 +1,222 @@
-# CLAUDE.md — kontekst projektu
+# CLAUDE.md — kontekst projektu (przeczytaj całość przed pierwszą zmianą)
 
-Żartobliwa strona dla ekipy znajomych. Statyczny hosting na **Vercelu**, kilka funkcji
-serwerowych w `api/`, dane współdzielone w **Upstash Redis** (REST). Bez bundlera,
-bez `package.json`, bez zależności npm.
+Żartobliwa strona dla ekipy znajomych: „zrzutka” wirtualnych V-dolców i srebrników dla graczy
+Fortnite i 0 A.D. oraz **Arena GOATów** — turowa strzelanka w stylu Worms, grana online.
+Wszystko to robiliśmy iteracyjnie z właścicielem repo. Ten plik opisuje, **jak ma to działać
+i czego pilnować**, żeby kolejne zmiany szły w tę samą stronę.
 
-## Komunikacja
+Technicznie: statyczny hosting na **Vercelu** (produkcja = gałąź `master`), dwie funkcje
+serwerowe w `api/`, wspólne dane w **Upstash Redis** (REST). Bez bundlera, bez `package.json`,
+bez zależności npm — zwykłe pliki HTML/CSS/JS, gra jako moduły ES.
 
-- Użytkownik pisze po polsku (często bez polskich znaków), zwykle z telefonu. Odpowiadaj po polsku.
-- Teksty na stronie, komentarze w kodzie, nazwy zmiennych i commity są po polsku.
-- Rozwijaj na gałęzi `claude/epic-rubin-ejixox`, a na `master` wchodź PR-em tylko wtedy,
-  gdy użytkownik o to poprosi (np. „daj na main”). Push na `master` = wdrożenie na produkcję.
+---
 
-## Struktura
+## 1. Najważniejsze zasady (w skrócie)
+
+1. **Oszczędzaj Redisa.** Działamy na darmowym planie Upstasha z limitem komend — patrz sekcja 3.
+   Każda nowa funkcja najpierw po stronie przeglądarki (`localStorage`), serwer tylko gdy musi.
+2. **Determinizm Areny** — żadnego `Math.random/sin/cos/atan2` w symulacji (sekcja 5).
+3. **Testy przed pushem**: `node gra/test/sim.test.mjs` i `node gra/test/protokol.test.mjs`.
+4. **Wpis w logu zmian** (`wersja.js`) przy każdej zmianie widocznej dla użytkownika.
+5. **Na `master` tylko na prośbę** („daj na main”, „wrzuć na maina”) — to jest wdrożenie na produkcję.
+6. **Po polsku**: odpowiedzi, teksty na stronie, komentarze, nazwy zmiennych i commity.
+7. **Sprawdzaj wizualnie** (zrzuty Playwrightem, desktop i telefon) — użytkownik gra głównie z telefonu.
+
+---
+
+## 2. Komunikacja i sposób pracy
+
+- Użytkownik pisze po polsku, często bez polskich znaków, zwykle z telefonu. Odpowiadaj po polsku,
+  konkretnie, bez technicznego żargonu — co się zmieniło z punktu widzenia gracza.
+- Gdy prośba jest niejasna (np. literówka w imieniu), zrób rozsądną interpretację i powiedz, jak
+  zrozumiałeś; pytaj tylko o rzeczy, których nie da się sensownie założyć (wygląd prawdziwej osoby itp.).
+- Rozwijaj na gałęzi `claude/epic-rubin-ejixox` (jeśli poprzedni PR z niej jest już scalony — zacznij
+  ją od nowa od `origin/master`). Push na gałąź po każdej skończonej rzeczy.
+- Na prośbę o wdrożenie: PR `claude/epic-rubin-ejixox` → `master`, merge (metoda „merge”).
+  Vercel wdraża `master` sam w ~1–2 min. Przypominaj, że kto ma otwartą Arenę, musi odświeżyć stronę.
+- Humor strony: jajcarski, ale życzliwy — śmiejemy się z grania, nie z ludzi. Pochodzenie graczy
+  podajemy tylko tak, jak podał je właściciel (etykieta w profilu), bez stereotypów w rysunkach.
+
+---
+
+## 3. Redis / Upstash — budżet zapytań (BARDZO WAŻNE)
+
+Baza to **Upstash Redis na darmowym planie** — ma limit komend (miesięczny, sprawdzisz go w panelu
+Upstash) i ograniczoną przepustowość. Każde zapytanie HTTP do `api/` to kilka komend Redisa.
+Przekroczenie limitu = strona i gra przestają działać dla wszystkich. Dlatego:
+
+**Zasady**
+- **Nie dodawaj nowych cyklicznych zapytań** (setInterval z fetch) bez wyraźnej potrzeby i zgody.
+  Jeśli coś musi być wspólne — doklejaj dane do zapytań, które i tak idą (np. pole w `ruch`,
+  w `dolacz`, w zdarzeniu strzału), zamiast robić nowy endpoint albo nowy polling.
+- **Dane osobiste trzymaj w `localStorage`** (statystyki, osiągnięcia, ustawienia, wybrana broń).
+- Wiele komend naraz → jeden `pipeline` (jedno zapytanie HTTP do Upstasha).
+- Karta w tle nie odpytuje (`document.hidden`) — utrzymuj to przy każdej zmianie w `net.js`.
+- Klucze z TTL, żeby porzucone dane same znikały. Listy przycinane (`LTRIM`, limit logu).
+- Zanim dodasz funkcję „online”, policz, ile komend dziennie zje przy 5–6 graczach.
+
+**Ile to kosztuje dziś (orientacyjnie)**
+- Arena (`net.js`): odczyt = 1 zapytanie = 2 komendy (`LRANGE` + `HGETALL`). Interwały:
+  lobby 3 s, cudza tura 1 s, moja tura 2,5 s, czekanie na stan 0,45 s, bezczynność 15 s;
+  puls obecności co 8 s; podgląd ruchu (`ruch`) co ≥ 0,45 s tylko gdy aktywny gracz się rusza.
+  Każdy zapis (`POST`) = limit (`INCR`, czasem `EXPIRE`) + właściwe komendy.
+  **Godzina gry we 3 ≈ kilkadziesiąt tysięcy komend.**
+- Zrzutka (`zrzutka/app.js`): odczyt sum co 10 s na każdą otwartą, widoczną kartę (~720 zapytań/h/kartę).
+  Wpłata = jedno zapytanie.
+
+**Limity po stronie API** (chronią budżet przed spamem)
+- `api/arena.js`: 200 zapisów / 10 s na IP (gracze za jednym Wi-Fi mają wspólne IP!), log max 4000
+  zdarzeń (potem reset i nowa „epoka”), ciało ≤ 24 KB, TTL 6 h.
+- `api/zrzutka.js`: 30 wpłat / 60 s na IP, lista ostatnich 60 wpłat.
+
+---
+
+## 4. Struktura repo
 
 | Ścieżka | Co to jest |
 |---|---|
-| `index.html` + `zrzutka/` | Strona główna: „zrzutka” V-dolców (Fortnite) i srebrników (0 A.D.) dla graczy z ekipy |
-| `zrzutka/dane.js` | Gracze, cele, reakcje, zaczepki, odznaki (opisy graczy i awatary SVG są w `index.html`) |
-| `zrzutka/app.js` | Logika strony (przełączanie kategorii przez `#fortnite` / `#0ad`, wpłaty, odznaki) |
-| `zrzutka/baza.css`, `fortnite.css`, `zeroad.css` | Wspólny szkielet i dwa motywy |
-| `gra/` | **Arena GOATów** — turowa strzelanka w stylu Worms, multiplayer online |
-| `gra/osiagniecia.js` | Lista osiągnięć Areny (gra + profil na stronie głównej) |
-| `goat/` | Stara, ukryta strona „ŁAZI TO GOAT” |
-| `zmiany/` | Log zmian (czyta `wersja.js`) |
-| `wersja.js` | **Numer wersji i historia zmian** — jedno źródło; znaczek `vX.Y` w rogu stron |
-| `api/zrzutka.js` | Wspólne sumy zrzutki (lista dozwolonych graczy `GRACZE` — dopisz nowego gracza!) |
-| `api/arena.js` | Serwer gry: log zdarzeń + obecność graczy w Redisie |
+| `index.html` | Strona główna: zrzutka. **Karty graczy z awatarami SVG i opisami są tu**, plus sprite z symbolami (`#vbuck`, `#srebrnik`, `#scutum`, `#obywatelka`) i wspólnymi gradientami |
+| `zrzutka/dane.js` | Gracze (cele, reakcje, zaczepki), odznaki, rangi — dane dla `app.js` |
+| `zrzutka/app.js` | Logika strony: kategorie `#fortnite` / `#0ad`, wpłaty, liczniki, odznaki, profil, sekcja osiągnięć z Areny |
+| `zrzutka/baza.css`, `fortnite.css`, `zeroad.css`, `motyw.js` | Szkielet, dwa motywy, ustawienie motywu przed malowaniem |
+| `gra/` | **Arena GOATów** (sekcja 5) |
+| `gra/osiagniecia.js` | Lista osiągnięć Areny — klasyczny skrypt, czyta go gra i strona główna |
+| `wersja.js` | Numer wersji + historia zmian (jedno źródło); znaczek `vX.Y` w rogu stron |
+| `zmiany/` | Strona „Co nowego” (rysuje historię z `wersja.js`) |
+| `goat/` | Stara, ukryta strona „ŁAZI TO GOAT” — nie ruszać |
+| `api/zrzutka.js` | Wspólne sumy zrzutki — lista dozwolonych graczy `GRACZE` |
+| `api/arena.js` | Serwer gry: log zdarzeń, obecność, zamek startu partii |
+| `vercel.json` | Nagłówki bezpieczeństwa |
 
-## Przy każdej zmianie widocznej dla użytkownika
+**Klucze `localStorage`**: `zrzutka-v2` (wpłaty, odznaki), `arena:id`, `arena:nazwa`, `arena:bron`,
+`arena:staty`, `arena:osiagniecia`.
 
-1. Dopisz nowy wpis **na początku** `historia` w `wersja.js` (podbij wersję: poprawki → `x.y+1`, duże rzeczy → `x+1.0`).
-2. Nowy gracz zrzutki = karta w `index.html` + wpis w `zrzutka/dane.js` + `api/zrzutka.js` (`GRACZE`).
+---
 
-## Arena (`gra/`) — ważne zasady
+## 5. Arena GOATów (`gra/`)
 
-- **Determinizm**: symulacja (`sim.js`, `terrain.js`) używa tylko `+ - * /`, `Math.sqrt`, `Math.floor`,
-  `Math.imul` i seedowanego `mulberry32`. **Żadnego `Math.sin/cos/atan2/random`** w ścieżce wspólnej —
-  różne przeglądarki dają różne bity i gra się rozjeżdża. Trygonometria tylko u strzelającego
-  (wektor startowy leci w zdarzeniu) i w `render.js` (grafika).
-- Mapa nie leci przez sieć: seed + lista kraterów. `terrain.js` generuje ją deterministycznie
-  (4 style: góry, archipelag, kaniony, jaskinie).
-- Protokół (`protokol.js`, bez DOM): pierwszy `strzal`/`pas` tury jest kanoniczny, a turę zamyka `stan`
-  policzony z tej akcji. Gospodarz (najmniejsze id) przekazuje tury nieobecnych.
-- Sieć (`net.js`): polling `/api/arena`. **Serwer jest słaby** — nowe funkcje mają być po stronie
-  klienta (localStorage), bez dodatkowych zapytań.
-- `window.__arena()` w konsoli = diagnostyka (hash stanu, kamera, statystyki).
-- Sterowanie: A/D ruch, Spacja skok, W/S lub mysz celowanie, F/Enter (przytrzymaj) strzał, 1-0 broń.
-- Bronie (`weapons.js`): bazooka, granat, strzelba, kasetówka, dynamit, nalot, owca, kij, teleport, salwa
-  (Blitzkrieg). Trygonometria nowych broni (wachlarz salwy, kierunek kija) liczona jest u strzelającego
-  w `obliczStart` i leci w `start`.
-- Po **każdym** strzale jest faza `odwrot` (5 s ruchu, `ODWROT_S`). Wciśnięcia są nagrywane i lecą w strzale
-  jako RLE, a strzał wychodzi do sieci dopiero po tych 5 s. Odbiorca odtwarza wszystko krok w krok.
-  Dlatego `GRACE_PAS` w protokole wynosi 12 s.
-- Gospodarz lobby to obecny gracz, który dołączył najwcześniej (kolejność `dolacz` w logu), a nie najmniejsze id.
-- Osiągnięcia: lista w `gra/osiagniecia.js` (klasyczny skrypt, czyta go też strona główna do profilu),
-  reguły w `gra/src/osiagniecia-reguly.js` (czyste funkcje, testowane w `sim.test.mjs`), zapis w
-  `localStorage['arena:osiagniecia']`. Nowe osiągnięcie = wpis na liście + reguła + test.
+### Pliki
+| Plik | Rola |
+|---|---|
+| `src/sim.js` | Symulacja (bez DOM): robale, fizyka, bronie, tury, snapshoty, hash stanu |
+| `src/terrain.js` | Generator mapy (seed → maska pikseli), kratery, punkty startu |
+| `src/weapons.js` | Tabela broni (liczby, bez logiki) i kolejność na pasku |
+| `src/protokol.js` | Protokół sieciowy (bez DOM) — kto ma turę, co jest kanoniczne, kto wyrzuca nieobecnych |
+| `src/net.js` | Polling `/api/arena`, obecność, zegar serwera, `sendBeacon` przy zamknięciu karty |
+| `src/main.js` | Lobby, HUD, kamera, pętla gry, statystyki, osiągnięcia (UI) |
+| `src/input.js` | Klawiatura, przyciski dotykowe, przeciąganie/szczypanie |
+| `src/render.js`, `src/fx.js` | Grafika (tu wolno trygonometrię i `Math.random`) |
+| `src/osiagniecia-reguly.js` | Reguły osiągnięć — czyste funkcje |
+| `test/sim.test.mjs`, `test/protokol.test.mjs` | Testy w Node |
 
-## Testy
+### Determinizm (święta zasada)
+- Symulacja (`sim.js`, `terrain.js`) używa tylko `+ - * /`, `Math.sqrt`, `Math.floor/round/abs/min/max`,
+  `Math.imul` i seedowanego `mulberry32` / szumu z `rng.js`. **Zero `Math.sin/cos/atan2/random`** —
+  różne przeglądarki dają inne bity i gra się rozjeżdża (desync).
+- Trygonometria tylko u strzelającego: `obliczStart()` liczy wektor(y) startowe, które lecą w zdarzeniu
+  (`start`, np. wachlarz salwy `start.salwa`). Odbiorca nic nie przelicza.
+- `-0` normalizujemy (`x + 0`) — JSON zamienia `-0` na `0`.
+- Mapa nie leci przez sieć: seed + lista kraterów. Generator 2D (nawisy, tunele, pływające skały),
+  4 style z seeda: góry, archipelag, kaniony, jaskinie. Kopia bazowej maski jest cache'owana.
+
+### Protokół tury
+- Wspólny log zdarzeń w Redisie. Pierwszy `strzal`/`pas` danej tury jest **kanoniczny**.
+- Strzał niesie pełny stan robali i kratery z chwili strzału + wektor startowy.
+- Po **każdym** strzale jest faza `odwrot`: **5 s ruchu** (`ODWROT_S`). Wciśnięcia są nagrywane
+  (RLE) i dołączane do strzału, a strzał wychodzi do sieci dopiero po tych 5 s — odbiorca odtwarza
+  wszystko krok w krok. Koszt: inni widzą strzał z ~5 s opóźnieniem. Dlatego `GRACE_PAS` = 12 s.
+- Turę zamyka `stan` (snapshot) policzony z kanonicznej akcji; wszyscy (autor też) go przyjmują.
+- Gospodarz gry (najmniejsze id wśród połączonych uczestników) oddaje tury nieobecnych
+  (odszedł / brak sieci 15 s / czas) i publikuje stan zastępczy. Po ~90 s bez sieci gracz wylatuje.
+- **Gospodarz lobby** to obecny gracz, który dołączył najwcześniej (kolejność `dolacz`); lista lobby
+  przeżywa nową partię (seedowana z `gracze` w zdarzeniu `nowa`).
+- Zamknięcie karty → `sendBeacon` z `wyjdz` (text/plain). Przycisk „Opuść grę” robi to samo.
+
+### Rozgrywka
+- Sterowanie: **A/D** ruch, **Spacja** skok, **W/S** lub mysz celowanie, **F/Enter** (przytrzymaj) strzał,
+  **1–0** broń. Na telefonie przyciski dotykowe + celowanie palcem, szczypanie = zoom.
+- W powietrzu da się skręcać (sterowanie w locie, `POWIETRZE_*` w `sim.js`), ale nie przebić odrzutu.
+- Bronie (`weapons.js`, kolejność = klawisze 1–0): bazooka, granat, strzelba, kasetówka, dynamit
+  (lont 6 s), nalot (celowany), owca (biega, przeskakuje przeszkody, wybucha przy wrogu), kij
+  (odrzut), teleport (celowany), salwa „Blitzkrieg” (3 rakietki). Część ma limit amunicji.
+- Lawa podnosi się po kilku rundach (nagła śmierć). Kamera może wyjechać trochę za mapę i trzyma
+  robala w wolnym pasie między panelami a dolnym HUD-em.
+- Statystyki i osiągnięcia tylko w `localStorage` (bez serwera). Osiągnięć jest 18.
+
+### Jak dodać…
+- **Broń**: wpis w `WEAPONS` + `WEAPON_ORDER` → obsługa w `sim.js` (`obliczStart`, `applyFire`,
+  ewentualnie `stepProjectiles`) → rysowanie w `render.js` → test działania + dopisze się sam do
+  testu „odbiorca odtwarza strzał co do bitu” (pętla po `WEAPON_ORDER`).
+- **Osiągnięcie**: wpis w `gra/osiagniecia.js` + reguła w `osiagniecia-reguly.js` + test
+  (test pilnuje, że każde id z reguł jest na liście i ile ich jest).
+
+---
+
+## 6. Zrzutka (strona główna)
+
+- Dwie kategorie: **Fortnite** (V-dolce) i **0 A.D.** (srebrniki), przełączane hashem `#fortnite` / `#0ad`.
+  Trzecia zakładka „Arena” to zwykły link do `gra/`.
+- Sumy są wspólne (Redis), odznaki/tytuły/profil lokalne. Nowe cudze wpłaty pokazują się jako krótkie
+  powiadomienia (raz na wpłatę, najwyżej 2 naraz).
+- **Gracze** (opisy w kartach w `index.html` — trzymaj się tego charakteru):
+  - Fortnite: **PowPow** (aka Konradek, full box, ambicje), **Krayo** (noob, nie umie grać),
+    **Śliski Karp** (dziadek Piotr), **Apollo** (grinduje, blisko earningsów, niszczy lobby).
+  - 0 A.D.: **Kozak** (GOAT z Izraela, spokojny, ale wkurzony nie do zatrzymania), **Lazi** (emeryt,
+    weteran, blitzkrieg i do lobby), **Stozhinio** (spokojny do czasu, tylko Spartanie), **Nolli**
+    (podstępny ekonomista, atakuje jak babcia), **Apollo** (masa obywatelek i jedzenia, armia po
+    20. minucie, całkiem dobry), **Froxy** (zawsze Hanowie, początkujący, okulary), **Quber aka Kapuś**
+    (Rzymianie, żółw z włóczników, 8/10).
+- **Nowy gracz** = karta w `index.html` (awatar SVG 160×160, opis, staty, cele) + wpis w
+  `zrzutka/dane.js` (w tej samej kategorii) + id w `GRACZE` w `api/zrzutka.js` (inaczej serwer odrzuci
+  wpłaty) + ewentualnie odznaka. Zaktualizuj teksty z liczbą wojowników i licznik odznak.
+
+---
+
+## 7. Wersje i log zmian
+
+- Przy każdej zmianie widocznej dla użytkownika dopisz wpis **na początku** `historia` w `wersja.js`
+  (poprawki/drobne → `x.y+1`, duże rzeczy → `x+1.0`). Jeśli poprzednia wersja nie weszła jeszcze na
+  `master`, można dopisać punkty do jej wpisu zamiast podbijać numer.
+- Zmiany opisuj językiem gracza, nie programisty.
+
+---
+
+## 8. Testy i sprawdzanie
 
 ```
-node gra/test/sim.test.mjs        # symulacja, bronie, determinizm
-node gra/test/protokol.test.mjs   # protokół z atrapą serwera, lagiem, rozłączeniami
+node gra/test/sim.test.mjs        # symulacja, bronie, determinizm, osiągnięcia
+node gra/test/protokol.test.mjs   # protokół z atrapą serwera, lagiem, rozłączeniami (trwa ~1–2 min)
 ```
+Obie muszą przejść przed pushem. Dodatkowo `node --check` na zmienionych plikach JS.
 
-Obie muszą przejść przed pushem. E2E robiłem Playwrightem (Chromium jest w `/opt/pw-browsers`)
-z atrapą Upstasha, która uruchamia prawdziwe `api/arena.js`. Skrypty są poza repo, w scratchpadzie.
+**E2E / zrzuty** (robione Playwrightem, Chromium jest w `/opt/pw-browsers`; skrypty trzymaj w scratchpadzie,
+nie w repo): mały serwer Node, który serwuje pliki i uruchamia prawdziwe `api/arena.js` na atrapie
+Upstasha w pamięci (obsługa `LRANGE/RPUSH/DEL/EXPIRE/INCR/SET NX EX/HSET/HGETALL/HINCRBY/HDEL`
+przez endpoint `/pipeline`). Scenariusz: 2 przeglądarki desktop + telefon (np. „iPhone 13 landscape”),
+porównanie `window.__arena().hash` na granicy każdej tury. Do zrzutów strony wystarczy `python3 -m http.server`.
 
-## Bezpieczeństwo
+**Pułapki, na które już wpadliśmy**
+- W awatarach CSS ma `.awatar g/path/circle/ellipse { transform-box: fill-box }` — atrybut
+  `transform="rotate(a x y)"` obraca wtedy wokół złego punktu. Takim elementom dawaj klasę `bez-pudla`.
+- Zrzut może złapać mrugnięcie (animacja `.oko`) — przy „zamkniętych oczach” zrób drugi zrzut.
+- Testy E2E jeden po drugim: gracze z poprzedniego przebiegu są „obecni” jeszcze ~20 s (duchy w lobby)
+  — odczekaj albo zrestartuj atrapę. `page.close()` w Playwrightcie nie zawsze wysyła beacon.
+- `pkill -f wzorzec` potrafi zabić własną powłokę, jeśli ta sama komenda zawiera wzorzec — zabijaj
+  serwery osobną komendą i wzorcem typu `"http[.]server"`.
+- Na nierównych mapach testy stawiają „półkę” (czyszczą teren wokół robala), zanim sprawdzą broń.
+
+**Diagnostyka w przeglądarce**: `window.__arena()` — hash stanu, tura, faza, kamera, statystyki sieci.
+
+---
+
+## 9. Bezpieczeństwo
 
 - Klucze Redisa są **tylko** w zmiennych środowiskowych Vercela (`UPSTASH_REDIS_REST_URL/TOKEN`,
-  `KV_REST_API_*` albo dowolny prefiks `*_REST_API_URL/TOKEN`). Nigdy w kodzie ani w odpowiedziach API.
-- API zwraca do przeglądarki tylko kody błędów (`{ blad: '...' }`), szczegóły idą do `console.error`, czyli do logów Vercela.
-- `.gitignore` blokuje `.env*` i `.vercel`.
-- Strony mają ścisłe CSP (`script-src 'self'`, style tylko z plików i Google Fonts), więc nie ma
-  inline `<script>`/`<style>` ani atrybutów `style=` w HTML. Style ustawiane z JS przez `el.style` są dozwolone.
-- Tekst od użytkowników wstawiaj przez `textContent`, nigdy przez `innerHTML`.
+  `KV_REST_API_*` albo dowolny prefiks `*_REST_API_URL/TOKEN`). Nigdy w kodzie, commitach ani
+  odpowiedziach API. `.gitignore` blokuje `.env*` i `.vercel`.
+- API zwraca do przeglądarki tylko kody błędów (`{ blad: '...' }`); szczegóły idą do `console.error`
+  (logi Vercela).
+- Ścisłe CSP (`script-src 'self'`, style tylko z plików i Google Fonts): żadnych inline `<script>`,
+  `<style>` ani atrybutów `style=` w HTML. `el.style.x = …` z JS jest dozwolone.
+- Tekst od użytkowników (nicki, wiadomości) wstawiaj przez `textContent`, nigdy `innerHTML`.
+- Serwer waliduje wszystko, co przychodzi (typy, długości, dozwolone id graczy) i stempluje czas sam.

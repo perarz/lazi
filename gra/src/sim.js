@@ -25,6 +25,8 @@ const JUMP_VX = 118;
 const AIM_SPEED = 1.5;              // rad/s
 const FALL_SAFE_V = 330;            // poniżej tej prędkości upadek nie boli
 const AIR_DRAG = 0.06;
+const POWIETRZE_PRZYSP = 520;       // px/s² — sterowanie w locie (po skoku można skręcać)
+const POWIETRZE_MAX = 110;          // do takiej prędkości w bok da się rozpędzić w powietrzu
 
 export const TURN_TIME = 30;
 const SETTLE_MAX = 5;
@@ -557,6 +559,19 @@ function stepWorm(state, w, controllable, ster) {
     }
   }
 
+  if (controllable && !w.onGround) {
+    // Sterowanie w locie: wolno dopychać w stronę wciśniętego kierunku, ale nie
+    // szybciej niż POWIETRZE_MAX — odrzutu z wybuchu nie da się „wyprzedzić”.
+    const dir = ster.left ? -1 : ster.right ? 1 : 0;
+    if (dir !== 0) {
+      obroc(w, dir);
+      if (w.vx * dir < POWIETRZE_MAX) {
+        w.vx += dir * POWIETRZE_PRZYSP * DT;
+        if (w.vx * dir > POWIETRZE_MAX) w.vx = dir * POWIETRZE_MAX;
+      }
+    }
+  }
+
   if (!w.onGround) {
     w.vy += GRAVITY * DT;
     w.vx -= w.vx * AIR_DRAG * DT * 60 * DT;
@@ -689,15 +704,31 @@ function krokOwcy(state, p, weapon, i) {
       p.y = g;
     } else if (g === null && !T.solidAt(t, nx, p.y - 2) && !T.solidAt(t, nx, p.y - 8)) {
       p.x = nx;                                   // krawędź: dalej spada
+    } else if (!T.solidAt(t, p.x - p.vx * 4, p.y - 22)) {
+      p.vy = -weapon.skok;                        // przeszkoda: owca skacze przez nią
     } else {
-      p.vx = -p.vx;                               // ściana: zawraca
+      p.vx = -p.vx;                               // nisko nad głową strop: zawraca
     }
   } else {
+    // w locie leci do przodu i spada; uderzenie w ścianę = zawrót
     p.vy += GRAVITY * DT;
+    const nx = p.x + p.vx * weapon.predkosc * DT;
+    if (!T.solidAt(t, nx, p.y - 2) && !T.solidAt(t, nx, p.y - 8)) p.x = nx;
+    else if (p.vy > 0) p.vx = -p.vx;              // spada na ścianę: zawraca (wznosząc się — czeka, aż przeskoczy)
     const kroki = Math.max(1, Math.ceil(Math.abs(p.vy * DT)));
     const iy = (p.vy * DT) / kroki;
     for (let k = 0; k < kroki; k++) {
-      if (iy > 0 && T.solidAt(t, p.x, p.y + iy + 1)) { p.vy = 0; break; }
+      if (iy > 0 && T.solidAt(t, p.x, p.y + iy + 1)) {
+        // lądowanie: stopy na całym pikselu tuż nad gruntem, inaczej ułamek
+        // wysokości sprawia, że owca „wisi” i nigdy nie biegnie po ziemi
+        let yy = Math.floor(p.y + iy + 1);
+        while (yy > 0 && T.solidAt(t, p.x, yy)) yy--;
+        p.y = yy;
+        p.vy = 0;
+        break;
+      }
+      // strop sprawdzany kawałek za owcą — przy ścianie przód bywa już w skale
+      if (iy < 0 && T.solidAt(t, p.x - p.vx * 4, p.y + iy - 10)) { p.vy = 0; break; }
       p.y += iy;
     }
   }
