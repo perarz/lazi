@@ -105,7 +105,8 @@ export const WEAPONS = {
     key: '7',
     kind: 'owca',          // biegnie po terenie przed siebie, zawraca na ścianach
     speed: 0,
-    predkosc: 72,          // px/s biegu
+    predkosc: 100,         // px/s biegu
+    skok: 240,             // px/s w górę, gdy trafi na przeszkodę
     radius: 58,
     damage: 55,
     knockback: 300,
