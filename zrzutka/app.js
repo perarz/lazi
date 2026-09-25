@@ -1894,7 +1894,13 @@
     else oknoSezon.removeAttribute('open');
   }
 
-  $$('[data-sezon-okno]').forEach(function (b) { b.addEventListener('click', function () { otworzSezon(false); }); });
+  $$('[data-sezon-okno]').forEach(function (b) {
+    b.addEventListener('click', function () { otworzSezon(false); });
+    // naklejka przy tytule to <span role="button"> — Enter/spacja też otwierają
+    b.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); otworzSezon(false); }
+    });
+  });
   $('#sezon-x').addEventListener('click', zamknijSezon);
   $('#sezon-ok').addEventListener('click', zamknijSezon);
   oknoSezon.addEventListener('click', function (e) { if (e.target === oknoSezon) zamknijSezon(); });

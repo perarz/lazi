@@ -436,7 +436,7 @@
     ikona: '🔨',
     opis: [
       'Przeciągaj palcem (albo WASD), żeby biegać. Nie wychodź poza krąg burzy.',
-      'Gdy wróg celuje (czerwony laser), stuknij albo naciśnij BUDUJ — ściana złapie serię (10 🪵).',
+      'Gdy wróg celuje (czerwony laser), stuknij w jego stronę — tam stanie ściana (10 🪵). BUDUJ / spacja = w stronę, w którą biegłeś.',
       'Zbieraj drewno. Przetrwaj do końca odliczania.'
     ],
     start: function (env) {
@@ -445,7 +445,7 @@
       var gora = u * 13;                           // pod HUD-em
       var czasGry = lerp(20, 32, t);
       var gracz = { x: W / 2, y: (H + gora) / 2, r: u * 2.6, hp: 100, kat: -Math.PI / 2, krok: 0 };
-      var cel = null, klawisze = {};
+      var cel = null, klawisze = {}, ostatniKier = null;
       var mat = Math.round(lerp(60, 30, t));
       var sciany = [], kule = [], drewno = [], wrogowie = [];
       var czas = 0, koniec = false, doDrewna = 1.5, blysk = 0, brakMat = 0, wstrzas = 0;
@@ -491,11 +491,17 @@
         return best;
       }
 
-      function zbuduj() {
+      // kierunek ściany: stuknięty punkt → ostatni kierunek ruchu → najbliższy wróg
+      function zbuduj(cel) {
         if (koniec) return;
         if (mat < 10) { brakMat = 0.8; return; }
-        var w = najblizszy();
-        var dx = w.x - gracz.x, dy = w.y - gracz.y, d = Math.sqrt(dx * dx + dy * dy) || 1;
+        var dx, dy;
+        if (cel) { dx = cel.x - gracz.x; dy = cel.y - gracz.y; }
+        if (!cel || dx * dx + dy * dy < u * u) {
+          if (ostatniKier) { dx = ostatniKier.x; dy = ostatniKier.y; }
+          else { var w = najblizszy(); dx = w.x - gracz.x; dy = w.y - gracz.y; }
+        }
+        var d = Math.sqrt(dx * dx + dy * dy) || 1;
         dx /= d; dy /= d;
         mat -= 10;
         sciany.push({
@@ -564,6 +570,7 @@
           }
           var vd = Math.sqrt(vx * vx + vy * vy);
           if (vd > 0) {
+            ostatniKier = { x: vx / vd, y: vy / vd };
             gracz.x = zakres(gracz.x + vx / vd * u * 36 * dt, gracz.r, W - gracz.r);
             gracz.y = zakres(gracz.y + vy / vd * u * 36 * dt, gora + gracz.r, H - gracz.r);
             gracz.krok += dt * 14;
@@ -802,7 +809,7 @@
         puszczone: function (p, stukniecie) {
           var byl = cel;
           cel = null;
-          if (stukniecie && byl && !(p && wPrzycisku(p))) zbuduj();
+          if (stukniecie && byl && !(p && wPrzycisku(p))) zbuduj(p);
         },
         klawisz: function (k, wdol) {
           if (k === 'ArrowLeft' || k === 'a') klawisze.l = wdol;
@@ -811,7 +818,7 @@
           else if (k === 'ArrowDown' || k === 's') klawisze.d = wdol;
           else if (wdol && (k === ' ' || k === 'Enter')) zbuduj();
         },
-        podpowiedz: function () { return czas < 3 ? 'Przeciągaj = bieg · stuknij = ściana' : ''; },
+        podpowiedz: function () { return czas < 3 ? 'Przeciągaj = bieg · stuknij = ściana w tę stronę' : ''; },
         debug: function () {
           return { hp: gracz.hp, x: gracz.x, y: gracz.y, mat: mat, czas: czas, czasGry: czasGry, burza: { x: burza.x, y: burza.y, r: burza.r },
             sciany: sciany.length, kule: kule, wrogowie: wrogowie, drewno: drewno };
@@ -1057,7 +1064,7 @@
     ikona: '🛡️',
     opis: [
       'Łucznicy szyją z czterech stron. Stuknij stronę ekranu (albo strzałki / przesuń palcem), żeby obrócić tarcze.',
-      'Łucznik, który się świeci, zaraz strzeli — tarcze muszą patrzeć w jego stronę, gdy strzały dolecą.',
+      'Łucznik, który się świeci, zaraz strzeli — tarcze muszą patrzeć w jego stronę, gdy strzały dolecą. Uwaga: niektórzy strzelają bez ostrzeżenia!',
       'Szarżę konnicy też przyjmij frontem. Przetrwaj wszystkie salwy.'
     ],
     start: function (env) {
@@ -1070,7 +1077,8 @@
       var ostrzezenie = lerp(1.15, 0.6, t);
       var lot = lerp(0.75, 0.45, t);
       var przerwa = lerp(1.35, 0.6, t);
-      var szansaPodwojnej = t < 0.3 ? 0 : lerp(0.15, 0.35, t);
+      var szansaPodwojnej = t < 0.2 ? 0 : lerp(0.2, 0.5, t);
+      var szansaBezOstrzezenia = t < 0.3 ? 0 : lerp(0.12, 0.35, t);   // łucznicy strzelają bez napinania
       var szansaZmylki = t < 0.25 ? 0 : lerp(0.1, 0.3, t);
       var szansaSzarzy = t < 0.2 ? 0 : lerp(0.12, 0.25, t);
       var kier = 0, katWidok = -Math.PI / 2;
@@ -1088,12 +1096,14 @@
         var szarza = Math.random() < szansaSzarzy;
         var s = Math.floor(Math.random() * 4);
         if (s === kier && Math.random() < 0.6) s = (s + 1 + Math.floor(Math.random() * 3)) % 4;   // najczęściej z innej strony
-        salwy.push({ id: ++licznikSalw, strona: s, typ: szarza ? 'szarza' : 'luk', faza: 'celuje', czas: szarza ? ostrzezenie * 1.8 : ostrzezenie, lot: szarza ? lot * 1.6 : lot, prawdziwa: true });
+        var cicha = !szarza && Math.random() < szansaBezOstrzezenia;
+        salwy.push({ id: ++licznikSalw, strona: s, typ: szarza ? 'szarza' : 'luk', faza: cicha ? 'leci' : 'celuje',
+          czas: szarza ? ostrzezenie * 1.8 : cicha ? lot * 1.7 : ostrzezenie, lot: szarza ? lot * 1.6 : cicha ? lot * 1.7 : lot, prawdziwa: true, cicha: cicha });
         wyslane++;
         // podwójna: druga prawdziwa salwa z innej strony, trafia chwilę po pierwszej
         if (!szarza && wyslane < ileSalw && Math.random() < szansaPodwojnej) {
           var d2 = (s + 1 + Math.floor(Math.random() * 3)) % 4;
-          salwy.push({ id: ++licznikSalw, strona: d2, typ: 'luk', faza: 'celuje', czas: ostrzezenie + lerp(0.75, 0.5, t), lot: lot, prawdziwa: true });
+          salwy.push({ id: ++licznikSalw, strona: d2, typ: 'luk', faza: 'celuje', czas: (cicha ? lot * 0.7 : ostrzezenie) + lerp(0.65, 0.46, t), lot: lot, prawdziwa: true });
           wyslane++;
         }
         // zmyłka: łucznik z innej strony też napina, ale nie strzela

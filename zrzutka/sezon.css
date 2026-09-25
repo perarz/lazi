@@ -34,7 +34,7 @@
   border-radius: 999px;
   background: var(--c-panel);
   color: var(--c-tekst);
-  font: 600 14px var(--f-tekst);
+  font: 600 15px var(--f-tekst);
   cursor: pointer;
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
   transition: transform 0.15s ease, border-color 0.15s ease;
@@ -252,4 +252,71 @@
   .sezon-portret { width: 52px; height: 52px; }
   .sezon-stopien.m1 .sezon-portret { width: 68px; height: 68px; }
   .sezon-pill { font-size: 13px; }
+}
+
+/* ------------------------------------------------------------ naklejka „Sezon 2” przy tytule */
+
+.hero h1 .h1-a {
+  display: inline-block;
+  position: relative;
+}
+
+.hero h1 .h1-sezon {
+  position: absolute;
+  top: -0.42em;
+  right: -0.35em;
+  display: block;
+  padding: 0.12em 0.4em 0.08em;
+  font-size: 0.28em;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+  transform: rotate(9deg);
+  animation: sezon-naklejka 2.6s ease-in-out infinite;
+}
+
+@keyframes sezon-naklejka {
+  0%, 100% { transform: rotate(9deg) scale(1); }
+  50% { transform: rotate(6deg) scale(1.07); }
+}
+
+[data-motyw="fortnite"] .hero h1 .h1-sezon {
+  font-family: var(--f-display);
+  letter-spacing: 0.03em;
+  color: #0a1646;
+  background: linear-gradient(180deg, #fff38a, #ffd400);
+  border: 0.08em solid #0a1646;
+  border-radius: 0.18em;
+  text-shadow: none;
+  box-shadow: 0 0.12em 0 #0a1646, 0 0.3em 0.6em rgba(0, 0, 0, 0.35);
+}
+
+/* w 0 A.D. tytuł jest wycinany gradientem (background-clip: text) — naklejka ma własne kolory */
+[data-motyw="zeroad"] .hero h1 .h1-sezon {
+  top: -0.3em;
+  right: -0.55em;
+  padding: 0.35em 0.5em;
+  font-family: 'Cinzel', Georgia, serif;
+  font-weight: 900;
+  font-size: 0.24em;
+  letter-spacing: 0.06em;
+  color: #f8dc85;
+  -webkit-text-fill-color: #f8dc85;
+  background: radial-gradient(circle at 40% 35%, #c0392b, #7a120c 70%);
+  -webkit-background-clip: border-box;
+  background-clip: border-box;
+  border: 0.12em solid #c8962e;
+  border-radius: 999px;
+  box-shadow: 0 0.15em 0.4em rgba(0, 0, 0, 0.5), inset 0 0 0 0.15em rgba(0, 0, 0, 0.2);
+}
+
+.hero h1 .h1-sezon:focus-visible { outline: 3px solid var(--c-akcent); outline-offset: 3px; }
+
+@media (max-width: 480px) {
+  .hero h1 .h1-sezon { right: -0.1em; top: -0.55em; }
+  [data-motyw="zeroad"] .hero h1 .h1-sezon { right: -0.15em; top: -0.5em; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero h1 .h1-sezon { animation: none; }
 }
