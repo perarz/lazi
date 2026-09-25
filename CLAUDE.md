@@ -187,9 +187,16 @@ Przekroczenie limitu = strona i gra przestają działać dla wszystkich. Dlatego
   Wpłata (`wplac`) idzie dopiero po wygranej — zero dodatkowych zapytań. Po przegranej 10 s blokady
   (`localStorage['zrzutka:minigra-blokada']`). Limit jednej wpłaty: 2000 (`maks` w `dane.js` i w `api/zrzutka.js`).
   Gry: `GRY[kat] = [łatwa, trudna]`; gra = `{ nazwa, opis[], start(env) }` → `{ krok, rysuj, wcisniete,
-  ruch, puszczone(p, stukniecie), klawisz, podpowiedz, debug }`. Fortnite: „Skok z Battle Busa”, „Build fight
-  w burzy”. Trudność trudnej gry skalibrowana botem w Node (`_gry` + `debug()`): bot z pełną wiedzą
-  wygrywa ~100% przy t=0 i ~15–20% przy t=1. Tu wolno `Math.random` (to nie Arena).
+  ruch, puszczone(p, stukniecie), najazd?, klawisz, podpowiedz, debug }`, gra ma też `ikona`. Fortnite:
+  „Snajper z Tilted” (łatwa) i „Build fight w burzy” (trudna). Ramka robi ekran startu, odliczanie 3-2-1,
+  konfetti i blokadę. Kalibracja botami w Node (`_gry` + `debug()`): Build fight — bot z pełną wiedzą ~100%
+  przy t=0 i ~15–20% przy t=1; Snajper — „ludzki” bot (reakcja 0,45–0,6 s, 20% pudeł) ~100% przy t=0
+  i ~80–90% przy t=1. Tu wolno `Math.random` (to nie Arena).
+  Pułapki: pełny okrąg „pod prąd” w canvasie to `arc(x, y, r, 2π, 0, true)` (od 0 do 2π daje zero);
+  rozmiar sceny mierz `offsetWidth` (getBoundingClientRect łapie animację scale).
+- **Okno wpłaty**: kwota z suwaka `#suwak` (pole `#pole-ile` i szybkie kwoty są ukryte, ale zostają źródłem
+  wartości — `ustawKwote()` synchronizuje wszystko). Nad suwakiem strefy gier z `ZRZUTKA_MINIGRY.strefy(kat)`,
+  pod nim wskaźnik gry i trudności. Tekst przycisku: `teksty.walcz`, gdy kategoria ma minigierki.
 - **Nowy gracz** = karta w `index.html` (awatar SVG 160×160, opis, staty, cele) + wpis w
   `zrzutka/dane.js` (w tej samej kategorii) + id w `GRACZE` w `api/zrzutka.js` (inaczej serwer odrzuci
   wpłaty) + ewentualnie odznaka. Zaktualizuj teksty z liczbą wojowników i licznik odznak.
