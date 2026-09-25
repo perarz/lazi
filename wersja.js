@@ -5,6 +5,16 @@
 (function () {
   var historia = [
     {
+      wersja: '3.10.2', data: '2026-09-25', tytul: 'Suwak, Snajper z Tilted i ładniejsze gry',
+      zmiany: [
+        'Nowe okno wpłaty: kwotę wybierasz suwakiem, a nad nim widać, która gra czeka (🎯 do 1000, 🔨 powyżej). Przycisk to teraz „Zawalcz o V-dolce”.',
+        'Nowa łatwa gra: Snajper z Tilted — zdejmuj wrogów z okien i dachów, nie strzelaj do swoich.',
+        'Build fight w burzy dostał nową grafikę: postacie, drewniane ściany, laser przed serią, przycisk BUDUJ.',
+        'Odliczanie 3-2-1 przed grą i konfetti po wygranej.',
+        'Naprawione: burza zasłaniała całą planszę.'
+      ]
+    },
+    {
       wersja: '3.10.1', data: '2026-09-25', tytul: 'Minigierki przed wpłatą (Fortnite)',
       zmiany: [
         'V-dolce trzeba teraz wygrać! Wpłata do 1000: „Skok z Battle Busa” — wyląduj w podświetlonym miejscu.',

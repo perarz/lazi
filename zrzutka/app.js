@@ -894,6 +894,7 @@
   var poleMsg = $('#pole-wiadomosc');
   var blad = $('#okno-blad');
   var szybkie = $('#szybkie');
+  var suwak = $('#suwak');
   var wybrana = null;
   var wysylanie = false;
 
@@ -912,7 +913,9 @@
     $('#etykieta-ile').textContent = t.ile;
     $('#etykieta-nick').textContent = t.nick;
     $('#etykieta-wiadomosc').textContent = t.wiadomosc;
-    $('#wyslij-tekst').textContent = t.wyslij;
+    var strefy = window.ZRZUTKA_MINIGRY ? window.ZRZUTKA_MINIGRY.strefy(k.kat) : null;
+    $('#wyslij-tekst').textContent = strefy && t.walcz ? t.walcz : t.wyslij;
+    przygotujSuwak(k, strefy);
     poleNick.placeholder = t.nickPusty;
     poleMsg.placeholder = k.kat === 'zeroad' ? 'np. „Na chwałę Sparty!”' : 'np. „kup se skilla”';
     poleIle.max = cfg.maks;
@@ -952,19 +955,94 @@
       szybkie.appendChild(b);
     });
 
-    poleIle.value = '';
     poleMsg.value = '';
     blad.textContent = '';
     wysylanie = false;
-    zaznaczSzybki();
-    rysujPodglad();
+    ustawKwote(Math.min(cfg.maks, cfg.szybkie[2]));
 
     if (typeof okno.showModal === 'function') okno.showModal();
     else okno.setAttribute('open', '');
 
-    // na telefonie klawiatura nie wyskakuje od razu — są szybkie kwoty
-    if (window.matchMedia && window.matchMedia('(pointer: fine)').matches) poleIle.focus();
+    if (window.matchMedia && window.matchMedia('(pointer: fine)').matches) suwak.focus();
   }
+
+  /* ---------- suwak kwoty ze strefami minigierek ---------- */
+
+  function przygotujSuwak(k, strefy) {
+    var cfg = KAT[k.kat];
+    suwak.max = cfg.maks;
+    $('#suwak-ikona').setAttribute('href', '#' + cfg.ikona);
+    $('#suwak-max').textContent = fmt(cfg.maks);
+    $('#suwak-srodek').textContent = fmt(Math.round(cfg.maks / 2));
+    var box = $('#suwak-strefy');
+    box.textContent = '';
+    if (!strefy) {
+      box.hidden = true;
+      suwak.style.removeProperty('--suwak-tlo');
+      return;
+    }
+    box.hidden = false;
+    strefy.forEach(function (s) {
+      var b = elem('button', 'suwak-strefa' + (s.trudna ? ' trudna' : ''));
+      b.type = 'button';
+      b.setAttribute('data-od', s.od);
+      b.setAttribute('data-do', s.do);
+      b.appendChild(elem('span', 'ik', s.gra.ikona));
+      var opis = elem('span');
+      opis.appendChild(document.createTextNode(s.gra.nazwa));
+      opis.appendChild(elem('small', null, fmt(s.od) + '–' + fmt(s.do)));
+      b.appendChild(opis);
+      b.addEventListener('click', function () { ustawKwote(Math.round((s.od + s.do) / 2 / 10) * 10); });
+      box.appendChild(b);
+    });
+    // tor suwaka: zielono-żółta łatwa strefa, pomarańczowo-czerwona trudna
+    var p = strefy[0].do / cfg.maks * 100;
+    suwak.style.setProperty('--suwak-tlo', 'linear-gradient(90deg, #5ee06a, #ffe34d ' + p + '%, #ff9a2e ' + p + '%, #ff3b3b 92%, #b3002d)');
+  }
+
+  function ustawKwote(ile) {
+    if (!wybrana) return;
+    var cfg = KAT[wybrana.kat];
+    ile = Math.max(1, Math.min(cfg.maks, Math.round(ile)));
+    poleIle.value = ile;
+    suwak.value = ile;
+    suwak.style.setProperty('--p', (ile / cfg.maks).toFixed(4));
+    $('#suwak-liczba').textContent = fmt(ile);
+    $$('.suwak-strefa').forEach(function (b) {
+      var od = Number(b.getAttribute('data-od')), dd = Number(b.getAttribute('data-do'));
+      b.classList.toggle('aktywna', ile >= od && ile <= dd);
+    });
+    blad.textContent = '';
+    zaznaczSzybki();
+    rysujPodglad();
+  }
+
+  suwak.addEventListener('input', function () { ustawKwote(Number(suwak.value)); });
+
+  // przyciski −/+: po 1 do 50, potem po 10; przytrzymanie przyspiesza
+  $$('.suwak-krok').forEach(function (b) {
+    var kier = Number(b.getAttribute('data-krok'));
+    var zegar = 0, powtorzenia = 0;
+    function krok() {
+      var ile = Number(poleIle.value) || 0;
+      var o = ile < 50 || (kier < 0 && ile <= 50) ? 1 : powtorzenia > 12 ? 50 : 10;
+      var nowa = kier > 0 ? ile + o : ile - o;
+      if (o > 1) nowa = kier > 0 ? Math.floor(nowa / o) * o : Math.ceil(nowa / o) * o;
+      ustawKwote(nowa);
+    }
+    function stop() { clearTimeout(zegar); zegar = 0; }
+    function powtarzaj() { powtorzenia++; krok(); zegar = setTimeout(powtarzaj, powtorzenia > 6 ? 60 : 120); }
+    b.addEventListener('pointerdown', function (e) {
+      e.preventDefault();
+      powtorzenia = 0;
+      krok();
+      zegar = setTimeout(powtarzaj, 380);
+    });
+    b.addEventListener('pointerup', stop);
+    b.addEventListener('pointerleave', stop);
+    b.addEventListener('pointercancel', stop);
+    b.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); krok(); } });
+  });
 
   function zamknijOkno() {
     if (typeof okno.close === 'function' && okno.open) okno.close();
@@ -1034,9 +1112,12 @@
     var w = MG && ile > 0 ? MG.dlaKwoty(k.kat, ile) : null;
     if (!w) { p.hidden = true; return; }
     p.hidden = false;
-    p.appendChild(document.createTextNode('🎮 Najpierw minigierka: '));
-    p.appendChild(elem('b', null, w.gra.nazwa));
-    p.appendChild(document.createTextNode(w.trudna ? ' (trudna — im więcej, tym ciężej)' : ' (łatwa — im więcej, tym trudniej)'));
+    p.appendChild(elem('span', 'ik', w.gra.ikona));
+    var tekst = elem('span', 'okno-minigra-tekst');
+    tekst.appendChild(elem('b', null, w.gra.nazwa));
+    tekst.appendChild(document.createTextNode(w.trudna ? 'Wygraj, żeby wpłacić — im więcej, tym ciężej' : 'Wygraj, żeby wpłacić — im więcej, tym trudniej'));
+    p.appendChild(tekst);
+    p.appendChild(elem('span', 'okno-minigra-poziom' + (w.trudna ? ' trudna' : ''), MG.nazwaTrudnosci(w.t, w.trudna)));
   }
 
   poleIle.addEventListener('input', function () {

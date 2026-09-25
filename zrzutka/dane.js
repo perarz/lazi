@@ -26,6 +26,7 @@ window.ZRZUTKA_DANE = {
         nickPusty: 'Anonimowy sponsor',
         wiadomosc: 'Wiadomość dla gracza',
         wyslij: 'Wyślij V-dolce',
+        walcz: 'Zawalcz o V-dolce',
         brakKwoty: 'Wpisz, ile V-dolców chcesz wrzucić.',
         ujemna: 'Nie można zabierać V-dolców biednym graczom!',
         zero: 'Zero V-dolców? Tak to Krayo gra, a nie wpłaca.',

@@ -1607,10 +1607,23 @@
         </div>
       </div>
 
-      <div class="szybkie" id="szybkie" role="group" aria-label="Szybki wybór kwoty"></div>
+      <div class="szybkie" id="szybkie" role="group" aria-label="Szybki wybór kwoty" hidden></div>
 
-      <label class="okno-etykieta" for="pole-ile" id="etykieta-ile">Ile?</label>
-      <div class="pole-kwota">
+      <label class="okno-etykieta" for="suwak" id="etykieta-ile">Ile?</label>
+      <div class="suwak-kwota">
+        <div class="suwak-gora">
+          <button class="suwak-krok" type="button" data-krok="-1" aria-label="Mniej">−</button>
+          <div class="suwak-wartosc" aria-live="polite">
+            <svg class="vb" aria-hidden="true"><use id="suwak-ikona" href="#vbuck"></use></svg>
+            <span id="suwak-liczba">0</span>
+          </div>
+          <button class="suwak-krok" type="button" data-krok="1" aria-label="Więcej">+</button>
+        </div>
+        <div class="suwak-strefy" id="suwak-strefy" hidden></div>
+        <input class="suwak" id="suwak" type="range" min="0" max="2000" step="10">
+        <div class="suwak-skala"><span>1</span><span id="suwak-srodek">1000</span><span id="suwak-max">2000</span></div>
+      </div>
+      <div class="pole-kwota" hidden>
         <svg class="vb" aria-hidden="true"><use id="pole-ikona" href="#vbuck"></use></svg>
         <input id="pole-ile" type="number" inputmode="numeric" min="1" step="1" placeholder="np. 1000" autocomplete="off">
       </div>
