@@ -201,7 +201,10 @@ tylko odznaki i zaczepki), `zrzutka:minigra-blokada`, `zrzutka:sezon1` (archiwum
   konfetti i blokadę. Kalibracja botami w Node (`_gry` + `debug()`): Build fight — bot z pełną wiedzą ~100%
   przy t=0 i ~15–20% przy t=1; Snajper — „ludzki” bot (reakcja 0,45–0,6 s, 20% pudeł) ~100% przy t=0
   i ~80–90% przy t=1; Ekonomia — bot 2,2 stuknięcia/s ~75% przy t=1; Żółw — bot z opóźnionym widzeniem
-  (reakcja 0,4–0,5 s, 0,2 s między stuknięciami) ~100% do t=0,5, przy t=1 ~40% (szybki) / ~0% (przeciętny).
+  (reakcja 0,4–0,5 s, 0,2 s między stuknięciami) ~95% przy t=0,5, przy t=0,75 ~85% / ~25%, przy t=1
+  ~30% (szybki) / ~0% (przeciętny). Żółw ma salwy bez ostrzeżenia (`cicha`, dłuższy lot) i podwójne
+  (odstęp ≥ 0,46 s — krócej niż reakcja człowieka byłoby zgadywaniem). Build fight: ściana w stronę
+  stukniętego punktu, BUDUJ/spacja — w stronę ostatniego ruchu (`ostatniKier`), bez ruchu — najbliższy wróg.
   Tu wolno `Math.random` (to nie Arena).
   Pułapki: pełny okrąg „pod prąd” w canvasie to `arc(x, y, r, 2π, 0, true)` (od 0 do 2π daje zero);
   rozmiar sceny mierz `offsetWidth` (getBoundingClientRect łapie animację scale).

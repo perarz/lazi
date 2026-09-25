@@ -10,7 +10,9 @@
         'Startuje sezon 2! Wszystkie liczniki wyzerowane — odznaki zostają.',
         'Hall of Fame sezonu 1: podium w obu kategoriach i największe wpłaty (plakietka „Sezon 2” nad tytułem).',
         'Srebrniki też trzeba wywalczyć: „Ekonomia Nolliego” do 1000 — zbieraj zasoby, omijaj wilki.',
-        'Powyżej 1000: „Żółw Qubera” — obracaj tarcze w stronę salw i szarż. Przy 2000 to prawdziwa rzeź.',
+        'Powyżej 1000: „Żółw Qubera” — obracaj tarcze w stronę salw i szarż. Czasem strzelają bez ostrzeżenia albo dwie salwy tuż po sobie.',
+        'Build fight: ściana staje tam, gdzie stukniesz (na PC spacja/BUDUJ — w stronę, w którą biegłeś).',
+        'Duża naklejka „Sezon 2” przy tytule — kliknij, żeby zobaczyć zwycięzców sezonu 1.',
         'Przycisk w 0 A.D.: „Stań do bitwy o srebrniki”.'
       ]
     },
