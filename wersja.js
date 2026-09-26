@@ -5,11 +5,12 @@
 (function () {
   var historia = [
     {
-      wersja: '4.1.1', data: '2026-09-26', tytul: 'Arena na własnym serwerze',
+      wersja: '4.1.1', data: '2026-09-26', tytul: 'Arena i zrzutka na własnym serwerze',
       zmiany: [
         'Arena działa teraz na własnym serwerze zamiast przez bazę danych: ruchy i strzały innych graczy widać od razu, a nie z sekundowym opóźnieniem.',
         'Ruch robala gracza z turą jest płynniejszy — podgląd przychodzi kilka razy częściej.',
-        'Arena nie zjada już limitu bazy danych, więc można grać dłużej i w więcej osób.'
+        'Zrzutka też jest na naszym serwerze: cudze wpłaty i liczniki zmieniają się na żywo, w ułamku sekundy, a nie co 10 sekund.',
+        'Koniec z limitem darmowej bazy danych — można grać i wpłacać bez oglądania się na licznik.'
       ]
     },
     {

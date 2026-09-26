@@ -1,4 +1,4 @@
-/* Serwer Areny GOATów na VPS — zastępuje api/arena.js + Redis.
+/* Serwer Areny GOATów i zrzutki na VPS — zastępuje api/arena.js, api/zrzutka.js i Redis.
 
    WebSocket (/ws?pokoj=nazwa) zamiast odpytywania: klient dostaje każdą
    zmianę pokoju od razu, w tym samym kształcie co dawne GET /api/arena
@@ -16,17 +16,24 @@
    HTTP:
      GET  /zdrowie                    — czy żyje (dla Caddy / diagnostyki)
      POST /api/arena[?pokoj=]         — to samo co 'zd', dla sendBeacon przy zamknięciu karty
+     GET  /api/zrzutka[?sezon=N]      — sumy i ostatnie wpłaty (jak dawne api/zrzutka.js)
+     POST /api/zrzutka                — wpłata
+
+   Zrzutka na żywo: WebSocket /zrzutka/ws — po połączeniu i po każdej wpłacie
+   serwer wysyła { typ: 'zrzutka', sumy, wplaty, teraz, sezon }.
 
    Konfiguracja przez zmienne środowiskowe (patrz serwer/INSTALACJA.md):
      ARENA_PORT      (8787)  — port lokalny; z zewnątrz ruch idzie przez Caddy (HTTPS)
      ARENA_ORIGINS           — dodatkowe dozwolone strony, po przecinku
-                               (zawsze wolno *.vercel.app i localhost) */
+                               (zawsze wolno *.vercel.app i localhost)
+     ZRZUTKA_PLIK            — plik z danymi zrzutki (brak = tylko w pamięci, do testów) */
 
 'use strict';
 
 const http = require('http');
 const { WebSocketServer } = require('ws');
 const { Pokoj, MAX_ZDARZENIE } = require('./pokoj');
+const { Zrzutka, SEZON } = require('./zrzutka');
 
 const PORT = Number(process.env.ARENA_PORT) || 8787;
 const DODATKOWE_ORIGINS = String(process.env.ARENA_ORIGINS || '')
@@ -38,6 +45,10 @@ const LIMIT_WIADOMOSCI = 60;         // na sekundę na połączenie (ruch co 0,1
 const HEARTBEAT_MS = 4000;           // świeża obecność dla klientów (protokol.js ufa jej ~6 s)
 const PING_MS = 25000;               // wykrywanie martwych połączeń
 const POKOJ_PORZUCONY_MS = 6 * 3600 * 1000;
+
+const zrzutka = new Zrzutka(process.env.ZRZUTKA_PLIK || null);
+const widzowieZrzutki = new Set();   // połączenia /zrzutka/ws
+const MAX_WPLATA_BAJTY = 2048;
 
 const pokoje = new Map();            // nazwa → Pokoj
 const polaczenia = new Map();        // nazwa pokoju → Set<ws>
@@ -98,6 +109,29 @@ function obsluzZdarzenie(nazwa, zdarzenie) {
   return wynik;
 }
 
+function rozeslijZrzutke() {
+  if (!widzowieZrzutki.size) return;
+  const tekst = JSON.stringify({ typ: 'zrzutka', ...zrzutka.stan() });
+  for (const ws of widzowieZrzutki) if (ws.readyState === ws.OPEN) ws.send(tekst);
+}
+
+function czytajCialo(req, max, gotowe) {
+  let body = '';
+  let zaDuzo = false;
+  req.on('data', (c) => {
+    if (zaDuzo) return;
+    body += c;
+    if (body.length > max) { zaDuzo = true; req.destroy(); }
+  });
+  req.on('end', () => { if (!zaDuzo) gotowe(body); });
+}
+
+function json(res, status, obiekt) {
+  res.statusCode = status;
+  res.setHeader('Content-Type', 'application/json');
+  res.end(JSON.stringify(obiekt));
+}
+
 /* ---------- HTTP ---------- */
 
 const serwer = http.createServer((req, res) => {
@@ -116,8 +150,9 @@ const serwer = http.createServer((req, res) => {
     return res.end(JSON.stringify({ ok: true, pokoje: pokoje.size, polaczenia: n, teraz: Date.now() }));
   }
 
-  if (req.method === 'OPTIONS' && u.pathname === '/api/arena') {
-    res.setHeader('Access-Control-Allow-Methods', 'POST');
+  if (req.method === 'OPTIONS' && (u.pathname === '/api/arena' || u.pathname === '/api/zrzutka')) {
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST');
+    res.setHeader('Access-Control-Max-Age', '86400');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
     res.statusCode = 204;
     return res.end();
@@ -144,6 +179,25 @@ const serwer = http.createServer((req, res) => {
     return;
   }
 
+  if (req.method === 'GET' && u.pathname === '/api/zrzutka') {
+    const q = u.searchParams.has('sezon') ? Number(u.searchParams.get('sezon')) : SEZON;
+    if (!zrzutka.jestSezon(q)) return json(res, 404, { blad: 'nie-ma-sezonu' });
+    // archiwum się nie zmienia — przeglądarka może je trzymać dobę
+    if (q !== SEZON) res.setHeader('Cache-Control', 'public, max-age=86400');
+    return json(res, 200, zrzutka.stan(q));
+  }
+
+  if (req.method === 'POST' && u.pathname === '/api/zrzutka') {
+    if (origin && !dozwolonyOrigin(origin)) return json(res, 403, { blad: 'obca-strona' });
+    return czytajCialo(req, MAX_WPLATA_BAJTY, (body) => {
+      let dane;
+      try { dane = JSON.parse(body || '{}'); } catch { return json(res, 400, { blad: 'zly-json' }); }
+      const wynik = zrzutka.wplac(dane, ipKlienta(req));
+      json(res, wynik.status, wynik.dane);
+      if (wynik.status === 200) rozeslijZrzutke();
+    });
+  }
+
   res.statusCode = 404;
   res.end();
 });
@@ -157,20 +211,23 @@ serwer.on('upgrade', (req, socket, head) => {
   const nazwa = nazwaPokoju(u.searchParams.get('pokoj'));
   const ip = ipKlienta(req);
   const odmow = (kod) => { socket.write('HTTP/1.1 ' + kod + '\r\n\r\n'); socket.destroy(); };
-  if (u.pathname !== '/ws' || !nazwa) return odmow('404 Not Found');
+  const doZrzutki = u.pathname === '/zrzutka/ws';
+  if (!doZrzutki && (u.pathname !== '/ws' || !nazwa)) return odmow('404 Not Found');
   if (!dozwolonyOrigin(req.headers.origin)) {
     console.warn('odrzucony origin:', req.headers.origin);
     return odmow('403 Forbidden');
   }
   if ((polaczeniaNaIp.get(ip) || 0) >= MAX_POLACZEN_NA_IP) return odmow('429 Too Many Requests');
   wss.handleUpgrade(req, socket, head, (ws) => {
-    ws.pokoj = nazwa;
+    ws.pokoj = doZrzutki ? null : nazwa;
+    ws.zrzutka = doZrzutki;
     ws.ip = ip;
     wss.emit('connection', ws);
   });
 });
 
 wss.on('connection', (ws) => {
+  if (ws.zrzutka) return polaczZrzutke(ws);
   const nazwa = ws.pokoj;
   if (!pokoj(nazwa)) { ws.close(1013, 'za-duzo-pokoi'); return; }
   if (!polaczenia.has(nazwa)) polaczenia.set(nazwa, new Set());
@@ -222,6 +279,21 @@ wss.on('connection', (ws) => {
   });
 });
 
+/* Widz zrzutki tylko słucha: dostaje stan od razu i po każdej wpłacie. */
+function polaczZrzutke(ws) {
+  widzowieZrzutki.add(ws);
+  polaczeniaNaIp.set(ws.ip, (polaczeniaNaIp.get(ws.ip) || 0) + 1);
+  ws.zyje = true;
+  ws.on('pong', () => { ws.zyje = true; });
+  ws.on('error', (e) => { console.warn('błąd połączenia zrzutki:', e.code || e.message); });
+  ws.on('close', () => {
+    widzowieZrzutki.delete(ws);
+    const n = (polaczeniaNaIp.get(ws.ip) || 1) - 1;
+    if (n > 0) polaczeniaNaIp.set(ws.ip, n); else polaczeniaNaIp.delete(ws.ip);
+  });
+  ws.send(JSON.stringify({ typ: 'zrzutka', ...zrzutka.stan() }));
+}
+
 /* Świeża obecność i zegar dla wszystkich pokoi z graczami. */
 setInterval(() => { for (const nazwa of polaczenia.keys()) rozeslij(nazwa); }, HEARTBEAT_MS).unref();
 
@@ -240,8 +312,13 @@ setInterval(() => {
 
 process.on('uncaughtException', (e) => { console.error('nieobsłużony wyjątek:', e); });
 
+/* systemctl restart/stop: wpłaty czekające na zapis lądują na dysku. */
+for (const sygnal of ['SIGTERM', 'SIGINT']) {
+  process.on(sygnal, () => { zrzutka.zapiszTeraz(); process.exit(0); });
+}
+
 if (require.main === module) {
   serwer.listen(PORT, '127.0.0.1', () => console.log('Arena nasłuchuje na 127.0.0.1:' + PORT));
 }
 
-module.exports = { serwer, pokoje, dozwolonyOrigin };
+module.exports = { serwer, pokoje, zrzutka, dozwolonyOrigin };

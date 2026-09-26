@@ -1629,13 +1629,27 @@
   }, 30000);
 
   /* ---------------------------------------------------------
-     Wspólne sumy online (api/zrzutka.js)
+     Wspólne sumy online
+     SERWER = serwer na VPS (serwer/serwer.js): wpłaty przez /api/zrzutka,
+     a nowe wpłaty innych przychodzą od razu przez WebSocket /zrzutka/ws.
+     null = stary tryb: /api/zrzutka na Vercelu (Redis) i odświeżanie co 10 s.
+     Adres serwera jest też w CSP index.html i w gra/src/konfig.js.
+     Lokalnie (localhost) można podać serwer w adresie: ?serwer=http://127.0.0.1:8787
      Bez serwera (np. plik otwarty lokalnie) strona działa jak dawniej,
      tylko na localStorage.
      --------------------------------------------------------- */
 
-  var ADRES_API = '/api/zrzutka';
+  var SERWER = 'https://96-62-223-169.sslip.io';
+  try {
+    var zAdresu = new URLSearchParams(location.search).get('serwer');
+    if (/^(localhost|127\.0\.0\.1)$/.test(location.hostname) && zAdresu !== null) {
+      SERWER = /^https?:\/\//.test(zAdresu) ? zAdresu.replace(/\/+$/, '') : null;
+    }
+  } catch (e) { /* stara przeglądarka */ }
+  var ADRES_API = SERWER ? SERWER + '/api/zrzutka' : '/api/zrzutka';
   var CO_ILE_ODSWIEZAC = 10000;
+  var gniazdo = null;
+  var gniazdoPrzerwa = 1000;
   var online = false;
   var serwerPadl = false;
   var lotyTrwa = 0;
@@ -1734,12 +1748,42 @@
     });
   }
 
+  /* Na żywo z VPS: serwer sam przysyła stan po każdej wpłacie. Gdy gniazdo
+     leży, zostaje zwykłe odświeżanie co 10 s (niżej). */
+  function polaczNaZywo() {
+    if (!SERWER || !window.WebSocket || gniazdo || document.visibilityState !== 'visible') return;
+    var ws;
+    try { ws = new WebSocket(SERWER.replace(/^http/, 'ws') + '/zrzutka/ws'); } catch (e) { return; }
+    gniazdo = ws;
+    ws.onmessage = function (e) {
+      var d;
+      try { d = JSON.parse(e.data); } catch (blad) { return; }
+      if (!d || d.typ !== 'zrzutka') return;
+      gniazdoPrzerwa = 1000;
+      serwerPadl = false;
+      przyjmijSerwer(d, true);
+    };
+    ws.onclose = function () {
+      if (gniazdo === ws) gniazdo = null;
+      gniazdoPrzerwa = Math.min(gniazdoPrzerwa * 2, 30000);
+      setTimeout(polaczNaZywo, gniazdoPrzerwa);
+    };
+  }
+
+  function naZywo() {
+    return !!(gniazdo && gniazdo.readyState === 1);
+  }
+
   setInterval(function () {
-    if (document.visibilityState === 'visible') pobierzZSerwera(true);
+    if (document.visibilityState === 'visible' && !naZywo()) pobierzZSerwera(true);
   }, CO_ILE_ODSWIEZAC);
 
   document.addEventListener('visibilitychange', function () {
-    if (document.visibilityState === 'visible') pobierzZSerwera(true);
+    if (document.visibilityState !== 'visible') return;
+    if (naZywo()) return;
+    pobierzZSerwera(true);
+    gniazdoPrzerwa = 1000;
+    polaczNaZywo();
   });
 
   /* ---------------------------------------------------------
@@ -1816,6 +1860,7 @@
   zastosujKategorie(kategoriaZHasha());
   sprawdzOdznaki();
   pobierzZSerwera(false);
+  polaczNaZywo();
 
   /* ---------------------------------------------------------
      Sezon 1 — Hall of Fame

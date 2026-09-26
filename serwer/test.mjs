@@ -4,6 +4,10 @@
 import { createRequire } from 'module';
 const require = createRequire(import.meta.url);
 const { serwer, dozwolonyOrigin } = require('./serwer.js');
+const { Zrzutka } = require('./zrzutka.js');
+import fs from 'fs';
+import os from 'os';
+import path from 'path';
 const { WebSocket } = require('ws');
 
 let ok = 0, zle = 0;
@@ -174,6 +178,96 @@ await test('za duże zdarzenie zamyka tylko to połączenie, serwer żyje dalej'
   b.ws.close();
   const z = await (await fetch(`http://127.0.0.1:${port}/zdrowie`)).json();
   assert(z.ok === true, 'zdrowie');
+});
+
+console.log('\nZRZUTKA');
+
+const ZR = () => `http://127.0.0.1:${port}/api/zrzutka`;
+const wplac = (body, { origin = 'https://kacperlazarz.pl', ip = '10.0.0.1' } = {}) => fetch(ZR(), {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json', origin, 'x-forwarded-for': ip },
+  body: JSON.stringify(body)
+});
+
+await test('GET zwraca sumy wszystkich graczy (zero) i bieżący sezon', async () => {
+  const d = await (await fetch(ZR())).json();
+  assert(d.sezon === 2 && d.sumy.fortnite.krayo === 0 && d.sumy.zeroad.nolli === 0 && Array.isArray(d.wplaty), JSON.stringify(d).slice(0, 200));
+});
+
+await test('wpłata podbija sumę i od razu dochodzi do widzów przez /zrzutka/ws', async () => {
+  const ws = new WebSocket(`ws://127.0.0.1:${port}/zrzutka/ws`, { headers: { origin: 'https://lazi.vercel.app' } });
+  const wiad = [];
+  let czekam = null;
+  ws.on('message', (m) => { const d = JSON.parse(m); wiad.push(d); if (czekam && czekam.w(d)) czekam.ok(d); });
+  await new Promise((ok, zle) => { ws.on('open', ok); ws.on('error', zle); });
+  const naPowitanie = new Promise((ok) => { if (wiad.length) ok(); else czekam = { w: () => true, ok }; });
+  await naPowitanie;
+  assert(wiad[0].typ === 'zrzutka' && wiad[0].sumy, 'brak stanu na powitanie');
+  const naWplate = new Promise((ok, zle) => {
+    czekam = { w: (d) => d.sumy.fortnite.krayo === 150, ok };
+    setTimeout(() => zle(new Error('wpłata nie doszła do widza')), 1500);
+  });
+  const odp = await wplac({ kat: 'fortnite', komu: 'krayo', ile: 150, kto: 'Ala', msg: 'na skilla', id: 'w1' }, { origin: 'https://lazi.vercel.app' });
+  assert(odp.status === 200, 'status ' + odp.status);
+  const d = await odp.json();
+  assert(d.sumy.fortnite.krayo === 150 && d.wplaty[0].id === 'w1' && d.wplaty[0].msg === 'na skilla', JSON.stringify(d.wplaty[0]));
+  await naWplate;
+  ws.close();
+});
+
+await test('zły gracz, zła kwota, obca strona, zły JSON są odrzucane', async () => {
+  const o = { origin: 'https://lazi.vercel.app', ip: '10.0.0.2' };
+  assert((await wplac({ kat: 'fortnite', komu: 'kozak', ile: 5 }, o)).status === 400, 'gracz z innej kategorii');
+  assert((await wplac({ kat: 'fortnite', komu: 'krayo', ile: 2001 }, o)).status === 400, 'kwota > 2000');
+  assert((await wplac({ kat: 'fortnite', komu: 'krayo', ile: 0 }, o)).status === 400, 'kwota 0');
+  assert((await wplac({ kat: 'fortnite', komu: 'krayo', ile: 5 }, { origin: 'https://zlosliwa.example' })).status === 403, 'obca strona');
+  const zly = await fetch(ZR(), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{nie json' });
+  assert(zly.status === 400, 'zły JSON ' + zly.status);
+});
+
+await test('limit 30 wpłat na minutę z jednego IP', async () => {
+  const o = { origin: 'https://lazi.vercel.app', ip: '10.9.9.9' };
+  for (let i = 0; i < 30; i++) assert((await wplac({ kat: 'zeroad', komu: 'nolli', ile: 1 }, o)).status === 200, 'wpłata ' + i);
+  assert((await wplac({ kat: 'zeroad', komu: 'nolli', ile: 1 }, o)).status === 429, '31. wpłata przeszła');
+  assert((await wplac({ kat: 'zeroad', komu: 'nolli', ile: 1 }, { ...o, ip: '10.9.9.8' })).status === 200, 'inne IP zablokowane');
+});
+
+await test('archiwum sezonu 1 z cache, nieistniejący sezon 404, preflight CORS', async () => {
+  const s1 = await fetch(ZR() + '?sezon=1');
+  assert(s1.status === 200 && /max-age=86400/.test(s1.headers.get('cache-control')), 'sezon 1: ' + s1.status);
+  assert((await fetch(ZR() + '?sezon=3')).status === 404, 'sezon 3');
+  const pre = await fetch(ZR(), { method: 'OPTIONS', headers: { origin: 'https://lazi.vercel.app' } });
+  assert(pre.status === 204 && pre.headers.get('access-control-allow-origin') === 'https://lazi.vercel.app', 'preflight');
+});
+
+await test('plik: zapis przeżywa restart, uszkodzony plik nie jest nadpisywany', async () => {
+  const kat = fs.mkdtempSync(path.join(os.tmpdir(), 'zrzutka-'));
+  const plik = path.join(kat, 'zrzutka.json');
+  const a = new Zrzutka(plik);
+  a.wplac({ kat: 'zeroad', komu: 'quber', ile: 700, id: 'x1' }, '1.1.1.1');
+  a.zapiszTeraz();
+  const b = new Zrzutka(plik);
+  assert(b.stan().sumy.zeroad.quber === 700 && b.stan().wplaty[0].id === 'x1', 'po restarcie');
+  assert(fs.readdirSync(kat).some((f) => /^zrzutka-\d{4}-\d{2}-\d{2}\.json$/.test(f)), 'brak kopii dziennej');
+  fs.writeFileSync(plik, '{zepsuty');
+  const c = new Zrzutka(plik);
+  assert(c.stan().sumy.zeroad.quber === 0 && fs.readdirSync(kat).some((f) => f.includes('.zepsuty-')), 'zepsuty plik');
+  fs.rmSync(kat, { recursive: true });
+});
+
+await test('migracja z Redisa: kopia 1:1, potem dogonienie bez dubli', async () => {
+  const kat = fs.mkdtempSync(path.join(os.tmpdir(), 'zrzutka-'));
+  const z = new Zrzutka(path.join(kat, 'zrzutka.json'));
+  const w1 = { kat: 'fortnite', komu: 'karp', ile: 100, kto: 'A', t: 1000, id: 'r1' };
+  const w2 = { kat: 'fortnite', komu: 'karp', ile: 50, kto: 'B', t: 2000, id: 'r2' };
+  z.przyjmijZRedisa({ 1: { sumy: { 'fortnite:krayo': 5400 }, wplaty: [] }, 2: { sumy: { 'fortnite:karp': 100 }, wplaty: [w1] } });
+  assert(z.stan(1).sumy.fortnite.krayo === 5400 && z.stan(2).sumy.fortnite.karp === 100, 'kopia');
+  z.wplac({ kat: 'fortnite', komu: 'karp', ile: 7, id: 'v1' }, '1.1.1.1');       // już na VPS
+  const r = z.przyjmijZRedisa({ 2: { sumy: { 'fortnite:karp': 150 }, wplaty: [w2, w1] } });  // w2 przyszła jeszcze przez Vercel
+  assert(z.stan(2).sumy.fortnite.karp === 157, 'suma po dogonieniu: ' + z.stan(2).sumy.fortnite.karp + ' ' + JSON.stringify(r));
+  const drugi = z.przyjmijZRedisa({ 2: { sumy: {}, wplaty: [w2, w1] } });
+  assert(z.stan(2).sumy.fortnite.karp === 157 && /\+0/.test(drugi[2]), 'powtórka zdublowała');
+  fs.rmSync(kat, { recursive: true });
 });
 
 serwer.close();

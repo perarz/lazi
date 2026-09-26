@@ -1,8 +1,11 @@
 # Serwer Areny na VPS — instalacja i obsługa
 
-Strona (zrzutka, gra jako pliki) zostaje na **Vercelu**. Na VPS działa tylko
-**serwer Areny** (`serwer/serwer.js`, Node + WebSocket) za **Caddy** (HTTPS).
-Redis nie jest już potrzebny dla Areny (zrzutka dalej go używa).
+Strona (pliki HTML/JS) zostaje na **Vercelu**. Na VPS działa **serwer Areny i zrzutki**
+(`serwer/serwer.js`, Node + WebSocket) za **Caddy** (HTTPS). Redis (Upstash) nie jest
+już potrzebny — `api/` na Vercelu zostaje tylko jako zapas (powrót = zmiana adresu w kodzie).
+
+Dane zrzutki leżą w pliku `/var/lib/arena/zrzutka.json` (zapis przez plik tymczasowy,
+codzienna kopia `zrzutka-RRRR-MM-DD.json`, 14 ostatnich dni). Dane Areny są tylko w pamięci.
 
 Adres serwera: darmowa nazwa **sslip.io** z IP serwera — np. IP `185.1.2.3` →
 `185-1-2-3.sslip.io`. Caddy sam weźmie certyfikat Let's Encrypt.
@@ -49,10 +52,22 @@ Skrypt:
 Jeśli strona na Vercelu ma własną domenę (nie `*.vercel.app`), dopisz ją jako drugi argument:
 `bash serwer/instaluj.sh ADRES https://moja-domena.pl` — inaczej serwer odrzuci połączenia (403).
 
-## 3. Przełączenie gry na serwer (w repo, nie na VPS)
-- `gra/src/konfig.js`: `SERWER_WS = 'wss://ADRES/ws'`
-- `gra/index.html`, CSP `connect-src`: dopisać `wss://ADRES https://ADRES`
-- wdrożenie na `master` (Vercel). Powrót do Redisa = `SERWER_WS = null`.
+## 3. Przełączenie strony na serwer (w repo, nie na VPS)
+- `gra/src/konfig.js`: `SERWER_WS = 'wss://ADRES/ws'`; `zrzutka/app.js`: `SERWER = 'https://ADRES'`
+- CSP `connect-src` w `gra/index.html` i `index.html`: `wss://ADRES https://ADRES`
+- wdrożenie na `master` (Vercel). Powrót do Redisa = `SERWER_WS = null` i `SERWER = null`
+  (uwaga: wpłaty złożone na VPS nie wrócą same do Redisa).
+
+## 4. Przeniesienie zrzutki z Redisa (raz)
+Potrzebny adres i token REST Upstasha — najlepiej **Read-Only Token** (panel Upstash →
+baza → REST API; skrypt tylko czyta). Tokenu nie zapisuj w plikach ani w repo.
+```
+cd /opt/lazi/serwer
+UPSTASH_URL='https://….upstash.io' UPSTASH_TOKEN='…' node migruj-zrzutke.mjs /var/lib/arena/zrzutka.json
+```
+Kolejność: (1) skrypt przed wdrożeniem strony — kopia 1:1, (2) wdrożenie na `master`,
+(3) ten sam skrypt ~2 min po wdrożeniu — dopisze tylko wpłaty, które w międzyczasie
+poszły jeszcze do Redisa (po id, bez dubli). Skrypt sam zatrzymuje i wznawia usługę.
 
 ## Obsługa na co dzień
 | Co | Komenda |
@@ -63,9 +78,12 @@ Jeśli strona na Vercelu ma własną domenę (nie `*.vercel.app`), dopisz ją ja
 | Logi HTTPS | `journalctl -u caddy -n 50 --no-pager` |
 | Czy żyje | `curl -s http://127.0.0.1:8787/zdrowie` |
 | Restart | `systemctl restart arena` |
+| Sumy zrzutki | `curl -s http://127.0.0.1:8787/api/zrzutka` |
+| Kopie zrzutki | `ls /var/lib/arena/` |
 
 Restart serwera czyści pokoje w pamięci (trwające partie się urwą) — aktualizuj,
-gdy nikt nie gra.
+gdy nikt nie gra. Zrzutka przeżywa restart (plik). Po zmianie `instaluj.sh` (usługa, Caddy)
+samo `arena-aktualizuj` nie wystarczy — puść skrypt instalacji jeszcze raz z tymi samymi argumentami.
 
 ## Testy serwera (lokalnie albo na VPS)
 ```

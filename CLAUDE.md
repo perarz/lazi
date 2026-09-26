@@ -13,12 +13,14 @@ Stos technologiczny:
 - Statyczny hosting na **Vercelu**: produkcja to gałąź `master`, wdraża się sama w 1–2 minuty.
   Strona ma własną domenę **kacperlazarz.pl** (i `www.`).
 - Dwie funkcje serwerowe w `api/`.
-- Serwer Areny (WebSocket) na VPS właściciela: `wss://96-62-223-169.sslip.io/ws` (sekcja 3).
-- Wspólne dane w **Upstash Redis** (REST, darmowy plan).
+- **Serwer na VPS** właściciela (`serwer/`, sekcja 3): Arena (`wss://96-62-223-169.sslip.io/ws`) i zrzutka
+  (`https://96-62-223-169.sslip.io/api/zrzutka` + na żywo `/zrzutka/ws`), dane zrzutki w pliku na VPS.
+- Stary tryb (zapas): funkcje w `api/` na Vercelu z **Upstash Redis** (REST, darmowy plan). Od 4.1.1
+  strona z nich nie korzysta, ale zostają, żeby dało się wrócić jedną zmianą adresu.
 - Bez bundlera, bez `package.json` i bez zależności npm. Zwykłe pliki HTML/CSS/JS, gra jako moduły ES,
   zrzutka jako klasyczne skrypty.
 
-Obecna wersja: **4.1.1 „Arena na własnym serwerze”** (`wersja.js`).
+Obecna wersja: **4.1.1 „Arena i zrzutka na własnym serwerze”** (`wersja.js`).
 
 ---
 
@@ -94,7 +96,11 @@ Obecna wersja: **4.1.1 „Arena na własnym serwerze”** (`wersja.js`).
 
 ---
 
-## 3. Redis / Upstash: budżet zapytań (BARDZO WAŻNE)
+## 3. Serwer: VPS, a Redis / Upstash jako zapas
+
+**Od 4.1.1 Arena i zrzutka chodzą przez VPS** (opis na końcu tej sekcji) i Redis nie jest używany.
+Poniższe zasady budżetu dotyczą **starego trybu** (`SERWER_WS = null` / `SERWER = null`) — obowiązują
+znowu po powrocie na Vercel, a i na VPS warto nie mnożyć zapytań bez potrzeby (limity na IP, bateria telefonów).
 
 Baza to **Upstash Redis na darmowym planie**: ok. 500 tys. komend miesięcznie (dokładny limit jest w panelu
 Upstash). Każde zapytanie HTTP do `api/` to kilka komend. Przekroczenie limitu oznacza, że strona i gra
@@ -133,14 +139,21 @@ przestają działać dla wszystkich. Użytkownik pilnuje licznika (np. „mam 10
   - 30 wpłat / 60 s na IP, lista ostatnich 60 wpłat.
   - Jedna wpłata to 1–2000 (`maks` w `GRACZE`).
 
-**Arena na VPS (od 4.1.1).** Właściciel ma VPS (2 vCPU Ryzen 9 5950X, 4 GB, NVMe, Ubuntu 24.04,
+**Serwer na VPS (od 4.1.1).** Właściciel ma VPS (2 vCPU Ryzen 9 5950X, 4 GB, NVMe, Ubuntu 24.04,
 PL, IP 96.62.223.169). Katalog `serwer/` to serwer Areny: Node + WebSocket (`ws`), logika pokoju jak w `api/arena.js`, ale
-w pamięci i z natychmiastowym rozsyłaniem; wiele pokoi (`?pokoj=`). Za nim stoi Caddy (HTTPS, adres
+w pamięci i z natychmiastowym rozsyłaniem; wiele pokoi (`?pokoj=`). Zrzutka: `serwer/zrzutka.js` — to samo
+co `api/zrzutka.js` (lista graczy, sezony i limity **importuje z `api/zrzutka.js`**, więc nowy gracz/sezon
+zmienia się tylko tam), dane w `/var/lib/arena/zrzutka.json` + dzienne kopie; po każdej wpłacie serwer
+wysyła stan wszystkim na `/zrzutka/ws`, a strona odświeża co 10 s tylko wtedy, gdy gniazdo leży.
+Przeniesienie danych z Redisa: `serwer/migruj-zrzutke.mjs` (kopia, potem „dogonienie” po id). Za nim stoi Caddy (HTTPS, adres
 **sslip.io** z IP serwera, bez kupowania domeny). Instrukcja: `serwer/INSTALACJA.md`, skrypt `serwer/instaluj.sh`.
 - Gra wybiera transport w `gra/src/konfig.js`: `SERWER_WS = 'wss://…/ws'` → WebSocket, `null` → stary tryb
-  przez `/api/arena` (Redis). **Powrót do Redisa = jedna linijka.** Po przełączeniu Arena nie zużywa Redisa.
-- Adres serwera jest też w CSP `connect-src` w `gra/index.html` (`wss://… https://…`) — przy zmianie adresu
-  popraw oba miejsca.
+  przez `/api/arena` (Redis). Zrzutka: `SERWER` w `zrzutka/app.js` (`null` → `/api/zrzutka`).
+  **Powrót do Redisa = dwie linijki** (wpłaty z VPS same do Redisa nie wrócą).
+- Adres serwera jest w **czterech miejscach**: `gra/src/konfig.js`, `zrzutka/app.js` i CSP `connect-src`
+  w `gra/index.html` oraz `index.html` (`wss://… https://…`).
+- Lokalnie oba adresy nadpisuje parametr (tylko na localhost): gra `?serwer=ws://127.0.0.1:8787/ws`,
+  zrzutka `?serwer=http://127.0.0.1:8787` (puste `?serwer=` = stary tryb `/api/zrzutka`).
 - Serwer sprawdza `Origin` (wolno `*.vercel.app`, localhost i `ARENA_ORIGINS` — na VPS ustawione
   `https://kacperlazarz.pl,https://www.kacperlazarz.pl`), limity: 60 wiadomości/s
   na połączenie, 30 połączeń na IP, zdarzenie ≤ 24 KB (większe zamykają tylko to połączenie).
@@ -171,9 +184,9 @@ w pamięci i z natychmiastowym rozsyłaniem; wiele pokoi (`?pokoj=`). Za nim sto
 | `wersja.js` | Numer wersji + historia zmian (jedno źródło); znaczek `vX.Y` w rogu stron |
 | `zmiany/` | Strona „Co nowego” (rysuje historię z `wersja.js`) |
 | `goat/` | Stara, ukryta strona „ŁAZI TO GOAT” — nie ruszać |
-| `api/zrzutka.js` | Wspólne sumy zrzutki, sezony (`SEZON`, `KLUCZE`), lista dozwolonych graczy `GRACZE` |
+| `api/zrzutka.js` | Zrzutka w starym trybie (Redis) **i źródło** listy graczy `GRACZE`, sezonów (`SEZON`, `KLUCZE`) i limitów dla serwera na VPS |
 | `api/arena.js` | Serwer gry (stary tryb, Redis): log zdarzeń, obecność, zamek startu partii |
-| `serwer/` | Serwer Areny na VPS: `pokoj.js` (logika), `serwer.js` (HTTP + WebSocket), `test.mjs`, `instaluj.sh`, `INSTALACJA.md`; ma własne `package.json` (zależność `ws`) — to jedyne miejsce z npm |
+| `serwer/` | Serwer na VPS: `pokoj.js` (Arena), `zrzutka.js` (zrzutka w pliku), `serwer.js` (HTTP + WebSocket), `migruj-zrzutke.mjs`, `test.mjs`, `instaluj.sh`, `INSTALACJA.md`; ma własne `package.json` (zależność `ws`) — to jedyne miejsce z npm |
 | `.vercelignore` | Nie publikuj `serwer/` na Vercelu |
 | `vercel.json` | Nagłówki bezpieczeństwa |
 
@@ -199,7 +212,8 @@ w pamięci i z natychmiastowym rozsyłaniem; wiele pokoi (`?pokoj=`). Za nim sto
   - 0 A.D.: pergamin, pieczęcie, font Cinzel.
   - Nowe elementy stylujesz **zmiennymi motywu** (`--c-popup`, `--c-akcent`, `--c-kat-aktywna`,
     `--c-okno-tekst`, `--f-display`…), a nie kolorami na sztywno.
-- Sumy są wspólne (Redis, odświeżane co 10 s). Odznaki, tytuły i profil są lokalne.
+- Sumy są wspólne (serwer na VPS, nowe wpłaty przychodzą na żywo przez WebSocket; bez gniazda odświeżanie
+  co 10 s). Odznaki, tytuły i profil są lokalne.
 - Nowe cudze wpłaty pokazują się jako krótkie powiadomienia: raz na wpłatę, najwyżej 2 naraz, tylko świeże (≤ 2 min).
 - Bez serwera (plik otwarty lokalnie albo `python3 -m http.server`) strona działa na samym `localStorage`.
 
@@ -287,7 +301,8 @@ Lekcje z kalibracji:
     przy słowie V-DOLCE / SREBRNIKI (`.h1-sezon`, `<span role="button">` z obsługą Enter/spacji);
   - w nagłówku przy logo jest znaczek `S2`, ukryty na wąskich telefonach razem z logo.
 - **Nowy sezon, krok po kroku**:
-  1. `api/zrzutka.js`: dopisz `3: { sumy: 'zrzutka:s3:sumy', wplaty: 'zrzutka:s3:wplaty' }` i ustaw `SEZON = 3`.
+  1. `api/zrzutka.js`: dopisz `3: { sumy: 'zrzutka:s3:sumy', wplaty: 'zrzutka:s3:wplaty' }` i ustaw `SEZON = 3`
+     (serwer na VPS bierze to stamtąd; po wdrożeniu `arena-aktualizuj` na VPS, inaczej VPS zostanie w sezonie 2).
   2. `app.js`: ustaw `SEZON = 3`. Okno ma teraz na sztywno „sezon 1” (`KLUCZ_SEZON1`, `?sezon=1`,
      `KLUCZ_INTRO`, teksty w `index.html`), więc uogólnij je na „poprzedni sezon” i ustaw nowy klucz intro.
   3. Podmień teksty „Sezon 2” / „S2” / „Sezon II” w `index.html` (plakietki, naklejki, logo, okno).
@@ -316,7 +331,7 @@ Lekcje z kalibracji:
 - **Nowy gracz**:
   1. Karta w `index.html` według budowy z 5.7: awatar SVG 160×160, opis, staty, cele.
   2. Wpis w `zrzutka/dane.js` w tej samej kategorii — **6 celów** (sekcja 5.7).
-  3. Id w `GRACZE` w `api/zrzutka.js`, inaczej serwer odrzuci wpłaty.
+  3. Id w `GRACZE` w `api/zrzutka.js`, inaczej serwer odrzuci wpłaty — i `arena-aktualizuj` na VPS.
   4. Ewentualnie odznaka.
   5. Popraw teksty z liczbą wojowników i licznik odznak.
 
@@ -580,7 +595,7 @@ w drużynie (2 czy 3); czy robimy czapki i bronie z postaci ekipy; czy wspólny 
   - 3.10.1–3.10.2 minigierki i suwak
   - **4.0 sezon 2** + minigierki 0 A.D.
   - **4.1** 6 poziomów celów (do 50 000), zwarte karty i podrasowane portrety, ekwipunek i kolory w Arenie
-  - **4.1.1** Arena na własnym serwerze (VPS, WebSocket) zamiast Redisa
+  - **4.1.1** Arena i zrzutka na własnym serwerze (VPS, WebSocket) zamiast Redisa
 
 ---
 
@@ -589,7 +604,7 @@ w drużynie (2 czy 3); czy robimy czapki i bronie z postaci ekipy; czy wspólny 
 ```
 node gra/test/sim.test.mjs        # symulacja, bronie, determinizm, skrzynki, spawny, osiągnięcia, kamera (64)
 node gra/test/protokol.test.mjs   # protokół z atrapą serwera, lagiem, rozłączeniami, odliczanie (11, trwa ~1–2 min)
-cd serwer && npm install && node test.mjs   # serwer Areny na VPS: rozsyłanie, epoki, zamek, pokoje, limity (10)
+cd serwer && npm install && node test.mjs   # serwer na VPS: Arena (10) + zrzutka: wpłaty, na żywo, limity, plik, migracja (7)
 ```
 Obie muszą przejść przed pushem. Dodatkowo `node --check` na zmienionych plikach JS.
 Test protokołu gra losowe partie. Zmiana listy broni zmienia ich przebieg. Jeśli padnie test zależny od
@@ -626,6 +641,9 @@ długości partii (np. „za mało strzałów”), sprawdź przyczynę, zanim zm
     `tap()` Playwrighta jest za krótki — odpala słaby strzał od razu.
   - Kamera przy zoomie: sztuczne `WheelEvent` na `#plotno` i pomiar `__arena().kamera` co klatkę
     (`robal` = pozycja robala na ekranie, `recznie` = czy kamera przestała śledzić). Skok > kilku px to błąd.
+- **Zrzutka przez serwer**: `ARENA_PORT=8787 node serwer/serwer.js` + `python3 -m http.server 8765`, strona pod
+  `http://localhost:8765/?serwer=http://127.0.0.1:8787#fortnite` w dwóch kontekstach; wpłata w jednym ma
+  pokazać powiadomienie w drugim w ułamku sekundy. Bez `ZRZUTKA_PLIK` serwer trzyma zrzutkę tylko w pamięci.
 - **Scenariusz zrzutki**:
   1. `addInitScript` z zapisem „starego sezonu” w `localStorage`.
   2. Sprawdź, czy okno sezonu otwiera się samo raz, czy liczniki są na zero, a odznaki zostały.

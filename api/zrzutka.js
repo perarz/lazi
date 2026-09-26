@@ -178,3 +178,12 @@ module.exports = async function handler(req, res) {
     return res.status(500).json({ blad: 'serwer' });
   }
 };
+
+/* Dla serwera na VPS (serwer/zrzutka.js) — jedna lista graczy i sezonów w repo. */
+module.exports.GRACZE = GRACZE;
+module.exports.SEZON = SEZON;
+module.exports.KLUCZE = KLUCZE;
+module.exports.MAX_WPLAT = MAX_WPLAT;
+module.exports.LIMIT_NA_OKNO = LIMIT_NA_OKNO;
+module.exports.OKNO_LIMITU = OKNO_LIMITU;
+module.exports.czystyTekst = czystyTekst;

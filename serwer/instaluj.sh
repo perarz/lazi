@@ -53,7 +53,7 @@ chmod -R a+rX "$REPO"
 echo "==> Usługa systemd 'arena'"
 cat > /etc/systemd/system/arena.service <<EOF
 [Unit]
-Description=Arena GOATow (WebSocket)
+Description=Arena GOATow i zrzutka (WebSocket + API)
 After=network.target
 
 [Service]
@@ -62,6 +62,8 @@ WorkingDirectory=$REPO/serwer
 ExecStart=/usr/bin/node serwer.js
 Environment=ARENA_PORT=8787
 Environment=ARENA_ORIGINS=$ORIGINS
+Environment=ZRZUTKA_PLIK=/var/lib/arena/zrzutka.json
+StateDirectory=arena
 Restart=always
 RestartSec=2
 NoNewPrivileges=true
