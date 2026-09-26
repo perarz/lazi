@@ -7,7 +7,7 @@
    Lokalnie (localhost) można podać serwer w adresie strony: ?serwer=ws://localhost:8787/ws
    — do testów E2E; na produkcji ten parametr jest ignorowany. */
 
-export const SERWER_WS = null;
+export const SERWER_WS = 'wss://96-62-223-169.sslip.io/ws';
 
 export function adresSerwera() {
   try {

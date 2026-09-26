@@ -11,12 +11,14 @@ pilnować i jak robić typowe rzeczy**, żeby kolejne zmiany szły w tę samą s
 
 Stos technologiczny:
 - Statyczny hosting na **Vercelu**: produkcja to gałąź `master`, wdraża się sama w 1–2 minuty.
+  Strona ma własną domenę **kacperlazarz.pl** (i `www.`).
 - Dwie funkcje serwerowe w `api/`.
+- Serwer Areny (WebSocket) na VPS właściciela: `wss://96-62-223-169.sslip.io/ws` (sekcja 3).
 - Wspólne dane w **Upstash Redis** (REST, darmowy plan).
 - Bez bundlera, bez `package.json` i bez zależności npm. Zwykłe pliki HTML/CSS/JS, gra jako moduły ES,
   zrzutka jako klasyczne skrypty.
 
-Obecna wersja: **4.1 „Nowe poziomy, zwarte karty i ekwipunek w Arenie”** (`wersja.js`).
+Obecna wersja: **4.1.1 „Arena na własnym serwerze”** (`wersja.js`).
 
 ---
 
@@ -131,17 +133,25 @@ przestają działać dla wszystkich. Użytkownik pilnuje licznika (np. „mam 10
   - 30 wpłat / 60 s na IP, lista ostatnich 60 wpłat.
   - Jedna wpłata to 1–2000 (`maks` w `GRACZE`).
 
-**Arena na VPS (w trakcie migracji).** Właściciel ma VPS (2 vCPU Ryzen 9 5950X, 4 GB, NVMe, Ubuntu 24.04,
-PL). Katalog `serwer/` to serwer Areny: Node + WebSocket (`ws`), logika pokoju jak w `api/arena.js`, ale
+**Arena na VPS (od 4.1.1).** Właściciel ma VPS (2 vCPU Ryzen 9 5950X, 4 GB, NVMe, Ubuntu 24.04,
+PL, IP 96.62.223.169). Katalog `serwer/` to serwer Areny: Node + WebSocket (`ws`), logika pokoju jak w `api/arena.js`, ale
 w pamięci i z natychmiastowym rozsyłaniem; wiele pokoi (`?pokoj=`). Za nim stoi Caddy (HTTPS, adres
 **sslip.io** z IP serwera, bez kupowania domeny). Instrukcja: `serwer/INSTALACJA.md`, skrypt `serwer/instaluj.sh`.
 - Gra wybiera transport w `gra/src/konfig.js`: `SERWER_WS = 'wss://…/ws'` → WebSocket, `null` → stary tryb
   przez `/api/arena` (Redis). **Powrót do Redisa = jedna linijka.** Po przełączeniu Arena nie zużywa Redisa.
-- Przy przełączeniu dopisz adres serwera do CSP `connect-src` w `gra/index.html` (`wss://… https://…`).
-- Serwer sprawdza `Origin` (wolno `*.vercel.app`, localhost i `ARENA_ORIGINS`), limity: 60 wiadomości/s
+- Adres serwera jest też w CSP `connect-src` w `gra/index.html` (`wss://… https://…`) — przy zmianie adresu
+  popraw oba miejsca.
+- Serwer sprawdza `Origin` (wolno `*.vercel.app`, localhost i `ARENA_ORIGINS` — na VPS ustawione
+  `https://kacperlazarz.pl,https://www.kacperlazarz.pl`), limity: 60 wiadomości/s
   na połączenie, 30 połączeń na IP, zdarzenie ≤ 24 KB (większe zamykają tylko to połączenie).
 - Z tej chmurowej sesji nie ma SSH do VPS. Instaluje i aktualizuje go **sesja Claude uruchomiona przez SSH
-  w aplikacji desktopowej** (repo prywatne → deploy key tylko do odczytu). Na VPS: `arena-aktualizuj`.
+  w aplikacji desktopowej** (repo prywatne → deploy key tylko do odczytu). Na VPS: `arena-aktualizuj`
+  (robi `git pull` w `/opt/lazi`; klon był z gałęzi `claude/epic-rubin-ejixox` — po wdrożeniu na `master`
+  warto przełączyć go na `master`). Restart serwera urywa trwające partie.
+- Panel dostawcy ma **własną zaporę** (polityka DROP): SSH tylko z adresów na „Whitelist IP” (zmiana IP
+  w domu = `Operation timed out`), porty 80 i 443 otwarte dla wszystkich (certyfikat i gracze).
+- Z tej chmurowej sesji nie da się połączyć z serwerem (proxy odrzuca adres) — stan VPS sprawdza użytkownik
+  albo sesja SSH.
 - `.vercelignore` wyklucza `serwer/` z publikacji na Vercelu.
 
 ---
@@ -570,6 +580,7 @@ w drużynie (2 czy 3); czy robimy czapki i bronie z postaci ekipy; czy wspólny 
   - 3.10.1–3.10.2 minigierki i suwak
   - **4.0 sezon 2** + minigierki 0 A.D.
   - **4.1** 6 poziomów celów (do 50 000), zwarte karty i podrasowane portrety, ekwipunek i kolory w Arenie
+  - **4.1.1** Arena na własnym serwerze (VPS, WebSocket) zamiast Redisa
 
 ---
 
