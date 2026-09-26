@@ -70,6 +70,19 @@ html, body {
 .gracz.trup { opacity: 0.35; text-decoration: line-through; }
 .gracz.wyszedl { opacity: 0.3; }
 .gracz.rozlaczony .imie { opacity: 0.55; }
+/* drużyny w panelu: nagłówek z paskiem sumy życia, gracze z wcięciem */
+.druzyna-hud {
+  display: flex; align-items: center; gap: 7px;
+  font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--kolor-druzyny); margin-top: 3px;
+}
+.druzyna-hud:first-child { margin-top: 0; }
+.druzyna-hud .nazwa { flex: none; font-weight: 700; }
+.druzyna-hud .pasek { flex: 1; height: 5px; border-radius: 3px; background: rgba(0, 0, 0, 0.45); overflow: hidden; min-width: 30px; }
+.druzyna-hud .pasek i { display: block; height: 100%; background: var(--kolor-druzyny); transition: width 0.4s; }
+.druzyna-hud .suma { font-variant-numeric: tabular-nums; color: var(--tekst); opacity: 0.85; letter-spacing: 0; }
+.druzyna-hud.pokonana { opacity: 0.35; text-decoration: line-through; }
+.gracz.w-druzynie { padding-left: 8px; font-size: 12px; }
 .gracz.aktywny { color: var(--zar-jasny); text-shadow: 0 0 12px rgba(255, 150, 0, 0.7); }
 
 .panel-tura { text-align: center; margin-inline: auto; min-width: 120px; }
@@ -513,6 +526,64 @@ button:disabled { opacity: 0.35; cursor: not-allowed; }
   padding: 2px 6px;
 }
 .lista-graczy li.ja { border-color: var(--obwodka); }
+
+/* tryb gry (gospodarz wybiera, reszta widzi) */
+.tryb { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+.tryb button { padding: 9px 4px; font-size: 12px; line-height: 1.2; }
+.tryb button[aria-checked="true"] {
+  background: linear-gradient(180deg, rgba(255, 150, 0, 0.55), rgba(255, 60, 0, 0.45));
+  border-color: var(--zar-jasny); color: #fff;
+}
+.tryb button:disabled[aria-checked="true"] { opacity: 1; }
+.tryb-info { margin: 8px 0 12px; min-height: 1em; }
+
+/* drużyny w lobby */
+.druzyny { display: grid; gap: 10px; }
+.druzyny.kilka { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.druzyna {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-top: 3px solid var(--kolor-druzyny, var(--obwodka));
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.22);
+  padding: 8px;
+  text-align: left;
+  min-width: 0;
+}
+.druzyna h3 {
+  display: flex; justify-content: space-between; align-items: baseline; gap: 6px;
+  font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--kolor-druzyny, var(--tekst));
+  margin: 0 2px 6px;
+}
+.druzyna h3 small { font-size: 11px; opacity: 0.7; color: var(--tekst); letter-spacing: 0; }
+.druzyna .lista-graczy { gap: 5px; }
+.druzyna .lista-graczy li { padding: 7px 8px; font-size: 12px; gap: 7px; }
+.lista-graczy li.klikalny { cursor: pointer; }
+.lista-graczy li.klikalny:hover { border-color: var(--zar-jasny); }
+.lista-graczy li.wybrany { border-color: #fff; box-shadow: 0 0 0 2px var(--zar-jasny); }
+.lista-graczy .imie { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lista-graczy .ptaszek { font-size: 12px; color: #6ee07a; flex: none; }
+.lista-graczy .ptaszek.nie { color: rgba(255, 255, 255, 0.28); }
+.lista-graczy li.wolne {
+  justify-content: center;
+  border-style: dashed; background: transparent;
+  opacity: 0.55; font-size: 11px;
+}
+.lista-graczy li.wolne.klikalny { opacity: 0.95; border-color: var(--kolor-druzyny, var(--obwodka)); }
+.lista-graczy .znacznik.stara { color: #ffb35c; border-color: #ffb35c; opacity: 1; }
+.widzowie { margin-top: 10px; }
+.lista-graczy .korona { font-size: 12px; flex: none; margin-right: -4px; }
+.druzyna .lista-graczy li.ja { border-color: var(--zar-jasny); }
+
+.btn-gotowy[aria-pressed="true"] {
+  background: linear-gradient(180deg, rgba(80, 210, 110, 0.5), rgba(30, 150, 70, 0.45));
+  border-color: #6ee07a;
+}
+
+@media (max-width: 400px) {
+  .tryb { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .karta { padding: 24px 18px; }
+}
 
 /* ---------- małe ekrany ---------- */
 

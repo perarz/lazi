@@ -18,7 +18,7 @@ Stos technologiczny:
 - Bez bundlera, bez `package.json` i bez zależności npm. Zwykłe pliki HTML/CSS/JS, gra jako moduły ES,
   zrzutka jako klasyczne skrypty.
 
-Obecna wersja: **4.1.1 „Arena i zrzutka na własnym serwerze”** (`wersja.js`).
+Obecna wersja: **4.2 „Drużyny i Arena bez opóźnień”** (`wersja.js`).
 
 ---
 
@@ -120,7 +120,7 @@ i Redis zostały usunięte (dane zrzutki przeniesione skryptem `serwer/migruj-zr
 **Szczegóły.** Właściciel ma VPS (2 vCPU Ryzen 9 5950X, 4 GB, NVMe, Ubuntu 24.04,
 PL, IP 96.62.223.169). Katalog `serwer/` to serwer: Node + WebSocket (`ws`).
 - **Arena** (`pokoj.js`): log zdarzeń w pamięci, rozsyłany od razu; wiele pokoi (`?pokoj=`), epoki,
-  obecność, zamek startu 8 s, log max 4000 zdarzeń (potem nowa epoka), zdarzenie ≤ 24 KB.
+  obecność, zamek startu 8 s, log max 20 000 zdarzeń (potem nowa epoka; do 4.1.1 było 4000), zdarzenie ≤ 24 KB.
 - **Zrzutka** (`zrzutka.js`, lista graczy/sezon/limity w `gracze.js`): dane w `/var/lib/arena/zrzutka.json`
   (zapis przez plik tymczasowy + dzienne kopie z 14 dni). `GET/POST /api/zrzutka`, po każdej wpłacie stan
   leci do wszystkich na `/zrzutka/ws`. Limity: 30 wpłat / 60 s na IP, lista 60 ostatnich wpłat, kwota 1–2000.
@@ -397,12 +397,13 @@ Lekcje z kalibracji:
 | `src/protokol.js` | Protokół sieciowy (bez DOM) — kto ma turę, co jest kanoniczne, kto wyrzuca nieobecnych |
 | `src/net.js` | WebSocket do serwera na VPS: log zdarzeń, ponowne łączenie z kursorem, obecność, zegar serwera, `sendBeacon` przy zamknięciu karty (POST `/api/arena` na VPS); `RUCH_CO` — podgląd ruchu co 100 ms |
 | `src/konfig.js` | `SERWER_WS` — adres serwera Areny; lokalnie `?serwer=ws://127.0.0.1:8787/ws` do testów |
-| `src/main.js` | Lobby (kolory graczy), HUD, kamera, pętla gry, zdarzenia → efekty, statystyki, osiągnięcia (UI) |
+| `src/main.js` | Lobby (tryb, drużyny, GOTOWY, kolory), HUD, kamera, pętla gry, zdarzenia → efekty, statystyki, osiągnięcia (UI) |
+| `src/druzyny.js` | Nazwy i kolory drużyn (`DRUZYNY`), tryby lobby (`TRYBY`) |
 | `src/ekwipunek.js` | Ekwipunek broni jak w Worms Armageddon: rzędy (`GRUPY`), ikony SVG broni, otwieranie/zamykanie |
 | `src/input.js` | Klawiatura, przyciski dotykowe, przeciąganie/szczypanie, PPM/Q = ekwipunek |
 | `src/render.js`, `src/fx.js` | Grafika (tu wolno trygonometrię i `Math.random`); w `render.js` też kamera i podgląd robala na ekranie wejścia |
 | `src/osiagniecia-reguly.js` | Reguły osiągnięć — czyste funkcje |
-| `test/sim.test.mjs`, `test/protokol.test.mjs` | Testy w Node (64 i 11) |
+| `test/sim.test.mjs`, `test/protokol.test.mjs` | Testy w Node (70 i 17) |
 
 ### Determinizm (święta zasada)
 - Symulacja (`sim.js`, `terrain.js`) używa tylko:
@@ -423,23 +424,46 @@ Lekcje z kalibracji:
 - Wspólny log zdarzeń na serwerze (pokój). Pierwszy `strzal`/`pas` danej tury jest **kanoniczny**.
 - Strzał niesie pełny stan robali, kratery i skrzynki z chwili strzału oraz wektor startowy.
   Pas niesie robale, kratery i skrzynki.
-- Po **każdym** strzale jest faza `odwrot`: **5 s ruchu** (`ODWROT_S`).
-  - Wciśnięcia są nagrywane (RLE) i dołączane do strzału.
-  - Strzał wychodzi do sieci dopiero po tych 5 s, a odbiorca odtwarza wszystko krok w krok.
-  - Koszt: inni widzą strzał z ~5 s opóźnieniem. Dlatego `GRACE_PAS` = 12 s.
+- Po **każdym** strzale jest faza `odwrot`: **5 s ruchu** (`ODWROT_S`, `ODWROT_KROKI` = 600 kroków).
+  - **Od 4.2 na żywo**: strzał idzie do sieci od razu (`releaseFire` wkłada akcję do `akcjeDoWyslania`),
+    a strzelec nagrywa wciśnięcia (`odwrotNagranie`) i co `ODWROT_CO` (120 ms) wysyła paczkę
+    `{t:'odwrot', nr, id, od, b: RLE, koniec?}` (`wyslijOdwrot` w `protokol.js`).
+  - `zloz` składa paczki w `p.odwroty.get(nr)` ciągiem po `od` (paczka z przyszłości czeka w `czeka`,
+    paczka przed strzałem w `paczkiPrzed`, duplikaty odpadają). Paczki przyjmuje też dla tury już zamkniętej
+    stanem — odbiorca może jeszcze grać jej ucieczkę.
+  - Odbiorca (`klatka`) dopisuje kroki do `odwrotPlan` (`S.dopiszOdwrot`) i robi krok tylko wtedy, gdy zna
+    wciśnięcie (`S.czekaNaOdwrot`). Trzyma zapas `ODWROT_BUFOR` (14 kroków ≈ 0,12 s), przy dużym zapasie
+    gra ×1,25. W E2E widzowie są ok. 0,15 s za strzelcem (test „ucieczka na żywo” pilnuje < 0,8 s).
+  - Strzelec wysyła od potwierdzonego w logu miejsca; brak postępu przez `ODWROT_PONOW` (1,5 s) = powtórka.
+  - Strzelec zniknie w trakcie (4 s bez paczki, wyszedł, brak sieci) → jego **zastępca** (najmniejsze id
+    bez autora, `jestemGospodarzem(…, bez)`) domyka ucieczkę `{t:'odwrot', za, koniec}`: reszta kroków = stoi.
+    Autor, który wróci, przesymulowuje turę z kanonem. Ten sam zastępca publikuje stan zastępczy.
+  - Log rośnie o ~40 paczek na turę, dlatego serwer ma `MAX_ZDARZEN` = 20 000.
 - Turę zamyka `stan` (snapshot) policzony z kanonicznej akcji. Wszyscy, autor też, go przyjmują.
 - Gospodarz gry (najmniejsze id wśród połączonych uczestników):
   - oddaje tury nieobecnych (odszedł / brak sieci 15 s / czas);
   - publikuje stan zastępczy.
   - Po ~90 s bez sieci gracz wylatuje.
-- **Gospodarz lobby** to obecny gracz, który dołączył najwcześniej (kolejność `dolacz`). Lista lobby
-  przeżywa nową partię (jest seedowana z `gracze` w zdarzeniu `nowa`).
-- **Start partii** (od 4.1): gospodarz publikuje odliczanie `ODLICZANIE_S` (20 s, `protokol.js`) i ono zawsze
-  leci do końca — nie ma przycisku „Zaczynamy”. `zloz` pomija termin krótszy niż 15 s od stempla serwera
-  (wpis ze starej, nieodświeżonej karty).
+- **Lobby (od 4.2, `WERSJA` = 2 w `protokol.js`)**:
+  - Do `MAX_GRACZY` = 8 obecnych (kolejność wejścia) gra, reszta czeka (`widzowie`).
+  - **Gospodarz lobby** (👑) to obecny gracz, który dołączył najwcześniej. Ustawia **tryb**: `{t:'tryb', druzyny}`
+    z `TRYBY` = 0 (każdy na każdego), 2, 3, 4 (`druzyny.js`: nazwy i kolory drużyn).
+  - Pojemność drużyny = ⌈8 / liczba drużyn⌉ (2→4, 3→3, 4→2). `P.rozstaw(p, jest)` liczy układ z obecnych:
+    każdy trzyma zapisaną drużynę, jeśli jest w niej miejsce (pierwszeństwo: wcześniejszy `druzynaNr` =
+    pozycja zdarzenia w logu), reszta do najmniej licznej (remis → z hasha id, tak samo u wszystkich).
+    Klient utrwala swój przydział `{t:'druzyna', kto, d, auto:1}`.
+  - Przejście do wolnego miejsca / przeniesienie przez gospodarza: `{t:'druzyna', kto, d}`; zamiana:
+    `{t:'zamien', a, b, da, db}` (drużyny z ekranu gospodarza).
+  - **Start**: każdy `{t:'gotowy', tak}`; gdy `gotowiDoStartu` (2+ graczy, wszyscy gotowi, w drużynach
+    2+ niepuste drużyny), gospodarz publikuje `odliczanie` (`ODLICZANIE_S` = 5 s, z `v: 2` — wpisy bez
+    wersji są pomijane). Zmiana trybu/drużyn cofa gotowość wszystkich, nowy gracz i wyjście kasują odliczanie.
+  - `nowa` niesie `gracze` z polem `druzyna` i `druzyny` (tryb); po partii lobby pamięta drużyny.
+  - Lobby rysuje się tylko przy zmianie (`podpisLobby`), bo przebudowa co 0,5 s gubiła stuknięcia.
+  - Gracz ze starą wersją (bez `v`) ma w lobby znaczek „STARA WERSJA” — niech odświeży.
 - **Kolory**: gracz wybiera kolor robala przy wejściu (`PALETA` w `main.js`, 12 kolorów, `arena:kolor`),
   kolor leci w `dolacz`. Przy kolizji `rozdzielKolory` zostawia go temu, kto dołączył wcześniej, reszta
-  dostaje pierwszy wolny (lobby mówi o tym graczowi). Nick nad robalem jest rysowany w jego kolorze.
+  dostaje pierwszy wolny (lobby mówi o tym graczowi). Nick nad robalem jest w kolorze robala, a w drużynach
+  w kolorze drużyny (`kolorNicku` w `render.js`).
 - Zamknięcie karty wysyła `sendBeacon` z `wyjdz` (text/plain). Przycisk „Opuść grę” robi to samo.
 
 ### Rozgrywka
@@ -452,6 +476,13 @@ Lekcje z kalibracji:
   - Na telefonie: przyciski dotykowe, celowanie palcem, szczypanie = zoom. Lewa grupa to ◀ ▶, prawa to
     celownik ▲▼ i **SKOK nad OGNIA**. W czasie ucieczki (`body.ucieczka`) znika celownik i OGNIA, skok zostaje.
 - W powietrzu da się skręcać (`POWIETRZE_*` w `sim.js`), ale nie da się przebić odrzutu.
+- **Drużyny** (`createGame(…, { druzyny: true })`, robal ma `druzyna`; bez trybu drużyna = numer gracza):
+  - `swoj(state, w, ownerId)`: kolega z drużyny działającego (albo właściciela pocisku) — wybuch, kij
+    i strzelba go nie ranią i nie odrzucają, pociski/owca/wiertło przez niego przelatują. Siebie ranisz.
+  - `nextTurn`: na zmianę drużynami (kolejność drużyn i graczy z potasowanej `order`), w drużynie kolejny
+    żywy po `state.ostatni[druzyna]` (jest w snapshocie). W trybie każdy na każdego = dawne „następny żywy”.
+  - Koniec, gdy żyje jedna drużyna; `winner` = któryś żywy z niej. HUD: nagłówki drużyn z paskiem
+    życia (`.druzyna-hud`), ekran końca „WYGRYWACIE!” / „WYGRYWAJĄ …”; osiągnięcia liczą wygraną drużyny.
 - Tura trwa 30 s (`TURN_TIME`). Lawa podnosi się po 6 rundach (`LAWA_PO_RUNDACH`, nagła śmierć).
 
 **Bronie** (`weapons.js`, kolejność = klawisze)
@@ -513,9 +544,10 @@ Lekcje z kalibracji:
   4. Test „odbiorca = strzelec”.
 
 ### Plan rozwoju: bliżej Worms Armageddon (propozycja po 4.1, czeka na decyzję)
-Plan przedstawiony użytkownikowi 2026-09-25. **Nic z tego jeszcze nie jest zrobione.** Od 4.1.1 Arena stoi na
-VPS, więc koszt zapytań przestał być hamulcem — użytkownik przy przenosinach mówił wprost, że chce drużyn
-(„będą teamy”) i większego wykorzystania serwera; dochodzi też **lista pokoi w lobby** (serwer już je ma). Użytkownik nie wybrał
+Plan przedstawiony użytkownikowi 2026-09-25. Od 4.1.1 Arena stoi na VPS, więc koszt zapytań przestał być
+hamulcem. W 4.2 zrobione: drużyny graczy w lobby i w grze (część Etapu 2) i ucieczka na żywo. Użytkownik
+nazwał 4.2 „częścią większej przebudowy” — spodziewaj się dalszych próśb o lobby/ustawienia; dochodzi też
+**lista pokoi w lobby** (serwer już je ma). Użytkownik nie wybrał
 kolejności — zapytaj, zanim zaczniesz. Każdy etap to osobna wersja z testami i zrzutami. Etapy 1–3 nie dodają
 nowych kanałów (dane doklejone do `dolacz`, `nowa`, strzału).
 
@@ -532,14 +564,16 @@ nowych kanałów (dane doklejone do `dolacz`, `nowa`, strzału).
   bierze ją zamiast `weapon.fuse`. Deterministyczne, bo leci gotowa liczba.
 - **Podsumowanie partii** na ekranie końca: obrażenia, fragi, najlepszy strzał — liczone lokalnie ze zdarzeń.
 
-**Etap 2 — drużyny (wersja 5.0, największa zmiana)**
+**Etap 2 — więcej robali na gracza (wersja 5.0)** — *drużyny graczy, tryb i ustawienie drużyn w lobby,
+brak obrażeń od swoich i tury na zmianę drużynami są już w 4.2*; zostaje to, co niżej.
 - **2–4 robale na gracza**, tury drużyn na zmianę, w drużynie kolejny żywy robal, paski HP drużyn,
   broń „wybór robala”. Dotyka protokołu: dziś `aktywny` (w `snapshot` i `zloz`) to id robala = id gracza,
   a `mogeGrac` porównuje `w.id === r.mojeId`. Przy drużynach trzeba rozdzielić „gracz z turą” (do
   `mozeDzialac`) i „aktywny robal”, dać robalom id właściciela, `kolejnoscTur` po drużynach, więcej
   punktów w `spawnPoints`. Testy protokołu do przerobienia. Stan tury przy 6×4 robalach to ok. 5 KB (limit 24 KB).
-- **Ustawienia partii u gospodarza lobby**: liczba robali, czas tury, HP startowe, zestaw broni, styl mapy,
-  początek nagłej śmierci. Jadą w `nowa`; podgląd w lobby przez rzadkie zdarzenie w logu (kilka zapisów na partię).
+- **Ustawienia partii u gospodarza lobby** (główne — liczba drużyn — jest od 4.2, zdarzenie `tryb`): liczba robali,
+  czas tury, HP startowe, zestaw broni, styl mapy, początek nagłej śmierci. W 4.2 użytkownik powiedział
+  „na razie nic” — dokładać jak `tryb`: zdarzenie w lobby, pole w `nowa`, cofa gotowość.
 - **Miny i beczki** od startu, rozmieszczone z seeda; stan jak skrzynki (przepis „Coś w stanie gry”).
   Mina wybucha po zbliżeniu robala, beczka od wybuchu obok (reakcje łańcuchowe).
 - **Skrzynki**: pułapka (wybucha po otwarciu) i skrzynka z narzędziami.
@@ -592,14 +626,15 @@ w drużynie (2 czy 3); czy robimy czapki i bronie z postaci ekipy; czy robimy ws
   - **4.0 sezon 2** + minigierki 0 A.D.
   - **4.1** 6 poziomów celów (do 50 000), zwarte karty i podrasowane portrety, ekwipunek i kolory w Arenie
   - **4.1.1** Arena i zrzutka na własnym serwerze (VPS, WebSocket), koniec Redisa i `api/`
+  - **4.2** ucieczka po strzale na żywo, lobby do 8 graczy, drużyny (tryb, GOTOWY, przenoszenie, zamiana)
 
 ---
 
 ## 9. Testy i sprawdzanie
 
 ```
-node gra/test/sim.test.mjs        # symulacja, bronie, determinizm, skrzynki, spawny, osiągnięcia, kamera (64)
-node gra/test/protokol.test.mjs   # protokół z atrapą serwera w pamięci, lagiem, rozłączeniami, odliczanie (11, ~1–2 min)
+node gra/test/sim.test.mjs        # symulacja, bronie, determinizm, drużyny, skrzynki, spawny, osiągnięcia, kamera (70)
+node gra/test/protokol.test.mjs   # protokół: lag, rozłączenia, ucieczka na żywo, lobby i drużyny, partia 2v2 (17, ~1–2 min)
 cd serwer && npm install && node test.mjs   # serwer na VPS: Arena (10) + zrzutka: wpłaty, na żywo, limity, plik, migracja (7)
 ```
 Obie muszą przejść przed pushem. Dodatkowo `node --check` na zmienionych plikach JS.
@@ -621,12 +656,15 @@ długości partii (np. „za mało strzałów”), sprawdź przyczynę, zanim zm
   wstaw plikiem: `ZRZUTKA_PLIK=/tmp/z.json` z `{"sezony":{"1":{"sumy":{"fortnite:krayo":5400},"wplaty":[]}}}`.
 - **Arena przez serwer WebSocket**: `ARENA_PORT=8787 node serwer/serwer.js` + `python3 -m http.server 8765`,
   gra pod `http://localhost:8765/gra/?serwer=ws://127.0.0.1:8787/ws&pokoj=test1` (dla każdego przebiegu nowy
-  pokój — bez duchów w lobby). Partia startuje sama po 20 s odliczania. `__arena().transport` = `ws`
-  (gdy gracz jest w lobby; przed wpisaniem nicku `null`).
+  pokój — bez duchów w lobby). Partia rusza, gdy wszyscy klikną `#btn-gotowy` (+5 s). `__arena().transport` = `ws`
+  (gdy gracz jest w lobby; przed wpisaniem nicku `null`). `__arena().lobby` = tryb i drużyny w lobby,
+  `druzyny` = drużyny w partii, `odwrotKrok` = krok ucieczki (do pomiaru opóźnienia widzów).
 - **Scenariusz Areny**: 2 przeglądarki desktop + telefon („iPhone 13 landscape”), porównanie
   `window.__arena().hash` na granicy każdej tury.
-  - Start: obaj wpisują nick i wybierają kolor (drugi ten sam co pierwszy, żeby sprawdzić kolizję), potem
-    ok. 20 s odliczania. Kto ma turę: `__arena().aktywny === __arena().mojeId`.
+  - Start: wszyscy wpisują nick, gospodarz (pierwszy) klika tryb (`#lobby-tryb button:nth-child(2)` = 2 drużyny),
+    można sprawdzić zamianę (klik w gracza, potem w gracza z innej drużyny), potem każdy `#btn-gotowy`.
+    Kto ma turę: `__arena().aktywny === __arena().mojeId`.
+  - Ucieczka na żywo: po strzale trzymaj `a` i co 100 ms porównuj `odwrotKrok` strzelca i widzów.
   - Tura telefonu: desktop strzela (przytrzymaj F ~0,35 s) i czekasz, aż `aktywny` zmieni się na telefon.
   - Długie przytrzymanie OGNIA na dotyku: CDP `Input.dispatchTouchEvent` (`touchStart`, pauza, `touchEnd`).
     `tap()` Playwrighta jest za krótki — odpala słaby strzał od razu.

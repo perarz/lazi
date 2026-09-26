@@ -523,8 +523,9 @@ test('pelne naladowanie strzela i trafia do kolejki wysylki', () => {
   S.startCharging(st);
   run(st, 2);
   assert(st.firedThisTurn, 'pelna moc nie wystrzelila');
-  run(st, S.ODWROT_S + 0.1);            // strzał wychodzi po 5 s ruchu
   assert(st.akcjeDoWyslania.length === 1, 'strzal nie trafil do kolejki wysylki — reszta by go nie zobaczyla');
+  run(st, S.ODWROT_S + 0.1);            // ucieczka nie wysyła drugiej akcji (idzie paczkami w protokole)
+  assert(st.akcjeDoWyslania.length === 1, 'po ucieczce doszla druga akcja');
 });
 
 console.log('\nTURY');
@@ -607,6 +608,78 @@ test('stanPoTurze nie zmienia stanu zrodlowego', () => {
   assert(S.stateHash(st) === przed, 'stanPoTurze zmienil stan');
 });
 
+console.log('\nDRUZYNY');
+
+const druzynowi = (uklad) => uklad.map((d, i) => ({ id: 'p' + i, name: 'Gracz' + i, color: '#f60', druzyna: d }));
+
+test('druzyny: wybuch nie rani i nie odrzuca kolegi, rani siebie i wroga', () => {
+  const st = S.createGame(11, druzynowi([0, 0, 1]), { druzyny: true });
+  st.turnPtr = st.order.indexOf('p0');
+  const akt = S.activeWorm(st);
+  const kolega = st.worms.find((w) => w !== akt && w.druzyna === akt.druzyna);
+  const wrog = st.worms.find((w) => w.druzyna !== akt.druzyna);
+  for (const w of [akt, kolega, wrog]) { w.x = 1000 + st.worms.indexOf(w) * 12; w.vx = 0; w.vy = 0; }
+  const hp = st.worms.map((w) => w.hp);
+  S.explode(st, 1012, (akt.y - S.WORM_H * 0.5), WEAPONS.bazooka);
+  assert(kolega.hp === hp[st.worms.indexOf(kolega)] && kolega.vx === 0 && kolega.vy === 0, 'kolega oberwal: hp ' + kolega.hp + ' vx ' + kolega.vx);
+  assert(akt.hp < hp[st.worms.indexOf(akt)], 'strzelajacy nie rani sam siebie');
+  assert(wrog.hp < hp[st.worms.indexOf(wrog)], 'wrog nie oberwal');
+});
+
+test('druzyny: tury na zmiane druzynami, w druzynie po kolei', () => {
+  const st = S.createGame(5, druzynowi([0, 0, 0, 1]), { druzyny: true, sieciowa: true });
+  const kto = [];
+  for (let t = 0; t < 8; t++) {
+    kto.push(S.activeWorm(st));
+    const snap = przezSiec(S.stanPoTurze(st));
+    S.zastosujSnapshot(st, snap);
+  }
+  for (let t = 1; t < kto.length; t++) assert(kto[t].druzyna !== kto[t - 1].druzyna, 'dwie tury z rzedu tej samej druzyny: ' + kto.map((w) => w.id).join(','));
+  const zA = kto.filter((w) => w.druzyna === 0).map((w) => w.id);
+  assert(new Set(zA.slice(0, 3)).size === 3, 'w druzynie nie po kolei: ' + zA.join(','));
+  assert(zA[3] === zA[0], 'kolejka w druzynie nie wraca na poczatek: ' + zA.join(','));
+});
+
+test('druzyny: martwy gracz jest pomijany, ale druzyna dalej gra na zmiane', () => {
+  const st = S.createGame(5, druzynowi([0, 0, 1, 1]), { druzyny: true, sieciowa: true });
+  st.worms.find((w) => w.druzyna === 0 && w.id !== S.activeWorm(st).id).alive = false;
+  const kto = [];
+  for (let t = 0; t < 6; t++) { kto.push(S.activeWorm(st)); S.zastosujSnapshot(st, przezSiec(S.stanPoTurze(st))); }
+  for (let t = 1; t < kto.length; t++) assert(kto[t].druzyna !== kto[t - 1].druzyna, 'dwie tury z rzedu tej samej druzyny');
+  assert(kto.every((w) => w.alive), 'ture dostal martwy robal');
+});
+
+test('druzyny: wygrywa ostatnia druzyna, nawet z dwoma zywymi', () => {
+  const st = S.createGame(11, druzynowi([0, 1, 0, 1]), { druzyny: true });
+  for (const w of st.worms) if (w.druzyna === 1) w.alive = false;
+  run(st, S.TURN_TIME + 7);
+  assert(st.phase === 'over', 'faza to ' + st.phase);
+  assert(st.worms.find((w) => w.id === st.winner).druzyna === 0, 'zly zwyciezca');
+});
+
+test('kazdy na kazdego: kolejnosc jak dawniej (nastepny zywy z kolejki)', () => {
+  const st = S.createGame(9, players(4), { sieciowa: true });
+  for (let t = 0; t < 8; t++) {
+    const przed = st.turnPtr;
+    S.zastosujSnapshot(st, przezSiec(S.stanPoTurze(st)));
+    assert(st.turnPtr === (przed + 1) % 4, 'kolejnosc sie zmienila: ' + przed + ' -> ' + st.turnPtr);
+  }
+});
+
+test('druzyny: pocisk przelatuje przez kolege', () => {
+  const st = S.createGame(11, druzynowi([0, 0, 1]), { druzyny: true });
+  st.turnPtr = st.order.indexOf('p0');
+  const akt = S.activeWorm(st);
+  const kolega = st.worms.find((w) => w !== akt && w.druzyna === akt.druzyna);
+  // wolny korytarz w powietrzu i kolega na linii lotu
+  for (let x = 560; x <= 900; x += 20) T.carve(st.terrain, x, 295, 34);
+  akt.x = 600; akt.y = 300; kolega.x = 700; kolega.y = 305; kolega.alive = true;
+  st.projectiles.push({ id: 99, weapon: 'bazooka', x: 640, y: 295, vx: 400, vy: 0, fuse: 0, ownerId: akt.id, krok: 0 });
+  const hp = kolega.hp;
+  for (let i = 0; i < 40; i++) S.step(st);
+  assert(kolega.hp === hp, 'kolega trafiony pociskiem');
+});
+
 console.log('\nDETERMINIZM I SYNCHRONIZACJA');
 
 /* Strzelec gra naprawdę (chodzi, skacze, strzela w locie), odbiorca dostaje
@@ -634,16 +707,25 @@ for (const bron of WEAPON_ORDER) {
       assert(S.startCharging(a), 'nie da sie strzelic: ' + bron);
       run(a, 0.5);
       S.releaseFire(a);
-      // 5 s ruchu po strzale: bieg, skok, bieg z powrotem — nagranie leci w zdarzeniu
-      assert(a.phase === 'odwrot' && a.akcjeDoWyslania.length === 0, 'strzal bez fazy ruchu: ' + bron);
-      a.input.left = true; run(a, 1.2);
-      a.input.left = false; S.jump(a); run(a, 0.6);
-      a.input.right = true; run(a, 0.8);
-      a.input.right = false;
-      for (let i = 0; i < 2000 && a.akcjeDoWyslania.length === 0; i++) S.step(a);
-      assert(a.akcjeDoWyslania.length === 1, 'brak akcji do wyslania');
-
+      // strzał wychodzi od razu, 5 s ruchu po nim leci paczkami: bieg, skok, bieg z powrotem
+      assert(a.phase === 'odwrot' && a.akcjeDoWyslania.length === 1, 'strzal bez fazy ruchu: ' + bron);
       S.zastosujStrzal(b, przezSiec(a.akcjeDoWyslania[0]));
+      assert(S.czekaNaOdwrot(b), 'odbiorca nie czeka na ruchy ucieczki');
+      let wyslane = 0;
+      const paczka = (koniec) => {
+        const bity = S.rozwinOdwrot(przezSiec(S.zwinOdwrot(a.odwrotNagranie.slice(wyslane))));
+        wyslane = a.odwrotNagranie.length;
+        S.dopiszOdwrot(b, bity, koniec);
+        while (!S.czekaNaOdwrot(b) && b.phase === 'odwrot') S.step(b);   // odbiorca gra, ile może
+      };
+      const krok = (sek) => { for (let i = 0; i < sek / S.DT; i++) { S.step(a); if (i % 13 === 0) paczka(false); } };
+      a.input.left = true; krok(1.2);
+      a.input.left = false; S.jump(a); krok(0.6);
+      a.input.right = true; krok(0.8);
+      a.input.right = false;
+      for (let i = 0; i < 2000 && a.phase === 'odwrot'; i++) S.step(a);
+      paczka(true);
+      assert(a.akcjeDoWyslania.length === 1, 'ucieczka dolozyla akcje');
       doKonca(a);
       doKonca(b);
       assert(S.stateHash(a) === S.stateHash(b), 'rozjazd po locie (' + bron + ', seed ' + seed + ')');

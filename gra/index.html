@@ -108,7 +108,7 @@
     <div class="karta">
       <a class="powrot" href="/">← Zrzutka</a>
       <h1>ARENA <span class="plonie">GOAT</span>ÓW</h1>
-      <p class="podtytul">Turowa strzelanka z terenem, który da się rozwalić do zera.<br>Jedno wspólne lobby — kto wejdzie, ten gra. Działa też na telefonie.</p>
+      <p class="podtytul">Turowa strzelanka z terenem, który da się rozwalić do zera.<br>Do 8 graczy, każdy na każdego albo w drużynach. Działa też na telefonie.</p>
 
       <div class="pole">
         <input id="input-nazwa" type="text" maxlength="14" placeholder="Twoja nazwa" autocomplete="off" enterkeyhint="go">
@@ -135,7 +135,15 @@
       <h1>LOBBY</h1>
       <p class="podtytul" id="lobby-podtytul">Czekamy na graczy…</p>
 
-      <ul class="lista-graczy" id="lista-graczy"></ul>
+      <!-- tryb gry: ustawia gospodarz, reszta widzi -->
+      <div class="tryb" id="lobby-tryb" role="radiogroup" aria-label="Tryb gry"></div>
+      <p class="info tryb-info" id="tryb-info"></p>
+
+      <!-- drużyny (albo jedna lista w trybie „każdy na każdego”) -->
+      <div class="druzyny" id="lobby-druzyny"></div>
+      <p class="info widzowie" id="lobby-widzowie" hidden></p>
+
+      <button id="btn-gotowy" class="glowny btn-gotowy" type="button" aria-pressed="false">GOTOWY</button>
 
       <div class="trwa-gra" id="trwa-gra" hidden>
         <p>Trwa partia: <b id="trwa-gra-gracze"></b></p>
@@ -144,7 +152,7 @@
       </div>
 
       <div class="odliczanie" id="odliczanie" hidden>
-        Start za <b id="odliczanie-sek">20</b> s
+        Wszyscy gotowi — start za <b id="odliczanie-sek">5</b> s
       </div>
 
       <p class="info" id="info-lobby"></p>
