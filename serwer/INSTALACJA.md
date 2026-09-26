@@ -7,6 +7,15 @@ Redis nie jest już potrzebny dla Areny (zrzutka dalej go używa).
 Adres serwera: darmowa nazwa **sslip.io** z IP serwera — np. IP `185.1.2.3` →
 `185-1-2-3.sslip.io`. Caddy sam weźmie certyfikat Let's Encrypt.
 
+## 0. Zapora w panelu dostawcy VPS
+Panel ma własną zaporę przed serwerem (Input policy **DROP**), niezależną od `ufw`.
+Bez reguł ruch nie dochodzi w ogóle i `ssh` kończy się `Operation timed out`.
+- **SSH (22)**: domyślnie wpuszcza tylko adresy z zakładki **Whitelist IP** — dopisz tam
+  swoje publiczne IP (`curl -4 ifconfig.me` na swoim komputerze). Po zmianie IP w domu
+  (router, telefon jako hotspot) trzeba je dopisać ponownie.
+- **HTTP (80) i HTTPS (443), TCP, źródło: wszyscy** — dwie reguły ACCEPT. Bez 80 Caddy
+  nie dostanie certyfikatu, bez 443 gracze się nie połączą.
+
 ## 1. Dostęp do prywatnego repo (deploy key, tylko do odczytu)
 
 Na VPS jako root:
