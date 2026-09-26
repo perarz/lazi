@@ -10,7 +10,7 @@ import * as R from './render.js';
 import { createFx, stepFx, emitExplosion, emitTrail, emitSpark, emitTekst, emitSmuga } from './fx.js';
 import { attachInput } from './input.js';
 import { WEAPONS, startowaAmunicja } from './weapons.js';
-import { createNet } from './net.js';
+import { createNet, RUCH_CO } from './net.js';
 import { nowaPartiaOs, zdarzenieOs, koniecTuryOs, koniecPartiiOs } from './osiagniecia-reguly.js';
 import { createEkwipunek, ikonaBroni } from './ekwipunek.js';
 
@@ -665,7 +665,8 @@ function petla(teraz) {
     dt,
     obecnosc: net.obecnosc,
     obecnoscTeraz: net.obecnoscTeraz,
-    obecnoscSwieza: net.obecnoscSwieza()
+    obecnoscSwieza: net.obecnoscSwieza(),
+    ruchCo: RUCH_CO
   });
   while (rg.doWyslania.length) net.wyslij(rg.doWyslania.shift());
 
@@ -748,7 +749,8 @@ function podgladNaZywo(dt, moge) {
   }
   if (!akt.widok) akt.widok = { x: akt.x, y: akt.y, facing: akt.facing, angle: akt.angle, moc: 0, cel: null };
   const v = akt.widok;
-  const k = Math.min(1, dt * 7);
+  // przez własny serwer podgląd przychodzi co 0,1 s, więc może gonić szybciej
+  const k = Math.min(1, dt * (RUCH_CO < 200 ? 16 : 7));
   v.x += (ruch.x - v.x) * k;
   v.y += (ruch.y - v.y) * k;
   v.facing = ruch.f;
@@ -1148,6 +1150,7 @@ window.__arena = () => ({
   odeszli: pokoj ? [...pokoj.odeszli.keys()] : null,
   gracze: pokoj ? pokoj.gracze.map((g) => g.name) : null,
   statystyki: rg && rg.statystyki,
+  transport: net ? (net.transport || 'http') : null,
   kursor: net && net.kursor,
   epoka: net && net.epoka,
   obecnosc: net && Object.keys(net.obecnosc || {}),

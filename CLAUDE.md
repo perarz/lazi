@@ -131,10 +131,18 @@ przestają działać dla wszystkich. Użytkownik pilnuje licznika (np. „mam 10
   - 30 wpłat / 60 s na IP, lista ostatnich 60 wpłat.
   - Jedna wpłata to 1–2000 (`maks` w `GRACZE`).
 
-**Przyszłość: VPS.** Rozmawialiśmy o przejściu na VPS (~5 zł/mies., Node + WebSocket).
-- Zrzutkę przeniesie się łatwo.
-- W Arenie wystarczy przepisać `net.js`, `protokol.js` zostaje.
-- Nie zaczynaj tego bez wyraźnej prośby.
+**Arena na VPS (w trakcie migracji).** Właściciel ma VPS (2 vCPU Ryzen 9 5950X, 4 GB, NVMe, Ubuntu 24.04,
+PL). Katalog `serwer/` to serwer Areny: Node + WebSocket (`ws`), logika pokoju jak w `api/arena.js`, ale
+w pamięci i z natychmiastowym rozsyłaniem; wiele pokoi (`?pokoj=`). Za nim stoi Caddy (HTTPS, adres
+**sslip.io** z IP serwera, bez kupowania domeny). Instrukcja: `serwer/INSTALACJA.md`, skrypt `serwer/instaluj.sh`.
+- Gra wybiera transport w `gra/src/konfig.js`: `SERWER_WS = 'wss://…/ws'` → WebSocket, `null` → stary tryb
+  przez `/api/arena` (Redis). **Powrót do Redisa = jedna linijka.** Po przełączeniu Arena nie zużywa Redisa.
+- Przy przełączeniu dopisz adres serwera do CSP `connect-src` w `gra/index.html` (`wss://… https://…`).
+- Serwer sprawdza `Origin` (wolno `*.vercel.app`, localhost i `ARENA_ORIGINS`), limity: 60 wiadomości/s
+  na połączenie, 30 połączeń na IP, zdarzenie ≤ 24 KB (większe zamykają tylko to połączenie).
+- Z tej chmurowej sesji nie ma SSH do VPS. Instaluje i aktualizuje go **sesja Claude uruchomiona przez SSH
+  w aplikacji desktopowej** (repo prywatne → deploy key tylko do odczytu). Na VPS: `arena-aktualizuj`.
+- `.vercelignore` wyklucza `serwer/` z publikacji na Vercelu.
 
 ---
 
@@ -154,7 +162,9 @@ przestają działać dla wszystkich. Użytkownik pilnuje licznika (np. „mam 10
 | `zmiany/` | Strona „Co nowego” (rysuje historię z `wersja.js`) |
 | `goat/` | Stara, ukryta strona „ŁAZI TO GOAT” — nie ruszać |
 | `api/zrzutka.js` | Wspólne sumy zrzutki, sezony (`SEZON`, `KLUCZE`), lista dozwolonych graczy `GRACZE` |
-| `api/arena.js` | Serwer gry: log zdarzeń, obecność, zamek startu partii |
+| `api/arena.js` | Serwer gry (stary tryb, Redis): log zdarzeń, obecność, zamek startu partii |
+| `serwer/` | Serwer Areny na VPS: `pokoj.js` (logika), `serwer.js` (HTTP + WebSocket), `test.mjs`, `instaluj.sh`, `INSTALACJA.md`; ma własne `package.json` (zależność `ws`) — to jedyne miejsce z npm |
+| `.vercelignore` | Nie publikuj `serwer/` na Vercelu |
 | `vercel.json` | Nagłówki bezpieczeństwa |
 
 **Klucze `localStorage`**
@@ -366,7 +376,8 @@ Lekcje z kalibracji:
 | `src/weapons.js` | Tabela broni (liczby, bez logiki) i kolejność na pasku |
 | `src/rng.js` | `mulberry32`, szum, `hashNumbers`, `hashTekstu` |
 | `src/protokol.js` | Protokół sieciowy (bez DOM) — kto ma turę, co jest kanoniczne, kto wyrzuca nieobecnych |
-| `src/net.js` | Polling `/api/arena`, obecność, zegar serwera, `sendBeacon` przy zamknięciu karty |
+| `src/net.js` | Dwa transporty z tym samym interfejsem: WebSocket do serwera na VPS albo polling `/api/arena` (Redis); obecność, zegar serwera, `sendBeacon` przy zamknięciu karty; `RUCH_CO` — podgląd ruchu co 100 ms (WS) / 450 ms (Redis) |
+| `src/konfig.js` | `SERWER_WS` — adres serwera Areny albo `null`; lokalnie `?serwer=ws://127.0.0.1:8787/ws` do testów |
 | `src/main.js` | Lobby (kolory graczy), HUD, kamera, pętla gry, zdarzenia → efekty, statystyki, osiągnięcia (UI) |
 | `src/ekwipunek.js` | Ekwipunek broni jak w Worms Armageddon: rzędy (`GRUPY`), ikony SVG broni, otwieranie/zamykanie |
 | `src/input.js` | Klawiatura, przyciski dotykowe, przeciąganie/szczypanie, PPM/Q = ekwipunek |
@@ -567,6 +578,7 @@ w drużynie (2 czy 3); czy robimy czapki i bronie z postaci ekipy; czy wspólny 
 ```
 node gra/test/sim.test.mjs        # symulacja, bronie, determinizm, skrzynki, spawny, osiągnięcia, kamera (64)
 node gra/test/protokol.test.mjs   # protokół z atrapą serwera, lagiem, rozłączeniami, odliczanie (11, trwa ~1–2 min)
+cd serwer && npm install && node test.mjs   # serwer Areny na VPS: rozsyłanie, epoki, zamek, pokoje, limity (10)
 ```
 Obie muszą przejść przed pushem. Dodatkowo `node --check` na zmienionych plikach JS.
 Test protokołu gra losowe partie. Zmiana listy broni zmienia ich przebieg. Jeśli padnie test zależny od
@@ -591,6 +603,9 @@ długości partii (np. „za mało strzałów”), sprawdź przyczynę, zanim zm
   - Wariant z 4.1: atrapa Redisa na tym samym porcie pod `/__redis` (URL `http://127.0.0.1:PORT/__redis`)
     i `GET /__reset`, który czyści bazę między przebiegami (znikają też „duchy” z lobby).
   - Do testów sezonów wstaw dane pod `zrzutka:sumy` / `zrzutka:wplaty` (sezon 1) przy starcie.
+- **Arena przez serwer WebSocket**: `ARENA_PORT=8787 node serwer/serwer.js` + `python3 -m http.server 8765`,
+  gra pod `http://localhost:8765/gra/?serwer=ws://127.0.0.1:8787/ws&pokoj=test1` (dla każdego przebiegu nowy
+  pokój — bez duchów w lobby). Partia startuje sama po 20 s odliczania. `__arena().transport` = `ws`/`http`.
 - **Scenariusz Areny**: 2 przeglądarki desktop + telefon („iPhone 13 landscape”), porównanie
   `window.__arena().hash` na granicy każdej tury.
   - Start: obaj wpisują nick i wybierają kolor (drugi ten sam co pierwszy, żeby sprawdzić kolizję), potem

@@ -313,7 +313,7 @@ export function klatka(r, pokoj, ctx) {
       c: st.cel ? [st.cel.x, st.cel.y] : null
     };
     const sygnatura = JSON.stringify(ruch);
-    if (sygnatura !== r.ostatniRuch && ctx.teraz - r.ostatniRuchCzas >= 450) {
+    if (sygnatura !== r.ostatniRuch && ctx.teraz - r.ostatniRuchCzas >= (ctx.ruchCo ?? 450)) {
       r.ostatniRuch = sygnatura;
       r.ostatniRuchCzas = ctx.teraz;
       r.doWyslania.push(ruch);

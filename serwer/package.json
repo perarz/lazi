@@ -1,0 +1,14 @@
+{
+  "name": "arena-serwer",
+  "private": true,
+  "description": "Serwer Areny GOATów (WebSocket) — działa na VPS, strona zostaje na Vercelu",
+  "main": "serwer.js",
+  "scripts": {
+    "start": "node serwer.js",
+    "test": "node test.mjs"
+  },
+  "engines": { "node": ">=20" },
+  "dependencies": {
+    "ws": "8.18.3"
+  }
+}
