@@ -1,8 +1,8 @@
 # Serwer Areny na VPS — instalacja i obsługa
 
 Strona (pliki HTML/JS) zostaje na **Vercelu**. Na VPS działa **serwer Areny i zrzutki**
-(`serwer/serwer.js`, Node + WebSocket) za **Caddy** (HTTPS). Redis (Upstash) nie jest
-już potrzebny — `api/` na Vercelu zostaje tylko jako zapas (powrót = zmiana adresu w kodzie).
+(`serwer/serwer.js`, Node + WebSocket) za **Caddy** (HTTPS). Redisa (Upstash) i funkcji
+`api/` na Vercelu już nie ma.
 
 Dane zrzutki leżą w pliku `/var/lib/arena/zrzutka.json` (zapis przez plik tymczasowy,
 codzienna kopia `zrzutka-RRRR-MM-DD.json`, 14 ostatnich dni). Dane Areny są tylko w pamięci.
@@ -55,10 +55,9 @@ Jeśli strona na Vercelu ma własną domenę (nie `*.vercel.app`), dopisz ją ja
 ## 3. Przełączenie strony na serwer (w repo, nie na VPS)
 - `gra/src/konfig.js`: `SERWER_WS = 'wss://ADRES/ws'`; `zrzutka/app.js`: `SERWER = 'https://ADRES'`
 - CSP `connect-src` w `gra/index.html` i `index.html`: `wss://ADRES https://ADRES`
-- wdrożenie na `master` (Vercel). Powrót do Redisa = `SERWER_WS = null` i `SERWER = null`
-  (uwaga: wpłaty złożone na VPS nie wrócą same do Redisa).
+- wdrożenie na `master` (Vercel).
 
-## 4. Przeniesienie zrzutki z Redisa (raz)
+## 4. Przeniesienie zrzutki z Redisa (jednorazowo, 4.1.1 — zrobione)
 Potrzebny adres i token REST Upstasha — najlepiej **Read-Only Token** (panel Upstash →
 baza → REST API; skrypt tylko czyta). Tokenu nie zapisuj w plikach ani w repo.
 ```

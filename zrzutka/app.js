@@ -1631,12 +1631,12 @@
   /* ---------------------------------------------------------
      Wspólne sumy online
      SERWER = serwer na VPS (serwer/serwer.js): wpłaty przez /api/zrzutka,
-     a nowe wpłaty innych przychodzą od razu przez WebSocket /zrzutka/ws.
-     null = stary tryb: /api/zrzutka na Vercelu (Redis) i odświeżanie co 10 s.
+     a nowe wpłaty innych przychodzą od razu przez WebSocket /zrzutka/ws
+     (gdy gniazdo leży — odświeżanie co 10 s).
      Adres serwera jest też w CSP index.html i w gra/src/konfig.js.
-     Lokalnie (localhost) można podać serwer w adresie: ?serwer=http://127.0.0.1:8787
-     Bez serwera (np. plik otwarty lokalnie) strona działa jak dawniej,
-     tylko na localStorage.
+     Lokalnie (localhost) można podać serwer w adresie: ?serwer=http://127.0.0.1:8787,
+     a puste ?serwer= wyłącza serwer. Bez serwera (albo gdy nie odpowiada)
+     strona działa na samym localStorage.
      --------------------------------------------------------- */
 
   var SERWER = 'https://96-62-223-169.sslip.io';
@@ -1646,7 +1646,7 @@
       SERWER = /^https?:\/\//.test(zAdresu) ? zAdresu.replace(/\/+$/, '') : null;
     }
   } catch (e) { /* stara przeglądarka */ }
-  var ADRES_API = SERWER ? SERWER + '/api/zrzutka' : '/api/zrzutka';
+  var ADRES_API = SERWER ? SERWER + '/api/zrzutka' : null;
   var CO_ILE_ODSWIEZAC = 10000;
   var gniazdo = null;
   var gniazdoPrzerwa = 1000;
@@ -1663,7 +1663,7 @@
   }
 
   function pobierzZSerwera(animuj) {
-    if (!window.fetch) return;
+    if (!window.fetch || !ADRES_API) return;
     fetch(ADRES_API, { cache: 'no-store' })
       .then(function (r) { return r.ok ? r.json() : Promise.reject(r.status); })
       .then(function (d) { serwerPadl = false; przyjmijSerwer(d, animuj); })
@@ -1671,7 +1671,7 @@
   }
 
   function wyslijNaSerwer(wpis) {
-    if (!window.fetch || (serwerPadl && !online)) return;
+    if (!window.fetch || !ADRES_API || (serwerPadl && !online)) return;
     fetch(ADRES_API, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -1864,7 +1864,7 @@
 
   /* ---------------------------------------------------------
      Sezon 1 — Hall of Fame
-     Archiwum się nie zmienia: pobieramy je raz (GET ?sezon=1, cache Vercela)
+     Archiwum się nie zmienia: pobieramy je raz (GET ?sezon=1)
      i trzymamy w localStorage na zawsze. Przy pierwszej wizycie w sezonie 2
      okno otwiera się samo — tylko jeśli archiwum dało się pobrać.
      --------------------------------------------------------- */
@@ -1878,7 +1878,7 @@
       var z = JSON.parse(localStorage.getItem(KLUCZ_SEZON1));
       if (z && z.sumy) return gotowe(z);
     } catch (e) { /* brak albo zepsute */ }
-    if (!window.fetch) return gotowe(null);
+    if (!window.fetch || !ADRES_API) return gotowe(null);
     fetch(ADRES_API + '?sezon=1')
       .then(function (r) { return r.ok ? r.json() : Promise.reject(r.status); })
       .then(function (d) {

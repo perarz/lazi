@@ -1,8 +1,7 @@
 /* Gdzie gra łączy się z serwerem.
 
-   SERWER_WS = adres serwera Areny na VPS (WebSocket, np. 'wss://1-2-3-4.sslip.io/ws').
-   null = stary tryb: odpytywanie /api/arena na Vercelu (Redis). Powrót do
-   starego trybu w razie awarii VPS to zmiana tej jednej linijki.
+   SERWER_WS = adres serwera Areny na VPS (WebSocket). Ten sam adres jest
+   w zrzutka/app.js i w CSP obu stron (index.html, gra/index.html).
 
    Lokalnie (localhost) można podać serwer w adresie strony: ?serwer=ws://localhost:8787/ws
    — do testów E2E; na produkcji ten parametr jest ignorowany. */

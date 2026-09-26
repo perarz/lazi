@@ -1,6 +1,5 @@
-/* Zrzutka na VPS — to samo, co api/zrzutka.js robi w Redisie, tylko w pliku
-   JSON na dysku serwera. Lista graczy, sezony i limity pochodzą z api/zrzutka.js
-   (jedno źródło), więc przy nowym graczu albo sezonie zmienia się tylko tamten plik.
+/* Zrzutka na VPS: wspólne sumy i ostatnie wpłaty w pliku JSON na dysku serwera.
+   Lista graczy, sezon i limity są w gracze.js.
 
    Plik (ZRZUTKA_PLIK, na VPS /var/lib/arena/zrzutka.json):
      { sezony: { "1": { sumy: { "fortnite:krayo": 5400, … }, wplaty: [ … ] }, "2": { … } } }
@@ -11,9 +10,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const api = require('../api/zrzutka.js');
-
-const { GRACZE, SEZON, KLUCZE, MAX_WPLAT, LIMIT_NA_OKNO, OKNO_LIMITU, czystyTekst } = api;
+const { GRACZE, SEZON, MAX_WPLAT, LIMIT_NA_OKNO, OKNO_LIMITU, czystyTekst } = require('./gracze');
 const KOPII = 14;
 
 class Zrzutka {
@@ -58,7 +55,7 @@ class Zrzutka {
 
   /* Czy wolno pytać o ten sezon (bieżący albo archiwum). */
   jestSezon(n) {
-    return Number.isInteger(n) && !!KLUCZE[n] && n <= SEZON;
+    return Number.isInteger(n) && n >= 1 && n <= SEZON;
   }
 
   /* Wpłata. Zwraca { status, dane } — jak odpowiedź API. */

@@ -17,7 +17,13 @@ import { createRequire } from 'module';
 import { execSync } from 'child_process';
 const require = createRequire(import.meta.url);
 const { Zrzutka } = require('./zrzutka.js');
-const { KLUCZE, MAX_WPLAT } = require('../api/zrzutka.js');
+const { MAX_WPLAT } = require('./gracze.js');
+
+/* Klucze, pod którymi dawne api/zrzutka.js trzymało sezony w Redisie. */
+const KLUCZE = {
+  1: { sumy: 'zrzutka:sumy', wplaty: 'zrzutka:wplaty' },
+  2: { sumy: 'zrzutka:s2:sumy', wplaty: 'zrzutka:s2:wplaty' }
+};
 
 const plik = process.argv[2];
 const url = (process.env.UPSTASH_URL || '').replace(/\/+$/, '');

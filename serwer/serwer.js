@@ -1,4 +1,4 @@
-/* Serwer Areny GOATów i zrzutki na VPS — zastępuje api/arena.js, api/zrzutka.js i Redis.
+/* Serwer Areny GOATów i zrzutki na VPS — (dawniej api/ na Vercelu + Redis).
 
    WebSocket (/ws?pokoj=nazwa) zamiast odpytywania: klient dostaje każdą
    zmianę pokoju od razu, w tym samym kształcie co dawne GET /api/arena

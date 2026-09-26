@@ -1,4 +1,4 @@
-/* Pokój Areny w pamięci serwera — to samo, co api/arena.js robi w Redisie,
+/* Pokój Areny w pamięci serwera — to samo, co dawne api/arena.js robiło w Redisie,
    tylko bez odpytywania: każda zmiana od razu idzie do wszystkich w pokoju.
 
    Pokój = dopisywalny log zdarzeń + rzeczy ulotne:
@@ -10,7 +10,7 @@
 
 'use strict';
 
-const MAX_ZDARZEN = 4000;          // po tylu log jest zerowany (nowa epoka), jak w api/arena.js
+const MAX_ZDARZEN = 4000;          // po tylu log jest zerowany (nowa epoka), jak w dawnym api/arena.js
 const MAX_ZDARZENIE = 24 * 1024;   // stan tury z kraterami mieści się z zapasem
 const MAX_RUCH = 600;
 const ZAMEK_STARTU_MS = 8000;
@@ -50,7 +50,7 @@ class Pokoj {
   }
 
   /* Przyjmuje zdarzenie od klienta. Zwraca { blad } albo { odp, zmiana },
-     gdzie odp idzie do nadawcy (ten sam kształt co odpowiedź POST w api/arena.js),
+     gdzie odp idzie do nadawcy (ten sam kształt co odpowiedź dawnego POST /api/arena),
      a zmiana mówi, czy rozesłać stan reszcie pokoju. */
   przyjmij(z, teraz) {
     if (!z || typeof z !== 'object' || typeof z.t !== 'string') return { blad: 'zle-zdarzenie' };
