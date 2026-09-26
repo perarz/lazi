@@ -5,6 +5,15 @@
 (function () {
   var historia = [
     {
+      wersja: '4.1.1', data: '2026-09-26', tytul: 'Arena i zrzutka na własnym serwerze',
+      zmiany: [
+        'Arena działa teraz na własnym serwerze zamiast przez bazę danych: ruchy i strzały innych graczy widać od razu, a nie z sekundowym opóźnieniem.',
+        'Ruch robala gracza z turą jest płynniejszy — podgląd przychodzi kilka razy częściej.',
+        'Zrzutka też jest na naszym serwerze: cudze wpłaty i liczniki zmieniają się na żywo, w ułamku sekundy, a nie co 10 sekund.',
+        'Koniec z limitem darmowej bazy danych — stara baza poszła na emeryturę, można grać i wpłacać bez oglądania się na licznik.'
+      ]
+    },
+    {
       wersja: '4.1', data: '2026-09-25', tytul: 'Nowe poziomy, zwarte karty i ekwipunek w Arenie',
       zmiany: [
         'Każdy gracz ma teraz 6 celów: po dotychczasowych dochodzą progi 10 000, 20 000 i 50 000. W Fortnite poziomy to rangi (Brąz → Unreal), w 0 A.D. — od fazy miasteczka przez relikwię i królobójstwo po podbój świata.',

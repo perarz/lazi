@@ -1629,13 +1629,27 @@
   }, 30000);
 
   /* ---------------------------------------------------------
-     Wspólne sumy online (api/zrzutka.js)
-     Bez serwera (np. plik otwarty lokalnie) strona działa jak dawniej,
-     tylko na localStorage.
+     Wspólne sumy online
+     SERWER = serwer na VPS (serwer/serwer.js): wpłaty przez /api/zrzutka,
+     a nowe wpłaty innych przychodzą od razu przez WebSocket /zrzutka/ws
+     (gdy gniazdo leży — odświeżanie co 10 s).
+     Adres serwera jest też w CSP index.html i w gra/src/konfig.js.
+     Lokalnie (localhost) można podać serwer w adresie: ?serwer=http://127.0.0.1:8787,
+     a puste ?serwer= wyłącza serwer. Bez serwera (albo gdy nie odpowiada)
+     strona działa na samym localStorage.
      --------------------------------------------------------- */
 
-  var ADRES_API = '/api/zrzutka';
+  var SERWER = 'https://96-62-223-169.sslip.io';
+  try {
+    var zAdresu = new URLSearchParams(location.search).get('serwer');
+    if (/^(localhost|127\.0\.0\.1)$/.test(location.hostname) && zAdresu !== null) {
+      SERWER = /^https?:\/\//.test(zAdresu) ? zAdresu.replace(/\/+$/, '') : null;
+    }
+  } catch (e) { /* stara przeglądarka */ }
+  var ADRES_API = SERWER ? SERWER + '/api/zrzutka' : null;
   var CO_ILE_ODSWIEZAC = 10000;
+  var gniazdo = null;
+  var gniazdoPrzerwa = 1000;
   var online = false;
   var serwerPadl = false;
   var lotyTrwa = 0;
@@ -1649,7 +1663,7 @@
   }
 
   function pobierzZSerwera(animuj) {
-    if (!window.fetch) return;
+    if (!window.fetch || !ADRES_API) return;
     fetch(ADRES_API, { cache: 'no-store' })
       .then(function (r) { return r.ok ? r.json() : Promise.reject(r.status); })
       .then(function (d) { serwerPadl = false; przyjmijSerwer(d, animuj); })
@@ -1657,7 +1671,7 @@
   }
 
   function wyslijNaSerwer(wpis) {
-    if (!window.fetch || (serwerPadl && !online)) return;
+    if (!window.fetch || !ADRES_API || (serwerPadl && !online)) return;
     fetch(ADRES_API, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -1734,12 +1748,42 @@
     });
   }
 
+  /* Na żywo z VPS: serwer sam przysyła stan po każdej wpłacie. Gdy gniazdo
+     leży, zostaje zwykłe odświeżanie co 10 s (niżej). */
+  function polaczNaZywo() {
+    if (!SERWER || !window.WebSocket || gniazdo || document.visibilityState !== 'visible') return;
+    var ws;
+    try { ws = new WebSocket(SERWER.replace(/^http/, 'ws') + '/zrzutka/ws'); } catch (e) { return; }
+    gniazdo = ws;
+    ws.onmessage = function (e) {
+      var d;
+      try { d = JSON.parse(e.data); } catch (blad) { return; }
+      if (!d || d.typ !== 'zrzutka') return;
+      gniazdoPrzerwa = 1000;
+      serwerPadl = false;
+      przyjmijSerwer(d, true);
+    };
+    ws.onclose = function () {
+      if (gniazdo === ws) gniazdo = null;
+      gniazdoPrzerwa = Math.min(gniazdoPrzerwa * 2, 30000);
+      setTimeout(polaczNaZywo, gniazdoPrzerwa);
+    };
+  }
+
+  function naZywo() {
+    return !!(gniazdo && gniazdo.readyState === 1);
+  }
+
   setInterval(function () {
-    if (document.visibilityState === 'visible') pobierzZSerwera(true);
+    if (document.visibilityState === 'visible' && !naZywo()) pobierzZSerwera(true);
   }, CO_ILE_ODSWIEZAC);
 
   document.addEventListener('visibilitychange', function () {
-    if (document.visibilityState === 'visible') pobierzZSerwera(true);
+    if (document.visibilityState !== 'visible') return;
+    if (naZywo()) return;
+    pobierzZSerwera(true);
+    gniazdoPrzerwa = 1000;
+    polaczNaZywo();
   });
 
   /* ---------------------------------------------------------
@@ -1816,10 +1860,11 @@
   zastosujKategorie(kategoriaZHasha());
   sprawdzOdznaki();
   pobierzZSerwera(false);
+  polaczNaZywo();
 
   /* ---------------------------------------------------------
      Sezon 1 — Hall of Fame
-     Archiwum się nie zmienia: pobieramy je raz (GET ?sezon=1, cache Vercela)
+     Archiwum się nie zmienia: pobieramy je raz (GET ?sezon=1)
      i trzymamy w localStorage na zawsze. Przy pierwszej wizycie w sezonie 2
      okno otwiera się samo — tylko jeśli archiwum dało się pobrać.
      --------------------------------------------------------- */
@@ -1833,7 +1878,7 @@
       var z = JSON.parse(localStorage.getItem(KLUCZ_SEZON1));
       if (z && z.sumy) return gotowe(z);
     } catch (e) { /* brak albo zepsute */ }
-    if (!window.fetch) return gotowe(null);
+    if (!window.fetch || !ADRES_API) return gotowe(null);
     fetch(ADRES_API + '?sezon=1')
       .then(function (r) { return r.ok ? r.json() : Promise.reject(r.status); })
       .then(function (d) {
