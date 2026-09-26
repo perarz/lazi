@@ -18,7 +18,7 @@ Stos technologiczny:
 - Bez bundlera, bez `package.json` i bez zależności npm. Zwykłe pliki HTML/CSS/JS, gra jako moduły ES,
   zrzutka jako klasyczne skrypty.
 
-Obecna wersja: **4.1.1 „Arena i zrzutka na własnym serwerze”** (`wersja.js`).
+Obecna wersja: **4.2 „Drużyny i Arena bez opóźnień”** (`wersja.js`).
 
 ---
 
@@ -53,14 +53,17 @@ Obecna wersja: **4.1.1 „Arena i zrzutka na własnym serwerze”** (`wersja.js`
 7. **Sprawdzaj wizualnie** zrzutami Playwrightem, na desktopie i na telefonie. Użytkownik gra głównie z telefonu.
 8. **Trudność minigierek kalibruj botem**, nie na oko (sekcja 5.4).
 9. **Nie zgaduj stanu produkcji.** Z tego środowiska zwykle nie ma dostępu do prawdziwej strony ani VPS.
-   Wszystko testuj na atrapie (sekcja 9).
+   Wszystko testuj na lokalnym serwerze (sekcja 9).
 
 ---
 
 ## 2. Komunikacja i sposób pracy
 
 - Nad stroną pracuje właściciel repo (`perarz`) i **Nolli** (konto `NolliDs`, Windows, repo w `D:\Nolli\Games\lazi`).
-  Nolli jest też jedną z postaci na stronie (0 A.D., „podstępny ekonomista”). Kto pisze, zobaczysz w `gh auth status`.
+  Nolli jest też jedną z postaci na stronie (0 A.D., „podstępny ekonomista”). Kto pisze, zobaczysz w `gh auth status`
+  (w chmurowej sesji `gh` nie ma — GitHub idzie przez narzędzia MCP `mcp__github__*`).
+- Właściciel pracuje z Maca i telefonu (Claude app). Do VPS łączy się sesją „SSH connection” w aplikacji
+  desktopowej (klucz `~/.ssh/vps_arena.key`, host `root@96.62.223.169`).
 - Użytkownik pisze po polsku, często bez polskich znaków, zwykle z telefonu.
   - Odpowiadaj po polsku, konkretnie i bez żargonu: co się zmieniło z punktu widzenia gracza.
   - Na końcu podaj krótko, co sprawdziłeś (testy, zrzuty, bot).
@@ -81,11 +84,16 @@ Obecna wersja: **4.1.1 „Arena i zrzutka na własnym serwerze”** (`wersja.js`
     2. commit po polsku (w stylu „4.1: …”, z listą zmian);
     3. `git push -u origin claude/epic-rubin-ejixox`;
     4. PR do `master` z opisem po polsku (co się zmieniło dla gracza + co sprawdzone);
-    5. merge metodą „merge” (`gh pr merge N --merge`). W trybie auto aplikacja może zablokować merge jako
-       „Merge Without Review” — nie obchodź tego. Powiedz użytkownikowi, że PR czeka, i scal dopiero po jego
-       wyraźnym „scal” (albo niech kliknie Merge sam).
+    5. merge metodą „merge” (`gh pr merge N --merge` albo `mcp__github__merge_pull_request`). Jeśli jest już
+       otwarty PR z tej gałęzi, zaktualizuj jego tytuł i opis zamiast zakładać nowy. W trybie auto aplikacja
+       może zablokować merge jako „Merge Without Review” — nie obchodź tego. Powiedz użytkownikowi, że PR
+       czeka, i scal dopiero po jego wyraźnym „scal” (albo niech kliknie Merge sam).
+    6. **Zmiany w `serwer/`** nie wdrażają się same: daj użytkownikowi gotowy prompt dla sesji SSH na VPS
+       (`arena-aktualizuj`, a po zmianie `instaluj.sh` ponowne puszczenie skryptu instalacji; sekcja 3).
+       Zmiana protokołu Arena ↔ serwer musi działać także ze starą wersją drugiej strony przez te kilka minut.
   - Po merge: `git fetch origin`, przewiń gałąź i lokalny master (`git merge --ff-only origin/master`,
-    `git fetch origin master:master`).
+    `git fetch origin master:master`). Tryb auto potrafi zablokować i to („Merge Without Review”) — wtedy
+    zostaw, zrobisz to na początku następnej pracy (sekcja 0, krok 2).
   - Po wdrożeniu przypomnij, że trzeba odświeżyć stronę, a kto ma otwartą Arenę, musi ją przeładować.
 - Humor strony: jajcarski, ale życzliwy. Śmiejemy się z grania, nie z ludzi.
   - Pochodzenie graczy podajemy tylko tak, jak podał je właściciel (etykieta w profilu).
@@ -112,7 +120,7 @@ i Redis zostały usunięte (dane zrzutki przeniesione skryptem `serwer/migruj-zr
 **Szczegóły.** Właściciel ma VPS (2 vCPU Ryzen 9 5950X, 4 GB, NVMe, Ubuntu 24.04,
 PL, IP 96.62.223.169). Katalog `serwer/` to serwer: Node + WebSocket (`ws`).
 - **Arena** (`pokoj.js`): log zdarzeń w pamięci, rozsyłany od razu; wiele pokoi (`?pokoj=`), epoki,
-  obecność, zamek startu 8 s, log max 4000 zdarzeń (potem nowa epoka), zdarzenie ≤ 24 KB.
+  obecność, zamek startu 8 s, log max 20 000 zdarzeń (potem nowa epoka; do 4.1.1 było 4000), zdarzenie ≤ 24 KB.
 - **Zrzutka** (`zrzutka.js`, lista graczy/sezon/limity w `gracze.js`): dane w `/var/lib/arena/zrzutka.json`
   (zapis przez plik tymczasowy + dzienne kopie z 14 dni). `GET/POST /api/zrzutka`, po każdej wpłacie stan
   leci do wszystkich na `/zrzutka/ws`. Limity: 30 wpłat / 60 s na IP, lista 60 ostatnich wpłat, kwota 1–2000.
@@ -129,13 +137,33 @@ PL, IP 96.62.223.169). Katalog `serwer/` to serwer: Node + WebSocket (`ws`).
   na połączenie, 30 połączeń na IP, zdarzenie ≤ 24 KB (większe zamykają tylko to połączenie).
 - Z tej chmurowej sesji nie ma SSH do VPS. Instaluje i aktualizuje go **sesja Claude uruchomiona przez SSH
   w aplikacji desktopowej** (repo prywatne → deploy key tylko do odczytu). Na VPS: `arena-aktualizuj`
-  (robi `git pull` w `/opt/lazi`; klon był z gałęzi `claude/epic-rubin-ejixox` — po wdrożeniu na `master`
-  warto przełączyć go na `master`). Zmiana w `instaluj.sh` wymaga ponownego puszczenia skryptu instalacji.
+  (robi `git pull` w `/opt/lazi` na gałęzi, na której stoi klon — od wdrożenia 4.1.1 ma to być `master`;
+  gdyby stał na `claude/epic-rubin-ejixox`, przełącz: `git checkout master && git pull --ff-only`).
+  Zmiana w `instaluj.sh` wymaga ponownego puszczenia skryptu instalacji
+  (`bash serwer/instaluj.sh 96-62-223-169.sslip.io https://kacperlazarz.pl,https://www.kacperlazarz.pl`).
+- Na VPS: użytkownik systemowy `arena`, usługa systemd `arena` (Node, port 127.0.0.1:8787, `MemoryMax=1G`,
+  zapis tylko do `/var/lib/arena`), Caddy z certyfikatem Let's Encrypt, ufw (22/80/443), fail2ban,
+  automatyczne aktualizacje. Diagnostyka: `systemctl status arena`, `journalctl -u arena|caddy`,
+  `curl -s http://127.0.0.1:8787/zdrowie`. Kopie zrzutki: `ls /var/lib/arena/` (plus kopie dostawcy VPS).
+- Zadania dla VPS dawaj użytkownikowi jako **gotowy prompt do wklejenia** w sesję SSH (co zrobić, co pokazać,
+  „nie rób git push ani zmian w repo”). Sekrety (tokeny) tylko w jednej komendzie, nigdy w plikach.
 - Panel dostawcy ma **własną zaporę** (polityka DROP): SSH tylko z adresów na „Whitelist IP” (zmiana IP
   w domu = `Operation timed out`), porty 80 i 443 otwarte dla wszystkich (certyfikat i gracze).
+  **Filtr AntyDDoS na regule 443 ma być „HTTPS (TLS)”**, nie „HTTP” — „HTTP” psuł połączenia TLS
+  (certyfikat przez port 443 i `/zdrowie` z zewnątrz nie odpowiadały). Na porcie 80 filtr „HTTP” jest OK.
 - Z tej chmurowej sesji nie da się połączyć z serwerem (proxy odrzuca adres) — stan VPS sprawdza użytkownik
   albo sesja SSH.
 - `.vercelignore` wyklucza `serwer/` z publikacji na Vercelu.
+
+**Otwarte sprawy po przenosinach (stan na 2026-09-26, wdrożenie 4.1.1 = PR #20)**
+- Druga migracja zrzutki („dogonienie” wpłat z chwili przełączenia) i przełączenie klonu na VPS na `master` —
+  prompt dostał użytkownik; jeśli nie wiadomo, czy zrobione, zapytaj albo poproś o `git -C /opt/lazi status`.
+- **Usunięcie Upstasha z Vercela** (Storage/Integrations + baza w panelu Upstash) — robi użytkownik.
+  Adres bazy i token *tylko do odczytu* padły w czacie; po usunięciu bazy są martwe.
+- Opcjonalnie ładniejszy adres serwera `arena.kacperlazarz.pl`: rekord DNS A → 96.62.223.169, ponowne
+  `instaluj.sh` z nowym adresem, potem adres w czterech miejscach (wyżej) i wdrożenie.
+- Co daje VPS na przyszłość: pokoje już są (`?pokoj=`), brakuje tylko listy pokoi w lobby; drużyny i
+  ustawienia partii (Etap 2 w sekcji 7), wspólny ranking Areny w pliku jak zrzutka — bez liczenia komend.
 
 ---
 
@@ -369,12 +397,13 @@ Lekcje z kalibracji:
 | `src/protokol.js` | Protokół sieciowy (bez DOM) — kto ma turę, co jest kanoniczne, kto wyrzuca nieobecnych |
 | `src/net.js` | WebSocket do serwera na VPS: log zdarzeń, ponowne łączenie z kursorem, obecność, zegar serwera, `sendBeacon` przy zamknięciu karty (POST `/api/arena` na VPS); `RUCH_CO` — podgląd ruchu co 100 ms |
 | `src/konfig.js` | `SERWER_WS` — adres serwera Areny; lokalnie `?serwer=ws://127.0.0.1:8787/ws` do testów |
-| `src/main.js` | Lobby (kolory graczy), HUD, kamera, pętla gry, zdarzenia → efekty, statystyki, osiągnięcia (UI) |
+| `src/main.js` | Lobby (tryb, drużyny, GOTOWY, kolory), HUD, kamera, pętla gry, zdarzenia → efekty, statystyki, osiągnięcia (UI) |
+| `src/druzyny.js` | Nazwy i kolory drużyn (`DRUZYNY`), tryby lobby (`TRYBY`) |
 | `src/ekwipunek.js` | Ekwipunek broni jak w Worms Armageddon: rzędy (`GRUPY`), ikony SVG broni, otwieranie/zamykanie |
 | `src/input.js` | Klawiatura, przyciski dotykowe, przeciąganie/szczypanie, PPM/Q = ekwipunek |
 | `src/render.js`, `src/fx.js` | Grafika (tu wolno trygonometrię i `Math.random`); w `render.js` też kamera i podgląd robala na ekranie wejścia |
 | `src/osiagniecia-reguly.js` | Reguły osiągnięć — czyste funkcje |
-| `test/sim.test.mjs`, `test/protokol.test.mjs` | Testy w Node (64 i 11) |
+| `test/sim.test.mjs`, `test/protokol.test.mjs` | Testy w Node (70 i 17) |
 
 ### Determinizm (święta zasada)
 - Symulacja (`sim.js`, `terrain.js`) używa tylko:
@@ -395,23 +424,46 @@ Lekcje z kalibracji:
 - Wspólny log zdarzeń na serwerze (pokój). Pierwszy `strzal`/`pas` danej tury jest **kanoniczny**.
 - Strzał niesie pełny stan robali, kratery i skrzynki z chwili strzału oraz wektor startowy.
   Pas niesie robale, kratery i skrzynki.
-- Po **każdym** strzale jest faza `odwrot`: **5 s ruchu** (`ODWROT_S`).
-  - Wciśnięcia są nagrywane (RLE) i dołączane do strzału.
-  - Strzał wychodzi do sieci dopiero po tych 5 s, a odbiorca odtwarza wszystko krok w krok.
-  - Koszt: inni widzą strzał z ~5 s opóźnieniem. Dlatego `GRACE_PAS` = 12 s.
+- Po **każdym** strzale jest faza `odwrot`: **5 s ruchu** (`ODWROT_S`, `ODWROT_KROKI` = 600 kroków).
+  - **Od 4.2 na żywo**: strzał idzie do sieci od razu (`releaseFire` wkłada akcję do `akcjeDoWyslania`),
+    a strzelec nagrywa wciśnięcia (`odwrotNagranie`) i co `ODWROT_CO` (120 ms) wysyła paczkę
+    `{t:'odwrot', nr, id, od, b: RLE, koniec?}` (`wyslijOdwrot` w `protokol.js`).
+  - `zloz` składa paczki w `p.odwroty.get(nr)` ciągiem po `od` (paczka z przyszłości czeka w `czeka`,
+    paczka przed strzałem w `paczkiPrzed`, duplikaty odpadają). Paczki przyjmuje też dla tury już zamkniętej
+    stanem — odbiorca może jeszcze grać jej ucieczkę.
+  - Odbiorca (`klatka`) dopisuje kroki do `odwrotPlan` (`S.dopiszOdwrot`) i robi krok tylko wtedy, gdy zna
+    wciśnięcie (`S.czekaNaOdwrot`). Trzyma zapas `ODWROT_BUFOR` (14 kroków ≈ 0,12 s), przy dużym zapasie
+    gra ×1,25. W E2E widzowie są ok. 0,15 s za strzelcem (test „ucieczka na żywo” pilnuje < 0,8 s).
+  - Strzelec wysyła od potwierdzonego w logu miejsca; brak postępu przez `ODWROT_PONOW` (1,5 s) = powtórka.
+  - Strzelec zniknie w trakcie (4 s bez paczki, wyszedł, brak sieci) → jego **zastępca** (najmniejsze id
+    bez autora, `jestemGospodarzem(…, bez)`) domyka ucieczkę `{t:'odwrot', za, koniec}`: reszta kroków = stoi.
+    Autor, który wróci, przesymulowuje turę z kanonem. Ten sam zastępca publikuje stan zastępczy.
+  - Log rośnie o ~40 paczek na turę, dlatego serwer ma `MAX_ZDARZEN` = 20 000.
 - Turę zamyka `stan` (snapshot) policzony z kanonicznej akcji. Wszyscy, autor też, go przyjmują.
 - Gospodarz gry (najmniejsze id wśród połączonych uczestników):
   - oddaje tury nieobecnych (odszedł / brak sieci 15 s / czas);
   - publikuje stan zastępczy.
   - Po ~90 s bez sieci gracz wylatuje.
-- **Gospodarz lobby** to obecny gracz, który dołączył najwcześniej (kolejność `dolacz`). Lista lobby
-  przeżywa nową partię (jest seedowana z `gracze` w zdarzeniu `nowa`).
-- **Start partii** (od 4.1): gospodarz publikuje odliczanie `ODLICZANIE_S` (20 s, `protokol.js`) i ono zawsze
-  leci do końca — nie ma przycisku „Zaczynamy”. `zloz` pomija termin krótszy niż 15 s od stempla serwera
-  (wpis ze starej, nieodświeżonej karty).
+- **Lobby (od 4.2, `WERSJA` = 2 w `protokol.js`)**:
+  - Do `MAX_GRACZY` = 8 obecnych (kolejność wejścia) gra, reszta czeka (`widzowie`).
+  - **Gospodarz lobby** (👑) to obecny gracz, który dołączył najwcześniej. Ustawia **tryb**: `{t:'tryb', druzyny}`
+    z `TRYBY` = 0 (każdy na każdego), 2, 3, 4 (`druzyny.js`: nazwy i kolory drużyn).
+  - Pojemność drużyny = ⌈8 / liczba drużyn⌉ (2→4, 3→3, 4→2). `P.rozstaw(p, jest)` liczy układ z obecnych:
+    każdy trzyma zapisaną drużynę, jeśli jest w niej miejsce (pierwszeństwo: wcześniejszy `druzynaNr` =
+    pozycja zdarzenia w logu), reszta do najmniej licznej (remis → z hasha id, tak samo u wszystkich).
+    Klient utrwala swój przydział `{t:'druzyna', kto, d, auto:1}`.
+  - Przejście do wolnego miejsca / przeniesienie przez gospodarza: `{t:'druzyna', kto, d}`; zamiana:
+    `{t:'zamien', a, b, da, db}` (drużyny z ekranu gospodarza).
+  - **Start**: każdy `{t:'gotowy', tak}`; gdy `gotowiDoStartu` (2+ graczy, wszyscy gotowi, w drużynach
+    2+ niepuste drużyny), gospodarz publikuje `odliczanie` (`ODLICZANIE_S` = 5 s, z `v: 2` — wpisy bez
+    wersji są pomijane). Zmiana trybu/drużyn cofa gotowość wszystkich, nowy gracz i wyjście kasują odliczanie.
+  - `nowa` niesie `gracze` z polem `druzyna` i `druzyny` (tryb); po partii lobby pamięta drużyny.
+  - Lobby rysuje się tylko przy zmianie (`podpisLobby`), bo przebudowa co 0,5 s gubiła stuknięcia.
+  - Gracz ze starą wersją (bez `v`) ma w lobby znaczek „STARA WERSJA” — niech odświeży.
 - **Kolory**: gracz wybiera kolor robala przy wejściu (`PALETA` w `main.js`, 12 kolorów, `arena:kolor`),
   kolor leci w `dolacz`. Przy kolizji `rozdzielKolory` zostawia go temu, kto dołączył wcześniej, reszta
-  dostaje pierwszy wolny (lobby mówi o tym graczowi). Nick nad robalem jest rysowany w jego kolorze.
+  dostaje pierwszy wolny (lobby mówi o tym graczowi). Nick nad robalem jest w kolorze robala, a w drużynach
+  w kolorze drużyny (`kolorNicku` w `render.js`).
 - Zamknięcie karty wysyła `sendBeacon` z `wyjdz` (text/plain). Przycisk „Opuść grę” robi to samo.
 
 ### Rozgrywka
@@ -424,6 +476,13 @@ Lekcje z kalibracji:
   - Na telefonie: przyciski dotykowe, celowanie palcem, szczypanie = zoom. Lewa grupa to ◀ ▶, prawa to
     celownik ▲▼ i **SKOK nad OGNIA**. W czasie ucieczki (`body.ucieczka`) znika celownik i OGNIA, skok zostaje.
 - W powietrzu da się skręcać (`POWIETRZE_*` w `sim.js`), ale nie da się przebić odrzutu.
+- **Drużyny** (`createGame(…, { druzyny: true })`, robal ma `druzyna`; bez trybu drużyna = numer gracza):
+  - `swoj(state, w, ownerId)`: kolega z drużyny działającego (albo właściciela pocisku) — wybuch, kij
+    i strzelba go nie ranią i nie odrzucają, pociski/owca/wiertło przez niego przelatują. Siebie ranisz.
+  - `nextTurn`: na zmianę drużynami (kolejność drużyn i graczy z potasowanej `order`), w drużynie kolejny
+    żywy po `state.ostatni[druzyna]` (jest w snapshocie). W trybie każdy na każdego = dawne „następny żywy”.
+  - Koniec, gdy żyje jedna drużyna; `winner` = któryś żywy z niej. HUD: nagłówki drużyn z paskiem
+    życia (`.druzyna-hud`), ekran końca „WYGRYWACIE!” / „WYGRYWAJĄ …”; osiągnięcia liczą wygraną drużyny.
 - Tura trwa 30 s (`TURN_TIME`). Lawa podnosi się po 6 rundach (`LAWA_PO_RUNDACH`, nagła śmierć).
 
 **Bronie** (`weapons.js`, kolejność = klawisze)
@@ -485,7 +544,10 @@ Lekcje z kalibracji:
   4. Test „odbiorca = strzelec”.
 
 ### Plan rozwoju: bliżej Worms Armageddon (propozycja po 4.1, czeka na decyzję)
-Plan przedstawiony użytkownikowi 2026-09-25. **Nic z tego jeszcze nie jest zrobione.** Użytkownik nie wybrał
+Plan przedstawiony użytkownikowi 2026-09-25. Od 4.1.1 Arena stoi na VPS, więc koszt zapytań przestał być
+hamulcem. W 4.2 zrobione: drużyny graczy w lobby i w grze (część Etapu 2) i ucieczka na żywo. Użytkownik
+nazwał 4.2 „częścią większej przebudowy” — spodziewaj się dalszych próśb o lobby/ustawienia; dochodzi też
+**lista pokoi w lobby** (serwer już je ma). Użytkownik nie wybrał
 kolejności — zapytaj, zanim zaczniesz. Każdy etap to osobna wersja z testami i zrzutami. Etapy 1–3 nie dodają
 nowych kanałów (dane doklejone do `dolacz`, `nowa`, strzału).
 
@@ -502,14 +564,16 @@ nowych kanałów (dane doklejone do `dolacz`, `nowa`, strzału).
   bierze ją zamiast `weapon.fuse`. Deterministyczne, bo leci gotowa liczba.
 - **Podsumowanie partii** na ekranie końca: obrażenia, fragi, najlepszy strzał — liczone lokalnie ze zdarzeń.
 
-**Etap 2 — drużyny (wersja 5.0, największa zmiana)**
+**Etap 2 — więcej robali na gracza (wersja 5.0)** — *drużyny graczy, tryb i ustawienie drużyn w lobby,
+brak obrażeń od swoich i tury na zmianę drużynami są już w 4.2*; zostaje to, co niżej.
 - **2–4 robale na gracza**, tury drużyn na zmianę, w drużynie kolejny żywy robal, paski HP drużyn,
   broń „wybór robala”. Dotyka protokołu: dziś `aktywny` (w `snapshot` i `zloz`) to id robala = id gracza,
   a `mogeGrac` porównuje `w.id === r.mojeId`. Przy drużynach trzeba rozdzielić „gracz z turą” (do
   `mozeDzialac`) i „aktywny robal”, dać robalom id właściciela, `kolejnoscTur` po drużynach, więcej
   punktów w `spawnPoints`. Testy protokołu do przerobienia. Stan tury przy 6×4 robalach to ok. 5 KB (limit 24 KB).
-- **Ustawienia partii u gospodarza lobby**: liczba robali, czas tury, HP startowe, zestaw broni, styl mapy,
-  początek nagłej śmierci. Jadą w `nowa`; podgląd w lobby przez rzadkie zdarzenie w logu (kilka zapisów na partię).
+- **Ustawienia partii u gospodarza lobby** (główne — liczba drużyn — jest od 4.2, zdarzenie `tryb`): liczba robali,
+  czas tury, HP startowe, zestaw broni, styl mapy, początek nagłej śmierci. W 4.2 użytkownik powiedział
+  „na razie nic” — dokładać jak `tryb`: zdarzenie w lobby, pole w `nowa`, cofa gotowość.
 - **Miny i beczki** od startu, rozmieszczone z seeda; stan jak skrzynki (przepis „Coś w stanie gry”).
   Mina wybucha po zbliżeniu robala, beczka od wybuchu obok (reakcje łańcuchowe).
 - **Skrzynki**: pułapka (wybucha po otwarciu) i skrzynka z narzędziami.
@@ -562,14 +626,15 @@ w drużynie (2 czy 3); czy robimy czapki i bronie z postaci ekipy; czy robimy ws
   - **4.0 sezon 2** + minigierki 0 A.D.
   - **4.1** 6 poziomów celów (do 50 000), zwarte karty i podrasowane portrety, ekwipunek i kolory w Arenie
   - **4.1.1** Arena i zrzutka na własnym serwerze (VPS, WebSocket), koniec Redisa i `api/`
+  - **4.2** ucieczka po strzale na żywo, lobby do 8 graczy, drużyny (tryb, GOTOWY, przenoszenie, zamiana)
 
 ---
 
 ## 9. Testy i sprawdzanie
 
 ```
-node gra/test/sim.test.mjs        # symulacja, bronie, determinizm, skrzynki, spawny, osiągnięcia, kamera (64)
-node gra/test/protokol.test.mjs   # protokół z atrapą serwera w pamięci, lagiem, rozłączeniami, odliczanie (11, ~1–2 min)
+node gra/test/sim.test.mjs        # symulacja, bronie, determinizm, drużyny, skrzynki, spawny, osiągnięcia, kamera (70)
+node gra/test/protokol.test.mjs   # protokół: lag, rozłączenia, ucieczka na żywo, lobby i drużyny, partia 2v2 (17, ~1–2 min)
 cd serwer && npm install && node test.mjs   # serwer na VPS: Arena (10) + zrzutka: wpłaty, na żywo, limity, plik, migracja (7)
 ```
 Obie muszą przejść przed pushem. Dodatkowo `node --check` na zmienionych plikach JS.
@@ -591,11 +656,15 @@ długości partii (np. „za mało strzałów”), sprawdź przyczynę, zanim zm
   wstaw plikiem: `ZRZUTKA_PLIK=/tmp/z.json` z `{"sezony":{"1":{"sumy":{"fortnite:krayo":5400},"wplaty":[]}}}`.
 - **Arena przez serwer WebSocket**: `ARENA_PORT=8787 node serwer/serwer.js` + `python3 -m http.server 8765`,
   gra pod `http://localhost:8765/gra/?serwer=ws://127.0.0.1:8787/ws&pokoj=test1` (dla każdego przebiegu nowy
-  pokój — bez duchów w lobby). Partia startuje sama po 20 s odliczania. `__arena().transport` = `ws`/`http`.
+  pokój — bez duchów w lobby). Partia rusza, gdy wszyscy klikną `#btn-gotowy` (+5 s). `__arena().transport` = `ws`
+  (gdy gracz jest w lobby; przed wpisaniem nicku `null`). `__arena().lobby` = tryb i drużyny w lobby,
+  `druzyny` = drużyny w partii, `odwrotKrok` = krok ucieczki (do pomiaru opóźnienia widzów).
 - **Scenariusz Areny**: 2 przeglądarki desktop + telefon („iPhone 13 landscape”), porównanie
   `window.__arena().hash` na granicy każdej tury.
-  - Start: obaj wpisują nick i wybierają kolor (drugi ten sam co pierwszy, żeby sprawdzić kolizję), potem
-    ok. 20 s odliczania. Kto ma turę: `__arena().aktywny === __arena().mojeId`.
+  - Start: wszyscy wpisują nick, gospodarz (pierwszy) klika tryb (`#lobby-tryb button:nth-child(2)` = 2 drużyny),
+    można sprawdzić zamianę (klik w gracza, potem w gracza z innej drużyny), potem każdy `#btn-gotowy`.
+    Kto ma turę: `__arena().aktywny === __arena().mojeId`.
+  - Ucieczka na żywo: po strzale trzymaj `a` i co 100 ms porównuj `odwrotKrok` strzelca i widzów.
   - Tura telefonu: desktop strzela (przytrzymaj F ~0,35 s) i czekasz, aż `aktywny` zmieni się na telefon.
   - Długie przytrzymanie OGNIA na dotyku: CDP `Input.dispatchTouchEvent` (`touchStart`, pauza, `touchEnd`).
     `tap()` Playwrighta jest za krótki — odpala słaby strzał od razu.
@@ -650,6 +719,10 @@ długości partii (np. „za mało strzałów”), sprawdź przyczynę, zanim zm
 - Git na Windowsie ma `core.autocrlf=true`, więc kopia robocza jest w CRLF. Skrypt, który przepisuje `index.html`,
   ma zostawić CRLF (inaczej wyjdą mieszane końce linii — git i tak je znormalizuje przy commicie).
 - W konsoli widać 404 na `favicon.ico` — strona nie ma ikonki, to nie błąd.
+- Serwer (`ws`): bez `ws.on('error')` za duża wiadomość (`maxPayload`) wywracała **cały proces**. Każde nowe
+  gniazdo musi mieć obsługę `error`. Przy `systemctl stop/restart` serwer zapisuje zrzutkę (SIGTERM).
+- Z chmurowej sesji `curl` do VPS kończy się `CONNECT tunnel failed, 403` — to proxy środowiska, nie serwer.
+  Stan VPS sprawdza użytkownik (np. `https://96-62-223-169.sslip.io/zdrowie` w przeglądarce) albo sesja SSH.
 - `tap()` w Playwrightcie trafia w środek elementu. Tło ekwipunku (`#ekw-tlo`) w środku zasłania panel —
   stukaj w róg (`position: { x: 12, y: 12 }`).
 
@@ -665,6 +738,8 @@ długości partii (np. „za mało strzałów”), sprawdź przyczynę, zanim zm
   tylko do odczytu. Klucza prywatnego nie wklejamy nigdzie. `.gitignore` blokuje `.env*` i `.vercel`.
 - Serwer zwraca do przeglądarki tylko kody błędów (`{ blad: '...' }`), szczegóły idą do `journalctl -u arena`.
 - Serwer przyjmuje połączenia tylko ze stron z listy (`Origin`: kacperlazarz.pl, `*.vercel.app`, localhost).
+- Klucza prywatnego SSH użytkownika nigdy nie prosimy o wklejenie ani nie wysyłamy (wystarczy ścieżka do pliku).
+  Tokenów (np. do migracji) nie zapisujemy w plikach, repo ani commitach — tylko w jednej komendzie na VPS.
 - Ścisłe CSP (`script-src 'self'`, style tylko z plików i Google Fonts): żadnych inline `<script>`,
   `<style>` ani atrybutów `style=` w HTML. `el.style.x = …` z JS jest dozwolone.
 - Tekst od użytkowników (nicki, wiadomości) wstawiaj przez `textContent`, nigdy `innerHTML`.

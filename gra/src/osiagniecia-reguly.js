@@ -74,7 +74,8 @@ export function koniecPartiiOs(p, ctx) {
   if (ctx.partie >= 10) out.push('weteran');
   if (ctx.wygralem) {
     out.push('zwyciestwo');
-    if (ctx.hp <= 10) out.push('na-wlosku');
+    // w drużynie można wygrać martwym — „na włosku” tylko dla żywych
+    if (ctx.hp > 0 && ctx.hp <= 10) out.push('na-wlosku');
     if (ctx.hp >= 100 && !p.ranny) out.push('nietykalny');
   }
   return out;

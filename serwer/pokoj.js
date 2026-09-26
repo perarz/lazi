@@ -10,7 +10,7 @@
 
 'use strict';
 
-const MAX_ZDARZEN = 4000;          // po tylu log jest zerowany (nowa epoka), jak w dawnym api/arena.js
+const MAX_ZDARZEN = 20000;         // po tylu log jest zerowany (nowa epoka); od 4.2 ucieczka to ~40 paczek na turę
 const MAX_ZDARZENIE = 24 * 1024;   // stan tury z kraterami mieści się z zapasem
 const MAX_RUCH = 600;
 const ZAMEK_STARTU_MS = 8000;

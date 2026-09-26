@@ -4,6 +4,7 @@
    Teren malujemy raz do offscreen canvasu; po wybuchu przemalowujemy
    tylko kolumny objęte kraterem, a nie całe 2 MB. */
 
+import { DRUZYNY } from './druzyny.js';
 import { WORLD_W, WORLD_H, LAVA_Y as T_LAVA } from './terrain.js';
 import { WEAPONS } from './weapons.js';
 import { WORM_H } from './sim.js';
@@ -224,6 +225,8 @@ export function draw(r, state, cam, fx, dt, opcje = {}) {
     if (!w.alive) continue;
     drawWorm(ctx, w, w === akt && state.phase === 'aim', r.time, {
       ja: w.id === opcje.mojeId,
+      // w drużynach nick jest w kolorze drużyny (robal zostaje w swoim)
+      kolorNicku: state.druzynowa && DRUZYNY[w.druzyna] ? DRUZYNY[w.druzyna].kolor : w.color,
       rozlaczony: !!opcje.rozlaczeni && opcje.rozlaczeni.has(w.id),
       moc: w === akt && state.phase === 'aim' ? (w.widok ? w.widok.moc : state.charging ? state.power : 0) : 0,
       bron: w === akt ? (w.widok ? w.widok.bron : state.weapon) : null
@@ -695,7 +698,7 @@ function drawWorm(ctx, w, isActive, time, o) {
   ctx.fillStyle = w.hp > 50 ? '#5ec26a' : w.hp > 22 ? '#ffb020' : '#ff3b23';
   ctx.fillRect(cx - barW / 2, top, (barW * w.hp) / 100, 4);
 
-  // nick w kolorze gracza (wybranym przy wejściu), z ciemną obwódką dla czytelności
+  // nick w kolorze gracza (w drużynach — drużyny), z ciemną obwódką dla czytelności
   const nazwa = (o.ja ? '▸ ' : '') + w.name + (o.rozlaczony ? ' (brak sieci)' : '');
   ctx.font = (o.ja ? '800' : '700') + ' 11px system-ui, sans-serif';
   ctx.textAlign = 'center';
@@ -703,7 +706,7 @@ function drawWorm(ctx, w, isActive, time, o) {
   ctx.lineWidth = 3;
   ctx.strokeStyle = 'rgba(0,0,0,0.78)';
   ctx.strokeText(nazwa, cx, top - 6);
-  ctx.fillStyle = w.color || '#ffe9c8';
+  ctx.fillStyle = o.kolorNicku || w.color || '#ffe9c8';
   ctx.fillText(nazwa, cx, top - 6);
 }
 

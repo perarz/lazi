@@ -13,6 +13,7 @@ import { WEAPONS, startowaAmunicja } from './weapons.js';
 import { createNet, RUCH_CO } from './net.js';
 import { nowaPartiaOs, zdarzenieOs, koniecTuryOs, koniecPartiiOs } from './osiagniecia-reguly.js';
 import { createEkwipunek, ikonaBroni } from './ekwipunek.js';
+import { DRUZYNY, TRYBY, nazwaTrybu } from './druzyny.js';
 
 /* Kolory robali do wyboru przy wejściu. Kolejność ma znaczenie: przy
    kolizji dostaje się pierwszy wolny, więc najbardziej różne są na początku. */
@@ -33,10 +34,9 @@ function rozdzielKolory(gracze) {
     let color = g.color;
     if (!KOLORY.includes(color) || zajete.has(color)) color = KOLORY.find((k) => !zajete.has(k)) || color;
     zajete.add(color);
-    return { id: g.id, name: g.name, color };
+    return { ...g, color };
   });
 }
-const MAX_GRACZY = 6;
 /* odswiezLobby() chodzi co 500 ms, a stan z sieci przychodzi co ~3 s.
    Bez tej blokady każda „samolecząca” wysyłka (zgłoszenie siebie,
    publikacja odliczania) powtarzałaby się kilkanaście razy. */
@@ -319,7 +319,7 @@ requestAnimationFrame(petlaPodgladu);
 
 function zglosSie() {
   ostatnieZgloszenie = Date.now();
-  return net.wyslij({ t: 'dolacz', id: mojeId, name: mojaNazwa, color: mojKolor });
+  return net.wyslij({ t: 'dolacz', id: mojeId, name: mojaNazwa, color: mojKolor, v: P.WERSJA });
 }
 
 async function wejdz() {
@@ -407,11 +407,25 @@ function pokazInfoLobby(tekst) {
   el('info-lobby').textContent = tekst;
 }
 
+/* Lobby: tryb gry ustawia gospodarz (pierwszy obecny w kolejności wejścia),
+   drużyny rozstawia P.rozstaw (to samo u wszystkich), start rusza, gdy
+   wszyscy dadzą GOTOWY — wtedy 5 s odliczania. Wszystko idzie zdarzeniami
+   w logu, więc każdy widzi to samo. */
+let wybranyGracz = null;              // gospodarz: kogo przenosi (stuknięty gracz)
+let ostatniaAutoDruzyna = 0;
+let podpisLobby = '';
+let rozstawienie = null;
+
+function wyslijLobby(z) {
+  if (net) net.wyslij(z);
+}
+
 function odswiezLobby() {
   if (!pokoj || el('ekran-lobby').hidden) return;
 
   const zywi = net.zywi();
-  const obecni = pokoj.wLobby.filter((g) => zywi.has(g.id) || g.id === mojeId);
+  const jest = (id) => zywi.has(id) || id === mojeId;
+  const obecni = pokoj.wLobby.filter((g) => jest(g.id));
 
   // Samoleczenie: jeśli po resecie logu nie ma nas na liście, zgłaszamy się
   // ponownie — ale nie częściej niż raz na PONOW_PO.
@@ -419,31 +433,23 @@ function odswiezLobby() {
   if (!pokoj.wLobby.some((g) => g.id === mojeId) && teraz - ostatnieZgloszenie > PONOW_PO) zglosSie();
 
   // Gospodarzem lobby jest ten z obecnych, kto dołączył najwcześniej —
-  // kolejność zgłoszeń jest w logu taka sama u wszystkich. Nowy gracz nie
-  // przejmuje więc roli (wcześniej wygrywało najmniejsze losowe id).
+  // kolejność zgłoszeń jest w logu taka sama u wszystkich.
   const gospId = obecni.length > 0 ? obecni[0].id : null;
   const gospodarz = gospId === mojeId;
+  if (!gospodarz) wybranyGracz = null;
 
-  const lista = el('lista-graczy');
-  lista.replaceChildren();
-  let mojKolorZajety = false;
-  for (const g of rozdzielKolory(obecni)) {
-    const li = document.createElement('li');
-    if (g.id === mojeId) {
-      li.classList.add('ja');
-      mojKolorZajety = g.color !== mojKolor;
-    }
-    const kropka = document.createElement('span');
-    kropka.className = 'kropka';
-    kropka.style.background = g.color;
-    const imie = document.createElement('span');
-    imie.className = 'imie';
-    imie.textContent = g.name;
-    imie.style.color = g.color;
-    li.append(kropka, imie);
-    if (g.id === gospId) li.append(znacznik('GOSPODARZ'));
-    if (g.id === mojeId) li.append(znacznik('TY'));
-    lista.append(li);
+  const roz = P.rozstaw(pokoj, jest);
+  roz.gracze = rozdzielKolory(roz.gracze);
+  rozstawienie = roz;
+  const ja = roz.gracze.find((g) => g.id === mojeId) || null;
+  const czekam = !ja && roz.widzowie.some((g) => g.id === mojeId);
+
+  // Mój przydział z rozstawienia (np. losowy po wejściu) utrwalamy w logu,
+  // żeby nie skakał, gdy ktoś wejdzie albo wyjdzie.
+  const zapis = pokoj.wLobby.find((g) => g.id === mojeId);
+  if (roz.n && ja && zapis && zapis.druzyna !== ja.druzyna && teraz - ostatniaAutoDruzyna > 3000) {
+    ostatniaAutoDruzyna = teraz;
+    wyslijLobby({ t: 'druzyna', id: mojeId, kto: mojeId, d: ja.druzyna, auto: 1 });
   }
 
   const wToku = P.partiaZywa(pokoj, net.czas(), polaczony);
@@ -455,44 +461,201 @@ function odswiezLobby() {
       .map((g) => g.name).join(', ');
   }
 
+  const gotowych = roz.gracze.filter((g) => g.gotowy).length;
   el('lobby-podtytul').textContent = wToku
     ? 'Trwa partia — poczekaj albo oglądaj.'
-    : obecni.length < 2 ? 'Czekamy na drugiego gracza…' : obecni.length + ' graczy w lobby.';
+    : roz.gracze.length + '/' + P.MAX_GRACZY + ' graczy · ' + nazwaTrybu(roz.n) +
+      (roz.gracze.length >= 2 ? ' · gotowi ' + gotowych + '/' + roz.gracze.length : '');
 
-  // Termin startu żyje we wspólnym logu i w czasie SERWERA.
+  rysujLobby(roz, gospId, gospodarz);
+
+  const btn = el('btn-gotowy');
+  btn.hidden = !ja || wToku;
+  const jestemGotowy = !!(ja && ja.gotowy);
+  btn.setAttribute('aria-pressed', jestemGotowy ? 'true' : 'false');
+  btn.textContent = jestemGotowy ? 'GOTOWY ✓ (stuknij, żeby cofnąć)' : 'GOTOWY';
+
+  // Termin startu żyje we wspólnym logu i w czasie SERWERA. Publikuje go
+  // gospodarz, gdy wszyscy są gotowi; każda zmiana składu go kasuje.
   let termin = pokoj.odliczanieDo;
   if (termin !== null && net.czas() - termin > 60000) termin = null;   // termin z dawnej sesji
-  if (gospodarz && !startWToku && !wToku && teraz - ostatnieOdliczanie > PONOW_PO) {
-    if (obecni.length >= 2 && termin === null) {
+  const gotowi = P.gotowiDoStartu(roz);
+  if (gospodarz && !startWToku && !wToku && teraz - ostatnieOdliczanie > 1500) {
+    if (gotowi && termin === null) {
       ostatnieOdliczanie = teraz;
-      net.wyslij({ t: 'odliczanie', do: net.czas() + P.ODLICZANIE_S * 1000 });
-    } else if (obecni.length < 2 && termin !== null) {
+      wyslijLobby({ t: 'odliczanie', do: net.czas() + P.ODLICZANIE_S * 1000, v: P.WERSJA });
+    } else if (!gotowi && termin !== null) {
       ostatnieOdliczanie = teraz;
-      net.wyslij({ t: 'odliczanie', anuluj: true });
+      wyslijLobby({ t: 'odliczanie', anuluj: true });
     }
   }
 
   const box = el('odliczanie');
-  if (termin !== null && obecni.length >= 2 && !wToku) {
+  if (termin !== null && gotowi && !wToku) {
     box.hidden = false;
     const sek = Math.max(0, Math.ceil((termin - net.czas()) / 1000));
     el('odliczanie-sek').textContent = sek;
     // Próbować może każdy — kto faktycznie zakłada partię, rozstrzyga zamek na serwerze.
-    if (sek === 0) startPartii(obecni);
+    if (sek === 0) startPartii(roz);
   } else {
     box.hidden = true;
   }
 
   el('moje-staty').textContent = opisStatow();
   rysujOsiagnieciaLobby();
-  // Startu nie da się przyspieszyć — odliczanie leci zawsze do końca.
+  const stary = roz.gracze.some((g) => (g.v | 0) < P.WERSJA);
   el('info-lobby').textContent = Date.now() < infoLobby.do
     ? infoLobby.tekst
     : wToku ? ''
-      : mojKolorZajety ? 'Ktoś był szybszy z Twoim kolorem — w tej partii grasz innym.'
-        : obecni.length < 2 ? 'Partia ruszy sama, gdy w lobby będą co najmniej dwie osoby.'
-          : 'Partia ruszy sama po odliczaniu.';
+      : czekam ? 'Lobby pełne (8 graczy) — wejdziesz, gdy zwolni się miejsce. Możesz oglądać.'
+        : stary ? 'Ktoś ma starą wersję gry — niech odświeży stronę, inaczej nie da GOTOWY.'
+          : ja && ja.color !== mojKolor ? 'Ktoś był szybszy z Twoim kolorem — w tej partii grasz innym.'
+            : roz.gracze.length < 2 ? 'Czekamy na drugiego gracza.'
+              : roz.n && new Set(roz.gracze.map((g) => g.druzyna)).size < 2 ? 'Wszyscy są w jednej drużynie — ktoś musi przejść do innej.'
+                : gotowi ? '' : 'Partia ruszy, gdy wszyscy dadzą GOTOWY.';
 }
+
+/* Rysowanie lobby tylko wtedy, gdy coś się zmieniło — odswiezLobby() chodzi
+   co pół sekundy, a przebudowa listy pod palcem gubiłaby stuknięcia. */
+function rysujLobby(roz, gospId, gospodarz) {
+  const podpis = JSON.stringify([roz.n, roz.gracze.map((g) => [g.id, g.name, g.color, g.druzyna, g.gotowy, g.v | 0]),
+    roz.widzowie.map((g) => g.name), gospId, wybranyGracz]);
+  if (podpis === podpisLobby) return;
+  podpisLobby = podpis;
+
+  // tryb gry
+  const tryb = el('lobby-tryb');
+  tryb.replaceChildren();
+  for (const n of TRYBY) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.setAttribute('role', 'radio');
+    b.setAttribute('aria-checked', n === roz.n ? 'true' : 'false');
+    b.textContent = n ? n + ' drużyny' : 'Każdy na każdego';
+    b.disabled = !gospodarz;
+    b.addEventListener('click', () => {
+      if (n === pokoj.tryb) return;
+      wybranyGracz = null;
+      wyslijLobby({ t: 'tryb', id: mojeId, druzyny: n });
+    });
+    tryb.append(b);
+  }
+  el('tryb-info').textContent = gospodarz
+    ? (roz.n ? 'Jesteś gospodarzem: stuknij gracza, potem wolne miejsce albo innego gracza, żeby go przenieść lub zamienić.' : 'Jesteś gospodarzem: wybierz tryb gry.')
+    : (roz.n ? 'Tryb ustawia gospodarz. Możesz przejść do drużyny, w której jest wolne miejsce.' : 'Tryb ustawia gospodarz.');
+
+  const kontener = el('lobby-druzyny');
+  kontener.replaceChildren();
+  kontener.classList.toggle('kilka', roz.n > 1);
+
+  const wiersz = (g) => {
+    const li = document.createElement('li');
+    if (g.id === mojeId) li.classList.add('ja');
+    const kropka = document.createElement('span');
+    kropka.className = 'kropka';
+    kropka.style.background = g.color;
+    const imie = document.createElement('span');
+    imie.className = 'imie';
+    imie.textContent = g.name;
+    imie.style.color = roz.n ? DRUZYNY[g.druzyna].kolor : g.color;
+    const ptaszek = document.createElement('span');
+    ptaszek.className = 'ptaszek' + (g.gotowy ? '' : ' nie');
+    ptaszek.textContent = g.gotowy ? '✓' : '…';
+    ptaszek.title = g.gotowy ? 'gotowy' : 'jeszcze nie gotowy';
+    li.append(kropka, imie);
+    if ((g.v | 0) < P.WERSJA) { const z = znacznik('STARA WERSJA'); z.classList.add('stara'); li.append(z); }
+    if (g.id === gospId) {
+      const k = document.createElement('span');
+      k.className = 'korona';
+      k.textContent = '👑';
+      k.title = 'gospodarz lobby';
+      imie.before(k);
+    }
+    // w wąskich kartach drużyn „TY” zjadałoby nick — tam wystarcza ramka wiersza
+    if (g.id === mojeId && !roz.n) li.append(znacznik('TY'));
+    li.append(ptaszek);
+    if (gospodarz && roz.n) {
+      li.classList.add('klikalny');
+      if (g.id === wybranyGracz) li.classList.add('wybrany');
+      li.addEventListener('click', () => stuknietoGracza(g));
+    }
+    return li;
+  };
+
+  if (!roz.n) {
+    const ul = document.createElement('ul');
+    ul.className = 'lista-graczy';
+    for (const g of roz.gracze) ul.append(wiersz(g));
+    kontener.append(ul);
+  } else {
+    for (let d = 0; d < roz.n; d++) {
+      const info = DRUZYNY[d];
+      const sklad = roz.gracze.filter((g) => g.druzyna === d);
+      const box = document.createElement('section');
+      box.className = 'druzyna';
+      box.style.setProperty('--kolor-druzyny', info.kolor);
+      const h = document.createElement('h3');
+      const nazwa = document.createElement('span');
+      nazwa.textContent = info.nazwa;
+      const ile = document.createElement('small');
+      ile.textContent = sklad.length + '/' + roz.pojemnosc;
+      h.append(nazwa, ile);
+      const ul = document.createElement('ul');
+      ul.className = 'lista-graczy';
+      for (const g of sklad) ul.append(wiersz(g));
+      if (sklad.length < roz.pojemnosc) {
+        const li = document.createElement('li');
+        li.className = 'wolne';
+        const mojaD = (roz.gracze.find((g) => g.id === mojeId) || {}).druzyna;
+        const przenosze = gospodarz && wybranyGracz && roz.gracze.find((g) => g.id === wybranyGracz)?.druzyna !== d;
+        const przechodze = !przenosze && mojaD !== undefined && mojaD !== d;
+        li.textContent = przenosze ? 'Przenieś tutaj' : przechodze ? 'Przejdź tutaj' : 'wolne miejsce';
+        if (przenosze || przechodze) {
+          li.classList.add('klikalny');
+          li.setAttribute('role', 'button');
+          li.addEventListener('click', () => {
+            const kto = przenosze ? wybranyGracz : mojeId;
+            wybranyGracz = null;
+            wyslijLobby({ t: 'druzyna', id: mojeId, kto, d });
+          });
+        }
+        ul.append(li);
+      }
+      box.append(h, ul);
+      kontener.append(box);
+    }
+  }
+
+  const widz = el('lobby-widzowie');
+  widz.hidden = !roz.widzowie.length;
+  widz.textContent = roz.widzowie.length ? 'Czekają na miejsce: ' + roz.widzowie.map((g) => g.name).join(', ') : '';
+}
+
+/* Gospodarz: pierwsze stuknięcie wybiera gracza, drugie w innego gracza
+   (z innej drużyny) zamienia ich miejscami, w tego samego — odznacza. */
+function stuknietoGracza(g) {
+  const roz = rozstawienie;
+  if (!roz || !roz.n) return;
+  if (!wybranyGracz || wybranyGracz === g.id) {
+    wybranyGracz = wybranyGracz === g.id ? null : g.id;
+  } else {
+    const a = roz.gracze.find((x) => x.id === wybranyGracz);
+    if (a && a.druzyna !== g.druzyna) {
+      wyslijLobby({ t: 'zamien', id: mojeId, a: a.id, b: g.id, da: a.druzyna, db: g.druzyna });
+      wybranyGracz = null;
+    } else {
+      wybranyGracz = g.id;
+    }
+  }
+  podpisLobby = '';
+  odswiezLobby();
+}
+
+el('btn-gotowy').addEventListener('click', () => {
+  const ja = rozstawienie && rozstawienie.gracze.find((g) => g.id === mojeId);
+  if (!ja) return;
+  wyslijLobby({ t: 'gotowy', id: mojeId, tak: !ja.gotowy });
+});
 
 function znacznik(tekst) {
   const z = document.createElement('span');
@@ -506,7 +669,7 @@ el('btn-ogladaj').addEventListener('click', () => {
   if (pokoj && pokoj.faza === 'gra') zbudujGre();
 });
 
-async function startPartii(obecni) {
+async function startPartii(roz) {
   if (startWToku) return;
   startWToku = true;
   try {
@@ -515,7 +678,9 @@ async function startPartii(obecni) {
     await net.wyslij({
       t: 'nowa',
       seed,
-      gracze: rozdzielKolory(obecni.slice(0, MAX_GRACZY))
+      druzyny: roz.n,
+      v: P.WERSJA,
+      gracze: roz.gracze.map((g) => ({ id: g.id, name: g.name, color: g.color, druzyna: g.druzyna }))
     });
   } finally {
     setTimeout(() => { startWToku = false; }, 4000);
@@ -1003,24 +1168,36 @@ function obsluzZdarzenia() {
 }
 
 function pokazKoniec(winnerId) {
-  const w = rg.state.worms.find((x) => x.id === winnerId);
-  el('koniec-tytul').textContent = w ? (w.id === mojeId ? 'WYGRYWASZ!' : 'WYGRYWA ' + w.name.toUpperCase()) : 'REMIS';
-  let opis = w
-    ? 'Ostatni GOAT na arenie. Reszta poszła z dymem.'
-    : 'Nikt nie przeżył. Bywa.';
+  const st = rg.state;
+  const w = st.worms.find((x) => x.id === winnerId);
+  const ja0 = st.worms.find((x) => x.id === mojeId);
+  // w drużynach wygrywa cała drużyna zwycięzcy
+  const druzyna = st.druzynowa && w ? DRUZYNY[w.druzyna] : null;
+  const wygralem = !!w && (w.id === mojeId || (!!druzyna && !!ja0 && ja0.druzyna === w.druzyna));
+  let opis;
+  if (druzyna) {
+    el('koniec-tytul').textContent = wygralem ? 'WYGRYWACIE!' : 'WYGRYWAJĄ ' + druzyna.nazwa.toUpperCase();
+    const sklad = st.worms.filter((x) => x.druzyna === w.druzyna).map((x) => x.name);
+    opis = druzyna.nazwa + ' (' + sklad.join(', ') + ') zostali sami na arenie.';
+  } else {
+    el('koniec-tytul').textContent = w ? (w.id === mojeId ? 'WYGRYWASZ!' : 'WYGRYWA ' + w.name.toUpperCase()) : 'REMIS';
+    opis = w
+      ? 'Ostatni GOAT na arenie. Reszta poszła z dymem.'
+      : 'Nikt nie przeżył. Bywa.';
+  }
   const gralem = rg.state.worms.some((x) => x.id === mojeId);
   if (gralem && !partia.liczona) {
     partia.liczona = true;
     const staty = wczytajStaty();
     staty.partie++;
-    if (w && w.id === mojeId) staty.wygrane++;
+    if (wygralem) staty.wygrane++;
     staty.obrazenia += partia.obrazenia;
     staty.fragi += partia.os.fragi;
     if (tura.kto && tura.kto.id === mojeId && tura.suma > staty.rekordTury) staty.rekordTury = tura.suma;
     zapisz('arena:staty', JSON.stringify(staty));
     opis += ' Ty w tej partii: ' + partia.obrazenia + ' obrażeń, ' + partia.os.fragi + ' fragów.';
     const ja = rg.state.worms.find((x) => x.id === mojeId);
-    const ctx = { wygralem: !!w && w.id === mojeId, hp: ja ? ja.hp : 0, partie: staty.partie };
+    const ctx = { wygralem, hp: ja && ja.alive ? ja.hp : 0, partie: staty.partie };
     if (!rg.obserwator) for (const id of koniecPartiiOs(partia.os, ctx)) zdobadz(id);
   }
   const nowe = el('koniec-osiagniecia');
@@ -1086,7 +1263,30 @@ function odswiezHud(moge, teraz) {
     ostatniPodpisGraczy = podpisGraczy;
     const panel = el('panel-gracze');
     panel.replaceChildren();
-    for (const w of st.worms) {
+    // W drużynach: nagłówek drużyny z sumą życia, pod nim jej gracze.
+    const kolejnosc = st.druzynowa
+      ? st.worms.slice().sort((a, b) => a.druzyna - b.druzyna || st.worms.indexOf(a) - st.worms.indexOf(b))
+      : st.worms;
+    let ostatniaDruzyna = null;
+    for (const w of kolejnosc) {
+      if (st.druzynowa && w.druzyna !== ostatniaDruzyna && DRUZYNY[w.druzyna]) {
+        ostatniaDruzyna = w.druzyna;
+        const info = DRUZYNY[w.druzyna];
+        const hd = document.createElement('div');
+        hd.className = 'druzyna-hud';
+        hd.dataset.druzyna = w.druzyna;
+        hd.style.setProperty('--kolor-druzyny', info.kolor);
+        const nazwa = document.createElement('span');
+        nazwa.className = 'nazwa';
+        nazwa.textContent = info.nazwa;
+        const pasek = document.createElement('span');
+        pasek.className = 'pasek';
+        pasek.append(document.createElement('i'));
+        const suma = document.createElement('span');
+        suma.className = 'suma';
+        hd.append(nazwa, pasek, suma);
+        panel.append(hd);
+      }
       const d = document.createElement('div');
       d.className = 'gracz';
       d.dataset.worm = w.id;
@@ -1099,6 +1299,7 @@ function odswiezHud(moge, teraz) {
       const imie = document.createElement('span');
       imie.className = 'imie';
       imie.textContent = w.name + (w.id === mojeId ? ' (Ty)' : '');
+      if (st.druzynowa && DRUZYNY[w.druzyna]) { imie.style.color = DRUZYNY[w.druzyna].kolor; d.classList.add('w-druzynie'); }
       const hp = document.createElement('span');
       hp.className = 'hp';
       d.append(kropka, imie, hp);
@@ -1108,6 +1309,14 @@ function odswiezHud(moge, teraz) {
     }
   }
   for (const row of el('panel-gracze').children) {
+    if (row.dataset.druzyna !== undefined) {
+      const sklad = st.worms.filter((x) => x.druzyna === +row.dataset.druzyna && !x.odszedl);
+      const hp = sklad.reduce((a, x) => a + (x.alive ? x.hp : 0), 0);
+      row.querySelector('.suma').textContent = hp;
+      row.querySelector('.pasek i').style.width = Math.min(100, sklad.length ? hp / sklad.length : 0) + '%';
+      row.classList.toggle('pokonana', hp <= 0);
+      continue;
+    }
     const w = st.worms.find((x) => x.id === row.dataset.worm);
     if (!w) continue;
     row.querySelector('.hp').textContent = w.odszedl ? '' : w.hp;
@@ -1156,6 +1365,9 @@ window.__arena = () => ({
   obecnosc: net && Object.keys(net.obecnosc || {}),
   przesuniecieZegara: net && Math.round(net.przesuniecieZegara),
   hash: rg && S.stateHash(rg.state),
+  odwrotKrok: rg && rg.state.odwrotKrok,
+  druzyny: rg ? (rg.state.druzynowa ? rg.state.worms.map((w) => w.name + ':' + w.druzyna) : null) : null,
+  lobby: rozstawienie && { tryb: rozstawienie.n, gracze: rozstawienie.gracze.map((g) => ({ name: g.name, druzyna: g.druzyna, gotowy: g.gotowy })), widzowie: rozstawienie.widzowie.length },
   kamera: kamera && renderer && (() => {
     const w = rg && S.activeWorm(rg.state);
     const v = w && (w.widok || w);

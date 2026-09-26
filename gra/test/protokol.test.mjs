@@ -117,8 +117,10 @@ class Klient {
     if (s.czas >= this.nastepnyPuls) { this.nastepnyPuls = s.czas + 8000; this.wyslij({ t: 'puls', id: this.id }); }
     if (s.czas >= this.nastepnyGet) {
       this.pobierz();
-      const szybko = this.r && (this.r.state.phase === 'koniec' || this.r.mojaAkcja);
-      this.nastepnyGet = s.czas + (szybko ? 400 : this.coIle);
+      const faza = this.r && this.r.state.phase;
+      const szybko = this.r && (faza === 'koniec' || this.r.mojaAkcja);
+      // ucieczkę po strzale oglądamy na żywo — jak przez WebSocket, często
+      this.nastepnyGet = s.czas + (faza === 'odwrot' ? 150 : szybko ? 400 : this.coIle);
     }
 
     if (!this.pokoj) return;
@@ -146,6 +148,19 @@ class Klient {
   /* Bot: myśli, czasem idzie albo skacze, wybiera broń i strzela.
      Czasem nic nie robi (koniec czasu), czasem trzyma spust do pełna. */
   bot(ctx) {
+    if (this.gracz && this.r && P.mogeUciekac(this.r)) {
+      // ucieczka po strzale: bieg w losową stronę, czasem skok — to leci paczkami do innych
+      const st = this.r.state;
+      if (!this.ucieczka || ctx.teraz > this.ucieczka.do) {
+        // krótkie kroki i rzadkie skoki — bot nie ma skakać do lawy co turę
+        const k = this.rng();
+        this.ucieczka = { do: ctx.teraz + 200 + this.rng() * 500, lewo: k < 0.25, prawo: k > 0.75 };
+        if (this.rng() < 0.1) S.jump(st);
+      }
+      st.input.left = this.ucieczka.lewo;
+      st.input.right = this.ucieczka.prawo;
+      return;
+    }
     if (!this.gracz || !this.r || !P.mogeGrac(this.r, this.pokoj)) return;
     const st = this.r.state;
     const w = S.activeWorm(st);
@@ -286,12 +301,41 @@ await test('szesciu graczy z duzymi opoznieniami', () => {
 });
 
 await test('zaden strzal nie przepada (kazda akcja strzal w logu ma swoj wybuch u wszystkich)', () => {
-  const pr = partia({ seed: 4, n: 2, doTury: 20 })  // seed z długą partią — test liczy strzały;
+  // seed z długą partią — test liczy strzały. Od 4.2 boty uciekają po strzale i przy
+  // niektórych seedach szybko wbiegają do lawy (np. seed 4: koniec po 2 turach).
+  const pr = partia({ seed: 9, n: 2, doTury: 20 });
   const strzaly = [...pr.pokoj.akcje.values()].filter((a) => a.t === 'strzal').length;
   const wyslane = pr.klienci.reduce((s, k) => s + k.wyslane.filter((z) => z.t === 'strzal').length, 0);
   assert(strzaly > 5, 'za malo strzalow w partii: ' + strzaly);
   assert(wyslane >= strzaly, 'wyslanych strzalow mniej niz w logu');
   zgodnoscKoncowa(pr);
+});
+
+await test('ucieczka na zywo: odbiorca gra strzal i ucieczke ulamek sekundy za strzelcem', () => {
+  const serwer = new Serwer();
+  const ids = ['a', 'b', 'c'];
+  // odświeżanie co 150 ms udaje WebSocket (serwer i tak rozsyła każdą zmianę od razu)
+  const kl = ids.map((id, i) => new Klient(id, serwer, mulberry32(90 + i), { opoznienie: 60, rozrzut: 30, coIle: 150 }));
+  for (const k of kl) serwer.przyjmij({ t: 'puls', id: k.id });
+  serwer.przyjmij({ t: 'nowa', seed: 777, gracze: ids.map((id) => ({ id, name: id, color: '#fff' })) });
+  let maks = 0, pomiary = 0;
+  for (let i = 0; i < 60 * 150 && P.zloz(serwer.log).tura < 6; i++) {
+    serwer.czas += KLATKA;
+    for (const k of kl) k.tik();
+    const autor = kl.find((k) => k.r && k.r.state.odwrotNagranie && k.r.state.phase === 'odwrot');
+    if (!autor || autor.r.state.odwrotKrok < 60) continue;
+    for (const k of kl) {
+      if (k === autor || !k.r || k.r.state.turnNumber !== autor.r.state.turnNumber) continue;
+      const krok = k.r.state.phase === 'odwrot' ? k.r.state.odwrotKrok : k.r.state.phase === 'aim' ? 0 : S.ODWROT_KROKI;
+      maks = Math.max(maks, autor.r.state.odwrotKrok - krok);
+      pomiary++;
+    }
+  }
+  assert(pomiary > 300, 'za malo pomiarow: ' + pomiary);
+  assert(maks * S.DT < 0.8, 'odbiorca za daleko za strzelcem: ' + (maks * S.DT).toFixed(2) + ' s');
+  console.log('       najwieksze opoznienie ucieczki u odbiorcy: ' + (maks * S.DT).toFixed(2) + ' s (dawniej ~5 s)');
+  zgodnoscKoncowa({ serwer, pokoj: P.zloz(serwer.log), wszyscy: kl, klienci: kl });
+  for (const k of kl) assert(k.r.statystyki.korekty === 0, 'korekty u ' + k.id);
 });
 
 console.log('\nWYJSCIA I ROZLACZENIA');
@@ -434,7 +478,7 @@ await test('wyscig: karta wlasciciela w tle, gospodarz oddaje ture, wlasciciel w
       if (P.zloz(serwer.log).tura >= 5) break;
     }
     const p = P.zloz(serwer.log);
-    assert(p.tura >= 5, 'partia stanela po wyscigu (seed ' + seed + ', tura ' + p.tura + ')');
+    assert(p.tura >= 5 || p.faza === 'koniec', 'partia stanela po wyscigu (seed ' + seed + ', tura ' + p.tura + ')');
     const a0 = p.akcje.get(0);
     if (a0.t === 'pas' && wl.wyslane.some((z) => z.t === 'strzal' && z.nr === 0)) wyscigi++;
     przesymulowania += wl.r.statystyki.przesymulowania + wl.r.statystyki.skoki;
@@ -476,17 +520,110 @@ await test('karta w tle przez minute: po powrocie dogania log bez rozjazdu', () 
 
 console.log('\nLOBBY');
 
-await test('odliczanie do startu: zwykly termin dziala, przyspieszenie „na zaraz” jest pomijane', () => {
+await test('odliczanie do startu: 5 s po gotowosci, wpisy starej wersji i „na zaraz” sa pomijane', () => {
   const st = 1_000_000;
-  const pelny = { t: 'odliczanie', do: st + P.ODLICZANIE_S * 1000, st };
+  const pelny = { t: 'odliczanie', do: st + P.ODLICZANIE_S * 1000, st, v: P.WERSJA };
   assert(P.zloz([pelny]).odliczanieDo === pelny.do, 'zwykle odliczanie nie przeszlo');
-  // stary przycisk „Zaczynamy” wysyłał termin za 0,8 s — ma nie skrócić odliczania
-  const p = P.zloz([pelny, { t: 'odliczanie', do: st + 1800, st: st + 1000 }]);
+  assert(P.zloz([{ t: 'odliczanie', do: st + 20000, st }]).odliczanieDo === null, 'stare 20 s bez gotowosci przeszlo');
+  const p = P.zloz([pelny, { t: 'odliczanie', do: st + 1800, st: st + 1000, v: P.WERSJA }]);
   assert(p.odliczanieDo === pelny.do, 'przyspieszenie przeszlo: termin ' + (p.odliczanieDo - st) + ' ms');
-  // nowy pełny termin (np. po anulowaniu) nadal wygrywa jako ostatni
-  const pozniej = { t: 'odliczanie', do: st + 5000 + P.ODLICZANIE_S * 1000, st: st + 5000 };
-  assert(P.zloz([pelny, pozniej]).odliczanieDo === pozniej.do, 'ostatni pelny termin nie wygral');
   assert(P.zloz([pelny, { t: 'odliczanie', anuluj: true, st: st + 500 }]).odliczanieDo === null, 'anulowanie nie dziala');
+});
+
+const wejscie = (ids) => ids.map((id) => ({ t: 'dolacz', id, name: id, color: '#fff', v: P.WERSJA }));
+
+await test('lobby: najwyzej 8 graczy, kolejni czekaja; kazdy na kazdego to osobne druzyny', () => {
+  const ids = Array.from({ length: 10 }, (_, i) => 'g' + i);
+  const r = P.rozstaw(P.zloz(wejscie(ids)));
+  assert(r.gracze.length === 8 && r.widzowie.length === 2, r.gracze.length + '/' + r.widzowie.length);
+  assert(r.widzowie[0].id === 'g8', 'czeka nie ten, kto wszedl ostatni');
+  assert(new Set(r.gracze.map((g) => g.druzyna)).size === 8, 'w trybie kazdy na kazdego ktos jest w parze');
+  // nieobecny zwalnia miejsce
+  const bez = P.rozstaw(P.zloz(wejscie(ids)), (id) => id !== 'g2');
+  assert(bez.gracze.some((g) => g.id === 'g8') && bez.widzowie.length === 1, 'nieobecny blokuje miejsce');
+});
+
+await test('lobby: druzyny rowne, przejscie do wolnego miejsca, pelna druzyna nie przyjmuje', () => {
+  // 6 graczy, 3 drużyny: po 2, a miejsc jest po 3 (8 graczy / 3 drużyny)
+  const szesc = P.rozstaw(P.zloz([...wejscie(['a', 'b', 'c', 'd', 'e', 'f']), { t: 'tryb', id: 'a', druzyny: 3 }]));
+  const ile = (r, d) => r.gracze.filter((g) => g.druzyna === d).length;
+  assert([0, 1, 2].every((d) => ile(szesc, d) === 2) && szesc.pojemnosc === 3, 'nierowne druzyny: ' + szesc.gracze.map((g) => g.id + g.druzyna).join(' '));
+  // 8 graczy, 4 drużyny po 2 — wszystkie pełne
+  const ids = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
+  const log = [...wejscie(ids), { t: 'tryb', id: 'a', druzyny: 4 }];
+  let r = P.rozstaw(P.zloz(log));
+  assert([0, 1, 2, 3].every((d) => ile(r, d) === 2), 'nierowne druzyny: ' + r.gracze.map((g) => g.id + g.druzyna).join(' '));
+  // utrwalenie auto-przydziału (klient wysyła go sam) i próba wejścia do pełnej drużyny
+  for (const g of r.gracze) log.push({ t: 'druzyna', id: g.id, kto: g.id, d: g.druzyna, auto: 1 });
+  const zPelnej = r.gracze.find((g) => g.druzyna === 0);
+  const doPelnej = r.gracze.find((g) => g.druzyna === 1);
+  log.push({ t: 'druzyna', id: doPelnej.id, kto: doPelnej.id, d: 0 });
+  r = P.rozstaw(P.zloz(log));
+  assert(ile(r, 0) === 2 && r.gracze.find((g) => g.id === zPelnej.id).druzyna === 0, 'pelna druzyna przyjela kolejnego albo wyrzucila starego');
+  // gospodarz zamienia dwóch graczy z pełnych drużyn
+  log.push({ t: 'zamien', id: 'a', a: zPelnej.id, b: doPelnej.id, da: 0, db: 1 });
+  r = P.rozstaw(P.zloz(log));
+  assert(r.gracze.find((g) => g.id === zPelnej.id).druzyna === 1 && r.gracze.find((g) => g.id === doPelnej.id).druzyna === 0, 'zamiana nie zadzialala');
+  assert([0, 1, 2, 3].every((d) => ile(r, d) === 2), 'po zamianie nierowno');
+});
+
+await test('lobby: start dopiero, gdy wszyscy gotowi; zmiana skladu i nowy gracz cofaja gotowosc', () => {
+  const log = [...wejscie(['a', 'b', 'c']), { t: 'tryb', id: 'a', druzyny: 2 }];
+  const gotowi = ['a', 'b', 'c'].map((id) => ({ t: 'gotowy', id, tak: true }));
+  assert(!P.gotowiDoStartu(P.rozstaw(P.zloz(log))), 'start bez gotowosci');
+  assert(P.gotowiDoStartu(P.rozstaw(P.zloz([...log, ...gotowi]))), 'wszyscy gotowi, a startu nie ma');
+  const odl = { t: 'odliczanie', do: 9000, st: 4000, v: P.WERSJA };
+  let p = P.zloz([...log, ...gotowi, odl, { t: 'druzyna', id: 'a', kto: 'b', d: 1 }]);
+  assert(!p.wLobby.some((g) => g.gotowy) && p.odliczanieDo === null, 'przeniesienie nie cofnelo gotowosci i odliczania');
+  p = P.zloz([...log, ...gotowi, odl, ...wejscie(['d'])]);
+  assert(p.odliczanieDo === null && !P.gotowiDoStartu(P.rozstaw(p)), 'nowy gracz nie zatrzymal startu');
+  p = P.zloz([...log, ...gotowi, odl, { t: 'gotowy', id: 'b', tak: false }]);
+  assert(p.odliczanieDo === null, 'cofniecie gotowosci nie zatrzymalo odliczania');
+  // jedna niepusta drużyna to nie mecz
+  const jedna = [...wejscie(['a', 'b']), { t: 'tryb', id: 'a', druzyny: 2 },
+    { t: 'druzyna', id: 'a', kto: 'a', d: 0 }, { t: 'druzyna', id: 'b', kto: 'b', d: 0 },
+    { t: 'gotowy', id: 'a', tak: true }, { t: 'gotowy', id: 'b', tak: true }];
+  assert(!P.gotowiDoStartu(P.rozstaw(P.zloz(jedna))), 'start z jedna druzyna');
+});
+
+await test('druzyny w partii: nowa niesie druzyny, po partii lobby je pamieta, gotowosc od zera', () => {
+  const gracze = [{ id: 'a', name: 'a', color: '#fff', druzyna: 1 }, { id: 'b', name: 'b', color: '#0f0', druzyna: 0 }, { id: 'c', name: 'c', color: '#00f', druzyna: 1 }];
+  const p = P.zloz([{ t: 'nowa', seed: 5, gracze, druzyny: 2, v: P.WERSJA, st: 1 }]);
+  assert(p.druzyny === 2 && p.tryb === 2, 'tryb nie przeszedl');
+  const r = P.nowaRozgrywka(p, 'a');
+  assert(r.state.druzynowa && r.state.worms.find((w) => w.id === 'c').druzyna === 1, 'robale bez druzyn');
+  const roz = P.rozstaw(p);
+  assert(roz.gracze.map((g) => g.druzyna).join() === '1,0,1' && !roz.gracze.some((g) => g.gotowy), 'lobby po partii zgubilo druzyny');
+});
+
+await test('partia druzynowa 2 na 2 do konca: zero rozjazdow, wygrywa druzyna', () => {
+  const serwer = new Serwer();
+  const ids = ['a', 'b', 'c', 'd'];
+  const kl = ids.map((id, i) => new Klient(id, serwer, mulberry32(300 + i), { opoznienie: 80 + i * 40, coIle: 300 }));
+  for (const k of kl) serwer.przyjmij({ t: 'puls', id: k.id });
+  serwer.przyjmij({ t: 'nowa', seed: 4321, druzyny: 2, v: P.WERSJA,
+    gracze: ids.map((id, i) => ({ id, name: id, color: '#fff', druzyna: i % 2 })) });
+  for (let i = 0; i < 60 * 900; i++) {
+    serwer.czas += KLATKA;
+    for (const k of kl) k.tik();
+    if (i % 60 === 0 && P.zloz(serwer.log).faza === 'koniec') break;
+  }
+  for (let i = 0; i < 60 * 25; i++) { serwer.czas += KLATKA; for (const k of kl) k.tik(); }
+  const p = P.zloz(serwer.log);
+  assert(p.faza === 'koniec', 'partia druzynowa nie doszla do konca (tura ' + p.tura + ')');
+  zgodnoscKoncowa({ serwer, pokoj: p, wszyscy: kl, klienci: kl });
+  for (const k of kl) assert(k.r.statystyki.korekty === 0, 'korekty u ' + k.id);
+  const st = kl[0].r.state;
+  const zywi = st.worms.filter((w) => w.alive);
+  assert(new Set(zywi.map((w) => w.druzyna)).size <= 1, 'na koniec zyja dwie druzyny');
+  // tury na zmianę drużynami
+  const akcje = [...p.akcje.values()].sort((x, y) => x.nr - y.nr);
+  const druz = (id) => ids.indexOf(id) % 2;
+  for (let i = 1; i < akcje.length; i++) {
+    const kto = (a) => a.t === 'strzal' ? a.id : (a.za || a.id);
+    assert(druz(kto(akcje[i])) !== druz(kto(akcje[i - 1])), 'dwie tury z rzedu jednej druzyny (tura ' + akcje[i].nr + ')');
+  }
+  console.log('       ' + p.tura + ' tur, wygrala druzyna ' + (zywi[0] ? zywi[0].druzyna : '—'));
 });
 
 console.log('\n' + (failed === 0

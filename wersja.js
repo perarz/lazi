@@ -5,6 +5,17 @@
 (function () {
   var historia = [
     {
+      wersja: '4.2', data: '2026-09-26', tytul: 'Drużyny i Arena bez opóźnień',
+      zmiany: [
+        'Arena: strzał i ucieczkę po nim widać u wszystkich na żywo (ok. 0,15 s za strzelcem) — koniec z zamarzniętym robalem i 5-sekundowym opóźnieniem.',
+        'Nowe lobby: do 8 graczy. Gospodarz (👑) wybiera tryb: każdy na każdego albo 2, 3 lub 4 drużyny.',
+        'Po wejściu trafiasz losowo do drużyny z najmniejszą liczbą graczy; możesz przejść tam, gdzie jest wolne miejsce. Gospodarz przenosi graczy i zamienia ich miejscami.',
+        'Start: każdy daje GOTOWY, potem 5 s odliczania. Zmiana drużyn albo nowy gracz cofa gotowość.',
+        'W drużynie nick ma kolor drużyny (robal zostaje w swoim), koledzy nie zadają sobie obrażeń ani odrzutu, a pociski przez nich przelatują.',
+        'Tury idą na zmianę drużynami, w panelu są paski życia drużyn, wygrywa ostatnia drużyna na arenie.'
+      ]
+    },
+    {
       wersja: '4.1.1', data: '2026-09-26', tytul: 'Arena i zrzutka na własnym serwerze',
       zmiany: [
         'Arena działa teraz na własnym serwerze zamiast przez bazę danych: ruchy i strzały innych graczy widać od razu, a nie z sekundowym opóźnieniem.',

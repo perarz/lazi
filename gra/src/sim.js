@@ -32,13 +32,14 @@ export const TURN_TIME = 30;
 const SETTLE_MAX = 5;
 const MAX_POWER_TIME = 1.4;         // ile trwa naładowanie strzału do pełna
 
-/* Po każdym strzale robal ma 5 s na ruch (ucieczkę). Wciśnięcia z tych
-   kroków lecą w zdarzeniu strzału (zwinięte RLE), a strzał wychodzi do
-   sieci dopiero po nich — odbiorca odtwarza wszystko krok w krok, bit w bit
-   tak samo jak u strzelającego. */
+/* Po każdym strzale robal ma 5 s na ruch (ucieczkę). Strzał wychodzi do
+   sieci od razu, a wciśnięcia z kolejnych kroków lecą za nim paczkami
+   (zwinięte RLE, zdarzenie 'odwrot' w protokol.js). Odbiorca odtwarza je krok
+   w krok, bit w bit tak samo jak u strzelającego — tylko o ułamek sekundy
+   później, bo na każdy krok musi mieć już wciśnięcie (czekaNaOdwrot). */
 export const ODWROT_S = 5;
 const OWCA_SKOK = 6;                // o ile pikseli owca wejdzie pod górę
-const ODWROT_KROKI = Math.round(ODWROT_S / DT);
+export const ODWROT_KROKI = Math.round(ODWROT_S / DT);
 const ODWROT_LEWO = 1, ODWROT_PRAWO = 2, ODWROT_SKOK = 4;
 
 /* Nagła śmierć: po tylu pełnych rundach lawa zaczyna wzbierać,
@@ -71,7 +72,11 @@ export function kolejnoscTur(seed, ids) {
   return order;
 }
 
-/* opcje.sieciowa: tura nie przechodzi sama — po osiadaniu symulacja staje
+/* opcje.druzyny: tryb drużynowy — gracze mają pole `druzyna` (0, 1, 2…);
+   koledzy z drużyny nie zadają sobie obrażeń ani odrzutu, tury idą na zmianę
+   drużynami, wygrywa ostatnia drużyna. Bez tego każdy gra sam (druzyna = numer).
+
+   opcje.sieciowa: tura nie przechodzi sama — po osiadaniu symulacja staje
    w fazie 'koniec' i czeka, aż warstwa sieciowa poda kanoniczny stan.
    Wtedy też licznik tury prowadzi warstwa sieciowa (wspólny czas serwera). */
 export function createGame(seed, players, opcje = {}) {
@@ -82,6 +87,7 @@ export function createGame(seed, players, opcje = {}) {
     id: p.id,
     name: p.name,
     color: p.color,
+    druzyna: opcje.druzyny ? Math.max(0, p.druzyna | 0) : i,
     x: spawns[i].x,
     y: spawns[i].y,
     vx: 0,
@@ -101,6 +107,8 @@ export function createGame(seed, players, opcje = {}) {
     worms,
     order: kolejnoscTur(seed, worms.map((w) => w.id)),
     turnPtr: 0,
+    druzynowa: !!opcje.druzyny,
+    ostatni: {},               // drużyna -> kto z niej grał ostatnio (kolejka w drużynie)
     turnNumber: 0,
     phase: 'aim',
     turnTimeLeft: TURN_TIME,
@@ -114,10 +122,10 @@ export function createGame(seed, players, opcje = {}) {
     power: 0,
     charging: false,
     firedThisTurn: false,
-    odwrotKrok: 0,             // ucieczka po dynamicie: krok, plan (odbiorca) albo nagranie (strzelec)
+    odwrotKrok: 0,             // ucieczka po strzale: krok, plan (odbiorca) albo nagranie (strzelec)
     odwrotPlan: null,
+    odwrotPelny: false,        // odbiorca zna już wszystkie kroki ucieczki
     odwrotNagranie: null,
-    odwrotAkcja: null,
     skokWKolejce: false,
     cel: null,                 // punkt nalotu wskazany przez strzelca
     sieciowa: !!opcje.sieciowa,
@@ -244,11 +252,10 @@ export function releaseFire(state) {
   // liczb stan u obu jest identyczny co do bitu.
   zastosujStrzal(state, action);
   if (state.phase === 'odwrot') {
-    // strzał wyjdzie dopiero po 5 s ruchu, razem z jego nagraniem
+    // strzelec nagrywa swoją ucieczkę; protokół wysyła ją paczkami za strzałem
     state.odwrotPlan = null;
+    state.odwrotPelny = true;
     state.odwrotNagranie = [];
-    state.odwrotAkcja = action;
-    return action;
   }
   state.akcjeDoWyslania.push(action);
   return action;
@@ -370,9 +377,10 @@ export function applyFire(state, action) {
   // po każdej broni: 5 s ruchu (faza odwrot), potem lot i osiadanie
   state.phase = 'odwrot';
   state.odwrotKrok = 0;
+  // Całe nagranie w akcji (testy, stary zapis) albo — w sieci — paczki na żywo.
   state.odwrotPlan = rozwinOdwrot(action.odwrot);
+  state.odwrotPelny = Array.isArray(action.odwrot) || !state.sieciowa;
   state.odwrotNagranie = null;
-  state.odwrotAkcja = null;
   state.skokWKolejce = false;
   state.events.push({ type: 'strzal', weapon: weapon.id, wormId: w.id, x: w.x, y: w.y - WORM_H * 0.5 });
   return true;
@@ -394,7 +402,7 @@ function spawnProjectile(state, weapon, x, y, vx, vy, ownerId) {
 function ciosKijem(state, w, start, weapon) {
   state.events.push({ type: 'uderzenie', x: start.x, y: start.y });
   for (const inny of state.worms) {
-    if (!inny.alive || inny === w) continue;
+    if (!inny.alive || inny === w || swoj(state, inny, w.id)) continue;
     const dx = inny.x - start.x;
     const dy = (inny.y - WORM_H * 0.5) - start.y;
     if (dx * dx + dy * dy > weapon.zasieg * weapon.zasieg) continue;
@@ -439,7 +447,7 @@ function strzalNatychmiastowy(state, w, start, weapon) {
     if (x < 0 || x >= T.WORLD_W || y >= state.lava || y < -200) break;
     if (T.solidAt(t, x, y)) { wSkale = true; break; }
     trafiony = state.worms.find(
-      (o) => o.alive && o.id !== w.id && Math.abs(o.x - x) < 9 && y > o.y - WORM_H && y < o.y
+      (o) => o.alive && o.id !== w.id && !swoj(state, o, w.id) && Math.abs(o.x - x) < 9 && y > o.y - WORM_H && y < o.y
     ) || null;
     if (trafiony) break;
   }
@@ -511,14 +519,8 @@ export function step(state) {
   stepProjectiles(state);
   stepSkrzynki(state);
 
-  if (state.phase === 'odwrot' && state.odwrotKrok >= ODWROT_KROKI) {
-    state.phase = 'flight';
-    if (state.odwrotNagranie) {
-      state.akcjeDoWyslania.push({ ...state.odwrotAkcja, odwrot: zwinOdwrot(state.odwrotNagranie) });
-      state.odwrotNagranie = null;
-      state.odwrotAkcja = null;
-    }
-  }
+  // Nagranie zostaje do końca tury — protokół wysyła z niego ostatnią paczkę.
+  if (state.phase === 'odwrot' && state.odwrotKrok >= ODWROT_KROKI) state.phase = 'flight';
 
   if (state.phase === 'flight' && state.projectiles.length === 0) {
     state.phase = 'settle';
@@ -549,7 +551,30 @@ function cialoWSkale(t, x, y) {
   return T.solidAt(t, x, y - 1) || T.solidAt(t, x, y - WORM_H * 0.5) || T.solidAt(t, x, y - WORM_H + 2);
 }
 
-function zwinOdwrot(bity) {
+/* Odbiorca: kolejne kroki ucieczki z sieci. `pelny` — więcej nie będzie
+   (brakujące kroki to „stoi w miejscu”). */
+export function dopiszOdwrot(state, bity, pelny) {
+  if (!state.odwrotPlan) state.odwrotPlan = [];
+  for (const b of bity) {
+    if (state.odwrotPlan.length >= ODWROT_KROKI) break;
+    state.odwrotPlan.push(b & 7);
+  }
+  if (pelny) state.odwrotPelny = true;
+}
+
+/* Czy odbiorca musi poczekać na kolejną paczkę, zanim zrobi następny krok. */
+export function czekaNaOdwrot(state) {
+  return state.phase === 'odwrot' && !state.odwrotNagranie && !state.odwrotPelny &&
+    state.odwrotKrok >= (state.odwrotPlan ? state.odwrotPlan.length : 0);
+}
+
+/* Ile kroków ucieczki odbiorca ma już w zapasie (bufor na wahania sieci). */
+export function zapasOdwrotu(state) {
+  if (state.phase !== 'odwrot' || state.odwrotNagranie || state.odwrotPelny) return Infinity;
+  return (state.odwrotPlan ? state.odwrotPlan.length : 0) - state.odwrotKrok;
+}
+
+export function zwinOdwrot(bity) {
   const rle = [];
   for (const b of bity) {
     const ost = rle[rle.length - 1];
@@ -559,7 +584,7 @@ function zwinOdwrot(bity) {
   return rle;
 }
 
-function rozwinOdwrot(rle) {
+export function rozwinOdwrot(rle) {
   const out = [];
   if (!Array.isArray(rle)) return out;
   for (const p of rle) {
@@ -706,7 +731,7 @@ function stepProjectiles(state) {
       // trafienie w robala — tylko dla pocisków lecących
       if (weapon.kind === 'pocisk') {
         const hit = state.worms.find(
-          (w) => w.alive && w.id !== p.ownerId &&
+          (w) => w.alive && w.id !== p.ownerId && !swoj(state, w, p.ownerId) &&
                  Math.abs(w.x - nx) < 9 && ny > w.y - WORM_H && ny < w.y
         );
         if (hit) {
@@ -773,7 +798,7 @@ function krokOwcy(state, p, weapon, i) {
     }
   }
   const trafiony = state.worms.find(
-    (w) => w.alive && w.id !== p.ownerId && Math.abs(w.x - p.x) < 11 && p.y > w.y - WORM_H - 4 && p.y < w.y + 4
+    (w) => w.alive && w.id !== p.ownerId && !swoj(state, w, p.ownerId) && Math.abs(w.x - p.x) < 11 && p.y > w.y - WORM_H - 4 && p.y < w.y + 4
   );
   if (trafiony) { detonate(state, p, i); return; }
   if (p.y > state.lava || p.x < -80 || p.x > T.WORLD_W + 80) {
@@ -793,7 +818,7 @@ function krokWiertla(state, p, weapon, i) {
   }
   p.krok++;
   const trafiony = state.worms.find(
-    (w) => w.alive && w.id !== p.ownerId && Math.abs(w.x - p.x) < 10 && p.y > w.y - WORM_H - 2 && p.y < w.y + 2
+    (w) => w.alive && w.id !== p.ownerId && !swoj(state, w, p.ownerId) && Math.abs(w.x - p.x) < 10 && p.y > w.y - WORM_H - 2 && p.y < w.y + 2
   );
   if (trafiony) { detonate(state, p, i); return; }
   if (p.y > state.lava || p.y < -200 || p.x < -80 || p.x > T.WORLD_W + 80) {
@@ -837,6 +862,14 @@ function detonate(state, p, index) {
   }
 }
 
+/* Kolega z drużyny tego, kto teraz działa (albo właściciela pocisku) —
+   takiego broń nie rani, nie odrzuca i przez niego przelatuje. Siebie tak. */
+function swoj(state, w, ownerId) {
+  if (!state.druzynowa) return false;
+  const o = ownerId ? state.worms.find((x) => x.id === ownerId) : activeWorm(state);
+  return !!o && o !== w && o.druzyna === w.druzyna;
+}
+
 export function explode(state, x, y, weapon) {
   T.carve(state.terrain, x, y, weapon.radius);
   state.events.push({ type: 'wybuch', x, y, r: weapon.radius });
@@ -851,7 +884,7 @@ export function explode(state, x, y, weapon) {
 
   const reach = weapon.radius * 1.7;
   for (const w of state.worms) {
-    if (!w.alive) continue;
+    if (!w.alive || swoj(state, w)) continue;
     const dx = w.x - x;
     const dy = (w.y - WORM_H * 0.5) - y;
     const d = Math.sqrt(dx * dx + dy * dy);
@@ -907,7 +940,8 @@ export function usunGraczy(state, ids) {
 
 function nextTurn(state) {
   const living = state.worms.filter((w) => w.alive);
-  if (living.length <= 1) {
+  if (new Set(living.map((w) => w.druzyna)).size <= 1) {
+    // została jedna drużyna (w trybie „każdy na każdego” — jeden robal)
     state.phase = 'over';
     state.winner = living[0] ? living[0].id : null;
     state.charging = false;
@@ -915,10 +949,28 @@ function nextTurn(state) {
     return;
   }
 
-  for (let i = 0; i < state.order.length; i++) {
-    state.turnPtr = (state.turnPtr + 1) % state.order.length;
-    const w = activeWorm(state);
-    if (w && w.alive) break;
+  // Na zmianę drużynami, a w drużynie po kolei (jak w Worms). Kolejność drużyn
+  // i graczy w drużynie bierze się z potasowanej kolejki `order`, więc w trybie
+  // „każdy na każdego” wychodzi dokładnie dawne „następny żywy z kolejki”.
+  const n = state.order.length;
+  const druzynaRobala = (id) => { const w = state.worms.find((x) => x.id === id); return w ? w.druzyna : -1; };
+  const teraz = state.order[state.turnPtr % n];
+  const moja = druzynaRobala(teraz);
+  state.ostatni[moja] = teraz;
+  const druzyny = [];
+  for (const id of state.order) { const d = druzynaRobala(id); if (!druzyny.includes(d)) druzyny.push(d); }
+  const di = druzyny.indexOf(moja);
+  for (let k = 1; k <= druzyny.length; k++) {
+    const d = druzyny[(di + k) % druzyny.length];
+    const ost = state.ostatni[d];
+    const od = ost === undefined ? -1 : state.order.indexOf(ost);
+    let wybrany = -1;
+    for (let j = 1; j <= n; j++) {
+      const idx = (od + j + n) % n;
+      const w = state.worms.find((x) => x.id === state.order[idx]);
+      if (w && w.alive && w.druzyna === d) { wybrany = idx; break; }
+    }
+    if (wybrany >= 0) { state.turnPtr = wybrany; break; }
   }
 
   state.turnNumber++;
@@ -995,8 +1047,8 @@ export function rozpocznijTure(state) {
   state.cel = null;
   state.odwrotKrok = 0;
   state.odwrotPlan = null;
+  state.odwrotPelny = false;
   state.odwrotNagranie = null;
-  state.odwrotAkcja = null;
   state.skokWKolejce = false;
   state.projectiles = [];
   state.wind = windFor(state.seed, state.turnNumber);
@@ -1069,6 +1121,7 @@ export function snapshot(state) {
     robale: stanRobali(state),
     turnPtr: state.turnPtr,
     turnNumber: state.turnNumber,
+    ostatni: { ...state.ostatni },
     winner: state.winner,
     over,
     lava: state.lava,
@@ -1087,6 +1140,8 @@ export function stanPoTurze(state, usun = []) {
     order: state.order,
     worms: state.worms.map((w) => ({ ...w, amunicja: { ...w.amunicja } })),
     turnPtr: state.turnPtr,
+    druzynowa: state.druzynowa,
+    ostatni: { ...state.ostatni },
     turnNumber: state.turnNumber,
     winner: state.winner,
     lava: state.lava,
@@ -1130,6 +1185,7 @@ export function zastosujSnapshot(state, snap) {
   ustawRobale(state, snap.robale);
   state.turnPtr = snap.turnPtr;
   state.turnNumber = snap.turnNumber;
+  state.ostatni = snap.ostatni && typeof snap.ostatni === 'object' ? { ...snap.ostatni } : {};
   state.winner = snap.winner ?? null;
   state.lava = typeof snap.lava === 'number' ? snap.lava : T.LAVA_Y;
   state.skrzynki = [];

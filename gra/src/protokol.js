@@ -6,7 +6,10 @@
    1. Każda tura ma dokładnie jedną kanoniczną AKCJĘ: pierwszy w logu
       'strzal' albo 'pas' z numerem otwartej tury, od kogoś uprawnionego.
       Strzał niesie pełny stan robali i gotowy wektor startowy, więc każdy
-      odtwarza lot co do bitu.
+      odtwarza lot co do bitu. Strzał idzie od razu, a 5 s ucieczki po nim
+      leci za nim paczkami 'odwrot' (od, b = RLE, koniec) — odbiorcy grają
+      ucieczkę na żywo, tylko o ułamek sekundy za strzelcem. Gdy strzelec
+      zniknie w trakcie, gospodarz domyka ucieczkę ('odwrot' z `za`, koniec).
    2. Tura kończy się kanonicznym STANEM: pierwszym 'stan' w logu, który
       powstał z kanonicznej akcji. Stan niesie cały świat na początek
       następnej tury (kratery, robale, kolejka).
@@ -21,8 +24,10 @@
    gra pełne partie kilkoma klientami z opóźnieniami i rozłączeniami. */
 
 import * as S from './sim.js';
+import { hashTekstu } from './rng.js';
+import { TRYBY } from './druzyny.js';
 
-export const GRACE_PAS = 12;          // s po terminie tury, zanim gospodarz odda ją za gracza (strzał wychodzi po 5 s ruchu)
+export const GRACE_PAS = 12;          // s po terminie tury, zanim gospodarz odda ją za gracza
 export const ROZLACZONY_PAS = 15;     // s bez pulsu gracza z turą — tura oddana od razu
 export const ROZLACZONY_WYRZUC = 90;  // s bez pulsu — robal znika na granicy tury
 export const ZYWY_PULS = 20;          // s — dłuższa cisza wyklucza z wyboru gospodarza
@@ -30,10 +35,15 @@ export const ZASTEPCZY_STAN = 4;      // s czekania na stan od autora akcji
 export const START_ZWLOKA = 3;        // s na załadowanie planszy po starcie partii
 export const DOGON_PO = 2;            // s — starszego stanu nie animujemy, tylko do niego skaczemy
 export const PORZUCONA_PO = S.TURN_TIME + GRACE_PAS + 35;   // s ciszy = partia porzucona
-export const ODLICZANIE_S = 20;       // s od zebrania się 2+ graczy do startu partii
-/* Startu nie da się przyspieszyć (od 4.1 nie ma przycisku „Zaczynamy”). Termin
-   krótszy niż tyle sekund od stempla serwera to wpis ze starej wersji gry. */
-const ODLICZANIE_MIN_S = ODLICZANIE_S - 5;
+export const ODLICZANIE_S = 5;        // s od chwili, gdy wszyscy dali GOTOWY, do startu partii
+export const WERSJA = 2;              // wersja protokołu lobby (4.2: drużyny i gotowość)
+export const MAX_GRACZY = 8;          // w partii; kolejni w lobby oglądają
+
+/* Ucieczka na żywo. */
+export const ODWROT_CO = 120;         // ms między paczkami ruchów ucieczki
+const ODWROT_PONOW = 1500;            // ms bez potwierdzenia w logu = wyślij od potwierdzonego miejsca
+const ODWROT_CISZA = 4000;            // ms bez paczki od strzelca — gospodarz domyka ucieczkę
+const ODWROT_BUFOR = 14;              // kroki (~0,12 s) zapasu, zanim odbiorca ruszy z ucieczką
 
 export function kluczAkcji(a) {
   return a ? a.t + ':' + a.id : null;
@@ -45,8 +55,10 @@ export function zloz(zdarzenia) {
   const p = {
     faza: 'lobby',
     seed: null,
-    gracze: [],            // uczestnicy bieżącej partii
-    wLobby: [],            // zgłoszeni, czekają na start
+    gracze: [],            // uczestnicy bieżącej partii (z polem druzyna)
+    druzyny: 0,            // tryb bieżącej partii: 0 = każdy na każdego, n = tyle drużyn
+    wLobby: [],            // zgłoszeni: { id, name, color, v, druzyna, druzynaNr, gotowy }
+    tryb: 0,               // tryb ustawiony w lobby przez gospodarza
     odliczanieDo: null,    // termin startu w czasie SERWERA
     ostatniaAktywnosc: 0,  // czas serwera ostatniego zdarzenia partii
     zwyciezca: null,
@@ -58,23 +70,71 @@ export function zloz(zdarzenia) {
     akcje: new Map(),      // nr tury -> kanoniczna akcja
     stany: new Map(),      // nr tury -> kanoniczny stan zamykający tę turę
     ostatniStan: null,
+    odwroty: new Map(),    // nr tury -> { bity, koniec, za, st, czeka } — ucieczka po kanonicznym strzale
+    paczkiPrzed: new Map(),// nr tury -> paczki ucieczki, które przyszły przed strzałem
     odeszli: new Map()     // id -> czas wyjścia
   };
 
   const aktywnosc = (z) => { p.ostatniaAktywnosc = Math.max(p.ostatniaAktywnosc, z.st || 0); };
+  // Zmiana składu drużyn: gotowość trzeba potwierdzić jeszcze raz, odliczanie staje.
+  const zmianaSkladu = () => {
+    for (const g of p.wLobby) g.gotowy = false;
+    p.odliczanieDo = null;
+  };
+  const wLobby = (id) => p.wLobby.find((g) => g.id === id);
 
-  for (const z of zdarzenia) {
+  for (let i = 0; i < zdarzenia.length; i++) {
+    const z = zdarzenia[i];
     if (!z || typeof z.t !== 'string') continue;
     switch (z.t) {
       case 'dolacz': {
-        const byl = p.wLobby.find((g) => g.id === z.id);
-        if (byl) { byl.name = z.name; byl.color = z.color; }
-        else if (typeof z.id === 'string') p.wLobby.push({ id: z.id, name: String(z.name || '?'), color: z.color });
+        const byl = wLobby(z.id);
+        if (byl) { byl.name = z.name; byl.color = z.color; byl.v = z.v | 0; }
+        else if (typeof z.id === 'string') {
+          p.wLobby.push({ id: z.id, name: String(z.name || '?'), color: z.color, v: z.v | 0, druzyna: null, druzynaNr: 0, gotowy: false });
+          p.odliczanieDo = null;      // nowy gracz jeszcze nie jest gotowy
+        }
+        break;
+      }
+
+      case 'tryb':
+        if (!TRYBY.includes(z.druzyny) || z.druzyny === p.tryb) break;
+        p.tryb = z.druzyny;
+        for (const g of p.wLobby) g.druzyna = null;    // drużyny losują się od nowa
+        zmianaSkladu();
+        break;
+
+      case 'druzyna': {
+        const g = wLobby(z.kto);
+        if (!g || !Number.isInteger(z.d) || z.d < 0 || z.d >= Math.max(1, p.tryb)) break;
+        if (z.auto && g.druzyna === z.d) break;
+        g.druzyna = z.d;
+        g.druzynaNr = i;
+        if (!z.auto) zmianaSkladu();
+        break;
+      }
+
+      case 'zamien': {
+        const a = wLobby(z.a), b = wLobby(z.b);
+        if (!a || !b || a === b || !Number.isInteger(z.da) || !Number.isInteger(z.db)) break;
+        // drużyny, jakie obaj mieli na ekranie gospodarza (auto-przydział mógł nie dojść do logu)
+        a.druzyna = z.db; b.druzyna = z.da;
+        a.druzynaNr = b.druzynaNr = i;
+        zmianaSkladu();
+        break;
+      }
+
+      case 'gotowy': {
+        const g = wLobby(z.id);
+        if (!g) break;
+        g.gotowy = !!z.tak;
+        if (!g.gotowy) p.odliczanieDo = null;
         break;
       }
 
       case 'wyjdz':
         p.wLobby = p.wLobby.filter((g) => g.id !== z.id);
+        p.odliczanieDo = null;
         if (p.faza === 'gra' && p.gracze.some((g) => g.id === z.id) && !p.odeszli.has(z.id)) {
           p.odeszli.set(z.id, z.st || 0);
           aktywnosc(z);
@@ -82,11 +142,12 @@ export function zloz(zdarzenia) {
         break;
 
       case 'odliczanie':
-        // Wygrywa OSTATNI opublikowany termin (patrz historia: wariant
-        // „najwcześniejszy wygrywa” zakleszczał się na starym wpisie).
-        // Termin „na zaraz” (dawny przycisk przyspieszenia) jest pomijany.
+        // Wygrywa OSTATNI opublikowany termin. Od 4.2 odliczanie rusza dopiero,
+        // gdy wszyscy są gotowi (v 2); wpisy starej wersji (samo 20 s) są pomijane,
+        // tak samo termin „na zaraz” (dawny przycisk przyspieszenia).
         if (z.anuluj) p.odliczanieDo = null;
-        else if (typeof z.do === 'number' && !(z.st && z.do - z.st < ODLICZANIE_MIN_S * 1000)) p.odliczanieDo = z.do;
+        else if (typeof z.do === 'number' && (z.v | 0) >= WERSJA &&
+                 !(z.st && z.do - z.st < (ODLICZANIE_S - 2) * 1000)) p.odliczanieDo = z.do;
         break;
 
       case 'nowa': {
@@ -94,10 +155,15 @@ export function zloz(zdarzenia) {
         p.faza = 'gra';
         p.seed = z.seed >>> 0;
         p.gracze = z.gracze;
+        p.druzyny = TRYBY.includes(z.druzyny) ? z.druzyny : 0;
+        p.tryb = p.druzyny;
         // Log jest zerowany przy nowej partii — lista lobby startuje od graczy
-        // partii w tej samej kolejności, więc gospodarz zostaje ten sam.
+        // partii w tej samej kolejności (gospodarz zostaje ten sam), w tych samych drużynach.
         p.wLobby = z.gracze.filter((g) => g && typeof g.id === 'string')
-          .map((g) => ({ id: g.id, name: String(g.name || '?'), color: g.color }));
+          .map((g, k) => ({
+            id: g.id, name: String(g.name || '?'), color: g.color, v: z.v | 0,
+            druzyna: p.druzyny && Number.isInteger(g.druzyna) ? g.druzyna : null, druzynaNr: -100 + k, gotowy: false
+          }));
         p.odliczanieDo = null;
         p.startSt = z.st || 0;
         p.kolejnosc = S.kolejnoscTur(p.seed, p.gracze.map((g) => g.id));
@@ -106,6 +172,8 @@ export function zloz(zdarzenia) {
         p.aktywny = p.kolejnosc[0];
         p.akcje = new Map();
         p.stany = new Map();
+        p.odwroty = new Map();
+        p.paczkiPrzed = new Map();
         p.ostatniStan = null;
         p.odeszli = new Map();
         p.zwyciezca = null;
@@ -118,8 +186,43 @@ export function zloz(zdarzenia) {
         if (p.faza !== 'gra' || z.nr !== p.tura || p.akcje.has(z.nr)) break;
         if (!mozeDzialac(p, z)) break;
         p.akcje.set(z.nr, z);
+        if (z.t === 'strzal') {
+          // stary zapis: całe nagranie ucieczki w strzale
+          const pelne = Array.isArray(z.odwrot);
+          const o = { bity: pelne ? S.rozwinOdwrot(z.odwrot) : [], koniec: pelne, za: null, st: z.st || 0, czeka: new Map() };
+          p.odwroty.set(z.nr, o);
+          for (const pz of p.paczkiPrzed.get(z.nr) || []) if (pz.id === z.id) dolozPaczke(o, pz);
+          p.paczkiPrzed.delete(z.nr);
+        }
         aktywnosc(z);
         break;
+
+      case 'odwrot': {
+        // Paczka ruchów ucieczki: tylko po kanonicznym strzale tej tury i tylko
+        // od jego autora. Składana ciągiem po `od` — paczka z przyszłości czeka
+        // na brakujące, duplikaty odpadają.
+        // Także dla tury już zamkniętej stanem: odbiorca może jeszcze grać jej
+        // ucieczkę (paczka i stan mogły przyjść w dowolnej kolejności).
+        if (p.faza === 'lobby' || typeof z.nr !== 'number' || z.nr > p.tura || typeof z.id !== 'string') break;
+        const a = p.akcje.get(z.nr);
+        if (!a) {
+          // paczka wyprzedziła strzał (inna droga w sieci) — poczeka na niego
+          const lista = p.paczkiPrzed.get(z.nr) || [];
+          if (lista.length < 80) lista.push(z);
+          p.paczkiPrzed.set(z.nr, lista);
+          break;
+        }
+        const o = p.odwroty.get(z.nr);
+        if (a.t !== 'strzal' || !o || o.koniec) break;
+        if (z.id === a.id) {
+          dolozPaczke(o, z);
+        } else if (z.za === a.id && z.koniec) {
+          o.koniec = true;         // gospodarz domyka: reszta kroków = robal stoi
+          o.za = z.id;
+          o.st = z.st || o.st;
+        }
+        break;
+      }
 
       case 'stan': {
         if (p.faza !== 'gra' || z.nr !== p.tura) break;
@@ -143,6 +246,24 @@ export function zloz(zdarzenia) {
   return p;
 }
 
+/* Paczka ucieczki do składanki `o` (ciągiem po `od`). */
+function dolozPaczke(o, z) {
+  if (typeof z.od !== 'number' || z.od < 0) return;
+  o.st = Math.max(o.st, z.st || 0);
+  if (z.od > o.bity.length) {
+    if (o.czeka.size < 80) o.czeka.set(z.od, z);
+    return;
+  }
+  const bity = S.rozwinOdwrot(z.b);
+  for (let i = o.bity.length - z.od; i < bity.length && o.bity.length < S.ODWROT_KROKI; i++) o.bity.push(bity[i]);
+  if (z.koniec && z.od + bity.length >= o.bity.length) o.koniec = true;
+  const dalej = o.czeka.get(o.bity.length);
+  if (dalej && !o.koniec) {
+    o.czeka.delete(o.bity.length);
+    dolozPaczke(o, dalej);
+  }
+}
+
 /* Strzelać może tylko gracz z turą. Oddać ją za kogoś innego wolno,
    gdy wyszedł, gdy wypadł z sieci (to widzi tylko gospodarz, więc mu
    ufamy) albo po terminie z zapasem. */
@@ -164,10 +285,57 @@ export function partiaZywa(p, teraz, polaczony) {
   return p.gracze.some((g) => !p.odeszli.has(g.id) && polaczony(g.id));
 }
 
+/* ---------- lobby: kto gra i w jakiej drużynie ---------- */
+
+export function pojemnoscDruzyny(n) {
+  return n ? Math.ceil(MAX_GRACZY / n) : 1;
+}
+
+/* Rozstawienie obecnych w lobby: pierwszych MAX_GRACZY (kolejność wejścia)
+   gra, reszta czeka. W trybie drużynowym każdy trzyma swoją drużynę, o ile
+   jest w niej miejsce — pierwszeństwo ma ten, kto do niej trafił wcześniej
+   (druzynaNr); pozostali trafiają do drużyny z najmniejszą liczbą graczy
+   (przy remisie „losowo”, ale tak samo u wszystkich — z hasha id).
+   `jest(id)` — czy gracz jest obecny (obecność zna tylko main.js). */
+export function rozstaw(p, jest = () => true) {
+  const obecni = p.wLobby.filter((g) => jest(g.id));
+  const gracze = obecni.slice(0, MAX_GRACZY);
+  const widzowie = obecni.slice(MAX_GRACZY);
+  const n = p.tryb;
+  if (!n) return { n, gracze: gracze.map((g, i) => ({ ...g, druzyna: i })), widzowie, pojemnosc: 1 };
+  const cap = pojemnoscDruzyny(n);
+  const ile = new Array(n).fill(0);
+  const wynik = new Map();
+  const zPrzydzialem = gracze
+    .filter((g) => Number.isInteger(g.druzyna) && g.druzyna < n)
+    .sort((a, b) => a.druzynaNr - b.druzynaNr);
+  for (const g of zPrzydzialem) {
+    if (ile[g.druzyna] < cap) { wynik.set(g.id, g.druzyna); ile[g.druzyna]++; }
+  }
+  for (const g of gracze) {
+    if (wynik.has(g.id)) continue;
+    const min = Math.min(...ile);
+    const wolne = [];
+    for (let d = 0; d < n; d++) if (ile[d] === min) wolne.push(d);
+    const d = wolne[parseInt(hashTekstu(g.id), 16) % wolne.length];
+    wynik.set(g.id, d);
+    ile[d]++;
+  }
+  return { n, gracze: gracze.map((g) => ({ ...g, druzyna: wynik.get(g.id) })), widzowie, pojemnosc: cap };
+}
+
+/* Czy można startować: 2+ graczy, wszyscy gotowi, a w trybie drużynowym
+   co najmniej dwie drużyny z kimś w środku. */
+export function gotowiDoStartu(rozstawienie) {
+  const { n, gracze } = rozstawienie;
+  if (gracze.length < 2 || !gracze.every((g) => g.gotowy)) return false;
+  return !n || new Set(gracze.map((g) => g.druzyna)).size >= 2;
+}
+
 /* ---------- rozgrywka po stronie klienta ---------- */
 
 export function nowaRozgrywka(pokoj, mojeId) {
-  const state = S.createGame(pokoj.seed, pokoj.gracze, { sieciowa: true });
+  const state = S.createGame(pokoj.seed, pokoj.gracze, { sieciowa: true, druzyny: pokoj.druzyny > 0 });
   const r = {
     mojeId,
     seed: pokoj.seed,
@@ -184,6 +352,11 @@ export function nowaRozgrywka(pokoj, mojeId) {
     ui: [],                // sygnały dla interfejsu
     ostatniRuch: '',
     ostatniRuchCzas: 0,
+    odwrotWyslane: 0,      // ile kroków mojej ucieczki poszło już do sieci
+    odwrotCzas: -Infinity, // kiedy wysłałem ostatnią paczkę
+    odwrotRuszyl: false,   // odbiorca: bufor ucieczki się napełnił, gramy
+    odwrotKoniec: false,   // wysłałem już paczkę z końcem ucieczki
+    odwrotPotw: 0, odwrotPotwCzas: 0, odwrotPonowCzas: 0,   // postęp potwierdzony w logu
     statystyki: { korekty: 0, przesymulowania: 0, skoki: 0 }
   };
   if (pokoj.ostatniStan) wejdzWStan(r, pokoj.ostatniStan);
@@ -233,6 +406,21 @@ export function klatka(r, pokoj, ctx) {
     else przesymuluj(r, a);
   }
 
+  // 1b. Ucieczka po strzale: dopisz kroki z logu (odbiorca) albo — gdy ucieczkę
+  //     domknął za mnie gospodarz — zagraj ją jak odbiorca.
+  const o = a && a.t === 'strzal' && r.zastosowana === kluczAkcji(a) ? pokoj.odwroty.get(nr) : null;
+  if (o) {
+    if (st.odwrotNagranie && o.za) {
+      przesymuluj(r, a);             // moja ucieczka urwała się w sieci — kanon jest krótszy
+    }
+    if (!st.odwrotNagranie && st.odwrotPlan) {
+      const znane = st.odwrotPlan.length;
+      if (o.bity.length > znane || (o.koniec && !st.odwrotPelny)) {
+        S.dopiszOdwrot(st, o.bity.slice(znane), o.koniec);
+      }
+    }
+  }
+
   // 2. Moja tura: termin, auto-pas, wysyłka strzału.
   const mojaTura = otwarta && !r.obserwator && pokoj.aktywny === r.mojeId;
   const termin = otwarta ? pokoj.turaOdkad + S.TURN_TIME * 1000 : null;
@@ -265,10 +453,34 @@ export function klatka(r, pokoj, ctx) {
     }
   }
 
-  // 4. Symulacja stałym krokiem.
-  r.akumulator = Math.min(r.akumulator + ctx.dt, 0.5);
+  // 3b. Strzelec zniknął w trakcie ucieczki — jego zastępca ją domyka.
+  const zastepca = a && a.id !== r.mojeId && jestemGospodarzem(r, pokoj, ctx, a.id);
+  if (o && zastepca && !o.koniec && (
+    pokoj.odeszli.has(a.id) ||
+    rozlaczonyOd(r, pokoj, ctx, a.id) >= ROZLACZONY_PAS * 1000 ||
+    ctx.teraz - o.st >= ODWROT_CISZA
+  )) {
+    wyslijRaz(r, 'odwrot-koniec:' + nr, { t: 'odwrot', nr, id: r.mojeId, za: a.id, koniec: 1 }, ctx.teraz, 3000);
+  }
+
+  // 4. Symulacja stałym krokiem. Odbiorca ucieczki trzyma mały zapas kroków
+  //    (bufor na wahania sieci): rusza, gdy go uzbiera, a gdy zapas rośnie
+  //    (np. po zacięciu sieci), gra odrobinę szybciej, żeby dogonić.
+  const zapas = S.zapasOdwrotu(st);
+  let tempo = 1;
+  if (zapas !== Infinity) {
+    if (!r.odwrotRuszyl && zapas >= ODWROT_BUFOR) r.odwrotRuszyl = true;
+    if (!r.odwrotRuszyl) tempo = 0;
+    else if (zapas > ODWROT_BUFOR * 3) tempo = 1.25;
+  }
+  r.akumulator = Math.min(r.akumulator + ctx.dt * tempo, 0.5);
   let kroki = 0;
   while (r.akumulator >= S.DT && kroki < 120) {
+    if (S.czekaNaOdwrot(st)) {
+      r.akumulator = Math.min(r.akumulator, S.DT);   // nie nadrabiamy czekania skokiem
+      r.odwrotRuszyl = false;                          // znów zbieramy zapas
+      break;
+    }
     S.step(st);
     r.akumulator -= S.DT;
     kroki++;
@@ -278,6 +490,7 @@ export function klatka(r, pokoj, ctx) {
   if (r.mojaAkcja && otwarta && !a && r.mojaAkcja.nr === nr) {
     wyslijRaz(r, 'akcja:' + nr, r.mojaAkcja, ctx.teraz, 2500);
   }
+  wyslijOdwrot(r, pokoj, ctx);        // po strzale — kolejność w logu: najpierw strzał, potem paczki
 
   // 5. Koniec tury: przyjmij stan z logu albo go opublikuj.
   if (st.phase === 'koniec') {
@@ -287,7 +500,7 @@ export function klatka(r, pokoj, ctx) {
       wejdzWStan(r, stan);
     } else if (a && r.zastosowana === kluczAkcji(a)) {
       const autor = a.id === r.mojeId;
-      const zastepczo = gosp && (
+      const zastepczo = zastepca && (
         pokoj.odeszli.has(a.id) ||
         rozlaczonyOd(r, pokoj, ctx, a.id) >= ROZLACZONY_PAS * 1000 ||
         ctx.teraz - r.koniecOd >= ZASTEPCZY_STAN * 1000
@@ -376,6 +589,7 @@ function przesymuluj(r, a) {
   if (r.mojaAkcja && kluczAkcji(r.mojaAkcja) !== kluczAkcji(a)) r.mojaAkcja = null;
   r.koniecOd = null;
   r.akumulator = 0;
+  r.odwrotRuszyl = false;
   zastosujAkcje(r, a);
   r.ui.push({ typ: 'przesymulowano', przebudowa });
 }
@@ -411,6 +625,13 @@ function wejdzWStan(r, stan) {
   r.akumulator = 0;
   r.proby.clear();
   r.ostatniRuch = '';
+  r.odwrotWyslane = 0;
+  r.odwrotCzas = -Infinity;
+  r.odwrotRuszyl = false;
+  r.odwrotKoniec = false;
+  r.odwrotPotw = 0;
+  r.odwrotPotwCzas = 0;
+  r.odwrotPonowCzas = 0;
 
   const ja = st.worms.find((w) => w.id === r.mojeId);
   if (ja && ja.odszedl && !r.obserwator) {
@@ -430,6 +651,39 @@ function mojPas(r, powod) {
   const z = { t: 'pas', nr: st.turnNumber, id: r.mojeId, powod, robale: S.stanRobali(st), kratery: S.plaskieKratery(st), skrzynki: S.stanSkrzynek(st) };
   r.mojaAkcja = z;
   zastosujAkcje(r, z);
+}
+
+/* Moja ucieczka po strzale → paczki do logu, ciągiem od miejsca, które
+   log już potwierdził. Ostatnia paczka ma `koniec`. */
+function wyslijOdwrot(r, pokoj, ctx) {
+  const st = r.state;
+  const nag = st.odwrotNagranie;
+  const m = r.mojaAkcja;
+  if (!nag || !m || m.t !== 'strzal' || m.nr !== st.turnNumber) return;
+  const a = pokoj.akcje.get(m.nr);
+  if (a && kluczAkcji(a) !== kluczAkcji(m)) return;           // przegrałem wyścig — nie moja ucieczka
+  const o = a ? pokoj.odwroty.get(m.nr) : null;
+  if (o && o.koniec) return;
+  const potwierdzone = o ? o.bity.length : 0;
+  if (!r.odwrotPotwCzas) r.odwrotPotwCzas = ctx.teraz;
+  if (potwierdzone !== r.odwrotPotw) { r.odwrotPotw = potwierdzone; r.odwrotPotwCzas = ctx.teraz; }
+  if (r.odwrotWyslane < potwierdzone) r.odwrotWyslane = potwierdzone;
+  if (r.odwrotWyslane > potwierdzone && ctx.teraz - Math.max(r.odwrotPotwCzas, r.odwrotPonowCzas) >= ODWROT_PONOW) {
+    r.odwrotWyslane = potwierdzone;                             // coś zginęło po drodze — od potwierdzonego
+    r.odwrotPonowCzas = ctx.teraz;
+  }
+  const skonczona = st.phase !== 'odwrot';
+  const nowe = nag.length - r.odwrotWyslane;
+  let pora;
+  if (nowe > 0) pora = skonczona || ctx.teraz - r.odwrotCzas >= ODWROT_CO;
+  else pora = skonczona && r.odwrotWyslane === potwierdzone &&
+    (!r.odwrotKoniec || ctx.teraz - r.odwrotCzas >= ODWROT_PONOW);   // sam „koniec” (albo jego powtórka)
+  if (!pora) return;
+  const z = { t: 'odwrot', nr: m.nr, id: r.mojeId, od: r.odwrotWyslane, b: S.zwinOdwrot(nag.slice(r.odwrotWyslane)) };
+  if (skonczona) { z.koniec = 1; r.odwrotKoniec = true; }
+  r.doWyslania.push(z);
+  r.odwrotWyslane = nag.length;
+  r.odwrotCzas = ctx.teraz;
 }
 
 /* Strzały oddane lokalnie (spust, pełna moc, koniec czasu) → do logu. */
@@ -459,9 +713,11 @@ export function rozlaczonyOd(r, pokoj, ctx, id) {
 }
 
 /* Gospodarz partii: najmniejsze id wśród połączonych uczestników, którzy
-   nie wyszli. Gdy takich nie ma — wśród wszystkich połączonych (widzów). */
-export function jestemGospodarzem(r, pokoj, ctx) {
-  const zywy = (id) => rozlaczonyOd(r, pokoj, ctx, id) < ZYWY_PULS * 1000;
+   nie wyszli. Gdy takich nie ma — wśród wszystkich połączonych (widzów).
+   `bez` — z pominięciem tego gracza: zastępca autora akcji (domknięcie
+   ucieczki, stan zastępczy) nie czeka, aż sam autor przestanie być gospodarzem. */
+export function jestemGospodarzem(r, pokoj, ctx, bez = null) {
+  const zywy = (id) => id !== bez && rozlaczonyOd(r, pokoj, ctx, id) < ZYWY_PULS * 1000;
   const usuniety = (id) => {
     const w = r.state.worms.find((x) => x.id === id);
     return !w || w.odszedl;
