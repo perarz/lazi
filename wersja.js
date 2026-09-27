@@ -5,6 +5,15 @@
 (function () {
   var historia = [
     {
+      wersja: '4.3.1', data: '2026-09-27', tytul: 'Emotki, tańce i lawa na zamówienie',
+      zmiany: [
+        'Emotki w Arenie: stuknij chmurkę 💬 w rogu (albo klawisz E) — w swojej turze i w cudzej — i wybierz GG, 😄, EZ, 😂 albo 😱. Nad robalem wyskakuje dymek. Do tego dwa tańce: taniec szczęścia (podskoki) i taniec robaczka (wężyk).',
+        'Oczko 👁 z liczbą w rogu ekranu pokazuje, ile osób ogląda partię z boku.',
+        'Bronie w ustawieniach partii: już tylko dwa zestawy — normalne limity (kij tylko ze skrzynek) albo Szał, gdzie wszystko jest bez limitu.',
+        'Lawa w ustawieniach: od kiedy rośnie (od 6. rundy jak dotąd, od 10., 20., 30. albo 45. tury, albo wcale) i jak szybko (wolno, normalnie, szybko, błyskawicznie). Na wysokich mapach lawa sięga teraz aż pod szczyty.'
+      ]
+    },
+    {
       wersja: '4.3', data: '2026-09-27', tytul: 'Lobby gospodarza: własne zasady partii',
       zmiany: [
         'Nowe, szalone mapy: dużo wyższe góry, kilka pięter jaskiń jedna nad drugą, wielkie hale, pionowe kominy między poziomami i więcej wiszących skał.',

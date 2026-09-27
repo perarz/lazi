@@ -610,14 +610,14 @@ test('odchodzacy jest pomijany w kolejce', () => {
 test('ustawienia partii: zycie, bronie, wiatr, czas tury; bez ustawien jak dawniej', () => {
   const zwykla = S.createGame(77, players(2));
   assert(zwykla.worms[0].hp === 100 && zwykla.turnTimeLeft === S.TURN_TIME && zwykla.worms[0].amunicja.nalot === 1, 'domyslne inne niz dawniej');
-  const st = S.createGame(77, players(2), { ustawienia: { hp: 200, czas: 45, bronie: 'podwojny', wiatr: 0 } });
+  const st = S.createGame(77, players(2), { ustawienia: { hp: 200, czas: 45, wiatr: 0 } });
   assert(st.worms[0].hp === 200 && st.turnTimeLeft === 45, 'hp albo czas nie z ustawien');
-  assert(st.worms[0].amunicja.nalot === 2 && st.worms[0].amunicja.most === 6 && st.worms[0].amunicja.kij === 0, 'podwojna amunicja zle');
+  assert(st.worms[0].amunicja.nalot === 1 && st.worms[0].amunicja.kij === 0, 'normalne limity zle');
   assert(st.wind === 0 && Object.is(st.wind, 0), 'wiatr mimo „bez wiatru”: ' + st.wind);
   const hur = S.createGame(77, players(2), { ustawienia: { wiatr: 2 } });
   assert(Math.abs(hur.wind) > Math.abs(zwykla.wind), 'huragan nie silniejszy');
-  const kl = S.createGame(77, players(2), { ustawienia: { bronie: 'klasyka' } });
-  assert(kl.worms[0].amunicja.teleport === 0 && !S.mozeStrzelic(kl, 'teleport') && kl.worms[0].amunicja.dynamit === 2, 'klasyka zle');
+  const stary = S.createGame(77, players(2), { ustawienia: { bronie: 'klasyka' } });   // usunięty w 4.3.1 zestaw = normalny
+  assert(stary.ust.bronie === 'pelny' && stary.worms[0].amunicja.teleport === 1, 'stary zestaw broni nie wrocil do normalnego');
   const szal = S.createGame(77, players(2), { ustawienia: { bronie: 'szalony' } });
   assert(Object.keys(szal.worms[0].amunicja).length === 0 && S.mozeStrzelic(szal, 'kij'), 'szal ma limity');
   // ustawienia przeżywają granicę tury (stanPoTurze → snapshot)
@@ -640,9 +640,16 @@ test('ustawienia partii: bez nagłej śmierci lawa stoi, bez zrzutów nic nie sp
   assert(bez.lava === start, 'lawa wzbiera mimo „nigdy”');
   assert(skrzynki === 0, 'skrzynki mimo wylaczonych zrzutow');
   assert(szal.skrzynki.length > 0 && szal.skrzynki.every((c) => c.typ === 'apteczka'), 'w szale zapas albo brak skrzynek');
-  const krotka = S.createGame(11, players(2), { sieciowa: true, ustawienia: { lawa: 3 } });
-  for (let i = 0; i < 2 * 3 + 1; i++) nastepnaTura(krotka);
-  assert(krotka.lava < start, 'lawa po 3 rundach nie wzbiera');
+  // od 10. tury, błyskawicznie (40 px na turę) — i rośnie wyżej niż dawne 260 px
+  const krotka = S.createGame(11, players(2), { sieciowa: true, ustawienia: { lawa: 10, lawaTempo: 40 } });
+  for (let i = 0; i < 9; i++) nastepnaTura(krotka);
+  assert(krotka.lava === start, 'lawa ruszyla przed 10. tura');
+  nastepnaTura(krotka);
+  assert(krotka.lava === start - 40, 'lawa od 10. tury nie o 40 px: ' + (start - krotka.lava));
+  krotka.lava = 270;
+  for (const w of krotka.worms) { w.y = 100; w.vy = 0; }   // żeby partia trwała
+  nastepnaTura(krotka);
+  assert(krotka.lava === 230, 'lawa stanela na dawnym limicie 260 px: ' + krotka.lava);
 });
 
 test('mapa wybrana w lobby: styl ze seeda zgadza sie z generatorem', () => {

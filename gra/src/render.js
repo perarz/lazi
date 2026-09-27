@@ -234,7 +234,8 @@ export function draw(r, state, cam, fx, dt, opcje = {}) {
       rozlaczony: !!opcje.rozlaczeni && opcje.rozlaczeni.has(w.id),
       moc: w === akt && state.phase === 'aim' ? (w.widok ? w.widok.moc : state.charging ? state.power : 0) : 0,
       bron: w === akt ? (w.widok ? w.widok.bron : state.weapon) : null,
-      hpMax: state.ust ? state.ust.hp : 100
+      hpMax: state.ust ? state.ust.hp : 100,
+      emotka: opcje.emotki ? opcje.emotki.get(w.id) || null : null
     });
   }
 
@@ -569,12 +570,60 @@ function drawProjectile(ctx, p) {
   ctx.restore();
 }
 
+/* Robal z emotką albo w tańcu (od 4.3.1): taniec to tylko przesunięcie
+   i obrót rysunku — symulacja o niczym nie wie. o.emotka = { tekst, taniec, t (s), dl (s) }. */
 function drawWorm(ctx, w, isActive, time, o) {
+  const e = o.emotka;
+  if (!e) { rysujRobala(ctx, w, isActive, time, o); return; }
+  let dx = 0, dy = 0, odwroc = false;
+  if (e.taniec === 'szczescie') {
+    dy = -Math.abs(Math.sin(e.t * 9)) * 12;          // podskoki
+    odwroc = Math.floor(e.t * 2.2) % 2 === 1;        // obrót co skok albo dwa
+  } else if (e.taniec === 'robak') {
+    dx = Math.sin(e.t * 11) * 5;                     // wężyk na boki
+    dy = -Math.abs(Math.sin(e.t * 5.5)) * 4;
+    odwroc = Math.sin(e.t * 5.5) < 0;
+  }
+  ctx.save();
+  ctx.translate(dx, dy);
+  rysujRobala(ctx, w, isActive, time, { ...o, bron: e.taniec ? null : o.bron, odwroc });
+  ctx.restore();
+  if (e.tekst) dymekEmotki(ctx, w.widok || w, e);
+}
+
+/* Dymek nad głową: wyskakuje, trzyma się i znika pod koniec. */
+function dymekEmotki(ctx, v, e) {
+  const wejscie = Math.min(1, e.t / 0.18);
+  const znikanie = Math.min(1, Math.max(0, (e.dl - e.t) / 0.4));
+  const skala = 0.6 + 0.4 * wejscie;
+  const x = v.x, y = v.y - WORM_H - 44;
+  ctx.save();
+  ctx.globalAlpha = znikanie;
+  ctx.translate(x, y);
+  ctx.scale(skala, skala);
+  ctx.font = '800 16px system-ui, sans-serif';
+  const szer = Math.max(34, ctx.measureText(e.tekst).width + 18);
+  ctx.fillStyle = 'rgba(255, 250, 240, 0.96)';
+  ctx.strokeStyle = 'rgba(0, 0, 0, 0.55)';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.roundRect ? ctx.roundRect(-szer / 2, -14, szer, 28, 12) : ctx.rect(-szer / 2, -14, szer, 28);
+  ctx.moveTo(-5, 14); ctx.lineTo(0, 22); ctx.lineTo(5, 14);
+  ctx.fill();
+  ctx.stroke();
+  ctx.fillStyle = '#1a1210';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(e.tekst, 0, 1);
+  ctx.restore();
+}
+
+function rysujRobala(ctx, w, isActive, time, o) {
   // Cudzy robal w trakcie tury: pozycja i celownik z podglądu na żywo.
   const v = w.widok || w;
   const cx = v.x;
   const cy = v.y - WORM_H / 2;
-  const facing = v.facing ?? w.facing;
+  const facing = (v.facing ?? w.facing) * (o.odwroc ? -1 : 1);
   const angle = v.angle ?? w.angle;
 
   if (isActive) {

@@ -13,7 +13,7 @@
 import { mulberry32, hashNumbers, hashTekstu } from './rng.js';
 import * as T from './terrain.js';
 import { WEAPONS, WEAPON_ORDER, startowaAmunicja } from './weapons.js';
-import { normalizuj, KLASYKA, WIATR_MNOZNIK } from './ustawienia.js';
+import { normalizuj, WIATR_MNOZNIK } from './ustawienia.js';
 
 export const DT = 1 / 120;          // stały krok symulacji, render interpoluje
 
@@ -47,7 +47,7 @@ const ODWROT_LEWO = 1, ODWROT_PRAWO = 2, ODWROT_SKOK = 4;
    żeby partia nie ciągnęła się w nieskończoność. Domyślnie — w partii state.ust.lawa. */
 export const LAWA_PO_RUNDACH = 6;
 const LAWA_ZA_TURE = 12;
-const LAWA_MIN = 260;
+const LAWA_MIN = 40;                // od 4.3.1 mapy są wysokie — lawa dochodzi prawie pod sufit
 
 /* Pięć odłamków kasetówki — stała tabela, żadnej losowości. */
 const ODLAMKI = [[-160, -220], [-80, -290], [0, -330], [80, -290], [160, -220]];
@@ -63,7 +63,6 @@ const INNE_ZAPASY = WEAPON_ORDER.filter((id) => WEAPONS[id].amunicja !== undefin
    z limitem, które są w tej partii dostępne (w „Szale” limitów nie ma wcale). */
 function zapasyDla(zestaw) {
   if (zestaw === 'szalony') return [];
-  if (zestaw === 'klasyka') return INNE_ZAPASY.filter((id) => KLASYKA.includes(id));
   return INNE_ZAPASY;
 }
 
@@ -110,7 +109,7 @@ export function createGame(seed, players, opcje = {}) {
     angle: spawns[i].x < T.WORLD_W / 2 ? -0.6 : Math.PI + 0.6,
     alive: true,
     onGround: true,
-    amunicja: startowaAmunicja(ust.bronie, KLASYKA),
+    amunicja: startowaAmunicja(ust.bronie),
     odszedl: false
   }));
 
@@ -989,9 +988,11 @@ function nextTurn(state) {
   }
 
   state.turnNumber++;
-  const lawaPo = state.ust.lawa;       // 0 = bez nagłej śmierci
-  if (lawaPo && state.turnNumber >= state.order.length * lawaPo) {
-    const nowa = Math.max(LAWA_MIN, state.lava - LAWA_ZA_TURE);
+  // ustawienie 'lawa': ujemne = po tylu rundach, dodatnie = od tej tury, 0 = nigdy
+  const lawa = state.ust.lawa;
+  const od = lawa < 0 ? state.order.length * -lawa : lawa;
+  if (lawa && state.turnNumber >= od) {
+    const nowa = Math.max(LAWA_MIN, state.lava - (state.ust.lawaTempo || LAWA_ZA_TURE));
     if (nowa !== state.lava) {
       state.lava = nowa;
       state.events.push({ type: 'lawa', y: nowa });

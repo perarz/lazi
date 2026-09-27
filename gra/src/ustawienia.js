@@ -21,7 +21,7 @@ export const USTAWIENIA = [
   },
   {
     klucz: 'bronie', nazwa: 'Bronie', dom: 'pelny',
-    opcje: [['pelny', 'Pełny arsenał'], ['podwojny', 'Podwójna amunicja'], ['klasyka', 'Klasyka'], ['szalony', 'Szał (bez limitu)']]
+    opcje: [['pelny', 'Normalne limity'], ['szalony', 'Szał (bez limitu)']]
   },
   {
     klucz: 'zrzuty', nazwa: 'Zrzuty skrzynek', dom: 40,
@@ -32,13 +32,15 @@ export const USTAWIENIA = [
     opcje: [[0, 'Bez wiatru'], [1, 'Normalny'], [2, 'Huragan']]
   },
   {
-    klucz: 'lawa', nazwa: 'Nagła śmierć', dom: 6,
-    opcje: [[3, 'Po 3 rundach'], [6, 'Po 6 rundach'], [10, 'Po 10 rundach'], [0, 'Nigdy']]
+    // ujemne = po tylu pełnych rundach (dawny standard), dodatnie = od tej tury, 0 = nigdy
+    klucz: 'lawa', nazwa: 'Lawa rośnie od', dom: -6,
+    opcje: [[-6, '6. rundy'], [10, '10. tury'], [20, '20. tury'], [30, '30. tury'], [45, '45. tury'], [0, 'Nigdy']]
+  },
+  {
+    klucz: 'lawaTempo', nazwa: 'Tempo lawy', dom: 12,
+    opcje: [[6, 'Wolno'], [12, 'Normalnie'], [24, 'Szybko'], [40, 'Błyskawicznie']]
   }
 ];
-
-/* Klasyka: tylko to, co było w Arenie od początku (plus kij ze skrzynek). */
-export const KLASYKA = ['bazooka', 'granat', 'strzelba', 'kasetowa', 'dynamit', 'kij'];
 
 /* Siła wiatru dla opcji 'wiatr' (mnożnik bazowego wiatru). */
 export const WIATR_MNOZNIK = [0, 1, 1.7];
@@ -75,7 +77,8 @@ export function opisZmian(u) {
   return USTAWIENIA.filter((o) => u[o.klucz] !== d[o.klucz]).map((o) => {
     const e = etykieta(o.klucz, u[o.klucz]);
     if (o.klucz === 'zrzuty') return 'zrzuty: ' + e.toLowerCase();
-    if (o.klucz === 'lawa') return 'lawa: ' + e.toLowerCase();
+    if (o.klucz === 'lawa') return u.lawa === 0 ? 'bez lawy' : 'lawa od ' + e.toLowerCase();
+    if (o.klucz === 'lawaTempo') return 'lawa: ' + e.toLowerCase();
     if (o.klucz === 'mapa') return 'mapa: ' + e;
     return e;
   });

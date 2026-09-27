@@ -126,7 +126,7 @@ function rzedy() {
 /* opts: { panel, tlo, siatka, opis, przycisk, zamknij, onWybierz(id) } — elementy z index.html. */
 export function createEkwipunek(opts) {
   let otwarty = false;
-  let stan = { wybrana: 'bazooka', amunicja: {}, moge: false, wylaczone: [], kto: null };
+  let stan = { wybrana: 'bazooka', amunicja: {}, moge: false, kto: null };
   const kafelki = new Map();
 
   for (const r of rzedy()) {
@@ -164,8 +164,6 @@ export function createEkwipunek(opts) {
   function rysuj(nowy) {
     stan = { ...stan, ...nowy };
     for (const [id, k] of kafelki) {
-      // bronie wyłączone w ustawieniach partii (zestaw „Klasyka”) znikają z siatki
-      k.b.classList.toggle('wylaczona', !!stan.wylaczone && stan.wylaczone.includes(id));
       const zapas = stan.amunicja ? stan.amunicja[id] : undefined;
       const pusta = zapas !== undefined && zapas <= 0;
       k.b.classList.toggle('wybrana', id === stan.wybrana);

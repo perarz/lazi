@@ -128,6 +128,20 @@ html, body {
   min-height: 40px;
 }
 .przycisk-hud:hover { border-color: var(--zar-jasny); }
+
+/* liczba obserwatorów (oczko) i emotki */
+.obserwatorzy { display: flex; align-items: center; gap: 4px; padding: 8px 10px; font-size: 13px; white-space: nowrap; }
+.obserwatorzy[hidden] { display: none; }
+.obserwatorzy b { font-weight: 700; font-variant-numeric: tabular-nums; color: var(--zar-jasny); }
+.emotki-panel {
+  position: absolute; top: calc(64px + var(--bezp-g)); right: calc(12px + var(--bezp-p)); z-index: 30;
+  display: grid; grid-template-columns: repeat(5, 48px); gap: 6px; padding: 10px;
+  pointer-events: auto;
+}
+.emotki-panel[hidden] { display: none; }
+.emotki-panel button { width: 48px; height: 48px; padding: 0; font-size: 20px; font-weight: 800; line-height: 1; }
+.emotki-panel button.taniec { grid-column: span 2; width: auto; font-size: 13px; font-weight: 600; display: flex; gap: 6px; align-items: center; justify-content: center; }
+.emotki-panel button:disabled { opacity: 0.4; }
 #btn-opusc { border-color: rgba(255, 70, 40, 0.5); }
 
 /* ---------- banery i napis tury ---------- */
@@ -634,10 +648,6 @@ button:disabled { opacity: 0.35; cursor: not-allowed; }
 .ustawienie.zmienione select:disabled { border-color: rgba(255, 217, 59, 0.55); }
 .ustawienia-reset { display: block; margin: 0 12px 12px auto; padding: 8px 12px; font-size: 12px; }
 .ustawienia-reset[hidden] { display: none; }
-
-/* bronie wyłączone w ustawieniach partii */
-.ekw-bron.wylaczona { display: none; }
-.ekw-rzad:not(:has(.ekw-bron:not(.wylaczona))) { display: none; }
 
 @media (max-width: 400px) {
   .tryb { grid-template-columns: repeat(2, minmax(0, 1fr)); }

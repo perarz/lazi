@@ -32,6 +32,8 @@
         <div class="wiatr-txt" id="wiatr-txt">0</div>
       </div>
       <div class="hud-przyciski">
+        <span id="obserwatorzy" class="panel obserwatorzy" title="Tylu obserwatorów ogląda partię" hidden><span aria-hidden="true">👁</span> <b id="obserwatorzy-ile">0</b></span>
+        <button id="btn-emotki" class="panel przycisk-hud" type="button" aria-label="Emotki i tańce" aria-haspopup="dialog" aria-expanded="false" title="Emotki i tańce (E)" hidden>💬</button>
         <button id="btn-pelny" class="panel przycisk-hud" type="button" aria-label="Pełny ekran" title="Pełny ekran" hidden>⛶</button>
         <button id="btn-opusc" class="panel przycisk-hud" type="button">Opuść grę</button>
       </div>
@@ -44,6 +46,9 @@
     </div>
 
     <div class="napis-tury" id="napis-tury" hidden></div>
+
+    <!-- emotki i tańce: chmurka w rogu, wybór w tym panelu (od 4.3.1) -->
+    <div class="emotki-panel panel" id="emotki-panel" role="dialog" aria-label="Emotki i tańce" hidden></div>
 
     <!-- wyskakujące osiągnięcie -->
     <div class="osiagniecie" id="osiagniecie" role="status" aria-live="polite" hidden>
@@ -76,7 +81,7 @@
       </div>
       <div class="pomoc">
         <b>A</b>/<b>D</b> ruch &nbsp; <b>Spacja</b> skok &nbsp; <b>W</b>/<b>S</b> albo mysz: celowanie &nbsp;
-        <b>Q</b> / <b>PPM</b> ekwipunek &nbsp; <b>1-0</b> broń &nbsp; <b>F</b> lub <b>Enter</b> (przytrzymaj) strzał
+        <b>Q</b> / <b>PPM</b> ekwipunek &nbsp; <b>E</b> emotki &nbsp; <b>1-0</b> broń &nbsp; <b>F</b> lub <b>Enter</b> (przytrzymaj) strzał
       </div>
     </div>
 

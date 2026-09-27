@@ -66,6 +66,7 @@ export function attachInput(opts) {
     // i spacja „klikają” broń pod fokusem, a nie strzelają ani nie skaczą.
     if (e.code === 'Escape') { opts.zamknijEkwipunek?.(); return; }
     if (e.code === 'KeyQ') { e.preventDefault(); if (!e.repeat) opts.onEkwipunek?.(); return; }
+    if (e.code === 'KeyE') { e.preventDefault(); if (!e.repeat) opts.onEmotki?.(); return; }
     const wPanelu = !!(e.target && e.target.closest && e.target.closest('.ekwipunek'));
     if (wPanelu && (e.code === 'Enter' || e.code === 'NumpadEnter' || e.code === 'Space')) return;
 

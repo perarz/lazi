@@ -18,7 +18,7 @@ Stos technologiczny:
 - Bez bundlera, bez `package.json` i bez zależności npm. Zwykłe pliki HTML/CSS/JS, gra jako moduły ES,
   zrzutka jako klasyczne skrypty.
 
-Obecna wersja: **4.3 „Lobby gospodarza: własne zasady partii”** (`wersja.js`).
+Obecna wersja: **4.3.1 „Emotki, tańce i lawa na zamówienie”** (`wersja.js`).
 
 ---
 
@@ -399,7 +399,8 @@ Lekcje z kalibracji:
 | `src/konfig.js` | `SERWER_WS` — adres serwera Areny; lokalnie `?serwer=ws://127.0.0.1:8787/ws` do testów |
 | `src/main.js` | Lobby (tryb, drużyny, GOTOWY, kolory), HUD, kamera, pętla gry, zdarzenia → efekty, statystyki, osiągnięcia (UI) |
 | `src/druzyny.js` | Nazwy i kolory drużyn (`DRUZYNY`), tryby lobby (`TRYBY`) |
-| `src/ustawienia.js` | Ustawienia partii z lobby (`USTAWIENIA`: czas, hp, mapa, bronie, zrzuty, wiatr, lawa), `normalizuj`, `opisZmian`, `KLASYKA` |
+| `src/ustawienia.js` | Ustawienia partii z lobby (`USTAWIENIA`: czas, hp, mapa, bronie, zrzuty, wiatr, lawa, lawaTempo), `normalizuj`, `opisZmian` |
+| `src/emotki.js` | Emotki i tańce (`EMOTKI`: 5 emotek + 2 tańce), czasy i limit wysyłania |
 | `src/ekwipunek.js` | Ekwipunek broni jak w Worms Armageddon: rzędy (`GRUPY`), ikony SVG broni, otwieranie/zamykanie |
 | `src/input.js` | Klawiatura, przyciski dotykowe, przeciąganie/szczypanie, PPM/Q = ekwipunek |
 | `src/render.js`, `src/fx.js` | Grafika (tu wolno trygonometrię i `Math.random`); w `render.js` też kamera i podgląd robala na ekranie wejścia |
@@ -474,8 +475,12 @@ Lekcje z kalibracji:
     Symulacja dostaje je jako `createGame(…, { ustawienia })` → `state.ust` (stałe przez partię, kopiowane
     w `stanPoTurze`); brak = standard, więc stare partie i testy grają jak dawniej.
   - **Mapa** nie leci osobno: gospodarz losuje seed, aż `stylMapy(seed)` (`terrain.js`) da wybrany styl.
-  - **Bronie**: `startowaAmunicja(zestaw, KLASYKA)`; „Klasyka” = spoza listy amunicja 0 i ukryte w ekwipunku
-    (`wylaczone`), „Szał” = pusta amunicja (bez limitów), wtedy zrzuty to same apteczki (`zapasyDla`).
+  - **Bronie** (od 4.3.1 tylko dwa zestawy): `startowaAmunicja(zestaw)` — `pelny` (normalne limity, kij 0)
+    albo `szalony` (pusta amunicja = wszystko bez limitu, kij też), wtedy zrzuty to same apteczki (`zapasyDla`).
+    Stare wartości (`klasyka`, `podwojny`) `normalizuj` zamienia na `pelny`.
+  - **Lawa** (4.3.1, `WERSJA` = 4): `lawa` ujemne = od tylu rund (standard −6), dodatnie = od tej tury,
+    0 = nigdy; `lawaTempo` = px na turę (6/12/24/40). `LAWA_MIN` = 40 (dawniej 260 — na wysokich mapach
+    lawa nie dochodziła do szczytów).
   - **Wyrzuć** `{t:'wyrzuc', kto}` (trafia do `p.wyrzuceni`, nie zgłasza się sam, wraca przyciskiem
     „Wracam do lobby” = `dolacz`), **oddaj koronę** `{t:'korona', kto}` (gracz na początek `wLobby`),
     **losuj drużyny** `{t:'sklad', d:{id: drużyna}}`. W UI: stuknięcie gracza → pasek `#lobby-akcje`.
@@ -489,6 +494,12 @@ Lekcje z kalibracji:
   a przycisk broni na dole pokazuje broń gracza z turą i jego nick (`cudzaBron`). Limit `ruch` na serwerze: 600 B.
   Gracz partii widzi u przeciwnika tylko broń (bez zapasu); **obserwator** (`rg.obserwator`) także zapas i w ekwipunku
   cały plecak gracza z turą (`ruch.a` = amunicja, tytuł „Ekwipunek: nick”).
+- **Emotki i tańce (4.3.1, `emotki.js`)**: zdarzenie w logu `{t:'emotka', id, e}` — `zloz` go nie zna, więc nie
+  rusza protokołu ani symulacji. Wysyła żywy uczestnik partii (chmurka `#btn-emotki` albo klawisz E, także
+  w cudzej turze), najwyżej co `EMOTKA_CO` (2,5 s). `main.js` czyta log od `emotkiIndeks`, pokazuje tylko
+  świeże (≤ 6 s zegara serwera), `R.draw` dostaje `emotki` (dymek nad głową, taniec = przesunięcie i obrót
+  rysunku w `drawWorm`). Panel `#emotki-panel` ma `pointer-events: auto` (HUD ma `none`).
+- **Obserwatorzy**: oczko 👁 z liczbą w HUD (`#obserwatorzy`) = obecni w pokoju spoza partii (albo po wyjściu).
 - **Kolory**: gracz wybiera kolor robala przy wejściu (`PALETA` w `main.js`, 12 kolorów, `arena:kolor`),
   kolor leci w `dolacz`. Przy kolizji `rozdzielKolory` zostawia go temu, kto dołączył wcześniej, reszta
   dostaje pierwszy wolny (lobby mówi o tym graczowi). Nick nad robalem jest w kolorze robala, a w drużynach
@@ -658,7 +669,8 @@ w drużynie (2 czy 3); czy robimy czapki i bronie z postaci ekipy; czy robimy ws
   - **4.1** 6 poziomów celów (do 50 000), zwarte karty i podrasowane portrety, ekwipunek i kolory w Arenie
   - **4.1.1** Arena i zrzutka na własnym serwerze (VPS, WebSocket), koniec Redisa i `api/`
   - **4.2** ucieczka po strzale na żywo, lobby do 8 graczy, drużyny (tryb, GOTOWY, przenoszenie, zamiana)
-  - **4.3** ustawienia partii u gospodarza, wyrzucanie, oddawanie korony, losowanie drużyn
+  - **4.3** ustawienia partii u gospodarza, wyrzucanie, oddawanie korony, losowanie drużyn, szalone mapy, podgląd na żywo
+  - **4.3.1** emotki i tańce, licznik obserwatorów, lawa od tury i jej tempo, dwa zestawy broni
 
 ---
 

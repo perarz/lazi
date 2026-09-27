@@ -236,15 +236,13 @@ export const WEAPONS = {
 export const WEAPON_ORDER = ['bazooka', 'granat', 'strzelba', 'kasetowa', 'dynamit', 'nalot', 'owca', 'kij', 'teleport', 'salwa', 'wiertlo', 'most'];
 
 /* Startowy zapas dla broni z limitem — ta sama wartość u każdego klienta.
-   zestaw (ustawienia partii, od 4.3): 'pelny' (domyślny), 'podwojny' (limity ×2),
-   'klasyka' (spoza listy `klasyka` — 0 sztuk, czyli wyłączone), 'szalony' (bez limitu). */
-export function startowaAmunicja(zestaw = 'pelny', klasyka = []) {
+   zestaw (ustawienia partii): 'pelny' (domyślny: limity, kij tylko ze skrzynek)
+   albo 'szalony' (wszystko bez limitu, kij też). */
+export function startowaAmunicja(zestaw = 'pelny') {
   const a = {};
   if (zestaw === 'szalony') return a;
   for (const id of WEAPON_ORDER) {
-    const w = WEAPONS[id];
-    if (zestaw === 'klasyka' && !klasyka.includes(id)) a[id] = 0;
-    else if (w.amunicja !== undefined) a[id] = zestaw === 'podwojny' ? w.amunicja * 2 : w.amunicja;
+    if (WEAPONS[id].amunicja !== undefined) a[id] = WEAPONS[id].amunicja;
   }
   return a;
 }
