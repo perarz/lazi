@@ -18,7 +18,7 @@ Stos technologiczny:
 - Bez bundlera, bez `package.json` i bez zależności npm. Zwykłe pliki HTML/CSS/JS, gra jako moduły ES,
   zrzutka jako klasyczne skrypty.
 
-Obecna wersja: **4.7.1 „Kurtyna, czapki za osiągnięcia i poprawki”** (`wersja.js`).
+Obecna wersja: **4.8 „Kilka robali na gracza, wyższe mapy i lepsza kamera”** (`wersja.js`).
 
 ---
 
@@ -448,7 +448,7 @@ Lekcje z kalibracji:
 | `src/input.js` | Klawiatura, przyciski dotykowe, przeciąganie/szczypanie, PPM/Q = ekwipunek |
 | `src/render.js`, `src/fx.js` | Grafika (tu wolno trygonometrię i `Math.random`); w `render.js` też kamera, podgląd robala (`rysujPodgladRobala`, `mini` = kafelek akcesorium) i scena ekranu ładowania (`rysujSceneLadowania`) |
 | `src/osiagniecia-reguly.js` | Reguły osiągnięć — czyste funkcje |
-| `test/sim.test.mjs`, `test/protokol.test.mjs` | Testy w Node (80 i 21) |
+| `test/sim.test.mjs`, `test/protokol.test.mjs` | Testy w Node (84 i 22) |
 
 ### Determinizm (święta zasada)
 - Symulacja (`sim.js`, `terrain.js`) używa tylko:
@@ -468,7 +468,7 @@ Lekcje z kalibracji:
   - Kopia bazowej maski jest cache'owana (klucz: seed + szerokość + styl ekstremalny).
   - **Od 4.5 szerokość świata jest zmienna**: `createTerrain(seed, { szer, styl })`, teren niesie `t.w` i `t.opcje`
     (do `rebuild(seed, kratery, t.opcje)`). `SZEROKOSCI` = mala 1536 / normalna 2048 / duza 3072 / ogromna 4096;
-    wysokość zostaje 1024. Wszędzie `t.w` / `state.terrain.w` zamiast `WORLD_W` (to tylko domyślna szerokość);
+    wysokość zostaje 1024 (poza ekstremalną, niżej). Wszędzie `t.w` / `state.terrain.w` zamiast `WORLD_W` (to tylko domyślna szerokość);
     render bierze szerokość z `buildTerrain` (`swiatW` dla kamery i lawy). Na szerszej mapie profil jest
     rozciągnięty, a liczba pięter/komór/skał rośnie proporcjonalnie (`ile`).
   - **Styl `ekstremalna`** (4.5) nie jest w losowaniu z seeda (`stylMapy` zwraca tylko 4 style) — przychodzi
@@ -477,6 +477,9 @@ Lekcje z kalibracji:
     (`strefy`, szum 1D) mieszają góry i masyw, do tego `iglice` (prawie pod sufit, powierzchnia min. y=45),
     `wawozy` do lawy i `przerwy` jak w archipelagu (z wiszącą skałą nad każdą); pas y < 36 jest zawsze pusty
     (przerzut górą). Losowania tych elementów są tylko w gałęzi ekstremalnej — zwykłe mapy z seeda się nie zmieniły.
+  - **Od 4.8 wysokość też jest zmienna**: ekstremalna ma `WYS_EKSTREMALNA` = 1792 (×1,75), zwykłe 1024. Teren niesie
+    `t.h` i `t.lava0` (poziom lawy na start = `h − 144`); wszędzie `t.h` / `t.lava0` zamiast `WORLD_H` / `LAVA_Y`
+    (w `render.js` `swiatH`, `swiatLawa`, `rozmiarSwiata()`). Liczba pięter, kominów i tuneli i wysokość reliefu rosną z `h`.
 - `spawnPoints` nigdy nie stawia robala w powietrzu. Gdy w wycinku gracza nie ma gruntu (przerwa
   między wyspami), szuka gruntu na całej mapie (`zapasowyStart`). Test sprawdza to na wielu seedach.
 
@@ -611,6 +614,14 @@ Lekcje z kalibracji:
     żywy po `state.ostatni[druzyna]` (jest w snapshocie). W trybie każdy na każdego = dawne „następny żywy”.
   - Koniec, gdy żyje jedna drużyna; `winner` = któryś żywy z niej. HUD: nagłówki drużyn z paskiem
     życia (`.druzyna-hud`), ekran końca „WYGRYWACIE!” / „WYGRYWAJĄ …”; osiągnięcia liczą wygraną drużyny.
+- **Kilka robali na gracza (4.8, ustawienie `robale` 1–3, `WERSJA` = 6)**: robal ma `gracz` (id gracza) i `nick`;
+  pierwszy robal ma id gracza, kolejne `id#2`, `id#3`, `name` = „Nick 2”. `kolejnoscRobali` = gracze potasowani jak
+  `kolejnoscTur`, potem fala pierwszych robali, drugich… (przy 1 robalu dokładnie dawna kolejka i dawne punkty startu).
+  `nextTurn` bez zmian: drużyny na zmianę, w drużynie następny żywy z kolejki, czyli gracze na zmianę, każdy kolejnym robalem.
+  **Protokół zna tylko graczy**: `snapshot.aktywny`, `winner`, `pokoj.aktywny` = id gracza (`S.wlasciciel(w)`),
+  `usunGraczy` usuwa wszystkie robale gracza. Amunicja wspólna (`wspolnaAmunicja` kopiuje po strzale i skrzynce).
+  W UI „mój robal” = `mojRobal(w)` w `main.js`; akcesoria, emotki i „brak sieci” w `render.js` po `w.gracz`.
+  Reguły osiągnięć dostają `ctx.gracz(idRobala)`.
 - Tura trwa domyślnie 30 s (`TURN_TIME`), lawa podnosi się po 6 rundach (`LAWA_PO_RUNDACH`, nagła śmierć) —
   w partii obowiązuje `state.ust` (ustawienia gospodarza: czas, hp, zrzuty %, wiatr ×0/1/1,7, lawa albo nigdy).
 
@@ -622,7 +633,7 @@ Lekcje z kalibracji:
 | 3 | Strzelba | hitscan | ∞ | |
 | 4 | Kasetówka | odbijany | 2 | rozpada się na odłamki |
 | 5 | Dynamit | podkładany | 2 | lont 6 s, ucieczka |
-| 6 | Nalot | celowany | 1 | rakiety z nieba |
+| 6 | Nalot | celowany | 1 | rakiety z nieba; od 4.8 start rakiety przesunięty o dryf policzony z wysokości celu (lot ukośny + wiatr, tylko `sqrt`), więc trafia też wysoko |
 | 7 | Koza (id `owca`) | owca | 1 | biega, przeskakuje przeszkody, wybucha przy wrogu; od 4.3.1 rysowana jako koza (render + ikona), id zostaje |
 | 8 | Kij | kij | **0** | tylko ze skrzynek (co 3. „zapas”), dmg 15, odrzut 360 |
 | 9 | Teleport | celowany | 1 | |
@@ -662,6 +673,9 @@ Lekcje z kalibracji:
     w kadrze zostaje środek. Dawniej po przekroczeniu szerokości mapy kamera w jednej klatce skakała na środek
     (test „oddalanie nie rzuca kamera…”). Zoom (kółko, szczypanie) nie wyłącza śledzenia robala; kółko
     zoomuje proporcjonalnie do `deltaY`, bo touchpad sypie dziesiątkami zdarzeń.
+  - **Od 4.8**: minimapa `#minimapa` (`R.rysujMinimape`, co 2. klatkę; stuknięcie/przeciągnięcie = kamera tam na 5 s),
+    przycisk 🗺️ `#btn-mapa` i klawisz **M** = cała mapa (`przelaczPodgladMapy`), minimalny zoom = cała mapa między
+    pasami HUD-u (`minZoomGracza`), dwa palce przesuwają widok także w mojej turze (`onPrzesun` w `input.js`).
   - `pasyHud` mierzy grupy przycisków dotykowych osobno: boczne (telefon poziomo) nie zabierają środka
     ekranu, tylko pilnują marginesu z boku (`pasy.bok`).
 - Statystyki i osiągnięcia (18) są tylko w `localStorage`, bez serwera.
@@ -709,7 +723,7 @@ nowych kanałów (dane doklejone do `dolacz`, `nowa`, strzału).
   bierze ją zamiast `weapon.fuse`. Deterministyczne, bo leci gotowa liczba.
 - **Podsumowanie partii** na ekranie końca: obrażenia, fragi, najlepszy strzał — liczone lokalnie ze zdarzeń.
 
-**Etap 2 — więcej robali na gracza (wersja 5.0)** — *drużyny graczy, tryb i ustawienie drużyn w lobby,
+**Etap 2 — więcej robali na gracza** (*1–3 robale na gracza są od 4.8*; brakuje broni „wybór robala”) — *drużyny graczy, tryb i ustawienie drużyn w lobby,
 brak obrażeń od swoich i tury na zmianę drużynami są już w 4.2*; zostaje to, co niżej.
 - **2–4 robale na gracza**, tury drużyn na zmianę, w drużynie kolejny żywy robal, paski HP drużyn,
   broń „wybór robala”. Dotyka protokołu: dziś `aktywny` (w `snapshot` i `zloz`) to id robala = id gracza,
@@ -784,14 +798,15 @@ więcej akcesoriów (np. czapki postaci ze zrzutki), ewentualnie konto także w 
   - **4.6** konta Areny (logowanie, statystyki i osiągnięcia na koncie), ekran ładowania, panel z GRAJ, pokoje na hasło, ranking killi
   - **4.7** pasek Fortnite/0 A.D./Arena w grze, panel + lobby na jednym ekranie, bez domyślnej areny, 5 akcesoriów robala, nowy ekran ładowania
   - **4.7.1** kurtyna przy przejściu zrzutka ↔ Arena, wejście na Arenę bez ekranu ładowania, Korona Króla GOATów za wszystkie osiągnięcia + 3 czapki
+  - **4.8** 1–3 robale na gracza, wyższa mapa ekstremalna, celny nalot, minimapa i podgląd całej mapy
 
 ---
 
 ## 9. Testy i sprawdzanie
 
 ```
-node gra/test/sim.test.mjs        # symulacja, bronie, determinizm, drużyny, ustawienia, skrzynki, spawny, osiągnięcia, kamera, lina, most obracany, rozmiar mapy (80)
-node gra/test/protokol.test.mjs   # protokół: lag, rozłączenia, ucieczka na żywo, lobby, ustawienia, partie 2v2 i z własnymi zasadami (21, ~30 s)
+node gra/test/sim.test.mjs        # symulacja, bronie, determinizm, drużyny, ustawienia, skrzynki, spawny, osiągnięcia, kamera, lina, most obracany, rozmiar mapy, kilka robali (84)
+node gra/test/protokol.test.mjs   # protokół: lag, rozłączenia, ucieczka na żywo, lobby, ustawienia, partie 2v2, z własnymi zasadami i z kilkoma robalami (22, ~35 s)
 cd serwer && npm install && node test.mjs   # serwer na VPS: Arena (10) + konta, pokoje, akcesoria i czapki (10) + zrzutka (7)
 ```
 Obie muszą przejść przed pushem. Dodatkowo `node --check` na zmienionych plikach JS.

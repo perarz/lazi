@@ -199,6 +199,76 @@ window.addEventListener('resize', dopasujPlotno, { passive: true });
 
 const bazowyZoom = () => Math.max(0.42, Math.min(1.5, Math.min(renderer.viewW / 1150, renderer.viewH / 560)));
 
+/* Najdalsze oddalenie (od 4.8): cała mapa mieści się między panelami — na dużej
+   mapie dawniej nie było widać drugiego końca. */
+function minZoomGracza() {
+  const { w, h } = R.rozmiarSwiata();
+  const wolneH = Math.max(120, renderer.viewH - pasy.gora - pasy.dol);
+  const calosc = Math.min(renderer.viewW * 0.96 / w, wolneH * 0.96 / h) / bazowyZoom();
+  return Math.min(0.55, calosc);
+}
+
+/* Podgląd całej mapy: przycisk 🗺️ albo M — oddala do całości i wraca do poprzedniego zoomu. */
+let podgladMapy = false, zoomPrzedPodgladem = 1;
+function przelaczPodgladMapy() {
+  if (!rg) return;
+  podgladMapy = !podgladMapy;
+  if (podgladMapy) {
+    zoomPrzedPodgladem = zoomGracza;
+    zoomGracza = minZoomGracza();
+    const { w, h } = R.rozmiarSwiata();
+    kamera.tx = w / 2;
+    kamera.ty = h / 2;
+    recznaKameraDo = performance.now() + 60000;
+  } else {
+    zoomGracza = zoomPrzedPodgladem;
+    recznaKameraDo = 0;
+  }
+  el('btn-mapa').setAttribute('aria-pressed', podgladMapy ? 'true' : 'false');
+}
+el('btn-mapa').addEventListener('click', przelaczPodgladMapy);
+
+/* Minimapa: stuknięcie albo przeciąganie przenosi kamerę w to miejsce (na 5 s). */
+{
+  const mini = el('minimapa');
+  let ciagne = false;
+  const doSwiata = (e) => {
+    if (!rg) return;
+    const r = mini.getBoundingClientRect();
+    const { w, h } = R.rozmiarSwiata();
+    const x = (e.clientX - r.left) / r.width * w, y = (e.clientY - r.top) / r.height * h;
+    kamera.x = kamera.tx = x;
+    kamera.y = kamera.ty = y;
+    recznaKameraDo = performance.now() + (podgladMapy ? 60000 : 5000);
+  };
+  mini.addEventListener('pointerdown', (e) => {
+    e.preventDefault();
+    ciagne = true;
+    try { mini.setPointerCapture(e.pointerId); } catch { /* nic */ }
+    doSwiata(e);
+  });
+  mini.addEventListener('pointermove', (e) => { if (ciagne) doSwiata(e); });
+  const pusc = () => { ciagne = false; };
+  mini.addEventListener('pointerup', pusc);
+  mini.addEventListener('pointercancel', pusc);
+}
+let minimapaKlatka = 0;
+function rysujMinimape(st) {
+  const mini = el('minimapa');
+  // proporcje jak świat; odświeżana co drugą klatkę
+  const { w, h } = R.rozmiarSwiata();
+  const szer = mini.clientWidth || 160;
+  const wys = Math.round(szer * h / w);
+  if (Math.abs(mini.clientHeight - wys) > 1) mini.style.height = wys + 'px';
+  // telefon pionowo: panele u góry zajmują całą szerokość — minimapa pod nimi (pomiar co ~0,5 s)
+  if (minimapaKlatka % 30 === 0) {
+    const gora = document.querySelector('#hud .hud-gora');
+    const pion = window.matchMedia('(max-width: 560px)').matches;
+    mini.style.top = pion && gora ? (gora.offsetTop + gora.offsetHeight + 6) + 'px' : '';
+  }
+  if (minimapaKlatka++ % 2 === 0) R.rysujMinimape(mini, renderer, st, kamera);
+}
+
 /* Pasy ekranu zasłonięte przez HUD: u góry panele, u dołu bronie, moc
    i przyciski dotykowe. Kamera trzyma robala w wolnym pasie pomiędzy.
    Pomiar co pół sekundy (to odczyt układu strony), a wynik dochodzi
@@ -591,8 +661,8 @@ async function poZalogowaniu(k) {
   ustawKonto(k);
   // pierwszy raz na koncie — wygląd wybrany wcześniej w tej przeglądarce
   if (!KOLORY.includes(k.kolor)) K.ustawWyglad({ kolor: mojKolor, akcesorium: mojeAkcesorium });
+  const zAdresu = pokojZAdresu();          // przed otworzArene — ona czyści adres
   otworzArene();
-  const zAdresu = pokojZAdresu();
   if (!zAdresu) return;
   const p = pokojeLista.find((x) => x.id === zAdresu);
   if (!p || !p.haslo) return polaczZPokojem(zAdresu, null, p ? p.nazwa : zAdresu);
@@ -1375,6 +1445,8 @@ function zbudujGre() {
   kamera = R.createCamera();
   fx = createFx();
   zoomGracza = 1;
+  podgladMapy = false;
+  el('btn-mapa').setAttribute('aria-pressed', 'false');
   czekamOd = null;
 
   if (!sterowanie) {
@@ -1389,6 +1461,7 @@ function zbudujGre() {
       onEkwipunek: () => ekwipunek.przelacz(),
       onEmotki: () => przelaczEmotki(),
       onObrot: () => obrocMost(),
+      onMapa: () => przelaczPodgladMapy(),
       onLina: () => {
         const wynik = S.linaPrzelacz(rg.state);
         if (wynik === 'pudlo') pokazInfo('Lina nie sięga — celuj w skałę bliżej (do ok. 400 px).');
@@ -1404,7 +1477,9 @@ function zbudujGre() {
         recznaKameraDo = performance.now() + 4000;
       },
       onZoom: (f) => {
-        zoomGracza = Math.max(0.55, Math.min(2.2, zoomGracza * f));
+        zoomGracza = Math.max(minZoomGracza(), Math.min(2.2, zoomGracza * f));
+        podgladMapy = false;
+        el('btn-mapa').setAttribute('aria-pressed', 'false');
         // Zoom nie zabiera kamery robalowi — dawniej po oddaleniu przez 1,5 s nikt
         // nie był śledzony. Przedłużamy tylko ręczny tryb, jeśli ktoś przesuwał kamerę.
         const teraz = performance.now();
@@ -1558,6 +1633,7 @@ function petla(teraz) {
   kamera.x -= tx; kamera.y -= ty;
   wstrzas *= Math.max(0, 1 - dt * 7);
   odswiezHud(moge, teraz);
+  rysujMinimape(st);
 }
 
 /* ---------- emotki, tańce i obserwatorzy (4.3.1) ---------- */
@@ -1607,8 +1683,12 @@ function aktywneEmotki() {
 /* Emotki wysyła tylko żywy uczestnik partii — w swojej turze i w cudzej. */
 function mogeEmotki() {
   if (!rg || rg.obserwator || rg.state.phase === 'over') return false;
-  const ja = rg.state.worms.find((w) => w.id === mojeId);
-  return !!ja && ja.alive && !ja.odszedl;
+  return rg.state.worms.some((w) => mojRobal(w) && w.alive && !w.odszedl);
+}
+
+/* Robal, którym steruję (od 4.8 gracz może mieć ich kilka: id, id#2, id#3). */
+function mojRobal(w) {
+  return !!w && S.wlasciciel(w) === mojeId;
 }
 
 const panelEmotek = el('emotki-panel');
@@ -1721,8 +1801,9 @@ function podgladNaZywo(dt, moge) {
   for (const w of st.worms) if (w !== akt) w.widok = null;
   if (!akt) return;
   if (podglad.nr !== st.turnNumber) podglad = { nr: st.turnNumber, efekt: 0, skrzynki: new Set() };
-  if (ruch && ruch.nr === st.turnNumber && ruch.id === akt.id && ruch.id !== mojeId) pokazEfekty(ruch, akt);
-  if (moge || st.phase !== 'aim' || !ruch || ruch.nr !== st.turnNumber || ruch.id !== akt.id || ruch.id === mojeId) {
+  const gracz = S.wlasciciel(akt);
+  if (ruch && ruch.nr === st.turnNumber && ruch.id === gracz && ruch.id !== mojeId) pokazEfekty(ruch, akt);
+  if (moge || st.phase !== 'aim' || !ruch || ruch.nr !== st.turnNumber || ruch.id !== gracz || ruch.id === mojeId) {
     akt.widok = null;
     return;
   }
@@ -1794,10 +1875,10 @@ function pokazTure() {
   if (st.phase !== 'aim') return;
   const akt = S.activeWorm(st);
   if (!akt) return;
-  const moja = akt.id === mojeId && !rg.obserwator;
+  const moja = mojRobal(akt) && !rg.obserwator;
   napis(moja ? 'TWOJA TURA' : 'Tura: ' + akt.name, !moja);
   if (tura.kto && tura.nr !== st.turnNumber) {
-    const moja = tura.kto.id === mojeId && !rg.obserwator;
+    const moja = mojRobal(tura.kto) && !rg.obserwator;
     if (tura.suma >= 50) {
       pokazInfo((moja ? 'Twój strzał' : 'Strzał ' + tura.kto.name) + ': ' + tura.suma + ' obrażeń' + (tura.suma >= 100 ? ' — MASAKRA!' : '!'));
       if (moja) {
@@ -1808,8 +1889,8 @@ function pokazTure() {
     tura = pustaTura();
   }
   if (partia.os.tura.nr !== -1 && partia.os.tura.nr !== st.turnNumber && !rg.obserwator) {
-    const ja = st.worms.find((x) => x.id === mojeId);
-    for (const id of koniecTuryOs(partia.os, { mojeId, jaZywy: !!ja && ja.alive })) zdobadz(id);
+    const zywy = st.worms.some((x) => mojRobal(x) && x.alive);
+    for (const id of koniecTuryOs(partia.os, { mojeId, jaZywy: zywy })) zdobadz(id);
   }
   recznaKameraDo = 0;
   if (moja) {
@@ -1951,7 +2032,8 @@ function obsluzZdarzenia() {
   for (const e of st.events) {
     if (!rg.obserwator && (e.type === 'strzal' || e.type === 'obrazenia' || e.type === 'smierc')) {
       const akt = S.activeWorm(st);
-      const ctx = { nr: st.turnNumber, aktId: akt ? akt.id : null, mojeId, fragiWczesniej: wczytajStaty().fragi };
+      const ctx = { nr: st.turnNumber, aktId: akt ? S.wlasciciel(akt) : null, mojeId, fragiWczesniej: wczytajStaty().fragi,
+        gracz: (id) => S.wlasciciel(st.worms.find((x) => x.id === id)) };
       for (const id of zdarzenieOs(partia.os, e, ctx)) zdobadz(id);
     }
     switch (e.type) {
@@ -1998,7 +2080,7 @@ function obsluzZdarzenia() {
         const akt = S.activeWorm(st);
         if (akt && e.wormId !== akt.id) {
           turaDla(st, akt).suma += e.amount;
-          if (akt.id === mojeId && !rg.obserwator) partia.obrazenia += e.amount;
+          if (mojRobal(akt) && !rg.obserwator) partia.obrazenia += e.amount;
         }
         break;
       }
@@ -2026,10 +2108,10 @@ function pokazKoniec(winnerId) {
   let opis;
   if (druzyna) {
     el('koniec-tytul').textContent = wygralem ? 'WYGRYWACIE!' : 'WYGRYWAJĄ ' + druzyna.nazwa.toUpperCase();
-    const sklad = st.worms.filter((x) => x.druzyna === w.druzyna).map((x) => x.name);
+    const sklad = [...new Set(st.worms.filter((x) => x.druzyna === w.druzyna).map((x) => x.nick || x.name))];
     opis = druzyna.nazwa + ' (' + sklad.join(', ') + ') zostali sami na arenie.';
   } else {
-    el('koniec-tytul').textContent = w ? (w.id === mojeId ? 'WYGRYWASZ!' : 'WYGRYWA ' + w.name.toUpperCase()) : 'REMIS';
+    el('koniec-tytul').textContent = w ? (w.id === mojeId ? 'WYGRYWASZ!' : 'WYGRYWA ' + (w.nick || w.name).toUpperCase()) : 'REMIS';
     opis = w
       ? 'Ostatni GOAT na arenie. Reszta poszła z dymem.'
       : 'Nikt nie przeżył. Bywa.';
@@ -2042,11 +2124,12 @@ function pokazKoniec(winnerId) {
     if (wygralem) staty.wygrane++;
     staty.obrazenia += partia.obrazenia;
     staty.fragi += partia.os.fragi;
-    if (tura.kto && tura.kto.id === mojeId && tura.suma > staty.rekordTury) staty.rekordTury = tura.suma;
+    if (tura.kto && mojRobal(tura.kto) && tura.suma > staty.rekordTury) staty.rekordTury = tura.suma;
     zapisz('arena:staty', JSON.stringify(staty));
     opis += ' Ty w tej partii: ' + partia.obrazenia + ' obrażeń, ' + partia.os.fragi + ' fragów.';
-    const ja = rg.state.worms.find((x) => x.id === mojeId);
-    const ctx = { wygralem, hp: ja && ja.alive ? ja.hp : 0, partie: staty.partie };
+    // przy kilku robalach liczy się najzdrowszy żywy
+    const hp = rg.state.worms.reduce((m, x) => (mojRobal(x) && x.alive ? Math.max(m, x.hp) : m), 0);
+    const ctx = { wygralem, hp, partie: staty.partie };
     if (!rg.obserwator) for (const id of koniecPartiiOs(partia.os, ctx)) zdobadz(id);
     wyslijWynikPartii({
       partia: String(rg.seed), kille: partia.os.fragi, obrazenia: partia.obrazenia, wygrana: wygralem,
@@ -2113,7 +2196,7 @@ function rysujBronie() {
 function cudzaBron(st) {
   if (!st || st.phase === 'over') return null;
   const akt = S.activeWorm(st);
-  if (!akt || akt.id === mojeId) return null;
+  if (!akt || mojRobal(akt)) return null;
   const obs = !!rg && rg.obserwator;
   if (akt.widok && WEAPONS[akt.widok.bron]) {
     const am = obs ? { ...akt.amunicja, ...(akt.widok.amunicja || {}) } : null;
@@ -2154,7 +2237,7 @@ function odswiezHud(moge, teraz) {
     cb ? cb.bron + cb.zapas + cb.kto + JSON.stringify(cb.amunicja) : ''].join('|');
   if (podpisBroni !== ostatniPodpisBroni) { ostatniPodpisBroni = podpisBroni; rysujBronie(); }
 
-  const podpisGraczy = st.worms.map((w) => [w.id, w.alive, w.odszedl, rozl.has(w.id)].join(':')).join('|');
+  const podpisGraczy = st.worms.map((w) => [w.id, w.alive, w.odszedl, rozl.has(S.wlasciciel(w))].join(':')).join('|');
   if (podpisGraczy !== ostatniPodpisGraczy) {
     ostatniPodpisGraczy = podpisGraczy;
     const panel = el('panel-gracze');
@@ -2188,19 +2271,19 @@ function odswiezHud(moge, teraz) {
       d.dataset.worm = w.id;
       if (w.odszedl) d.classList.add('wyszedl');
       else if (!w.alive) d.classList.add('trup');
-      if (rozl.has(w.id)) d.classList.add('rozlaczony');
+      if (rozl.has(S.wlasciciel(w))) d.classList.add('rozlaczony');
       const kropka = document.createElement('span');
       kropka.className = 'kropka';
       kropka.style.background = w.color;
       const imie = document.createElement('span');
       imie.className = 'imie';
-      imie.textContent = w.name + (w.id === mojeId ? ' (Ty)' : '');
+      imie.textContent = w.name + (mojRobal(w) ? ' (Ty)' : '');
       if (st.druzynowa && DRUZYNY[w.druzyna]) { imie.style.color = DRUZYNY[w.druzyna].kolor; d.classList.add('w-druzynie'); }
       const hp = document.createElement('span');
       hp.className = 'hp';
       d.append(kropka, imie, hp);
       if (w.odszedl) d.append(Object.assign(document.createElement('span'), { className: 'znak', textContent: 'wyszedł' }));
-      else if (rozl.has(w.id)) d.append(Object.assign(document.createElement('span'), { className: 'znak', textContent: 'brak sieci' }));
+      else if (rozl.has(S.wlasciciel(w))) d.append(Object.assign(document.createElement('span'), { className: 'znak', textContent: 'brak sieci' }));
       panel.append(d);
     }
   }
@@ -2263,6 +2346,7 @@ window.__arena = () => ({
   turaLokalna: rg && rg.state.turnNumber,
   fazaLokalna: rg && rg.state.phase,
   aktywny: pokoj && pokoj.aktywny,
+  robal: rg && (() => { const w = S.activeWorm(rg.state); return w ? w.id : null; })(),   // robal z turą (4.8: gracz może mieć kilka)
   odeszli: pokoj ? [...pokoj.odeszli.keys()] : null,
   gracze: pokoj ? pokoj.gracze.map((g) => g.name) : null,
   statystyki: rg && rg.statystyki,

@@ -36,7 +36,7 @@ export const ZASTEPCZY_STAN = 4;      // s czekania na stan od autora akcji
 export const START_ZWLOKA = 3;        // s na załadowanie planszy po starcie partii
 export const DOGON_PO = 2;            // s — starszego stanu nie animujemy, tylko do niego skaczemy
 export const ODLICZANIE_S = 5;        // s od chwili, gdy wszyscy dali GOTOWY, do startu partii
-export const WERSJA = 5;              // wersja protokołu lobby (4.2: drużyny i gotowość, 4.3: ustawienia partii, 4.4: lawa, emotki, 4.5: rozmiar mapy, obrót mostu)
+export const WERSJA = 6;              // wersja protokołu lobby (4.2: drużyny i gotowość, 4.3: ustawienia partii, 4.4: lawa, emotki, 4.5: rozmiar mapy, obrót mostu, 4.8: kilka robali na gracza)
 export const MAX_GRACZY = 8;          // w partii; kolejni w lobby oglądają
 
 /* Ucieczka na żywo. */
@@ -438,7 +438,7 @@ export function mogeGrac(r, pokoj) {
   if (!pokoj || pokoj.seed !== r.seed || pokoj.tura !== st.turnNumber) return false;
   if (pokoj.aktywny !== r.mojeId || pokoj.akcje.has(st.turnNumber)) return false;
   const w = S.activeWorm(st);
-  return !!w && w.alive && w.id === r.mojeId;
+  return !!w && w.alive && S.wlasciciel(w) === r.mojeId;
 }
 
 /* Ucieczka po dynamicie: chodzić i skakać wolno, strzelać już nie. */
@@ -446,7 +446,7 @@ export function mogeUciekac(r) {
   const st = r.state;
   if (r.obserwator || st.phase !== 'odwrot' || !st.odwrotNagranie) return false;
   const w = S.activeWorm(st);
-  return !!w && w.alive && w.id === r.mojeId;
+  return !!w && w.alive && S.wlasciciel(w) === r.mojeId;
 }
 
 /* Termin bieżącej tury w czasie serwera (albo null, gdy log jest gdzie indziej). */
@@ -500,7 +500,7 @@ export function klatka(r, pokoj, ctx) {
     if (st.phase === 'aim' && ctx.teraz >= termin) {
       if (st.charging) { S.releaseFire(st); zbierzStrzaly(r, true); }
       else mojPas(r, 'czas');
-    } else if (st.phase !== 'aim' && !st.firedThisTurn && akt && akt.id === r.mojeId) {
+    } else if (st.phase !== 'aim' && !st.firedThisTurn && akt && S.wlasciciel(akt) === r.mojeId) {
       mojPas(r, 'smierc');           // tura skończyła się bez strzału (np. lawa, upadek)
     }
   }
@@ -593,7 +593,7 @@ export function klatka(r, pokoj, ctx) {
   const przedEfektami = r.efektNr;
   if (mojeChodzenie) zbierzEfekty(r);
   const akt6 = S.activeWorm(st);
-  if (mogeGrac(r, pokoj) || (mojeChodzenie && r.efektNr > przedEfektami && akt6 && akt6.id === r.mojeId)) {
+  if (mogeGrac(r, pokoj) || (mojeChodzenie && r.efektNr > przedEfektami && akt6 && S.wlasciciel(akt6) === r.mojeId)) {
     const w = akt6;
     const zapas = w.amunicja[st.weapon];
     const ruch = {

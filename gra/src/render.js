@@ -14,6 +14,8 @@ import { drawFx } from './fx.js';
 /* Szerokość bieżącego świata (od 4.5 zależy od rozmiaru mapy w ustawieniach).
    Ustawia ją buildTerrain; kamera i lawa czytają ją stąd. */
 let swiatW = WORLD_W;
+// wysokość świata i poziom lawy na starcie (od 4.8 ekstremalna jest wyższa)
+let swiatH = WORLD_H, swiatLawa = T_LAVA;
 
 export function createRenderer(canvas) {
   const terrainCanvas = document.createElement('canvas');
@@ -62,7 +64,8 @@ function paintColumns(r, terrain, x0, x1) {
   const w = x1 - x0 + 1;
   if (w <= 0) return;
 
-  const img = r.tctx.createImageData(w, WORLD_H);
+  const H = terrain.h || WORLD_H;
+  const img = r.tctx.createImageData(w, H);
   const d = img.data;
   const mask = terrain.mask;
   const pal = PALETY[terrain.styl] || PALETY.gory;
@@ -72,7 +75,7 @@ function paintColumns(r, terrain, x0, x1) {
     const col = x - x0;
     // falowanie warstw skalnych — tylko wygląd, więc wolno użyć sinusa
     const fala = Math.sin(x * 0.011) * 14 + Math.sin(x * 0.037 + 1.3) * 6;
-    for (let y = 0; y < WORLD_H; y++) {
+    for (let y = 0; y < H; y++) {
       const i = y * terrain.w + x;
       const solid = mask[i];
       depth = solid ? depth + 1 : 0;
@@ -82,7 +85,7 @@ function paintColumns(r, terrain, x0, x1) {
       if (solid === 2) {
         // most: stalowa belka z nitami co 10 px
         // dźwigar: ciemne pasy góra/dół i kratownica (ukośne żebra) w środku
-        const brzeg = depth <= 1 || (y + 1 < WORLD_H && mask[i + terrain.w] !== 2);
+        const brzeg = depth <= 1 || (y + 1 < H && mask[i + terrain.w] !== 2);
         const rz = depth - 1;
         const zebro = ((x - rz * 2) % 12 + 12) % 12 < 2 || ((x + rz * 2) % 12 + 12) % 12 < 2;
         const v = brzeg ? 0.6 : zebro ? 1.3 : 0.82;
@@ -111,7 +114,7 @@ function paintColumns(r, terrain, x0, x1) {
       // krawędź od boku (ściany jaskiń, zbocza) — jaśniejsza obwódka
       if (depth > 2 && ((x > 0 && !mask[i - 1]) || (x < terrain.w - 1 && !mask[i + 1]))) {
         rr += 55; gg += 30; bb += 10;
-      } else if (depth > 2 && y + 1 < WORLD_H && !mask[i + terrain.w]) {
+      } else if (depth > 2 && y + 1 < H && !mask[i + terrain.w]) {
         // sufit komory: przyciemniony, z lekkim żarem od dołu
         rr = rr * 0.7 + 30; gg *= 0.6; bb *= 0.6;
       }
@@ -123,17 +126,60 @@ function paintColumns(r, terrain, x0, x1) {
 
 export function buildTerrain(r, terrain) {
   swiatW = terrain.w;
+  swiatH = terrain.h || WORLD_H;
+  swiatLawa = terrain.lava0 ?? T_LAVA;
   if (r.terrainCanvas.width !== terrain.w) r.terrainCanvas.width = terrain.w;   // inny rozmiar mapy
-  r.tctx.clearRect(0, 0, terrain.w, WORLD_H);
+  if (r.terrainCanvas.height !== swiatH) r.terrainCanvas.height = swiatH;
+  r.tctx.clearRect(0, 0, terrain.w, swiatH);
   paintColumns(r, terrain, 0, terrain.w - 1);
 }
 
 export function repaintRect(r, terrain, rect) {
   const x0 = Math.max(0, Math.floor(rect.x0) - 2);
   const x1 = Math.min(terrain.w - 1, Math.ceil(rect.x1) + 2);
-  r.tctx.clearRect(x0, 0, x1 - x0 + 1, WORLD_H);
+  r.tctx.clearRect(x0, 0, x1 - x0 + 1, swiatH);
   paintColumns(r, terrain, x0, x1);
 }
+
+/* Minimapa w rogu HUD-u (od 4.8): cały teren w skali, lawa, skrzynki, robale
+   (aktywny z białą obwódką) i prostokąt tego, co widać na ekranie. */
+export function rysujMinimape(canvas, r, state, cam) {
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const W = canvas.clientWidth, H = canvas.clientHeight;
+  if (!W || !H) return;
+  if (canvas.width !== Math.round(W * dpr) || canvas.height !== Math.round(H * dpr)) {
+    canvas.width = Math.round(W * dpr);
+    canvas.height = Math.round(H * dpr);
+  }
+  const ctx = canvas.getContext('2d');
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const sx = W / swiatW, sy = H / swiatH;
+  ctx.fillStyle = '#0d0706';
+  ctx.fillRect(0, 0, W, H);
+  ctx.drawImage(r.terrainCanvas, 0, 0, swiatW, swiatH, 0, 0, W, H);
+  ctx.fillStyle = 'rgba(255, 90, 0, 0.85)';
+  ctx.fillRect(0, state.lava * sy, W, H - state.lava * sy);
+  ctx.fillStyle = '#ffd93b';
+  for (const c of state.skrzynki || []) ctx.fillRect(c.x * sx - 1.5, c.y * sy - 3, 3, 3);
+  const akt = activeOf(state);
+  for (const w of state.worms) {
+    if (!w.alive) continue;
+    const v = w.widok || w;
+    ctx.fillStyle = w.color;
+    ctx.beginPath();
+    ctx.arc(v.x * sx, (v.y - 8) * sy, w === akt ? 3.6 : 2.6, 0, 6.283);
+    ctx.fill();
+    if (w === akt) { ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.2; ctx.stroke(); }
+  }
+  // kadr kamery
+  const kw = r.viewW / cam.zoom, kh = r.viewH / cam.zoom;
+  ctx.strokeStyle = 'rgba(255, 246, 207, 0.9)';
+  ctx.lineWidth = 1;
+  ctx.strokeRect((cam.x - kw / 2) * sx, (cam.y - kh / 2) * sy, kw * sx, kh * sy);
+}
+
+/* Rozmiar bieżącego świata (kamera, minimapa). */
+export const rozmiarSwiata = () => ({ w: swiatW, h: swiatH });
 
 /* ---------- kamera ---------- */
 
@@ -182,7 +228,7 @@ export function ograniczKamere(cam, viewW, viewH, dol = 0) {
     cam.x = cam.tx = swiatW / 2;
   }
   const minY = halfH - Math.min(ZAPAS_NIEBO, halfH);
-  const maxY = WORLD_H - (viewH / 2 - dol) / cam.zoom;
+  const maxY = swiatH - (viewH / 2 - dol) / cam.zoom;
   if (minY <= maxY) {
     cam.y = Math.min(maxY, Math.max(minY, cam.y));
     cam.ty = Math.min(maxY, Math.max(minY, cam.ty));
@@ -251,15 +297,15 @@ export function draw(r, state, cam, fx, dt, opcje = {}) {
   for (const w of state.worms) {
     if (!w.alive) continue;
     drawWorm(ctx, w, w === akt && state.phase === 'aim', r.time, {
-      ja: w.id === opcje.mojeId,
+      ja: (w.gracz ?? w.id) === opcje.mojeId,
       // w drużynach nick jest w kolorze drużyny (robal zostaje w swoim)
       kolorNicku: state.druzynowa && DRUZYNY[w.druzyna] ? DRUZYNY[w.druzyna].kolor : w.color,
-      rozlaczony: !!opcje.rozlaczeni && opcje.rozlaczeni.has(w.id),
+      rozlaczony: !!opcje.rozlaczeni && opcje.rozlaczeni.has(w.gracz ?? w.id),
       moc: w === akt && state.phase === 'aim' ? (w.widok ? w.widok.moc : state.charging ? state.power : 0) : 0,
       bron: w === akt ? (w.widok ? w.widok.bron : state.weapon) : null,
       hpMax: state.ust ? state.ust.hp : 100,
-      emotka: opcje.emotki ? opcje.emotki.get(w.id) || null : null,
-      akc: opcje.akcesoria ? akcesorium(opcje.akcesoria.get(w.id)) : null
+      emotka: opcje.emotki ? opcje.emotki.get(w.gracz ?? w.id) || null : null,
+      akc: opcje.akcesoria ? akcesorium(opcje.akcesoria.get(w.gracz ?? w.id)) : null
     });
   }
 
@@ -296,7 +342,7 @@ function drawTlo(ctx, r, cam, W, H) {
   }
   ctx.globalAlpha = 1;
   // pasma gór: im dalej, tym wolniej przesuwają się z kamerą
-  const horyzont = H * 0.62 + (T_LAVA - cam.y) * cam.zoom * 0.12;
+  const horyzont = H * 0.62 + (swiatLawa - cam.y) * cam.zoom * 0.12;
   for (const g of GORY_TLA) {
     const skok = 90;
     const przes = -(cam.x * g.par) % skok;
@@ -334,13 +380,13 @@ function activeOf(state) {
 }
 
 function drawLava(ctx, time, poziom) {
-  const g = ctx.createLinearGradient(0, poziom - 20, 0, WORLD_H);
+  const g = ctx.createLinearGradient(0, poziom - 20, 0, swiatH);
   g.addColorStop(0, 'rgba(255,150,30,0.85)');
   g.addColorStop(0.18, '#ff5a00');
   g.addColorStop(1, '#8a0f00');
   ctx.fillStyle = g;
   // lawa sięga daleko za mapę — kamera potrafi tam zajrzeć
-  ctx.fillRect(-1400, poziom, swiatW + 2800, WORLD_H - poziom + 1400);
+  ctx.fillRect(-1400, poziom, swiatW + 2800, swiatH - poziom + 1400);
 
   // falująca, świecąca powierzchnia
   ctx.strokeStyle = 'rgba(255,220,120,0.8)';

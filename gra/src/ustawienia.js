@@ -20,6 +20,11 @@ export const USTAWIENIA = [
     liczba: { min: 10, max: 500, jednostka: 'HP' }
   },
   {
+    // ile robali ma każdy gracz (4.8) — grają po kolei, jak w Worms
+    klucz: 'robale', nazwa: 'Robale na gracza', dom: 1,
+    opcje: [[1, '1'], [2, '2'], [3, '3']]
+  },
+  {
     klucz: 'mapa', nazwa: 'Mapa', dom: 'losowa',
     opcje: [['losowa', 'Losowa'], ['gory', 'Góry'], ['archipelag', 'Archipelag'], ['kaniony', 'Kaniony'],
       ['jaskinie', 'Jaskinie'], ['ekstremalna', 'Ekstremalna']]
@@ -97,6 +102,7 @@ export function opisZmian(u) {
   const d = domyslne();
   return USTAWIENIA.filter((o) => u[o.klucz] !== d[o.klucz]).map((o) => {
     const e = etykieta(o.klucz, u[o.klucz]);
+    if (o.klucz === 'robale') return u.robale + ' robale na gracza';
     if (o.klucz === 'zrzuty') return 'zrzuty: ' + e.toLowerCase();
     if (o.klucz === 'lawaOd') return u.lawaOd === 0 ? 'bez lawy' : 'lawa od ' + u.lawaOd + '. rundy';
     if (o.klucz === 'lawaTempo') return 'lawa: ' + e.toLowerCase();

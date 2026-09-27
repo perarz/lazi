@@ -83,6 +83,28 @@ export function kolejnoscTur(seed, ids) {
   return order;
 }
 
+export const ROBALE_MAX = 3;
+
+/* Kolejka robali (4.8): gracze potasowani jak dawniej, a robale po kolei —
+   najpierw pierwsze robale wszystkich, potem drugie… Przy 1 robalu to dokładnie
+   kolejnoscTur. nextTurn i tak idzie drużynami na zmianę, a w drużynie po tej kolejce,
+   więc gracze w drużynie grają na zmianę, a każdy z nich kolejnym swoim robalem. */
+export function kolejnoscRobali(seed, idsGraczy, ile = 1) {
+  const gracze = kolejnoscTur(seed, idsGraczy);
+  const order = [];
+  for (let k = 0; k < ile; k++) for (const id of gracze) order.push(k ? id + '#' + (k + 1) : id);
+  return order;
+}
+
+/* Kto steruje robalem (id gracza). */
+export const wlasciciel = (w) => (w ? w.gracz ?? w.id : null);
+
+/* Amunicja jest wspólna dla robali jednego gracza (jak w Worms) — po zmianie kopiujemy ją
+   do reszty jego robali (snapshot i tak niesie ją przy każdym robalu). */
+function wspolnaAmunicja(state, w) {
+  for (const x of state.worms) if (x !== w && x.gracz === w.gracz) x.amunicja = { ...w.amunicja };
+}
+
 /* opcje.druzyny: tryb drużynowy — gracze mają pole `druzyna` (0, 1, 2…);
    koledzy z drużyny nie zadają sobie obrażeń ani odrzutu, tury idą na zmianę
    drużynami, wygrywa ostatnia drużyna. Bez tego każdy gra sam (druzyna = numer).
@@ -100,32 +122,43 @@ export function createGame(seed, players, opcje = {}) {
     szer: T.SZEROKOSCI[ust.rozmiar] || T.WORLD_W,
     styl: ust.mapa === 'ekstremalna' ? 'ekstremalna' : null
   });
-  const spawns = T.spawnPoints(terrain, players.length, seed);
-
-  const worms = players.map((p, i) => ({
-    id: p.id,
-    name: p.name,
-    color: p.color,
-    druzyna: opcje.druzyny ? Math.max(0, p.druzyna | 0) : i,
-    x: spawns[i].x,
-    y: spawns[i].y,
-    vx: 0,
-    vy: 0,
-    hp: ust.hp,
-    facing: spawns[i].x < terrain.w / 2 ? 1 : -1,
-    angle: spawns[i].x < terrain.w / 2 ? -0.6 : Math.PI + 0.6,
-    alive: true,
-    onGround: true,
-    amunicja: startowaAmunicja(ust.bronie),
-    odszedl: false,
-    lina: null                 // lina ninja: { x, y, dl } albo null (tylko lokalnie, przed strzałem)
-  }));
+  // 1–3 robale na gracza (4.8). Pierwszy ma id gracza (przy 1 robalu wszystko jak dawniej),
+  // kolejne `id#2`, `id#3`; `gracz` = kto nim steruje. Robale drugiej i trzeciej „fali”
+  // dostają dalsze punkty startu, więc robale jednego gracza stoją w różnych miejscach mapy.
+  const ile = Math.max(1, Math.min(ROBALE_MAX, ust.robale | 0));
+  const spawns = T.spawnPoints(terrain, players.length * ile, seed);
+  const worms = [];
+  for (let k = 0; k < ile; k++) {
+    players.forEach((p, i) => {
+      const s = spawns[k * players.length + i];
+      worms.push({
+        id: k ? p.id + '#' + (k + 1) : p.id,
+        gracz: p.id,
+        nick: p.name,              // nick gracza (name ma numer robala, gdy jest ich kilka)
+        name: ile > 1 ? p.name + ' ' + (k + 1) : p.name,
+        color: p.color,
+        druzyna: opcje.druzyny ? Math.max(0, p.druzyna | 0) : i,
+        x: s.x,
+        y: s.y,
+        vx: 0,
+        vy: 0,
+        hp: ust.hp,
+        facing: s.x < terrain.w / 2 ? 1 : -1,
+        angle: s.x < terrain.w / 2 ? -0.6 : Math.PI + 0.6,
+        alive: true,
+        onGround: true,
+        amunicja: startowaAmunicja(ust.bronie),
+        odszedl: false,
+        lina: null                 // lina ninja: { x, y, dl } albo null (tylko lokalnie, przed strzałem)
+      });
+    });
+  }
 
   const state = {
     seed: seed >>> 0,
     terrain,
     worms,
-    order: kolejnoscTur(seed, worms.map((w) => w.id)),
+    order: kolejnoscRobali(seed, players.map((p) => p.id), ile),
     turnPtr: 0,
     druzynowa: !!opcje.druzyny,
     ust,                       // ustawienia partii — stałe przez całą partię
@@ -135,7 +168,7 @@ export function createGame(seed, players, opcje = {}) {
     turnTimeLeft: ust.czas,
     settleTime: 0,
     wind: 0,
-    lava: T.LAVA_Y,
+    lava: terrain.lava0,
     projectiles: [],
     nextProjectileId: 1,
     skrzynki: [],              // zrzuty: { id, typ: 'apteczka' | 'zapas', x, y }
@@ -296,7 +329,7 @@ export function ustawCel(state, x, y) {
   if (state.phase !== 'aim' || state.firedThisTurn) return;
   state.cel = {
     x: Math.max(0, Math.min(state.terrain.w, Math.round(x))),
-    y: Math.max(0, Math.min(T.WORLD_H, Math.round(y)))
+    y: Math.max(0, Math.min(state.terrain.h, Math.round(y)))
   };
 }
 
@@ -445,6 +478,7 @@ export function applyFire(state, action) {
   if (zapas !== undefined) {
     if (zapas <= 0) return false;
     w.amunicja[weapon.id] = zapas - 1;
+    wspolnaAmunicja(state, w);
   }
 
   const start = action.start || obliczStart(w, weapon, action.angle, action.power);
@@ -470,10 +504,17 @@ export function applyFire(state, action) {
     const cel = action.cel || { x: w.x, y: 0 };
     const n = weapon.rakiety;
     const kier = w.facing >= 0 ? 1 : -1;
+    // Od 4.8 start każdej rakiety liczymy z wysokości celu: ile spada (grawitacja rakiety),
+    // tyle zdąży ją znieść ukośny lot i wiatr — więc trafia w punkt także na wysokich
+    // szczytach (dawniej stałe 70 px przesunięcia = pudło obok celu stojącego wysoko).
+    const rak = WEAPONS.rakieta;
+    const a = GRAVITY * rak.gravityFactor, aw = state.wind * rak.windFactor;
     for (let i = 0; i < n; i++) {
-      spawnProjectile(state, WEAPONS.rakieta,
-        cel.x + (i - (n - 1) / 2) * weapon.rozstaw - kier * 70,
-        -40 - i * 22, kier * 55, 110, null);
+      const y0 = -40 - i * 22;
+      const dy = Math.max(0, cel.y - y0);
+      const t = (-110 + Math.sqrt(110 * 110 + 2 * a * dy)) / a;
+      const dryf = kier * 55 * t + aw * t * t / 2;
+      spawnProjectile(state, rak, cel.x + (i - (n - 1) / 2) * weapon.rozstaw - dryf + 0, y0, kier * 55, 110, null);
     }
   } else {
     spawnProjectile(state, weapon, start.x, start.y, start.vx, start.vy, w.id);
@@ -1040,7 +1081,7 @@ function killWorm(state, w, cause) {
    wybuchu. Wołane wyłącznie na granicy tur, w stanie kanonicznym. */
 export function usunGraczy(state, ids) {
   for (const w of state.worms) {
-    if (!ids.includes(w.id) || w.odszedl) continue;
+    if (!(ids.includes(w.gracz) || ids.includes(w.id)) || w.odszedl) continue;
     w.odszedl = true;
     if (w.alive) {
       w.alive = false;
@@ -1055,7 +1096,7 @@ function nextTurn(state) {
   if (new Set(living.map((w) => w.druzyna)).size <= 1) {
     // została jedna drużyna (w trybie „każdy na każdego” — jeden robal)
     state.phase = 'over';
-    state.winner = living[0] ? living[0].id : null;
+    state.winner = living[0] ? wlasciciel(living[0]) : null;   // id gracza (przy 1 robalu = id robala)
     state.charging = false;
     state.events.push({ type: 'koniec', winner: state.winner });
     return;
@@ -1147,6 +1188,7 @@ function stepSkrzynki(state) {
       const zapasy = zapasyDla(state.ust.bronie);
       const bron = los % 3 === 0 || !zapasy.length ? 'kij' : zapasy[(los >>> 4) % zapasy.length];
       w.amunicja[bron] = (w.amunicja[bron] || 0) + 1;
+      wspolnaAmunicja(state, w);
       state.events.push({ type: 'skrzynka', id: c.id, typ: c.typ, wormId: w.id, x: c.x, y: c.y, bron });
     }
   }
@@ -1244,7 +1286,7 @@ export function snapshot(state) {
     over,
     lava: state.lava,
     skrzynki: stanSkrzynek(state),
-    aktywny: akt ? akt.id : null
+    aktywny: akt ? wlasciciel(akt) : null     // gracz z turą (protokół); robala wskazuje turnPtr
   };
 }
 
@@ -1306,7 +1348,7 @@ export function zastosujSnapshot(state, snap) {
   state.turnNumber = snap.turnNumber;
   state.ostatni = snap.ostatni && typeof snap.ostatni === 'object' ? { ...snap.ostatni } : {};
   state.winner = snap.winner ?? null;
-  state.lava = typeof snap.lava === 'number' ? snap.lava : T.LAVA_Y;
+  state.lava = typeof snap.lava === 'number' ? snap.lava : state.terrain.lava0;
   state.skrzynki = [];
   ustawSkrzynki(state, snap.skrzynki);
   state.projectiles = [];

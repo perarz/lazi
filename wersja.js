@@ -5,6 +5,16 @@
 (function () {
   var historia = [
     {
+      wersja: '4.8', data: '2026-09-27', tytul: 'Kilka robali na gracza, wyższe mapy i lepsza kamera',
+      zmiany: [
+        'Jak w Wormsach: gospodarz ustawia w lobby 1, 2 albo 3 robale na gracza. Tury idą drużynami na zmianę (drużyna 1 → drużyna 2 → drużyna 1…), w drużynie gracze na zmianę, a każdy za każdym razem kolejnym swoim robalem. Robale jednego gracza mają wspólny plecak z bronią.',
+        'Mapa ekstremalna jest o ok. 75% wyższa: więcej pięter, wyższe iglice i kominy, dłuższa droga do lawy.',
+        'Nalot trafia tam, gdzie wskażesz — także w kogoś stojącego wysoko na szczycie i przy mocnym wietrze (dawniej rakiety potrafiły spaść obok).',
+        'Kamera: minimapa w rogu (stuknij albo przeciągnij po niej, żeby tam spojrzeć), przycisk 🗺️ i klawisz M pokazują całą mapę naraz, oddalić można dalej niż dotąd (aż do całej mapy), a na telefonie dwa palce przesuwają widok także w Twojej turze.',
+        'Poprawka: link do areny i odświeżenie strony w lobby znowu wracają prosto do tej areny.'
+      ]
+    },
+    {
       wersja: '4.7.1', data: '2026-09-27', tytul: 'Kurtyna, czapki za osiągnięcia i poprawki',
       zmiany: [
         'Korona Króla GOATów za zdobycie WSZYSTKICH osiągnięć Areny: złota korona z wielkimi rogami kozła, pulsującym rubinem, krążącymi iskrami i promieniami chwały za głową. Do tego trzy czapki za pojedyncze osiągnięcia: płonący irokez (Masakra), korona z lawy (Kąpiel w lawie) i rogi prawdziwego GOATa (Kozi róg).',

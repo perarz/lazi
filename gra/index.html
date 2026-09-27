@@ -36,10 +36,14 @@
       </div>
       <div class="hud-przyciski">
         <span id="obserwatorzy" class="panel obserwatorzy" title="Tylu obserwatorów ogląda partię" hidden><span aria-hidden="true">👁</span> <b id="obserwatorzy-ile">0</b></span>
+        <button id="btn-mapa" class="panel przycisk-hud" type="button" aria-label="Cała mapa" aria-pressed="false" title="Cała mapa (M)">🗺️</button>
         <button id="btn-pelny" class="panel przycisk-hud" type="button" aria-label="Pełny ekran" title="Pełny ekran" hidden>⛶</button>
         <button id="btn-opusc" class="panel przycisk-hud" type="button">Opuść grę</button>
       </div>
     </div>
+
+    <!-- minimapa (od 4.8): cała mapa, robale i kadr kamery; stuknięcie przenosi tam kamerę -->
+    <canvas class="minimapa" id="minimapa" aria-label="Minimapa — stuknij, żeby przesunąć kamerę"></canvas>
 
     <div class="banery">
       <div class="baner" id="baner-obserwator" hidden>Oglądasz tę partię. Zagrasz w następnej rundzie.</div>
@@ -88,7 +92,7 @@
       </div>
       <div class="pomoc">
         <b>A</b>/<b>D</b> ruch &nbsp; <b>Spacja</b> skok &nbsp; <b>W</b>/<b>S</b> albo mysz: celowanie &nbsp;
-        <b>Q</b> / <b>PPM</b> ekwipunek &nbsp; <b>E</b> emotki &nbsp; <b>R</b> obrót mostu &nbsp; <b>1-0</b> broń &nbsp; <b>F</b> lub <b>Enter</b> (przytrzymaj) strzał
+        <b>Q</b> / <b>PPM</b> ekwipunek &nbsp; <b>E</b> emotki &nbsp; <b>R</b> obrót mostu &nbsp; <b>M</b> cała mapa &nbsp; <b>1-0</b> broń &nbsp; <b>F</b> lub <b>Enter</b> (przytrzymaj) strzał
       </div>
     </div>
 

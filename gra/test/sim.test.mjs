@@ -280,6 +280,33 @@ test('nalot wymaga celu i zrzuca rakiety', () => {
   assert(cel.hp < 100, 'nalot nie zranil celu');
 });
 
+test('nalot trafia w cel stojacy wysoko, takze przy wietrze (4.8)', () => {
+  for (const [yCelu, wiatr] of [[120, 0], [120, 180], [700, -180]]) {
+    const st = S.createGame(21, players(2));
+    const t = st.terrain;
+    // puste niebo i gruba skała, której wierzch jest na wysokości celu
+    t.mask.fill(0, 0, (yCelu + 400) * t.w);
+    const cx = 1000;
+    for (let x = cx - 300; x <= cx + 300; x++) for (let y = yCelu; y < yCelu + 300; y++) t.mask[y * t.w + x] = 1;
+    st.wind = wiatr;
+    st.weapon = 'nalot';
+    S.ustawCel(st, cx, yCelu);
+    assert(S.startCharging(st), 'nalot nie ruszył');
+    S.releaseFire(st);
+    const wybuchy = [];
+    for (let i = 0; i < 8 / S.DT && st.projectiles.length; i++) {
+      S.step(st);
+      for (const e of st.events) if (e.type === 'wybuch') wybuchy.push(e);
+      st.events.length = 0;
+    }
+    assert(wybuchy.length === WEAPONS.nalot.rakiety, 'wybuchów: ' + wybuchy.length);
+    const srodek = wybuchy.reduce((s, e) => s + e.x, 0) / wybuchy.length;
+    // pierwsze rakiety uderzają w wierzch skały, kolejne wpadają w ich kratery (trochę niżej)
+    assert(Math.abs(srodek - cx) < 15 && wybuchy.every((e) => e.y >= yCelu - 5 && e.y < yCelu + 60),
+      'nalot obok celu (y ' + yCelu + ', wiatr ' + wiatr + '): środek ' + srodek.toFixed(0));
+  }
+});
+
 /* Płaska półka wokół robala: czyste pole testowe na nierównej mapie. */
 function polka(st, w, szer = 160) {
   const y0 = Math.round(w.y);
@@ -551,19 +578,24 @@ test('rozmiar mapy: duza i mala maja inna szerokosc, spawny na gruncie, stan prz
 test('mapa ekstremalna: styl tylko z ustawien, gesta siec jaskin, spawny na gruncie', () => {
   const st = S.createGame(12345, players(6), { sieciowa: true, ustawienia: { mapa: 'ekstremalna' } });
   assert(st.terrain.styl === 'ekstremalna', 'styl: ' + st.terrain.styl);
+  // 4.8: ekstremalna jest wyższa (1,75×), lawa 144 px nad dnem, stan zna wysokość
+  assert(st.terrain.h === T.WYS_EKSTREMALNA && st.terrain.mask.length === st.terrain.w * T.WYS_EKSTREMALNA, 'wysokosc: ' + st.terrain.h);
+  assert(st.terrain.lava0 === T.WYS_EKSTREMALNA - (T.WORLD_H - T.LAVA_Y) && st.lava === st.terrain.lava0, 'lawa: ' + st.lava);
+  const t2 = T.rebuild(12345, [{ x: 500, y: 1500, r: 40 }], st.terrain.opcje);
+  assert(t2.h === st.terrain.h && !T.solidAt(t2, 500, 1500), 'rebuild wyzszej mapy');
   for (const w of st.worms) assert(T.solidAt(st.terrain, w.x, w.y + 1), 'robal w powietrzu na ekstremalnej');
   // dużo skały nad lawą i dużo pustki w środku (jaskinie)
   let skala = 0, pustka = 0;
-  for (let y = 300; y < T.LAVA_Y - 40; y += 4) for (let x = 200; x < st.terrain.w - 200; x += 4) {
+  for (let y = 300; y < st.terrain.lava0 - 40; y += 4) for (let x = 200; x < st.terrain.w - 200; x += 4) {
     if (T.solidAt(st.terrain, x, y)) skala++; else pustka++;
   }
-  assert(skala > pustka * 0.8 && pustka > skala * 0.15, 'ekstremalna nie wyglada na mrowisko: skala ' + skala + ', pustka ' + pustka);
+  assert(skala > pustka * 0.4 && pustka > skala * 0.15, 'ekstremalna nie wyglada na mrowisko: skala ' + skala + ', pustka ' + pustka);
   for (let seed = 1; seed < 200; seed += 23) assert(T.stylMapy(seed) !== 'ekstremalna', 'ekstremalna w losowaniu');
   // 4.5.1: iglice prawie pod sufit, ale zostaje pas nieba na przerzut
-  let szczyt = T.WORLD_H;
+  let szczyt = st.terrain.h;
   for (let x = 100; x < st.terrain.w - 100; x += 2) {
     let y = 0;
-    while (y < T.LAVA_Y && !T.solidAt(st.terrain, x, y)) y++;
+    while (y < st.terrain.lava0 && !T.solidAt(st.terrain, x, y)) y++;
     szczyt = Math.min(szczyt, y);
   }
   assert(szczyt < 120 && szczyt >= 36, 'szczyt ekstremalnej: ' + szczyt);
@@ -842,6 +874,44 @@ test('druzyny: wygrywa ostatnia druzyna, nawet z dwoma zywymi', () => {
   run(st, S.TURN_TIME + 7);
   assert(st.phase === 'over', 'faza to ' + st.phase);
   assert(st.worms.find((w) => w.id === st.winner).druzyna === 0, 'zly zwyciezca');
+});
+
+test('kilka robali: 1 robal = dawna kolejka, id i start jak przed 4.8', () => {
+  const a = S.createGame(9, players(4), { sieciowa: true });
+  const b = S.createGame(9, players(4), { sieciowa: true, ustawienia: { robale: 1 } });
+  assert(JSON.stringify(a.order) === JSON.stringify(S.kolejnoscTur(9, players(4).map((p) => p.id))), 'inna kolejka');
+  assert(S.stateHash(a) === S.stateHash(b), 'robale: 1 zmienia partie');
+  assert(a.worms.every((w) => w.gracz === w.id && w.name === w.nick), 'zle pola robala');
+});
+
+test('kilka robali: 3 na gracza, druzyny na zmiane, gracze i robale po kolei', () => {
+  const st = S.createGame(5, druzynowi([0, 0, 1]), { druzyny: true, sieciowa: true, ustawienia: { robale: 3 } });
+  assert(st.worms.length === 9 && st.order.length === 9, 'robali: ' + st.worms.length);
+  assert(new Set(st.worms.map((w) => w.id)).size === 9, 'powtorzone id');
+  for (const w of st.worms) assert(T.solidAt(st.terrain, w.x, w.y + 2) || T.solidAt(st.terrain, w.x, w.y + 4), 'robal w powietrzu: ' + w.id);
+  const kto = [];
+  for (let t = 0; t < 12; t++) { kto.push(S.activeWorm(st)); S.zastosujSnapshot(st, przezSiec(S.stanPoTurze(st))); }
+  for (let t = 1; t < kto.length; t++) assert(kto[t].druzyna !== kto[t - 1].druzyna, 'dwie tury z rzedu tej samej druzyny');
+  const zA = kto.filter((w) => w.druzyna === 0);
+  // w druzynie A (dwoch graczy po 3 robale): gracze na zmiane, kazdy kolejnym robalem
+  for (let t = 1; t < zA.length; t++) assert(zA[t].gracz !== zA[t - 1].gracz, 'ten sam gracz dwa razy z rzedu: ' + zA.map((w) => w.id).join(','));
+  assert(new Set(zA.map((w) => w.id)).size === 6, 'nie wszystkie robale druzyny A zagraly: ' + zA.map((w) => w.id).join(','));
+  const zB = kto.filter((w) => w.druzyna === 1).map((w) => w.id);
+  assert(new Set(zB.slice(0, 3)).size === 3 && zB[3] === zB[0], 'robale gracza B nie po kolei: ' + zB.join(','));
+  assert(st.worms.filter((w) => w.gracz === 'p2').map((w) => w.name).join() === 'Gracz2 1,Gracz2 2,Gracz2 3', 'nazwy');
+});
+
+test('kilka robali: wspolna amunicja, snapshot gracza z tura, wygrywa gracz', () => {
+  const st = S.createGame(7, players(2), { sieciowa: true, ustawienia: { robale: 2 } });
+  const akt = S.activeWorm(st);
+  const brat = st.worms.find((w) => w.gracz === akt.gracz && w !== akt);
+  S.applyFire(st, { wormId: akt.id, weapon: 'dynamit', angle: 0, power: 0 });
+  assert(brat.amunicja.dynamit === akt.amunicja.dynamit && akt.amunicja.dynamit === 1, 'amunicja nie jest wspolna');
+  assert(S.snapshot(st).aktywny === akt.gracz, 'aktywny w snapshocie to nie gracz');
+  S.usunGraczy(st, ['p1']);
+  assert(st.worms.filter((w) => w.gracz === 'p1').every((w) => w.odszedl && !w.alive), 'usunGraczy nie usunal wszystkich robali');
+  const snap = S.stanPoTurze(st);
+  assert(snap.over && snap.winner === 'p0', 'zwyciezca: ' + snap.winner);
 });
 
 test('kazdy na kazdego: kolejnosc jak dawniej (nastepny zywy z kolejki)', () => {

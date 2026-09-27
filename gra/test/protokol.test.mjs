@@ -732,6 +732,38 @@ await test('partia z wlasnymi ustawieniami (15 s, 50 HP, szal, czeste zrzuty, hu
   console.log('       ' + p.tura + ' tur');
 });
 
+await test('partia 2v2 po 2 robale na gracza (4.8) do konca bez rozjazdow, druzyny na zmiane', () => {
+  const serwer = new Serwer();
+  const ids = ['a', 'b', 'c', 'd'];
+  const kl = ids.map((id, i) => new Klient(id, serwer, mulberry32(900 + i), { opoznienie: 50 + i * 40, coIle: 300 }));
+  for (const k of kl) serwer.przyjmij({ t: 'puls', id: k.id });
+  const ustawienia = { czas: 15, hp: 40, robale: 2, rozmiar: 'mala', lawaOd: 2, lawaTempo: 40 };
+  serwer.przyjmij({ t: 'nowa', seed: 4711, druzyny: 2, ustawienia, v: P.WERSJA,
+    gracze: ids.map((id, i) => ({ id, name: id, color: '#fff', druzyna: i % 2 })) });
+  const tury = [];
+  const kto = new Map();
+  for (let i = 0; i < 60 * 900; i++) {
+    serwer.czas += KLATKA;
+    for (const k of kl) k.tik();
+    const st = kl[0].r && kl[0].r.state;
+    if (st && st.phase === 'aim' && !kto.has(st.turnNumber)) {
+      const w = S.activeWorm(st);
+      if (w) { kto.set(st.turnNumber, w); tury.push(w); }
+    }
+    if (i % 60 === 0 && P.zloz(serwer.log).faza === 'koniec') break;
+  }
+  for (let i = 0; i < 60 * 25; i++) { serwer.czas += KLATKA; for (const k of kl) k.tik(); }
+  const p = P.zloz(serwer.log);
+  assert(p.faza === 'koniec', 'partia nie doszla do konca (tura ' + p.tura + ')');
+  zgodnoscKoncowa({ serwer, pokoj: p, wszyscy: kl, klienci: kl });
+  for (const k of kl) assert(k.r.statystyki.korekty === 0, 'korekty u ' + k.id);
+  assert(kl[0].r.state.worms.length === 8, 'robali: ' + kl[0].r.state.worms.length);
+  assert(tury.some((w) => w.id.includes('#')), 'zaden drugi robal nie dostal tury');
+  for (let t = 1; t < Math.min(tury.length, 6); t++) assert(tury[t].druzyna !== tury[t - 1].druzyna, 'dwie tury z rzedu tej samej druzyny');
+  assert(ids.includes(p.zwyciezca) || p.zwyciezca === null, 'zwyciezca to nie gracz: ' + p.zwyciezca);
+  console.log('       ' + p.tura + ' tur, zagraly robale: ' + [...new Set(tury.map((w) => w.id))].join(' '));
+});
+
 console.log('\n' + (failed === 0
   ? '\x1b[32mWszystkie testy przeszly (' + passed + ')\x1b[0m'
   : '\x1b[31m' + failed + ' bledow, ' + passed + ' ok\x1b[0m') + '\n');
