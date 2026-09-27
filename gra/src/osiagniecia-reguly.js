@@ -25,24 +25,26 @@ function turaDla(p, nr, aktId) {
 
 const ZABOJCZE_BRONIE = { nalot: 'nalot', dynamit: 'saper', strzelba: 'snajper', kasetowa: 'kasetowka', owca: 'owca' };
 
-/* ctx: { nr, aktId, mojeId, fragiWczesniej } — fragiWczesniej to eliminacje
-   z poprzednich partii (do progów 5 i 25). */
+/* ctx: { nr, aktId, mojeId, fragiWczesniej, gracz? } — fragiWczesniej to eliminacje
+   z poprzednich partii (do progów 5 i 25). aktId = gracz z turą; gracz(idRobala) =
+   do kogo należy robal (4.8: kilka robali na gracza; bez tego id robala = id gracza). */
 export function zdarzenieOs(p, e, ctx) {
   const t = turaDla(p, ctx.nr, ctx.aktId);
   const moja = ctx.aktId === ctx.mojeId;
   const out = [];
+  const moj = !!e.wormId && (ctx.gracz ? ctx.gracz(e.wormId) : e.wormId) === ctx.mojeId;
 
   if (e.type === 'strzal') {
     t.bron = e.weapon;
   } else if (e.type === 'obrazenia') {
-    if (e.wormId === ctx.mojeId) { t.mojeRany = true; p.ranny = true; }
-    if (moja && e.wormId !== ctx.mojeId) {
+    if (moj) { t.mojeRany = true; p.ranny = true; }
+    if (moja && !moj) {
       t.suma += e.amount;
       if (t.suma >= 100) out.push('masakra');
     }
   } else if (e.type === 'smierc') {
-    if (e.wormId === ctx.mojeId && moja) out.push('samoboja');
-    if (moja && e.wormId !== ctx.mojeId && !p.zabici.has(e.wormId)) {
+    if (moj && moja) out.push('samoboja');
+    if (moja && !moj && !p.zabici.has(e.wormId)) {
       p.zabici.add(e.wormId);
       p.fragi++;
       t.zabite++;

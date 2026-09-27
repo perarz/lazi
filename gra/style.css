@@ -61,6 +61,8 @@ html, body {
 }
 
 #panel-gracze { display: flex; flex-direction: column; gap: 5px; min-width: 170px; }
+/* 4.8: przy kilku robalach na gracza lista bywa długa — przewija się zamiast zasłaniać mapę */
+#panel-gracze { max-height: 52vh; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; pointer-events: auto; }
 
 .gracz { display: flex; align-items: center; gap: 8px; font-size: 13px; }
 .gracz .kropka { width: 10px; height: 10px; border-radius: 50%; flex: none; }
@@ -676,7 +678,7 @@ button:disabled { opacity: 0.35; cursor: not-allowed; }
   #hud { padding: calc(8px + var(--bezp-g)) calc(8px + var(--bezp-p)) calc(8px + var(--bezp-d)) calc(8px + var(--bezp-l)); }
   .hud-gora { gap: 6px; }
   .panel { padding: 6px 9px; border-radius: 8px; }
-  #panel-gracze { min-width: 0; max-width: 42vw; gap: 3px; }
+  #panel-gracze { min-width: 0; max-width: 42vw; gap: 3px; max-height: 40vh; }
   .gracz { font-size: 11px; gap: 5px; }
   .panel-tura { min-width: 0; }
   .tura-kto { font-size: 11px; }
@@ -700,7 +702,8 @@ button:disabled { opacity: 0.35; cursor: not-allowed; }
 /* Telefon pionowo: panele w dwóch rzędach, bronie w pełnej szerokości. */
 @media (max-width: 560px) {
   .hud-gora { flex-wrap: wrap; }
-  #panel-gracze { order: 4; flex-basis: 100%; max-width: none; flex-direction: row; flex-wrap: wrap; gap: 4px 10px; }
+  #panel-gracze { order: 4; flex-basis: 100%; max-width: none; flex-direction: row; flex-wrap: wrap; gap: 4px 10px; max-height: 22vh; }
+  #panel-gracze .druzyna-hud { flex-basis: 100%; }
   .panel-tura { order: 1; margin-inline: 0; }
   .panel-wiatr { order: 2; }
   .hud-przyciski { order: 3; margin-left: auto; }
@@ -1129,4 +1132,18 @@ button.maly { padding: 7px 12px; font-size: 12px; min-height: 36px; }
 
 @media (prefers-reduced-motion: reduce) {
   .ladowanie-pasek i { animation: none; }
+}
+
+/* ---------- minimapa i podgląd całej mapy (od 4.8) ---------- */
+.minimapa {
+  position: absolute; right: calc(12px + var(--bezp-p)); top: calc(92px + var(--bezp-g));
+  width: 180px; height: 90px; display: block;
+  border: 1px solid var(--obwodka); border-radius: 8px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5);
+  pointer-events: auto; touch-action: none; cursor: crosshair;
+  opacity: 0.92;
+}
+#btn-mapa[aria-pressed="true"] { border-color: var(--zar-jasny); background: rgba(255, 170, 30, 0.25); }
+@media (max-width: 760px), (max-height: 500px) {
+  .minimapa { width: 128px; top: calc(62px + var(--bezp-g)); right: calc(8px + var(--bezp-p)); }
 }

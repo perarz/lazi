@@ -70,6 +70,7 @@ export function attachInput(opts) {
     if (e.code === 'KeyQ') { e.preventDefault(); if (!e.repeat) opts.onEkwipunek?.(); return; }
     if (e.code === 'KeyE') { e.preventDefault(); if (!e.repeat) opts.onEmotki?.(); return; }
     if (e.code === 'KeyR') { e.preventDefault(); if (!e.repeat) opts.onObrot?.(); return; }
+    if (e.code === 'KeyM') { e.preventDefault(); if (!e.repeat) opts.onMapa?.(); return; }
     const wPanelu = !!(e.target && e.target.closest && e.target.closest('.ekwipunek'));
     if (wPanelu && (e.code === 'Enter' || e.code === 'NumpadEnter' || e.code === 'Space')) return;
 
@@ -172,6 +173,11 @@ export function attachInput(opts) {
     const [a, b] = [...wskazniki.values()];
     return Math.hypot(a.x - b.x, a.y - b.y);
   }
+  function srodekPalcow() {
+    const [a, b] = [...wskazniki.values()];
+    return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+  }
+  let srodekOd = null;
 
   plotno.addEventListener('pointerdown', (e) => {
     // prawy przycisk myszy otwiera ekwipunek — jak w Worms Armageddon
@@ -184,6 +190,7 @@ export function attachInput(opts) {
     if (wskazniki.size === 2) {
       tryb = 'szczypanie';
       szczypanieOd = odleglosc();
+      srodekOd = srodekPalcow();
       return;
     }
     if (wskazniki.size > 2) return;
@@ -200,6 +207,11 @@ export function attachInput(opts) {
       const d = odleglosc();
       if (szczypanieOd > 10) opts.onZoom?.(d / szczypanieOd);
       szczypanieOd = d;
+      // dwa palce przesuwają też kamerę (od 4.8) — działa także we własnej turze,
+      // gdy jeden palec celuje
+      const m = srodekPalcow();
+      if (srodekOd) opts.onPrzesun?.(m.x - srodekOd.x, m.y - srodekOd.y);
+      srodekOd = m;
     } else if (tryb === 'celuj') {
       celuj(p);
     } else if (tryb === 'kamera') {
