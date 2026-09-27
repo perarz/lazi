@@ -18,7 +18,7 @@ Stos technologiczny:
 - Bez bundlera, bez `package.json` i bez zależności npm. Zwykłe pliki HTML/CSS/JS, gra jako moduły ES,
   zrzutka jako klasyczne skrypty.
 
-Obecna wersja: **4.5 „Mapy na zamówienie i obracane mosty”** (`wersja.js`).
+Obecna wersja: **4.6 „Konta i panel Areny”** (`wersja.js`).
 
 ---
 
@@ -109,8 +109,9 @@ komend — godzina Areny zjadała dziesiątki tysięcy). W 4.1.1 wszystko przesz
 i Redis zostały usunięte (dane zrzutki przeniesione skryptem `serwer/migruj-zrzutke.mjs`).
 
 **Zasady**
-- Wspólne jest tylko to, co musi: log Areny, obecność, sumy i ostatnie wpłaty zrzutki. Statystyki,
-  osiągnięcia, ustawienia, wybrana broń, blokady minigier, odznaki — `localStorage`.
+- Wspólne jest tylko to, co musi: log Areny, obecność, sumy i ostatnie wpłaty zrzutki, **od 4.6 konta Areny**
+  (statystyki i osiągnięcia gracza — sekcja 3.1). Ustawienia, wybrana broń, blokady minigier, odznaki
+  zrzutki — `localStorage`.
 - Nowe dane „online” doklejaj do tego, co już idzie (pole w `ruch`, `dolacz`, strzale, stanie zrzutki),
   zamiast nowego kanału. Serwer i tak rozsyła zmiany sam, więc klient nie odpytuje w pętli.
 - Karta w tle nie wysyła pulsów (`document.hidden`); zrzutka odświeża co 10 s tylko, gdy gniazdo leży.
@@ -155,6 +156,32 @@ PL, IP 96.62.223.169). Katalog `serwer/` to serwer: Node + WebSocket (`ws`).
   albo sesja SSH.
 - `.vercelignore` wyklucza `serwer/` z publikacji na Vercelu.
 
+### 3.1 Konta Areny i pokoje (od 4.6)
+- **Arena jest tylko dla zalogowanych.** `serwer/konta.js`: nick (3–14 znaków, unikalny bez względu na wielkość
+  liter) + hasło (min. 4), bez maila. Hasło tylko jako skrót `crypto.scrypt` z solą, token sesji = losowe 32 bajty,
+  ważny 60 dni (użycie przedłuża), do 10 sesji na konto. Plik `KONTA_PLIK`, a bez niego obok zrzutki
+  (`/var/lib/arena/konta.json`, prawa 600, codzienna kopia `konta-RRRR-MM-DD.json`, 14 dni). Bez żadnego
+  z tych plików (testy) — tylko w pamięci.
+- API (token zawsze w treści POST): `POST /api/konto/rejestracja|logowanie|ja|wyloguj|kolor|wynik`,
+  `GET /api/ranking` (top 50 po killach), `GET /api/pokoje`, `POST /api/pokoje` (nowy, opcjonalnie hasło),
+  `POST /api/pokoje/wejdz` (hasło → `klucz`). Limity: 12 prób logowania/rejestracji na IP na minutę,
+  6 nowych kont na IP na godzinę, 3 pokoje na konto, 40 pokoi z panelu.
+- WebSocket Areny: `/ws?pokoj=ID&token=…[&klucz=…]` — bez ważnego tokenu 401, pokój na hasło bez klucza 403.
+  Beacon `wyjdz` tak samo (`/api/arena?pokoj&token&klucz`). **Serwer wpisuje w każde zdarzenie z polem `id`
+  id gracza z konta (`k-` + nick małymi, spacje → `_`) i nick w `dolacz`** (`przypnijKonto`) — nie da się
+  grać za kogoś. `id` w zdarzeniach zawsze znaczy „nadawca”; nowe zdarzenie z innym znaczeniem `id` by się zepsuło.
+- **Wynik partii** zgłasza przeglądarka (`/api/konto/wynik`: seed partii, kille ≤ 7, obrażenia, wygrana, rekord
+  tury, nowe osiągnięcia); jedna partia (seed) liczy się raz, serwer pamięta 40 ostatnich. Wyjście w trakcie =
+  `tylkoOsiagniecia`. Da się oszukać konsolą — przy żartobliwej stronie akceptujemy (jak minigierki).
+- **Pokoje z panelu** (`opisy` w `serwer.js`) są w pamięci jak partie: nazwa, kto założył, skrót hasła, klucz.
+  Pusty znika po 10 minutach, restart serwera kasuje wszystkie. Pokój bez opisu (`glowny`, `?pokoj=` z testów)
+  jest publiczny. Lista liczy graczy po połączeniach (nicki z kont), „trwa partia” = log od `nowa` i strzał/pas/stan
+  w ostatnich 2 min.
+- **Reset hasła** (nie ma maila): na VPS `cd /opt/lazi/serwer && node konto-haslo.mjs NICK 'NOWE_HASLO'`
+  (jako root sam zatrzymuje i wznawia usługę — to urywa trwające partie).
+- Wdrożenie zmian w kontach: strona (Vercel) i serwer (`arena-aktualizuj`) muszą wejść razem — nowa strona
+  ze starym serwerem nie zaloguje (404), stara karta z nowym serwerem nie połączy się (401, trzeba przeładować).
+
 **Otwarte sprawy po przenosinach (stan na 2026-09-26, wdrożenie 4.1.1 = PR #20)**
 - Druga migracja zrzutki („dogonienie” wpłat z chwili przełączenia) i przełączenie klonu na VPS na `master` —
   prompt dostał użytkownik; jeśli nie wiadomo, czy zrobione, zapytaj albo poproś o `git -C /opt/lazi status`.
@@ -182,7 +209,7 @@ PL, IP 96.62.223.169). Katalog `serwer/` to serwer: Node + WebSocket (`ws`).
 | `wersja.js` | Numer wersji + historia zmian (jedno źródło); znaczek `vX.Y` w rogu stron |
 | `zmiany/` | Strona „Co nowego” (rysuje historię z `wersja.js`) |
 | `goat/` | Stara, ukryta strona „ŁAZI TO GOAT” — nie ruszać |
-| `serwer/` | Serwer na VPS: `pokoj.js` (Arena), `zrzutka.js` (zrzutka w pliku), `gracze.js` (**lista graczy `GRACZE`, `SEZON`, limity wpłat**), `serwer.js` (HTTP + WebSocket), `migruj-zrzutke.mjs` (jednorazowo z Redisa), `test.mjs`, `instaluj.sh`, `INSTALACJA.md`; ma własne `package.json` (zależność `ws`) — to jedyne miejsce z npm |
+| `serwer/` | Serwer na VPS: `pokoj.js` (Arena), `zrzutka.js` (zrzutka w pliku), `konta.js` (konta Areny, 3.1), `gracze.js` (**lista graczy `GRACZE`, `SEZON`, limity wpłat**), `serwer.js` (HTTP + WebSocket, pokoje z panelu), `konto-haslo.mjs` (reset hasła), `migruj-zrzutke.mjs` (jednorazowo z Redisa), `test.mjs`, `instaluj.sh`, `INSTALACJA.md`; ma własne `package.json` (zależność `ws`) — to jedyne miejsce z npm |
 | `.vercelignore` | Nie publikuj `serwer/` na Vercelu |
 | `vercel.json` | Nagłówki bezpieczeństwa |
 
@@ -194,7 +221,9 @@ PL, IP 96.62.223.169). Katalog `serwer/` to serwer: Node + WebSocket (`ws`).
 | `zrzutka:minigra-blokada` | Czas końca 10-sekundowej blokady po przegranej |
 | `zrzutka:sezon1` | Archiwum sezonu 1 (pobrane raz) |
 | `zrzutka:sezon2-intro` | `'1'` = okno sezonu już się samo pokazało |
-| `arena:id`, `arena:nazwa`, `arena:kolor`, `arena:bron`, `arena:staty`, `arena:osiagniecia` | Arena (`arena:kolor` = kolor robala wybrany przy wejściu) |
+| `arena:token` | Token sesji konta Areny (od 4.6) |
+| `arena:nazwa`, `arena:kolor`, `arena:bron`, `arena:staty`, `arena:osiagniecia` | Arena. Od 4.6 `staty` i `osiagniecia` to **kopia z konta** (nadpisywana po zalogowaniu i po każdym wyniku, czyszczona przy wylogowaniu) — czytają je reguły osiągnięć i profil na zrzutce |
+| `arena:stare-przeniesione` | `'1'` = dane sprzed kont już poszły do konta (tylko pierwsza rejestracja w przeglądarce je zabiera). `arena:id` z dawnych wersji nie jest już używane |
 
 ---
 
@@ -396,8 +425,9 @@ Lekcje z kalibracji:
 | `src/rng.js` | `mulberry32`, szum, `hashNumbers`, `hashTekstu` |
 | `src/protokol.js` | Protokół sieciowy (bez DOM) — kto ma turę, co jest kanoniczne, kto wyrzuca nieobecnych |
 | `src/net.js` | WebSocket do serwera na VPS: log zdarzeń, ponowne łączenie z kursorem, obecność, zegar serwera, `sendBeacon` przy zamknięciu karty (POST `/api/arena` na VPS); `RUCH_CO` — podgląd ruchu co 100 ms |
-| `src/konfig.js` | `SERWER_WS` — adres serwera Areny; lokalnie `?serwer=ws://127.0.0.1:8787/ws` do testów |
-| `src/main.js` | Lobby (tryb, drużyny, GOTOWY, kolory), HUD, kamera, pętla gry, zdarzenia → efekty, statystyki, osiągnięcia (UI) |
+| `src/konfig.js` | `SERWER_WS` — adres serwera Areny; lokalnie `?serwer=ws://127.0.0.1:8787/ws` do testów; `adresApi()` = HTTP tego serwera |
+| `src/konto.js` | Konto (4.6): logowanie, rejestracja, `ja`, wynik partii, pokoje, ranking (HTTP), kopia statystyk do `localStorage`, opisy błędów |
+| `src/main.js` | Logowanie, ekran ładowania, panel (GRAJ, pokoje, ranking, osiągnięcia, kolor), lobby (tryb, drużyny, GOTOWY), HUD, kamera, pętla gry, zdarzenia → efekty, statystyki, osiągnięcia (UI) |
 | `src/druzyny.js` | Nazwy i kolory drużyn (`DRUZYNY`), tryby lobby (`TRYBY`) |
 | `src/ustawienia.js` | Ustawienia partii z lobby (`USTAWIENIA`: czas, hp, mapa, rozmiar, bronie, zrzuty, wiatr, lawaOd, lawaTempo; pozycje z `opcje` = lista, z `liczba` = wpisywane), `normalizuj`, `zLiczby`, `opisZmian` |
 | `src/emotki.js` | Emotki i tańce (`EMOTKI`: 5 emotek + 2 tańce), czasy i limit wysyłania |
@@ -430,9 +460,26 @@ Lekcje z kalibracji:
     rozciągnięty, a liczba pięter/komór/skał rośnie proporcjonalnie (`ile`).
   - **Styl `ekstremalna`** (4.5) nie jest w losowaniu z seeda (`stylMapy` zwraca tylko 4 style) — przychodzi
     z ustawień (`ust.mapa`) przez `createGame` → `createTerrain(…, { styl })`. Wysoka bryła od brzegu do brzegu,
-    9–12 wąskich pięter, 6–8 kominów i 7–10 ukośnych tuneli.
+    9–12 wąskich pięter, 6–8 kominów i 7–10 ukośnych tuneli. Od 4.5.1 profil łączy wszystkie style: strefy
+    (`strefy`, szum 1D) mieszają góry i masyw, do tego `iglice` (prawie pod sufit, powierzchnia min. y=45),
+    `wawozy` do lawy i `przerwy` jak w archipelagu (z wiszącą skałą nad każdą); pas y < 36 jest zawsze pusty
+    (przerzut górą). Losowania tych elementów są tylko w gałęzi ekstremalnej — zwykłe mapy z seeda się nie zmieniły.
 - `spawnPoints` nigdy nie stawia robala w powietrzu. Gdy w wycinku gracza nie ma gruntu (przerwa
   między wyspami), szuka gruntu na całej mapie (`zapasowyStart`). Test sprawdza to na wielu seedach.
+
+### Wejście do Areny (od 4.6)
+- Ekrany (`EKRANY`, `pokazEkran` w `main.js`): `#ekran-logowanie` (zakładki Zaloguj/Załóż konto; pierwszy raz
+  w przeglądarce otwiera się na zakładaniu) → `#ekran-ladowanie` (robal z `rysujPodgladRobala`, pasek, żarty;
+  `ladowanie(zadanie)` trwa min. 1,4 s i czeka na konto, pokoje i ranking) → `#ekran-panel` → `#ekran-lobby`.
+  Z zapamiętanym tokenem strona startuje od razu od ładowania (`start()`); 401 = z powrotem do logowania,
+  brak sieci = komunikat i „Spróbuj jeszcze raz”.
+- Panel: profil (robal, nick, 4 statystyki), kolor robala (`details`, zapis też na koncie), **GRAJ** = pokój
+  `glowny`, zakładki Pokoje / Ranking killi, na dole wszystkie osiągnięcia (`rysujOsiagnieciaLobby` rysuje je
+  teraz w panelu). Lista pokoi odświeża się co 5 s, tylko gdy panel widać (i nie pod palcem piszącym hasło).
+- `polaczZPokojem(id, klucz, nazwa)` tworzy `createNet({ pokoj, token, klucz })` i ustawia `?pokoj=` w adresie
+  (odświeżenie strony wraca do pokoju, link działa jak zaproszenie; pokój na hasło otwiera pole hasła w panelu).
+  „← Panel” w lobby = `opuscPokoj()` (`wyjdz`, `net.stop()`, zerowanie stanu lobby). `mojeId` = id konta.
+- Koniec partii: `wyslijWynikPartii` (kille = `partia.os.fragi`), odpowiedź nadpisuje kopię w `localStorage`.
 
 ### Protokół tury
 - Wspólny log zdarzeń na serwerze (pokój). Pierwszy `strzal`/`pas` danej tury jest **kanoniczny**.
@@ -670,6 +717,41 @@ brak obrażeń od swoich i tury na zmianę drużynami są już w 4.2*; zostaje t
 dorzucać po kilka w wersji. **Otwarte pytania do użytkownika**: od czego zaczynamy; ile robali domyślnie
 w drużynie (2 czy 3); czy robimy czapki i bronie z postaci ekipy; czy robimy wspólny ranking.
 
+### Plan: konta, ekran „GRAJ” i panel aren (propozycja 2026-09-27, czeka na decyzję)
+Użytkownik zapowiedział przejście na konta i „cały panel aren i lobby”. Na razie tylko plan, bez kodu.
+
+**Zrobione w 4.6** (inaczej niż w planie — użytkownik chciał od razu konta): logowanie/rejestracja, ekran
+ładowania, panel z GRAJ, lista pokoi z hasłem albo bez, ranking killi, statystyki i osiągnięcia na koncie
+(sekcja 3.1 i „Wejście do Areny”). Konto jest tylko dla Areny (zrzutka bez zmian). Zostaje z planu: znajomi,
+zaproszenia, historia partii, czapki, ewentualnie konto także w zrzutce i logowanie Google.
+
+**Etap A — ekran przejściowy z GRAJ (4.6, sam klient)**
+- Klik „Arena” → `gra/` pokazuje najpierw **hub**: duży przycisk **GRAJ**, karta profilu (nick, kolor robala,
+  statystyki i osiągnięcia z `localStorage`), przyciski Pokoje (na razie wyszarzone), Ustawienia (dźwięk),
+  Osiągnięcia. Dzisiejszy ekran wejścia (nick + kolor) staje się edycją profilu w hubie.
+- GRAJ = wejście do domyślnego pokoju jak dziś. Protokół i serwer bez zmian.
+
+**Etap B — lista pokoi (4.7, serwer)**
+- Serwer ma już pokoje (`?pokoj=`). Dochodzi `GET /api/pokoje` (nazwa, gospodarz, gracze n/8, lobby/partia,
+  skrót ustawień), odświeżane w hubie co kilka sekund albo przez gniazdo.
+- „Stwórz pokój” (nazwa, publiczny/prywatny z 4-znakowym kodem), „Dołącz kodem”, GRAJ = szybka gra
+  (najpełniejsze otwarte lobby albo nowy pokój). Pusty pokój znika po kilku minutach. Limit pokoi na IP.
+
+**Etap C — konta (5.0, serwer + klient)**
+- Rejestracja: nick (unikalny bez względu na wielkość liter) + hasło, **bez maila** (mniej danych osobowych).
+  Hasło tylko jako skrót `crypto.scrypt` z solą (wbudowany Node, bez nowych zależności), plik
+  `/var/lib/arena/konta.json` z kopiami jak zrzutka. Reset hasła robi właściciel promptem na VPS.
+- Logowanie daje losowy token sesji (np. 30 dni) w `localStorage`; token idzie w `dolacz` i przy wpłatach.
+  Serwer podmienia nick na ten z konta — nikt nie podszyje się pod cudzy nick. Limity prób logowania na IP.
+- Konto trzyma: nick, kolor, (później czapkę), statystyki i osiągnięcia Areny, odznaki zrzutki. Przy pierwszym
+  logowaniu przenosi to, co było w `localStorage`. Granie **jako gość** zostaje.
+- Jedno konto na całą stronę (Arena + zrzutka: nick sponsora = nick konta).
+
+**Etap D — dalej**: wspólny ranking Areny, znajomi i zaproszenia do pokoju, historia partii, czapki postaci.
+
+**Otwarte pytania**: nick + hasło czy logowanie Google; czy konto obejmuje też zrzutkę; czy goście mogą grać
+(propozycja: tak); czy ranking ma być publiczny. Kolejność proponowana: A → B → C → D.
+
 ---
 
 ## 8. Wersje i log zmian
@@ -698,6 +780,8 @@ w drużynie (2 czy 3); czy robimy czapki i bronie z postaci ekipy; czy robimy ws
   - **4.3** ustawienia partii u gospodarza, wyrzucanie, oddawanie korony, losowanie drużyn, szalone mapy, podgląd na żywo
   - **4.4** lina ninja, Święty GOAT, emotki i tańce, licznik obserwatorów, lawa od tury i jej tempo, dwa zestawy broni, koza zamiast owcy, niższy skok
   - **4.5** mapa ekstremalna, rozmiar mapy, wpisywane życie/czas/lawa, obracany most (R), dalszy rzut granatów
+  - **4.5.1** ekstremalna = wszystkie style naraz, iglice pod niebo
+  - **4.6** konta Areny (logowanie, statystyki i osiągnięcia na koncie), ekran ładowania, panel z GRAJ, pokoje na hasło, ranking killi
 
 ---
 
@@ -706,7 +790,7 @@ w drużynie (2 czy 3); czy robimy czapki i bronie z postaci ekipy; czy robimy ws
 ```
 node gra/test/sim.test.mjs        # symulacja, bronie, determinizm, drużyny, ustawienia, skrzynki, spawny, osiągnięcia, kamera, lina, most obracany, rozmiar mapy (80)
 node gra/test/protokol.test.mjs   # protokół: lag, rozłączenia, ucieczka na żywo, lobby, ustawienia, partie 2v2 i z własnymi zasadami (21, ~30 s)
-cd serwer && npm install && node test.mjs   # serwer na VPS: Arena (10) + zrzutka: wpłaty, na żywo, limity, plik, migracja (7)
+cd serwer && npm install && node test.mjs   # serwer na VPS: Arena (10) + konta i pokoje (7) + zrzutka (7)
 ```
 Obie muszą przejść przed pushem. Dodatkowo `node --check` na zmienionych plikach JS.
 Test protokołu gra losowe partie. Zmiana listy broni zmienia ich przebieg. Jeśli padnie test zależny od
@@ -730,12 +814,16 @@ skończyć się właśnie wtedy — inaczej „różny stan” to tylko nieprzyj
   wstaw plikiem: `ZRZUTKA_PLIK=/tmp/z.json` z `{"sezony":{"1":{"sumy":{"fortnite:krayo":5400},"wplaty":[]}}}`.
 - **Arena przez serwer WebSocket**: `ARENA_PORT=8787 node serwer/serwer.js` + `python3 -m http.server 8765`,
   gra pod `http://localhost:8765/gra/?serwer=ws://127.0.0.1:8787/ws&pokoj=test1` (dla każdego przebiegu nowy
-  pokój — bez duchów w lobby). Partia rusza, gdy wszyscy klikną `#btn-gotowy` (+5 s). `__arena().transport` = `ws`
+  pokój — bez duchów w lobby). **Od 4.6 najpierw konto**: w świeżym kontekście otwiera się `#ekran-logowanie`
+  na zakładce zakładania — `#input-nick`, `#input-haslo`, `#input-haslo2`, klik `#btn-konto`; z `?pokoj=` po
+  ładowaniu od razu lobby, bez niego `#ekran-panel` (`#btn-graj`). Serwer bez `KONTA_PLIK`/`ZRZUTKA_PLIK` trzyma
+  konta w pamięci (restart = nicki wolne). Konto przez API: `POST /api/konto/rejestracja`, a token włóż do
+  `localStorage['arena:token']` przez `addInitScript`. Id gracza to `k-nick`. Partia rusza, gdy wszyscy klikną `#btn-gotowy` (+5 s). `__arena().transport` = `ws`
   (gdy gracz jest w lobby; przed wpisaniem nicku `null`). `__arena().lobby` = tryb i drużyny w lobby,
   `druzyny` = drużyny w partii, `ustawienia` / `ustawieniaGry` = zasady w lobby / w partii, `odwrotKrok` = krok ucieczki (do pomiaru opóźnienia widzów).
 - **Scenariusz Areny**: 2 przeglądarki desktop + telefon („iPhone 13 landscape”), porównanie
   `window.__arena().hash` na granicy każdej tury.
-  - Start: wszyscy wpisują nick, gospodarz (pierwszy) klika tryb (`#lobby-tryb button:nth-child(2)` = 2 drużyny),
+  - Start: wszyscy zakładają konto (wyżej), gospodarz (pierwszy) klika tryb (`#lobby-tryb button:nth-child(2)` = 2 drużyny),
     można sprawdzić zamianę (klik w gracza, potem w gracza z innej drużyny), potem każdy `#btn-gotowy`.
     Kto ma turę: `__arena().aktywny === __arena().mojeId`.
   - Ucieczka na żywo: po strzale trzymaj `a` i co 100 ms porównuj `odwrotKrok` strzelca i widzów.
@@ -820,3 +908,6 @@ skończyć się właśnie wtedy — inaczej „różny stan” to tylko nieprzyj
   Dotyczy to też Hall of Fame (nicki sponsorów z archiwum).
 - Serwer waliduje wszystko, co przychodzi (typy, długości, dozwolone id graczy, kwota 1–2000, numer sezonu,
   rozmiar wiadomości) i sam stempluje czas.
+- Konta (4.6): hasła tylko jako skrót scrypt z solą (porównanie `timingSafeEqual`, przy złym nicku też liczymy
+  skrót), token sesji tylko w treści POST i w adresie WebSocket (Caddy nie loguje zapytań), plik kont z prawami 600.
+  Hasła pokoi to osobny, prostszy skrót — to nie są hasła do kont. Nigdy nie loguj haseł ani tokenów.

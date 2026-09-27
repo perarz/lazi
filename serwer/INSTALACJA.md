@@ -68,6 +68,18 @@ Kolejność: (1) skrypt przed wdrożeniem strony — kopia 1:1, (2) wdrożenie n
 (3) ten sam skrypt ~2 min po wdrożeniu — dopisze tylko wpłaty, które w międzyczasie
 poszły jeszcze do Redisa (po id, bez dubli). Skrypt sam zatrzymuje i wznawia usługę.
 
+## 5. Konta Areny (od 4.6)
+Konta leżą w `/var/lib/arena/konta.json` (obok zrzutki, prawa 600, codzienna kopia `konta-RRRR-MM-DD.json`,
+14 dni). Hasła są tylko jako skrót — nikt ich nie odczyta, także właściciel. Usługa nie wymaga zmian
+(`arena-aktualizuj` wystarczy): bez `KONTA_PLIK` serwer bierze katalog pliku zrzutki.
+
+Zapomniane hasło (nie ma maila):
+```
+cd /opt/lazi/serwer && node konto-haslo.mjs NICK 'NOWE_HASLO'
+```
+Jako root skrypt sam zatrzymuje i wznawia usługę (trwające partie się urwą), zmienia hasło
+i wylogowuje stare sesje tego konta.
+
 ## Obsługa na co dzień
 | Co | Komenda |
 |---|---|
@@ -78,6 +90,8 @@ poszły jeszcze do Redisa (po id, bez dubli). Skrypt sam zatrzymuje i wznawia us
 | Czy żyje | `curl -s http://127.0.0.1:8787/zdrowie` |
 | Restart | `systemctl restart arena` |
 | Sumy zrzutki | `curl -s http://127.0.0.1:8787/api/zrzutka` |
+| Ranking killi / pokoje | `curl -s http://127.0.0.1:8787/api/ranking`, `…/api/pokoje` |
+| Reset hasła konta | `cd /opt/lazi/serwer && node konto-haslo.mjs NICK 'NOWE_HASLO'` |
 | Kopie zrzutki | `ls /var/lib/arena/` |
 
 Restart serwera czyści pokoje w pamięci (trwające partie się urwą) — aktualizuj,

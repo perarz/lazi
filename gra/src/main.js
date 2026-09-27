@@ -17,6 +17,7 @@ import { DRUZYNY, TRYBY, nazwaTrybu } from './druzyny.js';
 import * as U from './ustawienia.js';
 import { EMOTKI, EMOTKA_S, TANIEC_S, EMOTKA_CO, emotka } from './emotki.js';
 import { stylMapy } from './terrain.js';
+import * as K from './konto.js';
 
 /* Kolory robali do wyboru przy wejściu. Kolejność ma znaczenie: przy
    kolizji dostaje się pierwszy wolny, więc najbardziej różne są na początku. */
@@ -87,7 +88,7 @@ const OPISY_MAP = {
   archipelag: 'Mapa: Archipelag — między wyspami jest lawa. Skacz ostrożnie.',
   kaniony: 'Mapa: Kaniony — wąwozy do samej lawy i skalne łuki.',
   jaskinie: 'Mapa: Jaskinie — wielkie groty, nawisy i pływające skały. Granat się przyda.',
-  ekstremalna: 'Mapa: Ekstremalna — jedna wielka góra-mrowisko: piętra, kominy i tunele, wszystko połączone. Lina ninja w dłoń!'
+  ekstremalna: 'Mapa: Ekstremalna — wszystkie mapy naraz: iglice pod niebo, wąwozy do lawy, wyspy, piętra jaskiń i tunele. Lina ninja w dłoń!'
 };
 
 /* Statystyki gracza liczone wyłącznie w przeglądarce (localStorage) —
@@ -140,13 +141,6 @@ function wczytajStaty() {
   } catch { /* zepsuty zapis */ }
   return { partie: 0, wygrane: 0, obrazenia: 0, fragi: 0, rekordTury: 0 };
 }
-function opisStatow() {
-  const s = wczytajStaty();
-  if (!s.partie) return '';
-  return 'Twoje statystyki: ' + s.partie + ' partii, ' + s.wygrane + ' wygranych, ' +
-    s.fragi + ' fragów, ' + s.obrazenia + ' obrażeń (rekord tury: ' + s.rekordTury + ').';
-}
-
 let podpisOsiagniec = null;         // null: lista jeszcze nie narysowana (także gdy nic nie zdobyto)
 function rysujOsiagnieciaLobby() {
   if (!OSIAGNIECIA) return;
@@ -179,23 +173,6 @@ function rysujOsiagnieciaLobby() {
 
 function czytaj(k) { try { return localStorage.getItem(k); } catch { return null; } }
 function zapisz(k, v) { try { localStorage.setItem(k, v); } catch { /* tryb prywatny */ } }
-
-/* ---------- tożsamość ---------- */
-
-function wczytajId() {
-  let id = czytaj('arena:id');
-  if (!id) {
-    id = 'g' + Math.random().toString(36).slice(2, 10);
-    zapisz('arena:id', id);
-  }
-  return id;
-}
-
-function hashTekstu(s) {
-  let h = 0;
-  for (let i = 0; i < s.length; i++) h = (Math.imul(h, 31) + s.charCodeAt(i)) | 0;
-  return h;
-}
 
 /* ---------- płótno ---------- */
 
@@ -255,27 +232,38 @@ function pasyHud(teraz, dt) {
   return pasy;
 }
 
-/* ---------- ekran nazwy ---------- */
+/* ---------- konto, ekran ładowania i panel Areny (od 4.6) ---------- */
 
-const inputNazwa = el('input-nazwa');
-const btnWejdz = el('btn-wejdz');
+/* Arena jest tylko dla kont: logowanie → ekran ładowania → panel (GRAJ,
+   pokoje, ranking killi, osiągnięcia) → lobby wybranego pokoju. */
+let konto = null;
+let aktualnyPokoj = null;             // { id, klucz, nazwa } — pokój, w którym jestem
+const EKRANY = ['ekran-logowanie', 'ekran-ladowanie', 'ekran-panel', 'ekran-lobby', 'ekran-koniec'];
+function pokazEkran(id) {
+  for (const e of EKRANY) el(e).hidden = e !== id;
+  if (id === 'ekran-panel') startPodgladu();
+}
+const czekaj = (ms) => new Promise((r) => setTimeout(r, ms));
 
-{
-  const zapisana = czytaj('arena:nazwa');
-  if (zapisana) inputNazwa.value = zapisana;
+/* Pokój z adresu (?pokoj=…) — link do znajomych albo odświeżenie strony w lobby. */
+function pokojZAdresu() {
+  try {
+    const p = new URLSearchParams(location.search).get('pokoj');
+    return p && /^[a-z0-9-]{1,24}$/i.test(p) ? p.toLowerCase() : null;
+  } catch { return null; }
+}
+function ustawAdres(pokojId) {
+  try {
+    const u = new URL(location.href);
+    if (pokojId) u.searchParams.set('pokoj', pokojId); else u.searchParams.delete('pokoj');
+    history.replaceState(null, '', u.pathname + u.search + u.hash);
+  } catch { /* stara przeglądarka */ }
 }
 
-function sprawdzNazwe() { btnWejdz.disabled = inputNazwa.value.trim().length < 2; }
-inputNazwa.addEventListener('input', sprawdzNazwe);
-inputNazwa.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !btnWejdz.disabled) wejdz(); });
-btnWejdz.addEventListener('click', wejdz);
-sprawdzNazwe();
-
-/* Kolor robala wybiera się tylko tutaj, przy wejściu. Zapamiętany w
-   localStorage; za pierwszym razem — kolor z hasha id, jak dawniej. */
+/* Kolor robala: zapamiętany na koncie i w przeglądarce. */
 mojKolor = (() => {
   const z = czytaj('arena:kolor');
-  return KOLORY.includes(z) ? z : KOLORY[Math.abs(hashTekstu(wczytajId())) % KOLORY.length];
+  return KOLORY.includes(z) ? z : KOLORY[0];
 })();
 
 const boxKolorow = el('kolory');
@@ -292,6 +280,7 @@ for (const [kolor, nazwa] of PALETA) {
     mojKolor = kolor;
     zapisz('arena:kolor', kolor);
     zaznaczKolor();
+    K.ustawKolor(kolor);
   });
   boxKolorow.append(b);
 }
@@ -313,32 +302,359 @@ boxKolorow.addEventListener('keydown', (e) => {
   boxKolorow.children[i].focus();
 });
 
-/* Podgląd robala w wybranym kolorze — rysowany tym samym kodem co w grze. */
-const podgladRobala = el('podglad-robala');
-function petlaPodgladu(t) {
-  if (el('ekran-nazwa').hidden) return;
-  R.rysujPodgladRobala(podgladRobala, { kolor: mojKolor, nazwa: inputNazwa.value.trim() || 'Ty', czas: t / 1000 });
+/* Podgląd robala w panelu (i na ekranie ładowania) — tym samym kodem co w grze. */
+let podgladDziala = false;
+function startPodgladu() {
+  if (podgladDziala) return;
+  podgladDziala = true;
   requestAnimationFrame(petlaPodgladu);
 }
-requestAnimationFrame(petlaPodgladu);
+function petlaPodgladu(t) {
+  const panel = !el('ekran-panel').hidden, ladowanie = !el('ekran-ladowanie').hidden;
+  if (!panel && !ladowanie) { podgladDziala = false; return; }
+  const dane = { kolor: mojKolor, nazwa: konto ? konto.nick : 'Ty', czas: t / 1000 };
+  if (panel) R.rysujPodgladRobala(el('podglad-robala'), dane);
+  if (ladowanie) R.rysujPodgladRobala(el('ladowanie-robal'), dane);
+  requestAnimationFrame(petlaPodgladu);
+}
+
+/* ----- ekran ładowania ----- */
+
+const TEKSTY_LADOWANIA = [
+  'Ostrzę rogi…', 'Podgrzewam lawę…', 'Liczę kozy…', 'Kopię jaskinie…', 'Smaruję linę ninja…',
+  'Święcę Świętego GOATa…', 'Ustawiam wiatr pod bazookę…', 'Rozkładam mosty…', 'Budzę Krayo…'
+];
+
+/* Ekran przejściowy: pasek i żarty, dopóki `zadanie` nie skończy (min. 1,4 s). */
+async function ladowanie(zadanie) {
+  pokazEkran('ekran-ladowanie');
+  podgladDziala = false;
+  startPodgladu();
+  el('btn-ponow').hidden = true;
+  const pasek = el('ladowanie-postep'), tekst = el('ladowanie-tekst');
+  let gotowe = false;
+  const t0 = performance.now();
+  let nrTekstu = Math.floor(Math.random() * TEKSTY_LADOWANIA.length);
+  tekst.textContent = TEKSTY_LADOWANIA[nrTekstu];
+  const zmiana = setInterval(() => {
+    nrTekstu = (nrTekstu + 1) % TEKSTY_LADOWANIA.length;
+    tekst.textContent = TEKSTY_LADOWANIA[nrTekstu];
+  }, 650);
+  const animuj = () => {
+    if (gotowe) return;
+    // do 90% w półtorej sekundy, potem powoli — ostatnie 10% dopiero po odpowiedzi serwera
+    const t = (performance.now() - t0) / 1000;
+    const p = t < 1.4 ? t / 1.4 * 0.9 : 0.9 + 0.08 * (1 - 1 / (1 + (t - 1.4)));
+    pasek.style.width = (p * 100).toFixed(1) + '%';
+    requestAnimationFrame(animuj);
+  };
+  requestAnimationFrame(animuj);
+  try {
+    const [wynik] = await Promise.all([zadanie(), czekaj(1400)]);
+    return wynik;
+  } finally {
+    gotowe = true;
+    clearInterval(zmiana);
+    pasek.style.width = '100%';
+    await czekaj(220);
+  }
+}
+
+/* Start strony: zapamiętane konto → ładowanie → panel (albo od razu pokój z adresu). */
+async function start() {
+  if (!K.token()) return pokazLogowanie();
+  const w = await ladowanie(async () => {
+    const w = await K.ja();
+    if (w.status === 200) {
+      ustawKonto(w.dane.konto);           // robal na ekranie ładowania już z nickiem i kolorem
+      await Promise.all([odswiezPokoje(), odswiezRanking()]);
+    }
+    return w;
+  });
+  if (w.status === 200) return poZalogowaniu(w.dane.konto);
+  if (w.status === 401) return pokazLogowanie('Sesja wygasła — zaloguj się jeszcze raz.');
+  el('ladowanie-tekst').textContent = K.opisBledu(w.dane) + ' Serwer mógł się właśnie restartować.';
+  el('btn-ponow').hidden = false;
+}
+el('btn-ponow').addEventListener('click', start);
+
+/* ----- logowanie i rejestracja ----- */
+
+let trybKonta = 'logowanie';
+function ustawTrybKonta(tryb) {
+  trybKonta = tryb;
+  const rej = tryb === 'rejestracja';
+  el('tab-logowanie').setAttribute('aria-selected', rej ? 'false' : 'true');
+  el('tab-rejestracja').setAttribute('aria-selected', rej ? 'true' : 'false');
+  el('pole-haslo2').hidden = !rej;
+  el('podpowiedz-konta').hidden = !rej;
+  el('input-haslo').autocomplete = rej ? 'new-password' : 'current-password';
+  el('btn-konto').textContent = rej ? 'Zakładam konto' : 'Wchodzę';
+  el('info-konto').textContent = '';
+}
+el('tab-logowanie').addEventListener('click', () => ustawTrybKonta('logowanie'));
+el('tab-rejestracja').addEventListener('click', () => ustawTrybKonta('rejestracja'));
+
+function pokazLogowanie(komunikat = '') {
+  pokazEkran('ekran-logowanie');
+  const zapisana = czytaj('arena:nazwa');
+  if (zapisana && !el('input-nick').value) el('input-nick').value = zapisana;
+  el('info-konto').textContent = komunikat;
+  // za pierwszym razem (nikt tu jeszcze nie grał z kontem) zaczynamy od zakładania
+  if (!zapisana && !czytaj('arena:stare-przeniesione')) ustawTrybKonta('rejestracja');
+}
+
+el('form-konto').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const nick = el('input-nick').value.trim();
+  const haslo = el('input-haslo').value;
+  const info = el('info-konto');
+  const rej = trybKonta === 'rejestracja';
+  if (nick.length < 3) { info.textContent = 'Nick: co najmniej 3 znaki.'; return; }
+  if (haslo.length < 4) { info.textContent = 'Hasło: co najmniej 4 znaki.'; return; }
+  if (rej && haslo !== el('input-haslo2').value) { info.textContent = 'Hasła się różnią.'; return; }
+  const btn = el('btn-konto');
+  btn.disabled = true;
+  info.textContent = rej ? 'Zakładam konto…' : 'Loguję…';
+  const w = await (rej ? K.rejestracja(nick, haslo) : K.logowanie(nick, haslo));
+  btn.disabled = false;
+  if (w.status !== 200) { info.textContent = K.opisBledu(w.dane); return; }
+  info.textContent = '';
+  el('input-haslo').value = '';
+  el('input-haslo2').value = '';
+  ustawKonto(w.dane.konto);
+  await ladowanie(() => Promise.all([odswiezPokoje(), odswiezRanking()]));
+  poZalogowaniu(w.dane.konto);
+});
+
+function ustawKonto(k) {
+  konto = k;
+  mojeId = k.id;
+  mojaNazwa = k.nick.slice(0, 14);
+  if (KOLORY.includes(k.kolor)) mojKolor = k.kolor;
+  zaznaczKolor();
+}
+
+async function poZalogowaniu(k) {
+  ustawKonto(k);
+  if (!KOLORY.includes(k.kolor)) K.ustawKolor(mojKolor);   // pierwszy raz na koncie — kolor wybrany wcześniej w tej przeglądarce
+  const zAdresu = pokojZAdresu();
+  if (zAdresu) {
+    const p = pokojeLista.find((x) => x.id === zAdresu);
+    if (!p || !p.haslo) return polaczZPokojem(zAdresu, null, p ? p.nazwa : zAdresu === 'glowny' ? 'Arena główna' : zAdresu);
+    otworzPanel();
+    rozwinietyPokoj = zAdresu;          // pokój na hasło: pole hasła od razu otwarte
+    rysujPokoje(true);
+    return;
+  }
+  otworzPanel();
+}
+
+el('btn-wyloguj').addEventListener('click', async () => {
+  await K.wyloguj();
+  konto = null;
+  pokazLogowanie('Wylogowano.');
+  ustawTrybKonta('logowanie');
+});
+
+/* ----- panel ----- */
+
+let panelTimer = null;
+function otworzPanel() {
+  ustawAdres(null);
+  pokazEkran('ekran-panel');
+  rysujProfil();
+  podpisOsiagniec = null;
+  rysujOsiagnieciaLobby();
+  rysujPokoje(true);
+  rysujRanking();
+  clearInterval(panelTimer);
+  // lista pokoi (i ranking, gdy widać) odświeża się, dopóki panel jest na ekranie
+  panelTimer = setInterval(() => {
+    if (el('ekran-panel').hidden) { clearInterval(panelTimer); return; }
+    if (document.hidden) return;
+    odswiezPokoje().then(() => rysujPokoje());
+    if (!el('sekcja-ranking').hidden) odswiezRanking().then(rysujRanking);
+  }, 5000);
+}
+
+function rysujProfil() {
+  if (!konto) return;
+  el('profil-nick').textContent = konto.nick;
+  const s = wczytajStaty();
+  const lista = el('profil-staty');
+  lista.replaceChildren();
+  for (const [ikona, ile, nazwa] of [['💀', s.fragi, 'killi'], ['🏆', s.wygrane, 'wygranych'], ['🎮', s.partie, 'partii'], ['💥', s.obrazenia, 'obrażeń']]) {
+    const li = document.createElement('li');
+    const b = document.createElement('b');
+    b.textContent = ikona + ' ' + ile;
+    const sm = document.createElement('small');
+    sm.textContent = nazwa;
+    li.append(b, sm);
+    lista.append(li);
+  }
+}
+
+function ustawZakladke(ranking) {
+  el('tab-pokoje').setAttribute('aria-selected', ranking ? 'false' : 'true');
+  el('tab-ranking').setAttribute('aria-selected', ranking ? 'true' : 'false');
+  el('sekcja-pokoje').hidden = ranking;
+  el('sekcja-ranking').hidden = !ranking;
+  if (ranking) odswiezRanking().then(rysujRanking);
+}
+el('tab-pokoje').addEventListener('click', () => ustawZakladke(false));
+el('tab-ranking').addEventListener('click', () => ustawZakladke(true));
+
+el('btn-graj').addEventListener('click', () => polaczZPokojem('glowny', null, 'Arena główna'));
+
+/* Pokoje */
+let pokojeLista = [];
+let pokojeBlad = '';
+let podpisPokoi = '';
+let rozwinietyPokoj = null;           // pokój na hasło z otwartym polem hasła
+
+async function odswiezPokoje() {
+  const w = await K.pokoje();
+  if (w.status === 200 && Array.isArray(w.dane.pokoje)) { pokojeLista = w.dane.pokoje; pokojeBlad = ''; }
+  else pokojeBlad = K.opisBledu(w.dane);
+}
+
+function rysujPokoje(wymus = false) {
+  const lista = el('lista-pokoi');
+  // nie przebudowujemy listy pod palcem piszącym hasło
+  if (!wymus && lista.contains(document.activeElement) && document.activeElement.tagName === 'INPUT') return;
+  const podpis = JSON.stringify([pokojeLista, rozwinietyPokoj]);
+  if (!wymus && podpis === podpisPokoi) return;
+  podpisPokoi = podpis;
+  lista.replaceChildren();
+  const glowny = pokojeLista.find((p) => p.id === 'glowny');
+  el('graj-opis').textContent = 'Arena główna' + (glowny && glowny.ile ? ' · ' + glowny.ile + ' w środku' : '');
+  for (const p of pokojeLista) {
+    const li = document.createElement('li');
+    li.className = 'pokoj' + (p.id === 'glowny' ? ' glowny-pokoj' : '');
+    const opis = document.createElement('div');
+    opis.className = 'pokoj-opis';
+    const nazwa = document.createElement('b');
+    nazwa.textContent = (p.haslo ? '🔒 ' : '') + p.nazwa;
+    const kto = document.createElement('small');
+    kto.textContent = p.ile ? p.ile + ' · ' + p.gracze.join(', ') : 'pusto';
+    opis.append(nazwa, kto);
+    if (p.partia) {
+      const znak = document.createElement('span');
+      znak.className = 'pokoj-gra';
+      znak.textContent = 'trwa partia';
+      nazwa.append(' ', znak);
+    }
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.textContent = 'Wejdź';
+    btn.addEventListener('click', () => {
+      if (!p.haslo) return polaczZPokojem(p.id, null, p.nazwa);
+      rozwinietyPokoj = rozwinietyPokoj === p.id ? null : p.id;
+      rysujPokoje(true);
+      if (rozwinietyPokoj) el('lista-pokoi').querySelector('input')?.focus();
+    });
+    li.append(opis, btn);
+    if (p.haslo && rozwinietyPokoj === p.id) {
+      const form = document.createElement('form');
+      form.className = 'pokoj-haslo';
+      form.noValidate = true;
+      const input = document.createElement('input');
+      input.type = 'password';
+      input.maxLength = 40;
+      input.placeholder = 'Hasło pokoju';
+      input.autocomplete = 'off';
+      const ok = document.createElement('button');
+      ok.type = 'submit';
+      ok.textContent = 'Wchodzę';
+      form.append(input, ok);
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        ok.disabled = true;
+        const w = await K.wejdzDoPokoju(p.id, input.value);
+        ok.disabled = false;
+        if (w.status === 200) return polaczZPokojem(p.id, w.dane.klucz, p.nazwa);
+        el('info-pokoje').textContent = w.status === 403 ? 'Złe hasło do pokoju „' + p.nazwa + '”.' : K.opisBledu(w.dane);
+        input.select();
+      });
+      li.append(form);
+    }
+    lista.append(li);
+  }
+  if (pokojeBlad) el('info-pokoje').textContent = pokojeBlad;
+}
+
+el('form-pokoj').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const nazwa = el('input-pokoj-nazwa').value.trim();
+  const haslo = el('input-pokoj-haslo').value;
+  const info = el('info-pokoje');
+  if (nazwa.length < 3) { info.textContent = 'Nazwa pokoju: co najmniej 3 znaki.'; return; }
+  if (haslo && haslo.length < 3) { info.textContent = 'Hasło pokoju: co najmniej 3 znaki (albo puste).'; return; }
+  el('btn-pokoj').disabled = true;
+  const w = await K.nowyPokoj(nazwa, haslo || undefined);
+  el('btn-pokoj').disabled = false;
+  if (w.status !== 200) { info.textContent = K.opisBledu(w.dane); return; }
+  info.textContent = '';
+  el('input-pokoj-nazwa').value = '';
+  el('input-pokoj-haslo').value = '';
+  el('nowy-pokoj').open = false;
+  polaczZPokojem(w.dane.id, w.dane.klucz, nazwa);
+});
+
+/* Ranking killi */
+let rankingLista = null;
+async function odswiezRanking() {
+  const w = await K.ranking();
+  if (w.status === 200 && Array.isArray(w.dane.ranking)) rankingLista = w.dane.ranking;
+}
+function rysujRanking() {
+  const ol = el('ranking');
+  ol.replaceChildren();
+  const lista = rankingLista || [];
+  el('info-ranking').textContent = rankingLista === null ? 'Nie udało się pobrać rankingu.'
+    : lista.length ? '' : 'Jeszcze nikt nie zagrał. Bądź pierwszy!';
+  lista.forEach((r, i) => {
+    const li = document.createElement('li');
+    if (konto && r.nick === konto.nick) li.classList.add('ja');
+    const miejsce = document.createElement('span');
+    miejsce.className = 'miejsce';
+    miejsce.textContent = i < 3 ? ['🥇', '🥈', '🥉'][i] : (i + 1) + '.';
+    const kropka = document.createElement('span');
+    kropka.className = 'kropka';
+    kropka.style.background = KOLORY.includes(r.kolor) ? r.kolor : '#888';
+    const nick = document.createElement('span');
+    nick.className = 'nick';
+    nick.textContent = r.nick;
+    const kille = document.createElement('b');
+    kille.textContent = r.kille + ' 💀';
+    const reszta = document.createElement('small');
+    reszta.textContent = r.wygrane + ' wyg. · ' + r.partie + ' partii';
+    li.append(miejsce, kropka, nick, reszta, kille);
+    ol.append(li);
+  });
+}
+
+/* ----- wejście do pokoju i powrót do panelu ----- */
 
 function zglosSie() {
   ostatnieZgloszenie = Date.now();
   return net.wyslij({ t: 'dolacz', id: mojeId, name: mojaNazwa, color: mojKolor, v: P.WERSJA });
 }
 
-async function wejdz() {
-  mojaNazwa = inputNazwa.value.trim().slice(0, 14);
-  if (mojaNazwa.length < 2) return;
-  zapisz('arena:nazwa', mojaNazwa);
-  zapisz('arena:kolor', mojKolor);
-  mojeId = wczytajId();
-
-  btnWejdz.disabled = true;
-  el('info-nazwa').textContent = 'Łączę z lobby…';
+async function polaczZPokojem(id, klucz, nazwa) {
+  if (net) opuscPokoj();
+  aktualnyPokoj = { id, klucz, nazwa };
+  ustawAdres(id);
+  el('lobby-tytul').textContent = nazwa || 'LOBBY';
+  el('info-lobby').textContent = 'Łączę z lobby…';
+  pokazEkran('ekran-lobby');
 
   net = createNet({
     id: mojeId,
+    pokoj: id,
+    token: K.token(),
+    klucz,
     onStan: naStanSieci,
     onReset: () => { pokoj = null; emotkiIndeks = 0; },
     onBlad: naBladSieci
@@ -347,10 +663,40 @@ async function wejdz() {
 
   await zglosSie();
   await net.pobierz();
-
-  el('ekran-nazwa').hidden = true;
   // Jeśli właśnie dołączyliśmy do trwającej partii, plansza już jest.
-  if (!rg) el('ekran-lobby').hidden = false;
+  if (rg) el('ekran-lobby').hidden = true;
+}
+
+/* Wyjście z pokoju do panelu: pożegnanie w logu i koniec połączenia. */
+function opuscPokoj() {
+  if (!net) return;
+  net.opusc();
+  net.stop();
+  net = null;
+  pokoj = null;
+  aktualnyPokoj = null;
+  emotkiIndeks = 0;
+  opuszczonySeed = null;
+  podpisLobby = '';
+  ostatnieUstawienia = null;
+  bylemGospodarzem = false;
+  bylemWyrzucony = false;
+  wybranyGracz = null;
+  el('baner-blad').hidden = true;
+}
+el('btn-panel').addEventListener('click', async () => {
+  opuscPokoj();
+  otworzPanel();
+  await Promise.all([odswiezPokoje(), odswiezRanking()]);
+  rysujPokoje(true);
+  rysujRanking();
+});
+
+/* Koniec partii: wynik na konto (kille do rankingu, osiągnięcia). */
+function wyslijWynikPartii(wynik) {
+  K.wyslijWynik(wynik).then((w) => {
+    if (w.status === 200) { konto = w.dane.konto; rysujProfil(); }
+  });
 }
 
 /* Powrót strony z pamięci podręcznej (np. „wstecz” na telefonie):
@@ -375,7 +721,6 @@ function naBladSieci(wiadomosc) {
   baner.textContent = net && net.brakKonfiguracji
     ? 'Nie ustawiono adresu serwera Areny. Gra online niedostępna.'
     : 'Problem z połączeniem: ' + wiadomosc;
-  el('info-nazwa').textContent = wiadomosc;
   el('info-lobby').textContent = wiadomosc;
 }
 
@@ -530,8 +875,6 @@ function odswiezLobby() {
     box.hidden = true;
   }
 
-  el('moje-staty').textContent = opisStatow();
-  rysujOsiagnieciaLobby();
   const stary = roz.gracze.some((g) => (g.v | 0) < P.WERSJA);
   el('info-lobby').textContent = Date.now() < infoLobby.do
     ? infoLobby.tekst
@@ -905,9 +1248,7 @@ function zbudujGre() {
     });
   }
 
-  el('ekran-nazwa').hidden = true;
-  el('ekran-lobby').hidden = true;
-  el('ekran-koniec').hidden = true;
+  for (const e of EKRANY) el(e).hidden = true;
   hud.hidden = false;
   el('baner-obserwator').hidden = !rg.obserwator;
   el('baner-info').hidden = true;
@@ -960,6 +1301,8 @@ el('btn-opusc').addEventListener('click', async () => {
   const seed = rg.seed;
   if (uczestnik) {
     for (const z of P.opuszczam(rg, pokoj)) await net.wyslij(z);
+    // partia się nie liczy, ale zdobyte w niej osiągnięcia zostają na koncie
+    if (partia.nowe.length) wyslijWynikPartii({ partia: String(seed), tylkoOsiagniecia: true, osiagniecia: partia.nowe.map((o) => o.id) });
   }
   opuszczonySeed = seed;
   zakonczGre();
@@ -1527,6 +1870,10 @@ function pokazKoniec(winnerId) {
     const ja = rg.state.worms.find((x) => x.id === mojeId);
     const ctx = { wygralem, hp: ja && ja.alive ? ja.hp : 0, partie: staty.partie };
     if (!rg.obserwator) for (const id of koniecPartiiOs(partia.os, ctx)) zdobadz(id);
+    wyslijWynikPartii({
+      partia: String(rg.seed), kille: partia.os.fragi, obrazenia: partia.obrazenia, wygrana: wygralem,
+      rekordTury: staty.rekordTury, osiagniecia: partia.nowe.map((o) => o.id)
+    });
   }
   const nowe = el('koniec-osiagniecia');
   nowe.replaceChildren();
@@ -1724,6 +2071,7 @@ setInterval(() => { if (!el('ekran-lobby').hidden) odswiezLobby(); }, 500);
    Tylko do odczytu — nic tu nie zmienia przebiegu gry. */
 window.__arena = () => ({
   mojeId, obserwator: rg && rg.obserwator,
+  konto: konto && konto.nick, pokojId: aktualnyPokoj && aktualnyPokoj.id,
   faza: pokoj && pokoj.faza,
   turaLogu: pokoj && pokoj.tura,
   turaLokalna: rg && rg.state.turnNumber,
@@ -1755,3 +2103,5 @@ window.__arena = () => ({
     };
   })()
 });
+
+start();

@@ -19,15 +19,13 @@ export function createNet(opts = {}) {
   return createNetWs(adresSerwera(), opts);
 }
 
-const POKOJ = (() => {
-  try {
-    const p = new URLSearchParams(location.search).get('pokoj');
-    return p && /^[a-z0-9-]{1,24}$/i.test(p) ? p.toLowerCase() : 'glowny';
-  } catch { return 'glowny'; }
-})();
-
+/* opts.pokoj — id pokoju (od 4.6 wybierany w panelu), opts.token — sesja konta,
+   opts.klucz — klucz pokoju na hasło (serwer daje go za dobre hasło). */
 function createNetWs(adres, opts = {}) {
-  const url = adres ? adres + (adres.includes('?') ? '&' : '?') + 'pokoj=' + POKOJ : null;
+  const pokoj = opts.pokoj && /^[a-z0-9-]{1,24}$/.test(opts.pokoj) ? opts.pokoj : 'glowny';
+  const parametry = 'pokoj=' + pokoj + '&token=' + encodeURIComponent(opts.token || '') +
+    (opts.klucz ? '&klucz=' + encodeURIComponent(opts.klucz) : '');
+  const url = adres ? adres + (adres.includes('?') ? '&' : '?') + parametry : null;
   const net = {
     id: opts.id,
     kursor: 0,
@@ -217,14 +215,15 @@ function createNetWs(adres, opts = {}) {
     const zdarzenie = { t: 'wyjdz', id: net.id };
     surowo({ typ: 'zd', nr: 0, zdarzenie });
     const tresc = JSON.stringify({ zdarzenie });
-    try { navigator.sendBeacon?.(adresHttp(adres) + '?pokoj=' + POKOJ, new Blob([tresc], { type: 'text/plain;charset=UTF-8' })); }
+    try { navigator.sendBeacon?.(adresHttp(adres) + '?' + parametry, new Blob([tresc], { type: 'text/plain;charset=UTF-8' })); }
     catch { /* trudno — serwer i tak zauważy brak pulsu */ }
   };
 
-  window.addEventListener('pagehide', () => { if (opts.naWyjscie?.() !== false) net.opusc(); });
+  // zatrzymane połączenie (gracz wrócił do panelu) już się pożegnało
+  window.addEventListener('pagehide', () => { if (!net._zatrzymany && opts.naWyjscie?.() !== false) net.opusc(); });
 
   document.addEventListener('visibilitychange', () => {
-    if (document.hidden) return;
+    if (document.hidden || net._zatrzymany) return;
     // po powrocie z tła: puls i świeży stan (połączenie mogło paść w tle)
     if (!net._ws && !net._zatrzymany) polacz();
     net.puls();

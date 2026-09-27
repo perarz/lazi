@@ -5,6 +5,7 @@ import { createRequire } from 'module';
 const require = createRequire(import.meta.url);
 const { serwer, dozwolonyOrigin } = require('./serwer.js');
 const { Zrzutka } = require('./zrzutka.js');
+const { Konta } = require('./konta.js');
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
@@ -19,12 +20,25 @@ function assert(w, msg) { if (!w) throw new Error(msg || 'oczekiwano prawdy'); }
 
 await new Promise((r) => serwer.listen(0, '127.0.0.1', r));
 const port = serwer.address().port;
-const WS = (pokoj = 'glowny', origin = 'https://lazi.vercel.app') =>
-  new WebSocket(`ws://127.0.0.1:${port}/ws?pokoj=${pokoj}`, { headers: { origin } });
+const API = (sciezka) => `http://127.0.0.1:${port}${sciezka}`;
+let ipNr = 0;
+const post = (sciezka, body, { origin = 'https://lazi.vercel.app', ip = '10.1.0.' + (++ipNr % 250) } = {}) => fetch(API(sciezka), {
+  method: 'POST', headers: { 'Content-Type': 'application/json', origin, 'x-forwarded-for': ip }, body: JSON.stringify(body)
+});
+async function zaloz(nick, haslo = 'tajne123') {
+  const d = await (await post('/api/konto/rejestracja', { nick, haslo })).json();
+  if (!d.token) throw new Error('rejestracja ' + nick + ': ' + JSON.stringify(d));
+  return d;
+}
+// Arena jest tylko dla zalogowanych — gracze testowi mają konta
+const ALA = await zaloz('Ala'), BOLEK = await zaloz('Bolek');
+
+const WS = (pokoj = 'glowny', origin = 'https://lazi.vercel.app', token = ALA.token, klucz = '') =>
+  new WebSocket(`ws://127.0.0.1:${port}/ws?pokoj=${pokoj}&token=${token}` + (klucz ? '&klucz=' + klucz : ''), { headers: { origin } });
 
 /* Klient testowy: zbiera wiadomości, pozwala czekać na konkretną. */
-function klient(pokoj, origin) {
-  const ws = WS(pokoj, origin);
+function klient(pokoj, origin, token, klucz) {
+  const ws = WS(pokoj, origin, token, klucz);
   const k = { ws, wiad: [], czekaja: [] };
   ws.on('message', (d) => {
     const m = JSON.parse(d);
@@ -73,7 +87,7 @@ await test('zdarzenie od jednego gracza dochodzi od razu do drugiego, ze stemple
   const odp = await a.zd({ t: 'dolacz', id: 'ala', name: 'Ala' });
   assert(odp.ok && odp.dlugosc === 1, 'odpowiedź: ' + JSON.stringify(odp));
   const s = await b.czekaj((m) => m.typ === 'stan' && m.zdarzenia.length);
-  assert(s.zdarzenia[0].t === 'dolacz' && s.zdarzenia[0].id === 'ala', 'zdarzenie nie doszło');
+  assert(s.zdarzenia[0].t === 'dolacz' && s.zdarzenia[0].id === ALA.konto.id, 'zdarzenie nie doszło');
   assert(typeof s.zdarzenia[0].st === 'number' && s.zdarzenia[0].st >= t0, 'brak stempla serwera');
   assert(Date.now() - t0 < 200, 'za wolno: ' + (Date.now() - t0) + ' ms');
   a.ws.close(); b.ws.close();
@@ -104,20 +118,24 @@ await test('hej ze starą epoką dostaje log od zera', async () => {
 });
 
 await test('puls widać w obecności, wyjście przez POST (sendBeacon) ją zdejmuje', async () => {
-  const a = klient('t4'), b = klient('t4');
+  const a = klient('t4'), b = klient('t4', undefined, BOLEK.token);
   await Promise.all([a.otwarty, b.otwarty]);
   b.wyslij({ typ: 'hej', od: 0, epoka: null });
   await b.czekaj((m) => m.typ === 'stan');
   await a.zd({ t: 'puls', id: 'ala' });
-  const s1 = await b.czekaj((m) => m.typ === 'stan' && m.obecnosc.ala);
-  assert(s1.obecnosc.ala > 0, 'brak obecności');
-  const odp = await fetch(`http://127.0.0.1:${port}/api/arena?pokoj=t4`, {
+  const s1 = await b.czekaj((m) => m.typ === 'stan' && m.obecnosc['k-ala']);
+  assert(s1.obecnosc['k-ala'] > 0, 'brak obecności');
+  const bezTokenu = await fetch(`http://127.0.0.1:${port}/api/arena?pokoj=t4`, {
+    method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ zdarzenie: { t: 'wyjdz', id: 'ala' } })
+  });
+  assert(bezTokenu.status === 401, 'wyjście bez konta: ' + bezTokenu.status);
+  const odp = await fetch(`http://127.0.0.1:${port}/api/arena?pokoj=t4&token=${ALA.token}`, {
     method: 'POST', headers: { 'Content-Type': 'text/plain', origin: 'https://lazi.vercel.app' },
     body: JSON.stringify({ zdarzenie: { t: 'wyjdz', id: 'ala' } })
   });
   assert(odp.ok, 'POST ' + odp.status);
-  const s2 = await b.czekaj((m) => m.typ === 'stan' && !m.obecnosc.ala && m.zdarzenia.some((z) => z.t === 'wyjdz'));
-  assert(!s2.obecnosc.ala, 'obecność nie zdjęta');
+  const s2 = await b.czekaj((m) => m.typ === 'stan' && !m.obecnosc['k-ala'] && m.zdarzenia.some((z) => z.t === 'wyjdz'));
+  assert(!s2.obecnosc['k-ala'], 'obecność nie zdjęta');
   a.ws.close(); b.ws.close();
 });
 
@@ -178,6 +196,106 @@ await test('za duże zdarzenie zamyka tylko to połączenie, serwer żyje dalej'
   b.ws.close();
   const z = await (await fetch(`http://127.0.0.1:${port}/zdrowie`)).json();
   assert(z.ok === true, 'zdrowie');
+});
+
+console.log('\nKONTA I POKOJE');
+
+await test('rejestracja: zajęty nick (bez względu na wielkość liter), zły nick i za krótkie hasło odrzucone', async () => {
+  assert((await post('/api/konto/rejestracja', { nick: 'ALA', haslo: 'cokolwiek' })).status === 409, 'zajęty nick');
+  assert((await post('/api/konto/rejestracja', { nick: 'a', haslo: 'cokolwiek' })).status === 400, 'za krótki nick');
+  assert((await post('/api/konto/rejestracja', { nick: '<script>', haslo: 'cokolwiek' })).status === 400, 'znaki w nicku');
+  assert((await post('/api/konto/rejestracja', { nick: 'Celina', haslo: 'abc' })).status === 400, 'za krótkie hasło');
+  assert(ALA.konto.id === 'k-ala' && !('hash' in ALA.konto) && !('sol' in ALA.konto), 'widok konta: ' + JSON.stringify(ALA.konto));
+});
+
+await test('logowanie: złe hasło 401, dobre daje nowy token, /ja zwraca konto, wyloguj unieważnia', async () => {
+  assert((await post('/api/konto/logowanie', { nick: 'ala', haslo: 'zle' })).status === 401, 'złe hasło');
+  assert((await post('/api/konto/logowanie', { nick: 'nikt', haslo: 'tajne123' })).status === 401, 'brak konta');
+  const d = await (await post('/api/konto/logowanie', { nick: 'aLa', haslo: 'tajne123' })).json();
+  assert(d.token && d.token !== ALA.token && d.konto.nick === 'Ala', JSON.stringify(d));
+  const ja = await (await post('/api/konto/ja', { token: d.token })).json();
+  assert(ja.konto.nick === 'Ala', 'ja');
+  await post('/api/konto/wyloguj', { token: d.token });
+  assert((await post('/api/konto/ja', { token: d.token })).status === 401, 'token po wylogowaniu działa');
+  assert((await post('/api/konto/ja', { token: ALA.token })).status === 200, 'wylogowało inną sesję');
+});
+
+await test('Arena bez konta 401; serwer wpisuje id i nick z konta (nie da się grać za kogoś)', async () => {
+  let odrzucony = false;
+  try { await klient('k1', undefined, 'f'.repeat(64)).otwarty; } catch (e) { odrzucony = /401/.test(e.message); }
+  assert(odrzucony, 'wpuszczony bez konta');
+  const a = klient('k1', undefined, BOLEK.token);
+  await a.otwarty;
+  a.wyslij({ typ: 'hej', od: 0, epoka: null });
+  await a.czekaj((m) => m.typ === 'stan');
+  await a.zd({ t: 'dolacz', id: 'k-ala', name: 'Ala' });
+  const s = await a.czekaj((m) => m.typ === 'stan' && m.zdarzenia.length);
+  assert(s.zdarzenia[0].id === 'k-bolek' && s.zdarzenia[0].name === 'Bolek', JSON.stringify(s.zdarzenia[0]));
+  a.ws.close();
+});
+
+await test('wynik partii: kille do rankingu, jeden wynik na partię, limit killi, osiągnięcia na koncie', async () => {
+  const w = (body) => post('/api/konto/wynik', { token: BOLEK.token, ...body });
+  let d = await (await w({ partia: '111', kille: 3, obrazenia: 250, wygrana: true, osiagniecia: ['pierwsza-krew', 'ZŁE ID'] })).json();
+  assert(d.konto.staty.kille === 3 && d.konto.staty.partie === 1 && d.konto.staty.wygrane === 1, JSON.stringify(d.konto.staty));
+  assert(d.konto.osiagniecia['pierwsza-krew'] && Object.keys(d.konto.osiagniecia).length === 1, 'osiągnięcia');
+  d = await (await w({ partia: '111', kille: 3 })).json();
+  assert(d.konto.staty.kille === 3 && d.konto.staty.partie === 1, 'ta sama partia policzona drugi raz');
+  d = await (await w({ partia: '222', kille: 999 })).json();
+  assert(d.konto.staty.kille === 10, 'limit killi: ' + d.konto.staty.kille);
+  assert((await post('/api/konto/wynik', { token: 'x', partia: '3', kille: 1 })).status === 401, 'bez konta');
+  const r = await (await fetch(API('/api/ranking'))).json();
+  assert(r.ranking[0].nick === 'Bolek' && r.ranking[0].kille === 10 && !r.ranking.some((x) => x.nick === 'Ala'), JSON.stringify(r));
+});
+
+await test('pokój na hasło: lista, wejście bez klucza 403, złe hasło 403, dobre daje klucz', async () => {
+  const d = await (await post('/api/pokoje', { token: ALA.token, nazwa: 'Kozy tylko', haslo: 'beee' })).json();
+  assert(/^p-[0-9a-f]{8}$/.test(d.id) && d.klucz, JSON.stringify(d));
+  const otwarty = await (await post('/api/pokoje', { token: ALA.token, nazwa: 'Dla wszystkich' })).json();
+  assert(otwarty.id && otwarty.klucz === null, 'pokój bez hasła');
+  assert((await post('/api/pokoje', { token: 'x', nazwa: 'Bez konta' })).status === 401, 'pokój bez konta');
+  const lista = (await (await fetch(API('/api/pokoje'))).json()).pokoje;
+  assert(lista[0].id === 'glowny', 'główny nie pierwszy');
+  const moj = lista.find((p) => p.id === d.id);
+  assert(moj && moj.haslo && moj.nazwa === 'Kozy tylko' && moj.zalozyl === 'Ala' && !('klucz' in moj), JSON.stringify(moj));
+  let odrzucony = false;
+  try { await klient(d.id, undefined, BOLEK.token).otwarty; } catch (e) { odrzucony = /403/.test(e.message); }
+  assert(odrzucony, 'wpuszczony bez hasła');
+  assert((await post('/api/pokoje/wejdz', { token: BOLEK.token, id: d.id, haslo: 'muuu' })).status === 403, 'złe hasło');
+  const wej = await (await post('/api/pokoje/wejdz', { token: BOLEK.token, id: d.id, haslo: 'beee' })).json();
+  assert(wej.klucz === d.klucz, 'klucz');
+  const b = klient(d.id, undefined, BOLEK.token, wej.klucz);
+  await b.otwarty;
+  await new Promise((r) => setTimeout(r, 50));
+  const l2 = (await (await fetch(API('/api/pokoje'))).json()).pokoje.find((p) => p.id === d.id);
+  assert(l2.ile === 1 && l2.gracze[0] === 'Bolek', 'gracze w pokoju: ' + JSON.stringify(l2));
+  b.ws.close();
+  // limit 3 pokoi na konto
+  await post('/api/pokoje', { token: ALA.token, nazwa: 'Trzeci' });
+  assert((await post('/api/pokoje', { token: ALA.token, nazwa: 'Czwarty' })).status === 429, 'limit pokoi na konto');
+});
+
+await test('konta w pliku: przeżywają restart, hasło jako skrót, reset hasła wylogowuje', async () => {
+  const kat = fs.mkdtempSync(path.join(os.tmpdir(), 'konta-'));
+  const plik = path.join(kat, 'konta.json');
+  const a = new Konta(plik);
+  const r = await a.rejestracja({ nick: 'Zenek', haslo: 'haslo123', stare: { staty: { partie: 4, wygrane: 2, fragi: 9 }, osiagniecia: { weteran: 5 } } }, '1.1.1.1');
+  assert(r.status === 200 && r.dane.konto.staty.kille === 9 && r.dane.konto.osiagniecia.weteran === 5, 'stare dane: ' + JSON.stringify(r.dane.konto));
+  a.zapiszTeraz();
+  assert(!fs.readFileSync(plik, 'utf8').includes('haslo123'), 'hasło jawnym tekstem w pliku');
+  const b = new Konta(plik);
+  assert(b.zTokenu(r.dane.token) && (await b.logowanie({ nick: 'zenek', haslo: 'haslo123' }, '1.1.1.1')).status === 200, 'po restarcie');
+  await b.ustawHaslo('Zenek', 'nowe1234');
+  b.zapiszTeraz();
+  assert(!b.zTokenu(r.dane.token) && (await b.logowanie({ nick: 'zenek', haslo: 'nowe1234' }, '1.1.1.1')).status === 200, 'reset hasła');
+  fs.rmSync(kat, { recursive: true });
+});
+
+await test('limit prób logowania z jednego IP', async () => {
+  const o = { ip: '10.77.0.1' };
+  let ostatni = 0;
+  for (let i = 0; i < 13; i++) ostatni = (await post('/api/konto/logowanie', { nick: 'Ala', haslo: 'zle' + i }, o)).status;
+  assert(ostatni === 429, '13. próba: ' + ostatni);
 });
 
 console.log('\nZRZUTKA');

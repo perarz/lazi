@@ -559,6 +559,14 @@ test('mapa ekstremalna: styl tylko z ustawien, gesta siec jaskin, spawny na grun
   }
   assert(skala > pustka * 0.8 && pustka > skala * 0.15, 'ekstremalna nie wyglada na mrowisko: skala ' + skala + ', pustka ' + pustka);
   for (let seed = 1; seed < 200; seed += 23) assert(T.stylMapy(seed) !== 'ekstremalna', 'ekstremalna w losowaniu');
+  // 4.5.1: iglice prawie pod sufit, ale zostaje pas nieba na przerzut
+  let szczyt = T.WORLD_H;
+  for (let x = 100; x < st.terrain.w - 100; x += 2) {
+    let y = 0;
+    while (y < T.LAVA_Y && !T.solidAt(st.terrain, x, y)) y++;
+    szczyt = Math.min(szczyt, y);
+  }
+  assert(szczyt < 120 && szczyt >= 36, 'szczyt ekstremalnej: ' + szczyt);
 });
 
 test('wpisywane ustawienia: zycie, czas i runda lawy z zakresu, reszta odpada', () => {

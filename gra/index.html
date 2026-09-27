@@ -7,7 +7,7 @@
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta http-equiv="X-Content-Type-Options" content="nosniff">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; script-src 'self'; connect-src 'self' wss://96-62-223-169.sslip.io https://96-62-223-169.sslip.io ws://localhost:* ws://127.0.0.1:*; img-src 'self' data:; base-uri 'none'; form-action 'none';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; script-src 'self'; connect-src 'self' wss://96-62-223-169.sslip.io https://96-62-223-169.sslip.io ws://localhost:* ws://127.0.0.1:* http://localhost:* http://127.0.0.1:*; img-src 'self' data:; base-uri 'none'; form-action 'none';">
   <meta name="referrer" content="no-referrer">
   <title>Arena GOATów</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -112,27 +112,103 @@
     </div>
   </div>
 
-  <!-- Wejście: nazwa -->
-  <div class="ekran" id="ekran-nazwa">
+  <!-- Logowanie / rejestracja (od 4.6 Arena jest tylko dla kont) -->
+  <div class="ekran" id="ekran-logowanie" hidden>
     <div class="karta">
       <a class="powrot" href="/">← Zrzutka</a>
       <h1>ARENA <span class="plonie">GOAT</span>ÓW</h1>
-      <p class="podtytul">Turowa strzelanka z terenem, który da się rozwalić do zera.<br>Do 8 graczy, każdy na każdego albo w drużynach. Działa też na telefonie.</p>
+      <p class="podtytul">Turowa strzelanka z terenem, który da się rozwalić do zera.<br>Zaloguj się — kille i osiągnięcia zapisują się na koncie.</p>
 
-      <div class="pole">
-        <input id="input-nazwa" type="text" maxlength="14" placeholder="Twoja nazwa" autocomplete="off" enterkeyhint="go">
+      <div class="zakladki" role="tablist" aria-label="Logowanie albo nowe konto">
+        <button type="button" role="tab" id="tab-logowanie" aria-selected="true">Zaloguj się</button>
+        <button type="button" role="tab" id="tab-rejestracja" aria-selected="false">Załóż konto</button>
       </div>
 
-      <!-- kolor robala: ten sam w grze, przy nicku w lobby i na liście graczy -->
-      <div class="wybor-koloru">
+      <form class="formularz-konta" id="form-konto" novalidate>
+        <label class="pole-konta">
+          <span>Nick</span>
+          <input id="input-nick" type="text" maxlength="14" autocomplete="username" autocapitalize="off" spellcheck="false" enterkeyhint="next" required>
+        </label>
+        <label class="pole-konta">
+          <span>Hasło</span>
+          <input id="input-haslo" type="password" maxlength="72" autocomplete="current-password" enterkeyhint="go" required>
+        </label>
+        <label class="pole-konta" id="pole-haslo2" hidden>
+          <span>Powtórz hasło</span>
+          <input id="input-haslo2" type="password" maxlength="72" autocomplete="new-password" enterkeyhint="go">
+        </label>
+        <p class="info podpowiedz-konta" id="podpowiedz-konta" hidden>Nick 3–14 znaków (litery, cyfry, spacja, _ . -), hasło co najmniej 4 znaki. Bez maila — zapamiętaj hasło, a jak zapomnisz, pisz do Łaziego.</p>
+        <button id="btn-konto" class="glowny" type="submit">Wchodzę</button>
+      </form>
+      <p class="info blad-konta" id="info-konto" role="alert"></p>
+      <a class="wersja" data-wersja href="/zmiany/"></a>
+    </div>
+  </div>
+
+  <!-- Ekran przejściowy: ładowanie po zalogowaniu (i przy wejściu z zapamiętanym kontem) -->
+  <div class="ekran ekran-ladowanie" id="ekran-ladowanie">
+    <div class="ladowanie">
+      <canvas class="ladowanie-robal" id="ladowanie-robal" aria-hidden="true"></canvas>
+      <h1 class="ladowanie-tytul">ARENA <span class="plonie">GOAT</span>ÓW</h1>
+      <div class="ladowanie-pasek" aria-hidden="true"><i id="ladowanie-postep"></i></div>
+      <p class="ladowanie-tekst" id="ladowanie-tekst" role="status">Ostrzę rogi…</p>
+      <button type="button" id="btn-ponow" hidden>Spróbuj jeszcze raz</button>
+    </div>
+  </div>
+
+  <!-- Panel Areny: GRAJ, pokoje, ranking, osiągnięcia -->
+  <div class="ekran ekran-panel" id="ekran-panel" hidden>
+    <div class="karta karta-panel">
+      <div class="panel-gora">
+        <a class="powrot" href="/">← Zrzutka</a>
+        <button type="button" class="maly" id="btn-wyloguj">Wyloguj</button>
+      </div>
+
+      <div class="profil">
         <canvas class="podglad-robala" id="podglad-robala" aria-hidden="true"></canvas>
-        <div class="kolory-kolumna">
-          <p class="kolory-etykieta" id="kolory-etykieta">Kolor robala</p>
-          <div class="kolory" id="kolory" role="radiogroup" aria-labelledby="kolory-etykieta"></div>
+        <div class="profil-dane">
+          <p class="profil-witaj">Witaj na arenie,</p>
+          <h1 class="profil-nick" id="profil-nick">—</h1>
+          <ul class="profil-staty" id="profil-staty"></ul>
         </div>
       </div>
-      <button id="btn-wejdz" class="glowny" disabled>Wchodzę</button>
-      <p class="info" id="info-nazwa"></p>
+      <details class="kolor-robala">
+        <summary>Kolor robala</summary>
+        <div class="kolory" id="kolory" role="radiogroup" aria-label="Kolor robala"></div>
+      </details>
+
+      <button type="button" class="graj" id="btn-graj">
+        <span class="graj-napis">GRAJ</span>
+        <small id="graj-opis">Arena główna</small>
+      </button>
+
+      <div class="zakladki" role="tablist" aria-label="Pokoje i ranking">
+        <button type="button" role="tab" id="tab-pokoje" aria-selected="true">Pokoje</button>
+        <button type="button" role="tab" id="tab-ranking" aria-selected="false">Ranking killi</button>
+      </div>
+
+      <section class="sekcja-panelu" id="sekcja-pokoje" aria-labelledby="tab-pokoje">
+        <ul class="lista-pokoi" id="lista-pokoi"></ul>
+        <details class="nowy-pokoj" id="nowy-pokoj">
+          <summary>＋ Stwórz pokój</summary>
+          <form class="formularz-pokoju" id="form-pokoj" novalidate>
+            <input id="input-pokoj-nazwa" type="text" maxlength="24" placeholder="Nazwa pokoju" autocomplete="off">
+            <input id="input-pokoj-haslo" type="password" maxlength="40" placeholder="Hasło (puste = otwarty)" autocomplete="new-password">
+            <button type="submit" id="btn-pokoj">Stwórz i wejdź</button>
+          </form>
+        </details>
+        <p class="info" id="info-pokoje"></p>
+      </section>
+
+      <section class="sekcja-panelu" id="sekcja-ranking" aria-labelledby="tab-ranking" hidden>
+        <ol class="ranking" id="ranking"></ol>
+        <p class="info" id="info-ranking"></p>
+      </section>
+
+      <section class="osiagniecia-panel">
+        <h2>🏆 Osiągnięcia <b id="osiagniecia-licznik">0/0</b></h2>
+        <ul class="osiagniecia-lista" id="osiagniecia-lista"></ul>
+      </section>
       <a class="wersja" data-wersja href="/zmiany/"></a>
     </div>
   </div>
@@ -140,8 +216,8 @@
   <!-- Lobby -->
   <div class="ekran" id="ekran-lobby" hidden>
     <div class="karta">
-      <a class="powrot" href="/">← Zrzutka</a>
-      <h1>LOBBY</h1>
+      <button type="button" class="powrot powrot-przycisk" id="btn-panel">← Panel</button>
+      <h1 id="lobby-tytul">LOBBY</h1>
       <p class="podtytul" id="lobby-podtytul">Czekamy na graczy…</p>
 
       <!-- tryb gry: ustawia gospodarz, reszta widzi -->
@@ -175,11 +251,6 @@
       </div>
 
       <p class="info" id="info-lobby"></p>
-      <p class="info staty" id="moje-staty"></p>
-      <details class="osiagniecia">
-        <summary>Osiągnięcia <b id="osiagniecia-licznik">0/0</b></summary>
-        <ul class="osiagniecia-lista" id="osiagniecia-lista"></ul>
-      </details>
     </div>
   </div>
 
