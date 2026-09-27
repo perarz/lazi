@@ -258,11 +258,19 @@ test('kasetowka rozsypuje odlamki', () => {
   assert(maks >= 5, 'po wybuchu bylo tylko ' + maks + ' pociskow');
 });
 
+/* Nalot spada z nieba: na piętrowych mapach cel bywa pod nawisem — czyścimy
+   szyb nad nim i wyłączamy wiatr, żeby test sprawdzał broń, a nie kształt mapy. */
+function otworzNiebo(st, w) {
+  for (let y = 0; y < w.y - 30; y += 20) T.carve(st.terrain, w.x, y, 45);
+  st.wind = 0;
+}
+
 test('nalot wymaga celu i zrzuca rakiety', () => {
   const st = S.createGame(21, players(2));
   st.weapon = 'nalot';
   assert(!S.startCharging(st), 'nalot bez celu nie powinien ruszyc');
   const cel = st.worms.find((w) => w !== S.activeWorm(st));
+  otworzNiebo(st, cel);
   S.ustawCel(st, cel.x, cel.y);
   assert(S.startCharging(st), 'nalot z celem nie ruszyl');
   S.releaseFire(st);
@@ -599,6 +607,50 @@ test('odchodzacy jest pomijany w kolejce', () => {
   assert(snap.aktywny !== kolejny, 'ture dostal gracz, ktory wyszedl');
 });
 
+test('ustawienia partii: zycie, bronie, wiatr, czas tury; bez ustawien jak dawniej', () => {
+  const zwykla = S.createGame(77, players(2));
+  assert(zwykla.worms[0].hp === 100 && zwykla.turnTimeLeft === S.TURN_TIME && zwykla.worms[0].amunicja.nalot === 1, 'domyslne inne niz dawniej');
+  const st = S.createGame(77, players(2), { ustawienia: { hp: 200, czas: 45, bronie: 'podwojny', wiatr: 0 } });
+  assert(st.worms[0].hp === 200 && st.turnTimeLeft === 45, 'hp albo czas nie z ustawien');
+  assert(st.worms[0].amunicja.nalot === 2 && st.worms[0].amunicja.most === 6 && st.worms[0].amunicja.kij === 0, 'podwojna amunicja zle');
+  assert(st.wind === 0 && Object.is(st.wind, 0), 'wiatr mimo „bez wiatru”: ' + st.wind);
+  const hur = S.createGame(77, players(2), { ustawienia: { wiatr: 2 } });
+  assert(Math.abs(hur.wind) > Math.abs(zwykla.wind), 'huragan nie silniejszy');
+  const kl = S.createGame(77, players(2), { ustawienia: { bronie: 'klasyka' } });
+  assert(kl.worms[0].amunicja.teleport === 0 && !S.mozeStrzelic(kl, 'teleport') && kl.worms[0].amunicja.dynamit === 2, 'klasyka zle');
+  const szal = S.createGame(77, players(2), { ustawienia: { bronie: 'szalony' } });
+  assert(Object.keys(szal.worms[0].amunicja).length === 0 && S.mozeStrzelic(szal, 'kij'), 'szal ma limity');
+  // ustawienia przeżywają granicę tury (stanPoTurze → snapshot)
+  S.applyPas(st);
+  doKonca(st);
+  S.zastosujSnapshot(st, przezSiec(S.stanPoTurze(st)));
+  assert(st.turnTimeLeft === 45 && st.wind === 0, 'po turze ustawienia zgubione');
+});
+
+test('ustawienia partii: bez nagłej śmierci lawa stoi, bez zrzutów nic nie spada, w szale tylko apteczki', () => {
+  const bez = S.createGame(11, players(2), { sieciowa: true, ustawienia: { lawa: 0, zrzuty: 0 } });
+  const szal = S.createGame(4242, players(3), { sieciowa: true, ustawienia: { bronie: 'szalony', zrzuty: 70 } });
+  const start = bez.lava;
+  let skrzynki = 0;
+  for (let i = 0; i < 3 * S.LAWA_PO_RUNDACH; i++) {
+    nastepnaTura(bez);
+    skrzynki += bez.skrzynki.length;
+    nastepnaTura(szal);
+  }
+  assert(bez.lava === start, 'lawa wzbiera mimo „nigdy”');
+  assert(skrzynki === 0, 'skrzynki mimo wylaczonych zrzutow');
+  assert(szal.skrzynki.length > 0 && szal.skrzynki.every((c) => c.typ === 'apteczka'), 'w szale zapas albo brak skrzynek');
+  const krotka = S.createGame(11, players(2), { sieciowa: true, ustawienia: { lawa: 3 } });
+  for (let i = 0; i < 2 * 3 + 1; i++) nastepnaTura(krotka);
+  assert(krotka.lava < start, 'lawa po 3 rundach nie wzbiera');
+});
+
+test('mapa wybrana w lobby: styl ze seeda zgadza sie z generatorem', () => {
+  for (let seed = 1; seed < 400; seed += 37) {
+    assert(T.stylMapy(seed) === T.createTerrain(seed).styl, 'inny styl dla seeda ' + seed);
+  }
+});
+
 test('stanPoTurze nie zmienia stanu zrodlowego', () => {
   const st = S.createGame(11, players(3), { sieciowa: true });
   S.applyPas(st);
@@ -618,7 +670,7 @@ test('druzyny: wybuch nie rani i nie odrzuca kolegi, rani siebie i wroga', () =>
   const akt = S.activeWorm(st);
   const kolega = st.worms.find((w) => w !== akt && w.druzyna === akt.druzyna);
   const wrog = st.worms.find((w) => w.druzyna !== akt.druzyna);
-  for (const w of [akt, kolega, wrog]) { w.x = 1000 + st.worms.indexOf(w) * 12; w.vx = 0; w.vy = 0; }
+  for (const w of [akt, kolega, wrog]) { w.x = 1000 + st.worms.indexOf(w) * 12; w.y = akt.y; w.vx = 0; w.vy = 0; }
   const hp = st.worms.map((w) => w.hp);
   S.explode(st, 1012, (akt.y - S.WORM_H * 0.5), WEAPONS.bazooka);
   assert(kolega.hp === hp[st.worms.indexOf(kolega)] && kolega.vx === 0 && kolega.vy === 0, 'kolega oberwal: hp ' + kolega.hp + ' vx ' + kolega.vx);
@@ -795,6 +847,7 @@ test('zabicie nalotem daje „Nalot dywanowy” i „Pierwsza krew”', () => {
   const ja = S.activeWorm(st);
   const wrog = st.worms.find((w) => w !== ja);
   wrog.hp = 1;
+  otworzNiebo(st, wrog);
   st.weapon = 'nalot';
   S.ustawCel(st, wrog.x, wrog.y);
   assert(S.startCharging(st), 'nalot nie wystartowal');

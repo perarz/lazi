@@ -43,17 +43,23 @@ function szum2D(ziarno) {
    od nowa — trzymamy więc kopię ostatnio wygenerowanej. */
 let pamiec = null;
 
+/* Styl mapy wynika z seeda — z osobnego haszu, bo pierwsze losowanie
+   mulberry32 dla sąsiednich seedów wychodzi podobne, a style mają się mieszać.
+   Gospodarz, który wybrał konkretną mapę, po prostu losuje seed z tym stylem. */
+export function stylMapy(seed) {
+  seed = seed >>> 0;
+  let hs = Math.imul(seed ^ (seed >>> 16), 0x85ebca6b);
+  hs = Math.imul(hs ^ (hs >>> 13), 0xc2b2ae35);
+  return STYLE[((hs ^ (hs >>> 16)) >>> 0) % STYLE.length];
+}
+
 export function createTerrain(seed) {
   seed = seed >>> 0;
   if (pamiec && pamiec.seed === seed) {
     return { mask: pamiec.mask.slice(), seed, craters: [], styl: pamiec.styl };
   }
   const rng = mulberry32(seed);
-  // styl z osobnego haszu seeda — pierwsze losowanie mulberry32 dla
-  // sąsiednich seedów wychodzi podobne, a style mają się mieszać
-  let hs = Math.imul(seed ^ (seed >>> 16), 0x85ebca6b);
-  hs = Math.imul(hs ^ (hs >>> 13), 0xc2b2ae35);
-  const styl = STYLE[((hs ^ (hs >>> 16)) >>> 0) % STYLE.length];
+  const styl = stylMapy(seed);
   const mask = new Uint8Array(WORLD_W * WORLD_H);
 
   // --- profil wyspy: kilka oktaw szumu 1D ---
@@ -98,20 +104,23 @@ export function createTerrain(seed) {
       wys = 0.3 + s * 0.75;
     }
 
-    const relief = wys * 430;
+    // Od 4.3 mapy sięgają prawie pod sufit świata (dawniej 430 px): wysokie
+    // góry i miejsce na kilka pięter jaskiń jedna nad drugą.
+    const relief = wys * 660;
     // Wygaszenie na brzegach: teren schodzi pod lawę, więc powstaje wyspa,
     // z której da się spaść.
     const edge = smoothstep(0.03, 0.16, u) * smoothstep(0.03, 0.16, 1 - u);
-    surface[x] = Math.max(60, LAVA_Y - relief * edge);
+    surface[x] = Math.max(110, LAVA_Y - relief * edge);   // nad szczytem zostaje niebo na lot pocisków
   }
 
   // --- bryła 2D: szum przesuwa powierzchnię w pionie i w poziomie,
   //     więc powstają nawisy, łuki i półki zamiast gładkiej linii ---
   const n1 = szum2D(Math.floor(rng() * 2147483647));
   const n2 = szum2D(Math.floor(rng() * 2147483647));
-  rng(); // dawny szum tuneli — zostawiony, żeby nie przesuwać losowań
-  const nawisy = styl === 'jaskinie' ? 150 : styl === 'gory' ? 120 : 95;
-  const PAS = 190;                              // do tej głębokości pod powierzchnią działa szum
+  const n3 = szum2D(Math.floor(rng() * 2147483647));   // duża skala: wielkie nawisy i „szalone” bryły
+  const nawisy = styl === 'jaskinie' ? 190 : styl === 'gory' ? 160 : 130;
+  const wielkie = styl === 'kaniony' ? 170 : 240;
+  const PAS = 300;                              // do tej głębokości pod powierzchnią działa szum
 
   for (let x = 0; x < WORLD_W; x++) {
     const sx = surface[x];
@@ -123,6 +132,7 @@ export function createTerrain(seed) {
         mask[i] = 1;
       } else {
         const g = glebokosc
+          + (n3(x / 260, y / 230) - 0.5) * wielkie
           + (n1(x / 95, y / 95) - 0.5) * nawisy
           + (n2(x / 34, y / 34) - 0.5) * 38;
         mask[i] = g > 0 ? 1 : 0;
@@ -130,31 +140,54 @@ export function createTerrain(seed) {
     }
   }
 
+  // --- piętra: długie, płaskie jaskinie jedna nad drugą — w grubym terenie
+  //     powstaje kilka poziomów, po których da się chodzić (od 4.3) ---
+  const pietra = randInt(rng, styl === 'jaskinie' ? 4 : 2, styl === 'jaskinie' ? 7 : 5);
+  for (let i = 0; i < pietra; i++) {
+    const cx = randRange(rng, WORLD_W * 0.14, WORLD_W * 0.86);
+    const top = surface[Math.floor(cx)];
+    const miejsca = LAVA_Y - 70 - (top + 70);
+    if (miejsca < 90) continue;
+    const ry = randRange(rng, 24, Math.min(70, miejsca / 3));
+    const cy = randRange(rng, top + 70 + ry, LAVA_Y - 70 - ry);
+    // pochylone i poszarpane mocniej niż zwykła komora — mają wyglądać dziko, nie jak pasy
+    ksztaltEllipsy(mask, n2, cx, cy, randRange(rng, 150, 360), ry, 0, randRange(rng, -0.22, 0.22), 1.3);
+  }
+  // --- kominy: wąskie pionowe szyby, które łączą piętra ---
+  const kominy = randInt(rng, 1, styl === 'jaskinie' ? 4 : 3);
+  for (let i = 0; i < kominy; i++) {
+    const cx = randRange(rng, WORLD_W * 0.18, WORLD_W * 0.82);
+    const top = surface[Math.floor(cx)];
+    if (top > LAVA_Y - 260) continue;
+    const ry = randRange(rng, 90, Math.min(190, (LAVA_Y - top - 120) / 2));
+    const cy = randRange(rng, top + 40 + ry, LAVA_Y - 80 - ry);
+    ksztaltEllipsy(mask, n2, cx, cy, randRange(rng, 20, 42), ry, 0, randRange(rng, -0.5, 0.5), 1);
+  }
   // --- kilka komór i pływających skał ---
-  const komory = randInt(rng, styl === 'jaskinie' ? 5 : 2, styl === 'jaskinie' ? 8 : 4);
+  const komory = randInt(rng, styl === 'jaskinie' ? 5 : 3, styl === 'jaskinie' ? 9 : 5);
   for (let i = 0; i < komory; i++) {
     const cx = randRange(rng, WORLD_W * 0.15, WORLD_W * 0.85);
     const top = surface[Math.floor(cx)];
     if (top > LAVA_Y - 150) continue;
     const cy = randRange(rng, top + 90, Math.max(top + 100, LAVA_Y - 60));
-    ksztaltEllipsy(mask, n2, cx, cy, randRange(rng, 55, 150), randRange(rng, 28, 70), 0);
+    ksztaltEllipsy(mask, n2, cx, cy, randRange(rng, 55, 170), randRange(rng, 30, 90), 0);
   }
-  // --- czasem duża jaskinia: szeroka hala z podłogą, zamiast cienkich tuneli ---
-  const duze = styl === 'jaskinie' ? randInt(rng, 1, 2) : (rng() < 0.55 ? 1 : 0);
+  // --- wielkie jaskinie: wysokie hale z podłogą ---
+  const duze = styl === 'jaskinie' ? randInt(rng, 2, 3) : randInt(rng, 1, 2);
   for (let i = 0; i < duze; i++) {
-    const cx = randRange(rng, WORLD_W * 0.25, WORLD_W * 0.75);
+    const cx = randRange(rng, WORLD_W * 0.22, WORLD_W * 0.78);
     const top = surface[Math.floor(cx)];
     if (top > LAVA_Y - 250) continue;
-    const ry = randRange(rng, 55, Math.min(105, (LAVA_Y - top - 130) / 2));
+    const ry = randRange(rng, 60, Math.min(150, (LAVA_Y - top - 130) / 2));
     const cy = randRange(rng, top + 60 + ry, LAVA_Y - 70 - ry);
-    ksztaltEllipsy(mask, n2, cx, cy, randRange(rng, 170, 280), ry, 0);
+    ksztaltEllipsy(mask, n2, cx, cy, randRange(rng, 170, 320), ry, 0);
   }
-  const skaly = styl === 'gory' ? randInt(rng, 1, 2) : randInt(rng, 2, 4);
+  const skaly = styl === 'gory' ? randInt(rng, 2, 3) : randInt(rng, 3, 5);
   for (let i = 0; i < skaly; i++) {
-    const cx = randRange(rng, WORLD_W * 0.18, WORLD_W * 0.82);
+    const cx = randRange(rng, WORLD_W * 0.15, WORLD_W * 0.85);
     const top = surface[Math.floor(cx)];
-    const cy = Math.max(140, top - randRange(rng, 150, 260));
-    ksztaltEllipsy(mask, n2, cx, cy, randRange(rng, 55, 110), randRange(rng, 16, 30), 1);
+    const cy = Math.max(90, top - randRange(rng, 130, 300));
+    ksztaltEllipsy(mask, n2, cx, cy, randRange(rng, 55, 130), randRange(rng, 16, 34), 1);
   }
 
   usunOkruchy(mask, 450);
@@ -164,18 +197,21 @@ export function createTerrain(seed) {
 }
 
 /* Elipsa z postrzępionym brzegiem: wartosc 0 wycina (komora), 1 dokłada (skała). */
-function ksztaltEllipsy(mask, szum, cx, cy, rx, ry, wartosc) {
+/* nachyl — przesunięcie w pionie na piksel w poziomie (pochylona elipsa),
+   postrzep — siła poszarpania brzegu. */
+function ksztaltEllipsy(mask, szum, cx, cy, rx, ry, wartosc, nachyl = 0, postrzep = 1) {
   const x0 = Math.max(0, Math.floor(cx - rx * 1.3));
   const x1 = Math.min(WORLD_W - 1, Math.ceil(cx + rx * 1.3));
-  const y0 = Math.max(0, Math.floor(cy - ry * 1.3));
-  const y1 = Math.min(BEDROCK_Y - 1, Math.ceil(cy + ry * 1.3));
+  const zapas = Math.abs(nachyl) * rx * 1.3;
+  const y0 = Math.max(0, Math.floor(cy - ry * 1.3 - zapas));
+  const y1 = Math.min(BEDROCK_Y - 1, Math.ceil(cy + ry * 1.3 + zapas));
   for (let y = y0; y <= y1; y++) {
-    const dy = (y - cy) / ry;
     for (let x = x0; x <= x1; x++) {
       const dx = (x - cx) / rx;
+      const dy = (y - cy - nachyl * (x - cx)) / ry;
       // skała jest płaska od spodu i garbata od góry — jak prawdziwy głaz
       const garb = wartosc === 1 && dy < 0 ? 0.25 : 0;
-      const d = dx * dx + dy * dy - (szum(x / 18, y / 18) - 0.5) * 0.7 - garb;
+      const d = dx * dx + dy * dy - (szum(x / 18, y / 18) - 0.5) * 0.7 * postrzep - garb;
       if (d <= 1) mask[y * WORLD_W + x] = wartosc;
     }
   }

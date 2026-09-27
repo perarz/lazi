@@ -17,6 +17,7 @@ import * as S from '../src/sim.js';
 import * as P from '../src/protokol.js';
 import { WEAPONS, WEAPON_ORDER } from '../src/weapons.js';
 import { mulberry32 } from '../src/rng.js';
+import * as U from '../src/ustawienia.js';
 
 let passed = 0, failed = 0;
 async function test(name, fn) {
@@ -265,6 +266,11 @@ function zgodnoscKoncowa(pr) {
   }
 }
 
+/* Po przerwaniu pętli na końcu partii: kilka sekund, żeby klienci przyjęli ostatni stan. */
+function dogon(serwer, kl, sek = 25) {
+  for (let i = 0; i < 60 * sek; i++) { serwer.czas += KLATKA; for (const k of kl) k.tik(); }
+}
+
 function najdluzszaTura(pr) {
   const zd = pr.serwer.log;
   let poprz = zd.find((z) => z.t === 'nowa').st, maks = 0;
@@ -334,6 +340,8 @@ await test('ucieczka na zywo: odbiorca gra strzal i ucieczke ulamek sekundy za s
   assert(pomiary > 300, 'za malo pomiarow: ' + pomiary);
   assert(maks * S.DT < 0.8, 'odbiorca za daleko za strzelcem: ' + (maks * S.DT).toFixed(2) + ' s');
   console.log('       najwieksze opoznienie ucieczki u odbiorcy: ' + (maks * S.DT).toFixed(2) + ' s (dawniej ~5 s)');
+  // partia mogła się skończyć właśnie na 6. turze — chwila, żeby wszyscy przyjęli ostatni stan
+  dogon(serwer, kl);
   zgodnoscKoncowa({ serwer, pokoj: P.zloz(serwer.log), wszyscy: kl, klienci: kl });
   for (const k of kl) assert(k.r.statystyki.korekty === 0, 'korekty u ' + k.id);
 });
@@ -477,6 +485,7 @@ await test('wyscig: karta wlasciciela w tle, gospodarz oddaje ture, wlasciciel w
       }
       if (P.zloz(serwer.log).tura >= 5) break;
     }
+    if (P.zloz(serwer.log).faza === 'koniec') dogon(serwer, kl);   // koniec partii w chwili przerwania pętli
     const p = P.zloz(serwer.log);
     assert(p.tura >= 5 || p.faza === 'koniec', 'partia stanela po wyscigu (seed ' + seed + ', tura ' + p.tura + ')');
     const a0 = p.akcje.get(0);
@@ -516,6 +525,33 @@ await test('karta w tle przez minute: po powrocie dogania log bez rozjazdu', () 
   });
   zgodnoscKoncowa(pr);
   assert(schowany.r.statystyki.skoki > 0, 'powracajacy nie skoczyl do najnowszego stanu');
+});
+
+await test('podglad na zywo: widz dostaje bron, zapas, zycie, zebrana skrzynke i upadek gracza z tura', () => {
+  const gracze = [{ id: 'a', name: 'a', color: '#fff' }, { id: 'b', name: 'b', color: '#0f0' }];
+  const p = P.zloz([{ t: 'nowa', seed: 4242, gracze, druzyny: 0, v: P.WERSJA, st: 1000 }]);
+  const r = P.nowaRozgrywka(p, p.aktywny);
+  const st = r.state;
+  const w = S.activeWorm(st);
+  st.weapon = 'dynamit';
+  w.hp = 60;
+  st.skrzynki.push({ id: 77, typ: 'apteczka', x: w.x, y: w.y });
+  const ctx = { teraz: p.turaOdkad + 1000, dt: KLATKA / 1000, obecnosc: {}, obecnoscTeraz: 0, obecnoscSwieza: false, ruchCo: 100 };
+  P.klatka(r, p, ctx);
+  let ruch = r.doWyslania.filter((z) => z.t === 'ruch').pop();
+  assert(ruch && ruch.b === 'dynamit' && ruch.z === 2, 'brak broni albo zapasu w podgladzie');
+  assert(ruch.h === 60 + S.APTECZKA_HP, 'zycie po apteczce nie w podgladzie: ' + ruch.h);
+  const e = ruch.e && ruch.e.find((x) => x[1] === 's');
+  assert(e && e[4] === 77 && e[5] === S.APTECZKA_HP, 'zebrana skrzynka nie w podgladzie: ' + JSON.stringify(ruch.e));
+  // upadek: robal leci z wysoka — obrażenia idą w podglądzie od razu (bez czekania na odstęp)
+  r.doWyslania.length = 0;
+  st.events.length = 0;
+  w.y -= 120; w.vy = 900; w.onGround = false;
+  for (let i = 0; i < 60; i++) { ctx.teraz += KLATKA; P.klatka(r, p, ctx); }
+  ruch = r.doWyslania.filter((z) => z.t === 'ruch').pop();
+  const upadek = ruch && ruch.e && ruch.e.find((x) => x[1] === 'o');
+  assert(upadek && upadek[4] > 0 && ruch.h < 60 + S.APTECZKA_HP, 'upadek nie w podgladzie: ' + JSON.stringify(ruch && ruch.e));
+  assert(JSON.stringify(ruch).length < 600, 'podglad za duzy dla serwera: ' + JSON.stringify(ruch).length);
 });
 
 console.log('\nLOBBY');
@@ -624,6 +660,78 @@ await test('partia druzynowa 2 na 2 do konca: zero rozjazdow, wygrywa druzyna', 
     assert(druz(kto(akcje[i])) !== druz(kto(akcje[i - 1])), 'dwie tury z rzedu jednej druzyny (tura ' + akcje[i].nr + ')');
   }
   console.log('       ' + p.tura + ' tur, wygrala druzyna ' + (zywi[0] ? zywi[0].druzyna : '—'));
+});
+
+await test('ustawienia partii: gospodarz zmienia, gotowosc sie cofa, nowa je niesie, zle wartosci odpadaja', () => {
+  const log = [...wejscie(['a', 'b']), { t: 'gotowy', id: 'a', tak: true }, { t: 'gotowy', id: 'b', tak: true }];
+  let p = P.zloz(log);
+  assert(p.ustawienia.czas === S.TURN_TIME && p.ustawienia.hp === 100, 'domyslne ustawienia nie takie jak dawniej');
+  p = P.zloz([...log, { t: 'ustaw', id: 'a', klucz: 'czas', w: 45 }]);
+  assert(p.ustawienia.czas === 45 && !p.wLobby.some((g) => g.gotowy), 'zmiana czasu nie przeszla albo nie cofnela gotowosci');
+  p = P.zloz([...log, { t: 'ustaw', id: 'a', klucz: 'czas', w: 999 }, { t: 'ustaw', id: 'a', klucz: 'hack', w: 1 }]);
+  assert(p.ustawienia.czas === S.TURN_TIME && !('hack' in p.ustawienia) && p.wLobby.every((g) => g.gotowy), 'zla wartosc przeszla');
+  p = P.zloz([...log, { t: 'ustaw', id: 'a', klucz: 'hp', w: 200 }, { t: 'ustaw', id: 'a', domyslne: 1 }]);
+  assert(p.ustawienia.hp === 100, 'przywrocenie domyslnych nie dziala');
+  // nowa: ustawienia w partii i po partii w lobby, czas tury w protokole
+  const gracze = [{ id: 'a', name: 'a', color: '#fff' }, { id: 'b', name: 'b', color: '#0f0' }];
+  const ust = { czas: 15, hp: 50, bronie: 'klasyka', zrzuty: 0, wiatr: 0, lawa: 0, mapa: 'gory', zle: 5 };
+  p = P.zloz([{ t: 'nowa', seed: 5, gracze, druzyny: 0, ustawienia: ust, v: P.WERSJA, st: 1000 }]);
+  assert(p.czasTury === 15 && p.ustawienia.hp === 50 && !('zle' in p.ustawieniaGry), 'nowa nie przeniosla ustawien');
+  assert(P.terminTury({ state: { turnNumber: 0 } }, p) === p.turaOdkad + 15000, 'termin tury nie z ustawien');
+  const r = P.nowaRozgrywka(p, 'a');
+  const w = r.state.worms[0];
+  assert(w.hp === 50 && w.amunicja.nalot === 0 && w.amunicja.dynamit === 2 && r.state.wind === 0, 'partia nie z ustawien');
+  // stara partia bez ustawień = jak dawniej
+  const stara = P.zloz([{ t: 'nowa', seed: 5, gracze, druzyny: 0, v: 2, st: 1000 }]);
+  assert(stara.czasTury === S.TURN_TIME && P.nowaRozgrywka(stara, 'a').state.worms[0].hp === 100, 'partia bez ustawien nie standardowa');
+  // pas „za czas” gospodarza liczy się od czasu tury z ustawień
+  const pas = { t: 'pas', nr: 0, id: 'b', za: p.aktywny === 'a' ? 'a' : 'b', powod: 'czas', st: p.turaOdkad + (15 + P.GRACE_PAS) * 1000 };
+  pas.id = pas.za === 'a' ? 'b' : 'a';
+  const pp = P.zloz([{ t: 'nowa', seed: 5, gracze, druzyny: 0, ustawienia: ust, v: P.WERSJA, st: 1000 }, pas]);
+  assert(pp.akcje.has(0), 'pas za czas po krotkiej turze odrzucony');
+});
+
+await test('lobby: gospodarz losuje druzyny, oddaje korone i wyrzuca; stara wersja blokuje start', () => {
+  const ids = ['a', 'b', 'c', 'd'];
+  const log = [...wejscie(ids), { t: 'tryb', id: 'a', druzyny: 2 }];
+  log.push({ t: 'sklad', id: 'a', d: { a: 1, b: 1, c: 0, d: 0, obcy: 1 } });
+  let r = P.rozstaw(P.zloz(log));
+  assert(r.gracze.map((g) => g.druzyna).join() === '1,1,0,0', 'losowanie druzyn nie przeszlo: ' + r.gracze.map((g) => g.druzyna).join());
+  // korona: wskazany idzie na początek kolejki (gospodarz = pierwszy obecny)
+  let p = P.zloz([...log, { t: 'korona', id: 'a', kto: 'c' }]);
+  assert(p.wLobby[0].id === 'c' && p.wLobby.length === 4, 'korona nie przeszla');
+  // wyrzucenie: znika z lobby, nie może wyrzucić sam siebie, wraca własnym 'dolacz'
+  p = P.zloz([...log, { t: 'wyrzuc', id: 'a', kto: 'd' }, { t: 'wyrzuc', id: 'b', kto: 'b' }]);
+  assert(!p.wLobby.some((g) => g.id === 'd') && p.wyrzuceni.has('d') && p.wLobby.some((g) => g.id === 'b'), 'wyrzucenie nie dziala');
+  p = P.zloz([...log, { t: 'wyrzuc', id: 'a', kto: 'd' }, ...wejscie(['d'])]);
+  assert(p.wLobby.some((g) => g.id === 'd') && !p.wyrzuceni.has('d'), 'wyrzucony nie moze wrocic');
+  // ktoś ze starą wersją (bez ustawień partii) — mimo gotowości startu nie ma
+  const stary = [...wejscie(['a']), { t: 'dolacz', id: 'b', name: 'b', color: '#fff', v: 2 },
+    { t: 'gotowy', id: 'a', tak: true }, { t: 'gotowy', id: 'b', tak: true }];
+  assert(!P.gotowiDoStartu(P.rozstaw(P.zloz(stary))), 'start ze stara wersja');
+});
+
+await test('partia z wlasnymi ustawieniami (15 s, 50 HP, klasyka, czeste zrzuty, huragan) do konca bez rozjazdow', () => {
+  const serwer = new Serwer();
+  const ids = ['a', 'b', 'c'];
+  const kl = ids.map((id, i) => new Klient(id, serwer, mulberry32(700 + i), { opoznienie: 60 + i * 50, coIle: 300 }));
+  for (const k of kl) serwer.przyjmij({ t: 'puls', id: k.id });
+  const ustawienia = { czas: 15, hp: 50, bronie: 'klasyka', zrzuty: 70, wiatr: 2, lawa: 3, mapa: 'losowa' };
+  serwer.przyjmij({ t: 'nowa', seed: 98765, druzyny: 0, ustawienia, v: P.WERSJA,
+    gracze: ids.map((id) => ({ id, name: id, color: '#fff' })) });
+  for (let i = 0; i < 60 * 900; i++) {
+    serwer.czas += KLATKA;
+    for (const k of kl) k.tik();
+    if (i % 60 === 0 && P.zloz(serwer.log).faza === 'koniec') break;
+  }
+  for (let i = 0; i < 60 * 25; i++) { serwer.czas += KLATKA; for (const k of kl) k.tik(); }
+  const p = P.zloz(serwer.log);
+  assert(p.faza === 'koniec', 'partia nie doszla do konca (tura ' + p.tura + ')');
+  zgodnoscKoncowa({ serwer, pokoj: p, wszyscy: kl, klienci: kl });
+  for (const k of kl) assert(k.r.statystyki.korekty === 0, 'korekty u ' + k.id);
+  const zakazane = [...p.akcje.values()].filter((a) => a.t === 'strzal' && !U.KLASYKA.includes(a.weapon));
+  assert(!zakazane.length, 'strzal bronia spoza klasyki: ' + zakazane.map((a) => a.weapon).join());
+  console.log('       ' + p.tura + ' tur');
 });
 
 console.log('\n' + (failed === 0

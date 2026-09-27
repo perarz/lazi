@@ -57,7 +57,7 @@
     <div class="ekw-tlo" id="ekw-tlo" hidden></div>
     <div class="ekwipunek" id="ekwipunek" role="dialog" aria-label="Ekwipunek" hidden>
       <div class="ekw-gora">
-        <b class="ekw-tytul">Ekwipunek</b>
+        <b class="ekw-tytul" id="ekw-tytul">Ekwipunek</b>
         <span class="ekw-opis" id="ekw-opis"></span>
         <button type="button" class="ekw-zamknij" id="ekw-zamknij" aria-label="Zamknij ekwipunek">✕</button>
       </div>
@@ -68,7 +68,7 @@
       <div class="pasek-broni">
         <button type="button" class="bron-wybrana" id="btn-bron" aria-haspopup="dialog" aria-expanded="false" aria-controls="ekwipunek" title="Ekwipunek — Q albo prawy przycisk myszy">
           <span class="bron-ikona" id="bron-ikona"></span>
-          <span class="bron-tekst"><small>Broń</small><b id="bron-nazwa">Bazooka</b></span>
+          <span class="bron-tekst"><small id="bron-kto">Broń</small><b id="bron-nazwa">Bazooka</b></span>
           <span class="zapas" id="bron-zapas" hidden></span>
           <span class="bron-strzalka" aria-hidden="true">▲</span>
         </button>
@@ -142,6 +142,16 @@
       <!-- drużyny (albo jedna lista w trybie „każdy na każdego”) -->
       <div class="druzyny" id="lobby-druzyny"></div>
       <p class="info widzowie" id="lobby-widzowie" hidden></p>
+
+      <!-- gospodarz: co zrobić ze stukniętym graczem, losowanie drużyn -->
+      <div class="lobby-akcje" id="lobby-akcje" hidden></div>
+
+      <!-- ustawienia partii: zmienia gospodarz, reszta widzi (od 4.3) -->
+      <details class="ustawienia" id="lobby-ustawienia">
+        <summary>Ustawienia partii <small id="ustawienia-skrot">standardowe</small></summary>
+        <div class="ustawienia-siatka" id="ustawienia-siatka"></div>
+        <button type="button" class="ustawienia-reset" id="btn-ustawienia-reset" hidden>Przywróć standardowe</button>
+      </details>
 
       <button id="btn-gotowy" class="glowny btn-gotowy" type="button" aria-pressed="false">GOTOWY</button>
 

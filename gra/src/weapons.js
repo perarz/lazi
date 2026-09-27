@@ -10,9 +10,9 @@ export const WEAPONS = {
     name: 'Bazooka',
     key: '1',
     kind: 'pocisk',        // leci i wybucha przy pierwszym kontakcie
-    speed: 720,            // px/s przy pełnej mocy
+    speed: 882,            // px/s przy pełnej mocy (4.3: ×1,22, czyli zasięg ×1,5)
     gravityFactor: 1,
-    windFactor: 1,         // najbardziej czuła na wiatr
+    windFactor: 1.35,      // najbardziej czuła na wiatr (4.3: wpływ wiatru ×1,35 we wszystkich)
     radius: 52,
     damage: 48,
     knockback: 260,
@@ -24,9 +24,9 @@ export const WEAPONS = {
     name: 'Granat',
     key: '2',
     kind: 'odbijany',      // odbija się od terenu, wybucha po zapalniku
-    speed: 560,
+    speed: 686,
     gravityFactor: 1,
-    windFactor: 0.25,
+    windFactor: 0.34,
     restitution: 0.55,
     radius: 46,
     damage: 42,
@@ -53,9 +53,9 @@ export const WEAPONS = {
     name: 'Kasetówka',
     key: '4',
     kind: 'odbijany',
-    speed: 540,
+    speed: 661,
     gravityFactor: 1,
-    windFactor: 0.3,
+    windFactor: 0.4,
     restitution: 0.5,
     radius: 30,
     damage: 22,
@@ -198,7 +198,7 @@ export const WEAPONS = {
     kind: 'pocisk',
     speed: 0,
     gravityFactor: 1,
-    windFactor: 0.4,
+    windFactor: 0.54,
     radius: 24,
     damage: 20,
     knockback: 150,
@@ -211,7 +211,7 @@ export const WEAPONS = {
     kind: 'pocisk',
     speed: 0,
     gravityFactor: 0.6,
-    windFactor: 0.35,
+    windFactor: 0.47,
     radius: 36,
     damage: 28,
     knockback: 200,
@@ -224,7 +224,7 @@ export const WEAPONS = {
     kind: 'pocisk',
     speed: 0,
     gravityFactor: 1,
-    windFactor: 0.6,
+    windFactor: 0.8,
     radius: 30,
     damage: 24,
     knockback: 170,
@@ -235,11 +235,16 @@ export const WEAPONS = {
 
 export const WEAPON_ORDER = ['bazooka', 'granat', 'strzelba', 'kasetowa', 'dynamit', 'nalot', 'owca', 'kij', 'teleport', 'salwa', 'wiertlo', 'most'];
 
-/* Startowy zapas dla broni z limitem — ta sama wartość u każdego klienta. */
-export function startowaAmunicja() {
+/* Startowy zapas dla broni z limitem — ta sama wartość u każdego klienta.
+   zestaw (ustawienia partii, od 4.3): 'pelny' (domyślny), 'podwojny' (limity ×2),
+   'klasyka' (spoza listy `klasyka` — 0 sztuk, czyli wyłączone), 'szalony' (bez limitu). */
+export function startowaAmunicja(zestaw = 'pelny', klasyka = []) {
   const a = {};
+  if (zestaw === 'szalony') return a;
   for (const id of WEAPON_ORDER) {
-    if (WEAPONS[id].amunicja !== undefined) a[id] = WEAPONS[id].amunicja;
+    const w = WEAPONS[id];
+    if (zestaw === 'klasyka' && !klasyka.includes(id)) a[id] = 0;
+    else if (w.amunicja !== undefined) a[id] = zestaw === 'podwojny' ? w.amunicja * 2 : w.amunicja;
   }
   return a;
 }

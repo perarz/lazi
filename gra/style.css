@@ -196,6 +196,9 @@ html, body {
 .bron-wybrana:hover:not(:disabled) { background: rgba(40, 20, 10, 0.9); border-color: var(--zar-jasny); }
 .bron-wybrana.otwarty { border-color: var(--zar-jasny); box-shadow: 0 0 24px rgba(255, 140, 0, 0.45); }
 .bron-wybrana.nieaktywna { opacity: 0.78; }
+/* cudza tura: broń gracza z turą (podgląd na żywo), nad nazwą jego nick */
+.bron-wybrana.cudza { opacity: 1; border-style: dashed; }
+.bron-wybrana.cudza .bron-tekst small { letter-spacing: 0.06em; text-transform: none; opacity: 0.85; max-width: 110px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .bron-ikona {
   width: 36px; height: 36px; flex: none;
   display: grid; place-items: center;
@@ -579,6 +582,62 @@ button:disabled { opacity: 0.35; cursor: not-allowed; }
   background: linear-gradient(180deg, rgba(80, 210, 110, 0.5), rgba(30, 150, 70, 0.45));
   border-color: #6ee07a;
 }
+
+/* gospodarz: akcje na stukniętym graczu i losowanie drużyn */
+.lobby-akcje {
+  display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; align-items: center;
+  margin-top: 10px;
+}
+.lobby-akcje[hidden] { display: none; }
+.lobby-akcje .kto { flex-basis: 100%; font-size: 12px; opacity: 0.8; }
+.lobby-akcje button { padding: 10px 12px; font-size: 12px; min-height: 44px; }
+.lobby-akcje .grozny { border-color: rgba(255, 90, 100, 0.6); background: rgba(255, 60, 70, 0.16); }
+
+/* ustawienia partii */
+.ustawienia {
+  margin-top: 14px; text-align: left;
+  border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 10px;
+  background: rgba(0, 0, 0, 0.22);
+}
+.ustawienia summary {
+  cursor: pointer; list-style: none; padding: 11px 12px;
+  font-size: 13px; letter-spacing: 0.04em;
+  display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap;
+}
+.ustawienia summary::-webkit-details-marker { display: none; }
+.ustawienia summary::before { content: '⚙'; }
+.ustawienia summary::after { content: '▾'; margin-left: auto; opacity: 0.6; }
+.ustawienia[open] summary::after { content: '▴'; }
+.ustawienia summary small { font-size: 11.5px; color: var(--zar-jasny); letter-spacing: 0; }
+.ustawienia summary small.standard { color: var(--tekst); opacity: 0.55; }
+.ustawienia-siatka {
+  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px;
+  padding: 0 12px 12px;
+}
+.ustawienie { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.ustawienie span { font-size: 11px; opacity: 0.7; letter-spacing: 0.04em; }
+.ustawienie select {
+  width: 100%; min-height: 40px; padding: 8px 10px;
+  background: rgba(255, 106, 0, 0.12); color: var(--tekst);
+  border: 1px solid var(--obwodka); border-radius: 8px;
+  font-family: inherit; font-size: 13px;
+  text-overflow: ellipsis;
+}
+.ustawienie select:focus-visible { outline: 2px solid var(--zar-jasny); outline-offset: 1px; }
+.ustawienie select option { background: #1a1210; color: #fff; }
+.ustawienie.zmienione select { border-color: var(--zar-jasny); }
+/* reszta graczy widzi wartości jak zwykły tekst */
+.ustawienie select:disabled {
+  opacity: 1; cursor: default; appearance: none; -webkit-appearance: none;
+  background: rgba(255, 255, 255, 0.04); border-color: rgba(255, 255, 255, 0.1);
+}
+.ustawienie.zmienione select:disabled { border-color: rgba(255, 217, 59, 0.55); }
+.ustawienia-reset { display: block; margin: 0 12px 12px auto; padding: 8px 12px; font-size: 12px; }
+.ustawienia-reset[hidden] { display: none; }
+
+/* bronie wyłączone w ustawieniach partii */
+.ekw-bron.wylaczona { display: none; }
+.ekw-rzad:not(:has(.ekw-bron:not(.wylaczona))) { display: none; }
 
 @media (max-width: 400px) {
   .tryb { grid-template-columns: repeat(2, minmax(0, 1fr)); }

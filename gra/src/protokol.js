@@ -26,6 +26,7 @@
 import * as S from './sim.js';
 import { hashTekstu } from './rng.js';
 import { TRYBY } from './druzyny.js';
+import * as U from './ustawienia.js';
 
 export const GRACE_PAS = 12;          // s po terminie tury, zanim gospodarz odda ją za gracza
 export const ROZLACZONY_PAS = 15;     // s bez pulsu gracza z turą — tura oddana od razu
@@ -34,9 +35,8 @@ export const ZYWY_PULS = 20;          // s — dłuższa cisza wyklucza z wyboru
 export const ZASTEPCZY_STAN = 4;      // s czekania na stan od autora akcji
 export const START_ZWLOKA = 3;        // s na załadowanie planszy po starcie partii
 export const DOGON_PO = 2;            // s — starszego stanu nie animujemy, tylko do niego skaczemy
-export const PORZUCONA_PO = S.TURN_TIME + GRACE_PAS + 35;   // s ciszy = partia porzucona
 export const ODLICZANIE_S = 5;        // s od chwili, gdy wszyscy dali GOTOWY, do startu partii
-export const WERSJA = 2;              // wersja protokołu lobby (4.2: drużyny i gotowość)
+export const WERSJA = 3;              // wersja protokołu lobby (4.2: drużyny i gotowość, 4.3: ustawienia partii)
 export const MAX_GRACZY = 8;          // w partii; kolejni w lobby oglądają
 
 /* Ucieczka na żywo. */
@@ -59,6 +59,10 @@ export function zloz(zdarzenia) {
     druzyny: 0,            // tryb bieżącej partii: 0 = każdy na każdego, n = tyle drużyn
     wLobby: [],            // zgłoszeni: { id, name, color, v, druzyna, druzynaNr, gotowy }
     tryb: 0,               // tryb ustawiony w lobby przez gospodarza
+    ustawienia: U.domyslne(),   // ustawienia następnej partii (lobby, gospodarz)
+    ustawieniaGry: U.domyslne(),// ustawienia bieżącej partii (z 'nowa')
+    czasTury: S.TURN_TIME, // s — czas tury bieżącej partii
+    wyrzuceni: new Set(),  // id wyrzuconych z lobby przez gospodarza (do ich ponownego 'dolacz')
     odliczanieDo: null,    // termin startu w czasie SERWERA
     ostatniaAktywnosc: 0,  // czas serwera ostatniego zdarzenia partii
     zwyciezca: null,
@@ -88,6 +92,7 @@ export function zloz(zdarzenia) {
     if (!z || typeof z.t !== 'string') continue;
     switch (z.t) {
       case 'dolacz': {
+        p.wyrzuceni.delete(z.id);
         const byl = wLobby(z.id);
         if (byl) { byl.name = z.name; byl.color = z.color; byl.v = z.v | 0; }
         else if (typeof z.id === 'string') {
@@ -111,6 +116,54 @@ export function zloz(zdarzenia) {
         g.druzyna = z.d;
         g.druzynaNr = i;
         if (!z.auto) zmianaSkladu();
+        break;
+      }
+
+      case 'ustaw': {
+        // Ustawienie partii (gospodarz lobby). `domyslne` przywraca wszystkie.
+        if (z.domyslne) {
+          const d = U.domyslne();
+          if (U.USTAWIENIA.every((o) => p.ustawienia[o.klucz] === d[o.klucz])) break;
+          p.ustawienia = d;
+        } else {
+          if (!U.poprawna(z.klucz, z.w) || p.ustawienia[z.klucz] === z.w) break;
+          p.ustawienia = { ...p.ustawienia, [z.klucz]: z.w };
+        }
+        zmianaSkladu();          // gotowość dotyczyła innych warunków
+        break;
+      }
+
+      case 'sklad': {
+        // Gospodarz losuje drużyny: cały przydział naraz { id: drużyna }.
+        if (!p.tryb || !z.d || typeof z.d !== 'object') break;
+        let zmiana = false;
+        for (const g of p.wLobby) {
+          const d = z.d[g.id];
+          if (!Number.isInteger(d) || d < 0 || d >= p.tryb) continue;
+          g.druzyna = d;
+          g.druzynaNr = i;
+          zmiana = true;
+        }
+        if (zmiana) zmianaSkladu();
+        break;
+      }
+
+      case 'wyrzuc': {
+        // Gospodarz usuwa gracza z lobby (np. AFK blokuje start). Wyrzucony
+        // nie zgłasza się sam z powrotem — wraca dopiero własnym przyciskiem.
+        if (typeof z.kto !== 'string' || z.kto === z.id || !wLobby(z.id) || !wLobby(z.kto)) break;
+        p.wLobby = p.wLobby.filter((g) => g.id !== z.kto);
+        p.wyrzuceni.add(z.kto);
+        p.odliczanieDo = null;
+        break;
+      }
+
+      case 'korona': {
+        // Gospodarz oddaje koronę: wskazany gracz idzie na początek kolejki
+        // (gospodarzem jest pierwszy obecny w kolejności wejścia).
+        const g = wLobby(z.kto);
+        if (!g || !wLobby(z.id) || z.kto === z.id) break;
+        p.wLobby = [g, ...p.wLobby.filter((x) => x !== g)];
         break;
       }
 
@@ -157,6 +210,11 @@ export function zloz(zdarzenia) {
         p.gracze = z.gracze;
         p.druzyny = TRYBY.includes(z.druzyny) ? z.druzyny : 0;
         p.tryb = p.druzyny;
+        // Ustawienia jadą w 'nowa' (od 4.3) — po partii lobby je pamięta.
+        p.ustawieniaGry = U.normalizuj(z.ustawienia);
+        p.ustawienia = p.ustawieniaGry;
+        p.czasTury = p.ustawieniaGry.czas;
+        p.wyrzuceni = new Set();
         // Log jest zerowany przy nowej partii — lista lobby startuje od graczy
         // partii w tej samej kolejności (gospodarz zostaje ten sam), w tych samych drużynach.
         p.wLobby = z.gracze.filter((g) => g && typeof g.id === 'string')
@@ -273,7 +331,12 @@ function mozeDzialac(p, z) {
   if (z.za !== p.aktywny) return false;
   if (p.odeszli.has(p.aktywny)) return true;
   if (z.powod === 'rozlaczony') return true;
-  return (z.st || 0) - p.turaOdkad >= (S.TURN_TIME + GRACE_PAS) * 1000;
+  return (z.st || 0) - p.turaOdkad >= (p.czasTury + GRACE_PAS) * 1000;
+}
+
+/* Po tylu sekundach ciszy partia jest porzucona (dłuższa tura = dłużej). */
+export function porzuconaPo(p) {
+  return Math.max(p.czasTury, S.TURN_TIME) + GRACE_PAS + 35;
 }
 
 /* Czy partia jeszcze żyje: coś się w niej działo niedawno i jest w niej
@@ -281,7 +344,7 @@ function mozeDzialac(p, z) {
 export function partiaZywa(p, teraz, polaczony) {
   if (!p || p.faza !== 'gra' || !p.gracze.length) return false;
   if (!p.ostatniaAktywnosc) return false;
-  if (teraz - p.ostatniaAktywnosc > PORZUCONA_PO * 1000) return false;
+  if (teraz - p.ostatniaAktywnosc > porzuconaPo(p) * 1000) return false;
   return p.gracze.some((g) => !p.odeszli.has(g.id) && polaczony(g.id));
 }
 
@@ -324,18 +387,19 @@ export function rozstaw(p, jest = () => true) {
   return { n, gracze: gracze.map((g) => ({ ...g, druzyna: wynik.get(g.id) })), widzowie, pojemnosc: cap };
 }
 
-/* Czy można startować: 2+ graczy, wszyscy gotowi, a w trybie drużynowym
-   co najmniej dwie drużyny z kimś w środku. */
+/* Czy można startować: 2+ graczy, wszyscy gotowi i z aktualną wersją gry
+   (starsza nie zna ustawień partii — rozjechałaby się), a w trybie
+   drużynowym co najmniej dwie drużyny z kimś w środku. */
 export function gotowiDoStartu(rozstawienie) {
   const { n, gracze } = rozstawienie;
-  if (gracze.length < 2 || !gracze.every((g) => g.gotowy)) return false;
+  if (gracze.length < 2 || !gracze.every((g) => g.gotowy && (g.v | 0) >= WERSJA)) return false;
   return !n || new Set(gracze.map((g) => g.druzyna)).size >= 2;
 }
 
 /* ---------- rozgrywka po stronie klienta ---------- */
 
 export function nowaRozgrywka(pokoj, mojeId) {
-  const state = S.createGame(pokoj.seed, pokoj.gracze, { sieciowa: true, druzyny: pokoj.druzyny > 0 });
+  const state = S.createGame(pokoj.seed, pokoj.gracze, { sieciowa: true, druzyny: pokoj.druzyny > 0, ustawienia: pokoj.ustawieniaGry });
   const r = {
     mojeId,
     seed: pokoj.seed,
@@ -357,6 +421,8 @@ export function nowaRozgrywka(pokoj, mojeId) {
     odwrotRuszyl: false,   // odbiorca: bufor ucieczki się napełnił, gramy
     odwrotKoniec: false,   // wysłałem już paczkę z końcem ucieczki
     odwrotPotw: 0, odwrotPotwCzas: 0, odwrotPonowCzas: 0,   // postęp potwierdzony w logu
+    efekty: [],            // moja tura: ostatnie zdarzenia do podglądu (upadek, skrzynka) — [nr, …]
+    efektNr: 0,
     statystyki: { korekty: 0, przesymulowania: 0, skoki: 0 }
   };
   if (pokoj.ostatniStan) wejdzWStan(r, pokoj.ostatniStan);
@@ -384,7 +450,7 @@ export function mogeUciekac(r) {
 /* Termin bieżącej tury w czasie serwera (albo null, gdy log jest gdzie indziej). */
 export function terminTury(r, pokoj) {
   if (!pokoj || pokoj.tura !== r.state.turnNumber) return null;
-  return pokoj.turaOdkad + S.TURN_TIME * 1000;
+  return pokoj.turaOdkad + pokoj.czasTury * 1000;
 }
 
 /* Jedna klatka: synchronizacja z logiem, krok symulacji, decyzje o wysyłce.
@@ -423,7 +489,7 @@ export function klatka(r, pokoj, ctx) {
 
   // 2. Moja tura: termin, auto-pas, wysyłka strzału.
   const mojaTura = otwarta && !r.obserwator && pokoj.aktywny === r.mojeId;
-  const termin = otwarta ? pokoj.turaOdkad + S.TURN_TIME * 1000 : null;
+  const termin = otwarta ? pokoj.turaOdkad + pokoj.czasTury * 1000 : null;
   if (termin !== null) st.turnTimeLeft = Math.max(0, (termin - ctx.teraz) / 1000);
 
   zbierzStrzaly(r, mojaTura && !a);
@@ -447,7 +513,7 @@ export function klatka(r, pokoj, ctx) {
     let powod = null;
     if (pokoj.odeszli.has(kto)) powod = 'odszedl';
     else if (rozlaczonyOd(r, pokoj, ctx, kto) >= ROZLACZONY_PAS * 1000) powod = 'rozlaczony';
-    else if (ctx.teraz - pokoj.turaOdkad >= (S.TURN_TIME + GRACE_PAS) * 1000) powod = 'czas';
+    else if (ctx.teraz - pokoj.turaOdkad >= (pokoj.czasTury + GRACE_PAS) * 1000) powod = 'czas';
     if (powod) {
       wyslijRaz(r, 'zastepstwo:' + nr, { t: 'pas', nr, id: r.mojeId, za: kto, powod }, ctx.teraz, 4000);
     }
@@ -514,23 +580,59 @@ export function klatka(r, pokoj, ctx) {
     }
   }
 
-  // 6. Podgląd na żywo dla reszty (poza logiem): pozycja, celownik, moc.
-  if (mogeGrac(r, pokoj)) {
-    const w = S.activeWorm(st);
+  // 6. Podgląd na żywo dla reszty (poza logiem): pozycja, celownik, moc,
+  //    wybrana broń i jej zapas, życie oraz ostatnie zdarzenia (upadek,
+  //    zebrana skrzynka, śmierć) — widz nie symuluje cudzego chodzenia,
+  //    więc bez tego zobaczyłby je dopiero w strzale.
+  // Zbieramy też w klatce, w której tura skończyła się sama (np. upadek do lawy),
+  // i wysyłamy wtedy ostatni podgląd — inaczej widz nie zobaczy, co się stało.
+  const mojeChodzenie = otwarta && !r.obserwator && pokoj.aktywny === r.mojeId && !st.firedThisTurn &&
+    (!a || a.id === r.mojeId);
+  const przedEfektami = r.efektNr;
+  if (mojeChodzenie) zbierzEfekty(r);
+  const akt6 = S.activeWorm(st);
+  if (mogeGrac(r, pokoj) || (mojeChodzenie && r.efektNr > przedEfektami && akt6 && akt6.id === r.mojeId)) {
+    const w = akt6;
+    const zapas = w.amunicja[st.weapon];
     const ruch = {
       t: 'ruch', nr: st.turnNumber, id: r.mojeId,
       x: Math.round(w.x), y: Math.round(w.y), f: w.facing,
       k: Math.round(w.angle * 40) / 40,
       b: st.weapon,
       m: st.charging ? Math.round(st.power * 10) / 10 : 0,
-      c: st.cel ? [st.cel.x, st.cel.y] : null
+      c: st.cel ? [st.cel.x, st.cel.y] : null,
+      h: w.hp,
+      z: zapas === undefined ? null : zapas,
+      a: w.amunicja,                  // cały ekwipunek — pokazuje go tylko obserwator (nie gracz partii)
+      e: r.efekty.length ? r.efekty : undefined
     };
     const sygnatura = JSON.stringify(ruch);
-    if (sygnatura !== r.ostatniRuch && ctx.teraz - r.ostatniRuchCzas >= (ctx.ruchCo ?? 450)) {
+    const pilne = r.efektNr > przedEfektami;    // świeże zdarzenie nie czeka na odstęp
+    if (sygnatura !== r.ostatniRuch && (pilne || ctx.teraz - r.ostatniRuchCzas >= (ctx.ruchCo ?? 450))) {
       r.ostatniRuch = sygnatura;
       r.ostatniRuchCzas = ctx.teraz;
       r.doWyslania.push(ruch);
     }
+  }
+}
+
+/* Moja tura przed strzałem: zdarzenia z mojej symulacji, których widzowie
+   nie policzą sami (chodzą po podglądzie). Kolejne numery w turze, w podglądzie
+   leci kilka ostatnich — widz pokazuje te, których jeszcze nie widział,
+   więc zgubiony podgląd nic nie gubi. Wydarzeń nie zjadamy (main.js je rysuje). */
+const EFEKTY_W_RUCHU = 4;
+function zbierzEfekty(r) {
+  const st = r.state;
+  for (const e of st.events) {
+    if (e.wPodgladzie) continue;       // testy nie czyszczą zdarzeń co klatkę
+    e.wPodgladzie = true;
+    let ef = null;
+    if (e.type === 'obrazenia') ef = ['o', Math.round(e.x), Math.round(e.y), e.amount];
+    else if (e.type === 'smierc') ef = ['d', Math.round(e.x), Math.round(e.y), e.cause === 'lawa' ? 1 : 0];
+    else if (e.type === 'skrzynka') ef = ['s', e.x, e.y, e.id, e.typ === 'apteczka' ? e.hp : e.bron];
+    if (!ef) continue;
+    r.efekty.push([++r.efektNr, ...ef]);
+    if (r.efekty.length > EFEKTY_W_RUCHU) r.efekty.shift();
   }
 }
 
@@ -632,6 +734,8 @@ function wejdzWStan(r, stan) {
   r.odwrotPotw = 0;
   r.odwrotPotwCzas = 0;
   r.odwrotPonowCzas = 0;
+  r.efekty = [];
+  r.efektNr = 0;
 
   const ja = st.worms.find((w) => w.id === r.mojeId);
   if (ja && ja.odszedl && !r.obserwator) {
