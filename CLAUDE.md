@@ -18,7 +18,7 @@ Stos technologiczny:
 - Bez bundlera, bez `package.json` i bez zależności npm. Zwykłe pliki HTML/CSS/JS, gra jako moduły ES,
   zrzutka jako klasyczne skrypty.
 
-Obecna wersja: **4.2 „Drużyny i Arena bez opóźnień”** (`wersja.js`).
+Obecna wersja: **4.3 „Lobby gospodarza: własne zasady partii”** (`wersja.js`).
 
 ---
 
@@ -399,11 +399,12 @@ Lekcje z kalibracji:
 | `src/konfig.js` | `SERWER_WS` — adres serwera Areny; lokalnie `?serwer=ws://127.0.0.1:8787/ws` do testów |
 | `src/main.js` | Lobby (tryb, drużyny, GOTOWY, kolory), HUD, kamera, pętla gry, zdarzenia → efekty, statystyki, osiągnięcia (UI) |
 | `src/druzyny.js` | Nazwy i kolory drużyn (`DRUZYNY`), tryby lobby (`TRYBY`) |
+| `src/ustawienia.js` | Ustawienia partii z lobby (`USTAWIENIA`: czas, hp, mapa, bronie, zrzuty, wiatr, lawa), `normalizuj`, `opisZmian`, `KLASYKA` |
 | `src/ekwipunek.js` | Ekwipunek broni jak w Worms Armageddon: rzędy (`GRUPY`), ikony SVG broni, otwieranie/zamykanie |
 | `src/input.js` | Klawiatura, przyciski dotykowe, przeciąganie/szczypanie, PPM/Q = ekwipunek |
 | `src/render.js`, `src/fx.js` | Grafika (tu wolno trygonometrię i `Math.random`); w `render.js` też kamera i podgląd robala na ekranie wejścia |
 | `src/osiagniecia-reguly.js` | Reguły osiągnięć — czyste funkcje |
-| `test/sim.test.mjs`, `test/protokol.test.mjs` | Testy w Node (70 i 17) |
+| `test/sim.test.mjs`, `test/protokol.test.mjs` | Testy w Node (73 i 20) |
 
 ### Determinizm (święta zasada)
 - Symulacja (`sim.js`, `terrain.js`) używa tylko:
@@ -459,7 +460,23 @@ Lekcje z kalibracji:
     wersji są pomijane). Zmiana trybu/drużyn cofa gotowość wszystkich, nowy gracz i wyjście kasują odliczanie.
   - `nowa` niesie `gracze` z polem `druzyna` i `druzyny` (tryb); po partii lobby pamięta drużyny.
   - Lobby rysuje się tylko przy zmianie (`podpisLobby`), bo przebudowa co 0,5 s gubiła stuknięcia.
-  - Gracz ze starą wersją (bez `v`) ma w lobby znaczek „STARA WERSJA” — niech odświeży.
+  - Gracz ze starą wersją (`v` < `WERSJA`) ma w lobby znaczek „STARA WERSJA” i **blokuje start**
+    (`gotowiDoStartu` wymaga `v >= WERSJA`), bo nie zna ustawień partii i rozjechałby się.
+  - Partię (`nowa`) zakłada gospodarz lobby; inni próbują dopiero 2,5 s po terminie (gdy gospodarz zniknął).
+- **Lobby od 4.3 (`WERSJA` = 3)** — gospodarz dodatkowo:
+  - **Ustawienia partii** `{t:'ustaw', klucz, w}` / `{t:'ustaw', domyslne:1}` (tabela w `ustawienia.js`,
+    walidacja `poprawna`), cofają gotowość. `p.ustawienia` = lobby, `nowa.ustawienia` → `p.ustawieniaGry`
+    i `p.czasTury` (termin tury, pas „za czas”, porzucenie partii liczą się z niego, nie z `S.TURN_TIME`).
+    Symulacja dostaje je jako `createGame(…, { ustawienia })` → `state.ust` (stałe przez partię, kopiowane
+    w `stanPoTurze`); brak = standard, więc stare partie i testy grają jak dawniej.
+  - **Mapa** nie leci osobno: gospodarz losuje seed, aż `stylMapy(seed)` (`terrain.js`) da wybrany styl.
+  - **Bronie**: `startowaAmunicja(zestaw, KLASYKA)`; „Klasyka” = spoza listy amunicja 0 i ukryte w ekwipunku
+    (`wylaczone`), „Szał” = pusta amunicja (bez limitów), wtedy zrzuty to same apteczki (`zapasyDla`).
+  - **Wyrzuć** `{t:'wyrzuc', kto}` (trafia do `p.wyrzuceni`, nie zgłasza się sam, wraca przyciskiem
+    „Wracam do lobby” = `dolacz`), **oddaj koronę** `{t:'korona', kto}` (gracz na początek `wLobby`),
+    **losuj drużyny** `{t:'sklad', d:{id: drużyna}}`. W UI: stuknięcie gracza → pasek `#lobby-akcje`.
+  - Pola ustawień (`<select>`) buduje się raz i tylko podmienia wartości — przebudowa zamykałaby listę pod palcem.
+  - W trakcie trwającej partii gospodarz niczego nie zmienia (`steruje` w `odswiezLobby`).
 - **Kolory**: gracz wybiera kolor robala przy wejściu (`PALETA` w `main.js`, 12 kolorów, `arena:kolor`),
   kolor leci w `dolacz`. Przy kolizji `rozdzielKolory` zostawia go temu, kto dołączył wcześniej, reszta
   dostaje pierwszy wolny (lobby mówi o tym graczowi). Nick nad robalem jest w kolorze robala, a w drużynach
@@ -483,7 +500,8 @@ Lekcje z kalibracji:
     żywy po `state.ostatni[druzyna]` (jest w snapshocie). W trybie każdy na każdego = dawne „następny żywy”.
   - Koniec, gdy żyje jedna drużyna; `winner` = któryś żywy z niej. HUD: nagłówki drużyn z paskiem
     życia (`.druzyna-hud`), ekran końca „WYGRYWACIE!” / „WYGRYWAJĄ …”; osiągnięcia liczą wygraną drużyny.
-- Tura trwa 30 s (`TURN_TIME`). Lawa podnosi się po 6 rundach (`LAWA_PO_RUNDACH`, nagła śmierć).
+- Tura trwa domyślnie 30 s (`TURN_TIME`), lawa podnosi się po 6 rundach (`LAWA_PO_RUNDACH`, nagła śmierć) —
+  w partii obowiązuje `state.ust` (ustawienia gospodarza: czas, hp, zrzuty %, wiatr ×0/1/1,7, lawa albo nigdy).
 
 **Bronie** (`weapons.js`, kolejność = klawisze)
 | Klawisz | Broń | Rodzaj | Amunicja | Uwagi |
@@ -545,7 +563,9 @@ Lekcje z kalibracji:
 
 ### Plan rozwoju: bliżej Worms Armageddon (propozycja po 4.1, czeka na decyzję)
 Plan przedstawiony użytkownikowi 2026-09-25. Od 4.1.1 Arena stoi na VPS, więc koszt zapytań przestał być
-hamulcem. W 4.2 zrobione: drużyny graczy w lobby i w grze (część Etapu 2) i ucieczka na żywo. Użytkownik
+hamulcem. W 4.2 zrobione: drużyny graczy w lobby i w grze (część Etapu 2) i ucieczka na żywo.
+W 4.3: ustawienia partii u gospodarza (czas tury, HP, mapa, zestaw broni, zrzuty, wiatr, nagła śmierć),
+wyrzucanie, oddawanie korony, losowanie drużyn. Z ustawień zostaje liczba robali na gracza (Etap 2). Użytkownik
 nazwał 4.2 „częścią większej przebudowy” — spodziewaj się dalszych próśb o lobby/ustawienia; dochodzi też
 **lista pokoi w lobby** (serwer już je ma). Użytkownik nie wybrał
 kolejności — zapytaj, zanim zaczniesz. Każdy etap to osobna wersja z testami i zrzutami. Etapy 1–3 nie dodają
@@ -571,9 +591,8 @@ brak obrażeń od swoich i tury na zmianę drużynami są już w 4.2*; zostaje t
   a `mogeGrac` porównuje `w.id === r.mojeId`. Przy drużynach trzeba rozdzielić „gracz z turą” (do
   `mozeDzialac`) i „aktywny robal”, dać robalom id właściciela, `kolejnoscTur` po drużynach, więcej
   punktów w `spawnPoints`. Testy protokołu do przerobienia. Stan tury przy 6×4 robalach to ok. 5 KB (limit 24 KB).
-- **Ustawienia partii u gospodarza lobby** (główne — liczba drużyn — jest od 4.2, zdarzenie `tryb`): liczba robali,
-  czas tury, HP startowe, zestaw broni, styl mapy, początek nagłej śmierci. W 4.2 użytkownik powiedział
-  „na razie nic” — dokładać jak `tryb`: zdarzenie w lobby, pole w `nowa`, cofa gotowość.
+- ~~Ustawienia partii u gospodarza~~ — zrobione w 4.3 (`ustawienia.js`); nowe dopisuj do `USTAWIENIA`
+  i obsłuż w `sim.js` przez `state.ust`. Brakuje tylko liczby robali (wyżej).
 - **Miny i beczki** od startu, rozmieszczone z seeda; stan jak skrzynki (przepis „Coś w stanie gry”).
   Mina wybucha po zbliżeniu robala, beczka od wybuchu obok (reakcje łańcuchowe).
 - **Skrzynki**: pułapka (wybucha po otwarciu) i skrzynka z narzędziami.
@@ -627,14 +646,15 @@ w drużynie (2 czy 3); czy robimy czapki i bronie z postaci ekipy; czy robimy ws
   - **4.1** 6 poziomów celów (do 50 000), zwarte karty i podrasowane portrety, ekwipunek i kolory w Arenie
   - **4.1.1** Arena i zrzutka na własnym serwerze (VPS, WebSocket), koniec Redisa i `api/`
   - **4.2** ucieczka po strzale na żywo, lobby do 8 graczy, drużyny (tryb, GOTOWY, przenoszenie, zamiana)
+  - **4.3** ustawienia partii u gospodarza, wyrzucanie, oddawanie korony, losowanie drużyn
 
 ---
 
 ## 9. Testy i sprawdzanie
 
 ```
-node gra/test/sim.test.mjs        # symulacja, bronie, determinizm, drużyny, skrzynki, spawny, osiągnięcia, kamera (70)
-node gra/test/protokol.test.mjs   # protokół: lag, rozłączenia, ucieczka na żywo, lobby i drużyny, partia 2v2 (17, ~1–2 min)
+node gra/test/sim.test.mjs        # symulacja, bronie, determinizm, drużyny, ustawienia, skrzynki, spawny, osiągnięcia, kamera (73)
+node gra/test/protokol.test.mjs   # protokół: lag, rozłączenia, ucieczka na żywo, lobby, ustawienia, partie 2v2 i z własnymi zasadami (20, ~30 s)
 cd serwer && npm install && node test.mjs   # serwer na VPS: Arena (10) + zrzutka: wpłaty, na żywo, limity, plik, migracja (7)
 ```
 Obie muszą przejść przed pushem. Dodatkowo `node --check` na zmienionych plikach JS.
@@ -658,7 +678,7 @@ długości partii (np. „za mało strzałów”), sprawdź przyczynę, zanim zm
   gra pod `http://localhost:8765/gra/?serwer=ws://127.0.0.1:8787/ws&pokoj=test1` (dla każdego przebiegu nowy
   pokój — bez duchów w lobby). Partia rusza, gdy wszyscy klikną `#btn-gotowy` (+5 s). `__arena().transport` = `ws`
   (gdy gracz jest w lobby; przed wpisaniem nicku `null`). `__arena().lobby` = tryb i drużyny w lobby,
-  `druzyny` = drużyny w partii, `odwrotKrok` = krok ucieczki (do pomiaru opóźnienia widzów).
+  `druzyny` = drużyny w partii, `ustawienia` / `ustawieniaGry` = zasady w lobby / w partii, `odwrotKrok` = krok ucieczki (do pomiaru opóźnienia widzów).
 - **Scenariusz Areny**: 2 przeglądarki desktop + telefon („iPhone 13 landscape”), porównanie
   `window.__arena().hash` na granicy każdej tury.
   - Start: wszyscy wpisują nick, gospodarz (pierwszy) klika tryb (`#lobby-tryb button:nth-child(2)` = 2 drużyny),

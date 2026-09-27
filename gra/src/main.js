@@ -14,6 +14,8 @@ import { createNet, RUCH_CO } from './net.js';
 import { nowaPartiaOs, zdarzenieOs, koniecTuryOs, koniecPartiiOs } from './osiagniecia-reguly.js';
 import { createEkwipunek, ikonaBroni } from './ekwipunek.js';
 import { DRUZYNY, TRYBY, nazwaTrybu } from './druzyny.js';
+import * as U from './ustawienia.js';
+import { stylMapy } from './terrain.js';
 
 /* Kolory robali do wyboru przy wejściu. Kolejność ma znaczenie: przy
    kolizji dostaje się pierwszy wolny, więc najbardziej różne są na początku. */
@@ -412,6 +414,9 @@ function pokazInfoLobby(tekst) {
    wszyscy dadzą GOTOWY — wtedy 5 s odliczania. Wszystko idzie zdarzeniami
    w logu, więc każdy widzi to samo. */
 let wybranyGracz = null;              // gospodarz: kogo przenosi (stuknięty gracz)
+let bylemGospodarzem = false;
+let bylemWyrzucony = false;
+let ostatnieUstawienia = null;        // podpis ustawień z poprzedniego odświeżenia lobby
 let ostatniaAutoDruzyna = 0;
 let podpisLobby = '';
 let rozstawienie = null;
@@ -428,19 +433,27 @@ function odswiezLobby() {
   const obecni = pokoj.wLobby.filter((g) => jest(g.id));
 
   // Samoleczenie: jeśli po resecie logu nie ma nas na liście, zgłaszamy się
-  // ponownie — ale nie częściej niż raz na PONOW_PO.
+  // ponownie — ale nie częściej niż raz na PONOW_PO. Wyrzucony przez
+  // gospodarza wraca tylko sam, przyciskiem.
   const teraz = Date.now();
-  if (!pokoj.wLobby.some((g) => g.id === mojeId) && teraz - ostatnieZgloszenie > PONOW_PO) zglosSie();
+  const naLiscie = pokoj.wLobby.some((g) => g.id === mojeId);
+  const wyrzucony = !naLiscie && pokoj.wyrzuceni.has(mojeId);
+  if (!naLiscie && !wyrzucony && teraz - ostatnieZgloszenie > PONOW_PO) zglosSie();
+  if (wyrzucony && !bylemWyrzucony) pokazInfoLobby('Gospodarz wyrzucił Cię z lobby. Możesz wrócić, kiedy chcesz.');
+  bylemWyrzucony = wyrzucony;
 
   // Gospodarzem lobby jest ten z obecnych, kto dołączył najwcześniej —
   // kolejność zgłoszeń jest w logu taka sama u wszystkich.
   const gospId = obecni.length > 0 ? obecni[0].id : null;
   const gospodarz = gospId === mojeId;
   if (!gospodarz) wybranyGracz = null;
+  if (gospodarz && !bylemGospodarzem) el('lobby-ustawienia').open = true;   // gospodarz od razu widzi ustawienia
+  bylemGospodarzem = gospodarz;
 
   const roz = P.rozstaw(pokoj, jest);
   roz.gracze = rozdzielKolory(roz.gracze);
   rozstawienie = roz;
+  if (wybranyGracz && !roz.gracze.some((g) => g.id === wybranyGracz)) wybranyGracz = null;   // wyszedł albo wyrzucony
   const ja = roz.gracze.find((g) => g.id === mojeId) || null;
   const czekam = !ja && roz.widzowie.some((g) => g.id === mojeId);
 
@@ -467,13 +480,24 @@ function odswiezLobby() {
     : roz.gracze.length + '/' + P.MAX_GRACZY + ' graczy · ' + nazwaTrybu(roz.n) +
       (roz.gracze.length >= 2 ? ' · gotowi ' + gotowych + '/' + roz.gracze.length : '');
 
-  rysujLobby(roz, gospId, gospodarz);
+  const steruje = gospodarz && !wToku;    // gospodarz nie zmienia niczego w trakcie cudzej partii
+  rysujLobby(roz, gospId, steruje);
+  odswiezUstawienia(steruje);
+
+  // Gospodarz zmienił ustawienia — reszta dostaje krótką informację
+  // (gotowość i tak się cofnęła, więc trzeba to zauważyć).
+  const podpisUst = JSON.stringify(pokoj.ustawienia);
+  if (ostatnieUstawienia !== null && podpisUst !== ostatnieUstawienia && !gospodarz && !wToku) {
+    const zmiany = U.opisZmian(pokoj.ustawienia);
+    pokazInfoLobby('Gospodarz zmienił ustawienia partii' + (zmiany.length ? ': ' + zmiany.join(' · ') : ' na standardowe') + '.');
+  }
+  ostatnieUstawienia = podpisUst;
 
   const btn = el('btn-gotowy');
-  btn.hidden = !ja || wToku;
+  btn.hidden = !(ja || wyrzucony) || wToku;
   const jestemGotowy = !!(ja && ja.gotowy);
   btn.setAttribute('aria-pressed', jestemGotowy ? 'true' : 'false');
-  btn.textContent = jestemGotowy ? 'GOTOWY ✓ (stuknij, żeby cofnąć)' : 'GOTOWY';
+  btn.textContent = wyrzucony ? 'Wracam do lobby' : jestemGotowy ? 'GOTOWY ✓ (stuknij, żeby cofnąć)' : 'GOTOWY';
 
   // Termin startu żyje we wspólnym logu i w czasie SERWERA. Publikuje go
   // gospodarz, gdy wszyscy są gotowi; każda zmiana składu go kasuje.
@@ -495,8 +519,10 @@ function odswiezLobby() {
     box.hidden = false;
     const sek = Math.max(0, Math.ceil((termin - net.czas()) / 1000));
     el('odliczanie-sek').textContent = sek;
-    // Próbować może każdy — kto faktycznie zakłada partię, rozstrzyga zamek na serwerze.
-    if (sek === 0) startPartii(roz);
+    // Partię zakłada gospodarz — ze swoim rozstawieniem i ustawieniami. Reszta
+    // próbuje dopiero, gdy on milczy (np. właśnie zamknął kartę); kto faktycznie
+    // zakłada partię, rozstrzyga zamek na serwerze.
+    if (sek === 0 && (gospodarz || net.czas() - termin > 2500)) startPartii(roz);
   } else {
     box.hidden = true;
   }
@@ -507,6 +533,7 @@ function odswiezLobby() {
   el('info-lobby').textContent = Date.now() < infoLobby.do
     ? infoLobby.tekst
     : wToku ? ''
+      : wyrzucony ? 'Gospodarz wyrzucił Cię z lobby. Możesz wrócić, kiedy chcesz.'
       : czekam ? 'Lobby pełne (8 graczy) — wejdziesz, gdy zwolni się miejsce. Możesz oglądać.'
         : stary ? 'Ktoś ma starą wersję gry — niech odświeży stronę, inaczej nie da GOTOWY.'
           : ja && ja.color !== mojKolor ? 'Ktoś był szybszy z Twoim kolorem — w tej partii grasz innym.'
@@ -519,7 +546,7 @@ function odswiezLobby() {
    co pół sekundy, a przebudowa listy pod palcem gubiłaby stuknięcia. */
 function rysujLobby(roz, gospId, gospodarz) {
   const podpis = JSON.stringify([roz.n, roz.gracze.map((g) => [g.id, g.name, g.color, g.druzyna, g.gotowy, g.v | 0]),
-    roz.widzowie.map((g) => g.name), gospId, wybranyGracz]);
+    roz.widzowie.map((g) => g.name), gospId, gospodarz, wybranyGracz]);
   if (podpis === podpisLobby) return;
   podpisLobby = podpis;
 
@@ -541,8 +568,9 @@ function rysujLobby(roz, gospId, gospodarz) {
     tryb.append(b);
   }
   el('tryb-info').textContent = gospodarz
-    ? (roz.n ? 'Jesteś gospodarzem: stuknij gracza, potem wolne miejsce albo innego gracza, żeby go przenieść lub zamienić.' : 'Jesteś gospodarzem: wybierz tryb gry.')
-    : (roz.n ? 'Tryb ustawia gospodarz. Możesz przejść do drużyny, w której jest wolne miejsce.' : 'Tryb ustawia gospodarz.');
+    ? (roz.n ? 'Jesteś gospodarzem 👑: stuknij gracza, potem wolne miejsce albo innego gracza, żeby go przenieść lub zamienić.'
+      : 'Jesteś gospodarzem 👑: ustaw tryb i zasady. Stuknij gracza, żeby oddać mu koronę albo wyrzucić.')
+    : (roz.n ? 'Tryb i zasady ustawia gospodarz 👑. Możesz przejść do drużyny, w której jest wolne miejsce.' : 'Tryb i zasady ustawia gospodarz 👑.');
 
   const kontener = el('lobby-druzyny');
   kontener.replaceChildren();
@@ -574,8 +602,11 @@ function rysujLobby(roz, gospId, gospodarz) {
     // w wąskich kartach drużyn „TY” zjadałoby nick — tam wystarcza ramka wiersza
     if (g.id === mojeId && !roz.n) li.append(znacznik('TY'));
     li.append(ptaszek);
-    if (gospodarz && roz.n) {
+    if (gospodarz && (roz.n || g.id !== mojeId)) {
       li.classList.add('klikalny');
+      li.setAttribute('role', 'button');
+      li.tabIndex = 0;
+      li.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); stuknietoGracza(g); } });
       if (g.id === wybranyGracz) li.classList.add('wybrany');
       li.addEventListener('click', () => stuknietoGracza(g));
     }
@@ -629,14 +660,114 @@ function rysujLobby(roz, gospId, gospodarz) {
   const widz = el('lobby-widzowie');
   widz.hidden = !roz.widzowie.length;
   widz.textContent = roz.widzowie.length ? 'Czekają na miejsce: ' + roz.widzowie.map((g) => g.name).join(', ') : '';
+
+  rysujAkcje(roz, gospodarz);
+}
+
+/* Pasek akcji gospodarza: co zrobić ze stukniętym graczem (oddać koronę,
+   wyrzucić z lobby) i — w drużynach — losowanie składów. */
+function rysujAkcje(roz, gospodarz) {
+  const box = el('lobby-akcje');
+  box.replaceChildren();
+  const g = gospodarz && wybranyGracz ? roz.gracze.find((x) => x.id === wybranyGracz) : null;
+  const przycisk = (tekst, fn, klasa) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.textContent = tekst;
+    if (klasa) b.className = klasa;
+    b.addEventListener('click', fn);
+    box.append(b);
+    return b;
+  };
+  if (g && g.id !== mojeId) {
+    const kto = document.createElement('span');
+    kto.className = 'kto';
+    kto.textContent = 'Wybrany: ' + g.name + (roz.n ? ' — stuknij miejsce w innej drużynie albo:' : '');
+    box.append(kto);
+    przycisk('👑 Oddaj koronę', () => {
+      wybranyGracz = null;
+      wyslijLobby({ t: 'korona', id: mojeId, kto: g.id });
+    });
+    przycisk('Wyrzuć z lobby', () => {
+      wybranyGracz = null;
+      wyslijLobby({ t: 'wyrzuc', id: mojeId, kto: g.id });
+      pokazInfoLobby(g.name + ' wyleciał z lobby. Może wrócić sam, gdy zechce.');
+    }, 'grozny');
+    przycisk('Anuluj', () => { wybranyGracz = null; podpisLobby = ''; odswiezLobby(); });
+  } else if (gospodarz && roz.n && roz.gracze.length >= 2) {
+    przycisk('🎲 Losuj drużyny', () => losujDruzyny(roz));
+  }
+  box.hidden = !box.children.length;
+}
+
+/* Losowe, wyrównane drużyny: tasujemy graczy i rozdajemy po kolei. */
+function losujDruzyny(roz) {
+  const gracze = roz.gracze.map((g) => g.id);
+  for (let i = gracze.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [gracze[i], gracze[j]] = [gracze[j], gracze[i]];
+  }
+  // drużyny też w losowej kolejności, żeby nieparzysty nie trafiał zawsze do Czerwonych
+  const kolej = Array.from({ length: roz.n }, (_, d) => d).sort(() => Math.random() - 0.5);
+  const d = {};
+  gracze.forEach((id, i) => { d[id] = kolej[i % roz.n]; });
+  wybranyGracz = null;
+  wyslijLobby({ t: 'sklad', id: mojeId, d });
+}
+
+/* ---------- ustawienia partii (gospodarz) ---------- */
+
+/* Pola budujemy raz, potem tylko podmieniamy wartości — przebudowa
+   zamykałaby rozwiniętą listę pod palcem gospodarza. */
+const polaUstawien = new Map();
+{
+  const siatka = el('ustawienia-siatka');
+  for (const o of U.USTAWIENIA) {
+    const label = document.createElement('label');
+    label.className = 'ustawienie';
+    const nazwa = document.createElement('span');
+    nazwa.textContent = o.nazwa;
+    const sel = document.createElement('select');
+    for (const [w, tekst] of o.opcje) {
+      const op = document.createElement('option');
+      op.value = String(w);
+      op.textContent = tekst;
+      sel.append(op);
+    }
+    sel.addEventListener('change', () => {
+      const w = o.opcje.find(([v]) => String(v) === sel.value);
+      if (!w || !pokoj) return;
+      wyslijLobby({ t: 'ustaw', id: mojeId, klucz: o.klucz, w: w[0] });
+    });
+    label.append(nazwa, sel);
+    siatka.append(label);
+    polaUstawien.set(o.klucz, { label, sel });
+  }
+  el('btn-ustawienia-reset').addEventListener('click', () => wyslijLobby({ t: 'ustaw', id: mojeId, domyslne: 1 }));
+}
+
+function odswiezUstawienia(gospodarz) {
+  const u = pokoj.ustawienia;
+  const d = U.domyslne();
+  for (const [klucz, { label, sel }] of polaUstawien) {
+    const w = String(u[klucz]);
+    if (sel.value !== w && document.activeElement !== sel) sel.value = w;
+    if (sel.disabled === gospodarz) sel.disabled = !gospodarz;
+    label.classList.toggle('zmienione', u[klucz] !== d[klucz]);
+  }
+  const zmiany = U.opisZmian(u);
+  const skrot = el('ustawienia-skrot');
+  skrot.textContent = zmiany.length ? zmiany.join(' · ') : 'standardowe';
+  skrot.classList.toggle('standard', !zmiany.length);
+  el('btn-ustawienia-reset').hidden = !gospodarz || !zmiany.length;
 }
 
 /* Gospodarz: pierwsze stuknięcie wybiera gracza, drugie w innego gracza
    (z innej drużyny) zamienia ich miejscami, w tego samego — odznacza. */
 function stuknietoGracza(g) {
   const roz = rozstawienie;
-  if (!roz || !roz.n) return;
-  if (!wybranyGracz || wybranyGracz === g.id) {
+  if (!roz) return;
+  if (!roz.n || !wybranyGracz || wybranyGracz === g.id) {
     wybranyGracz = wybranyGracz === g.id ? null : g.id;
   } else {
     const a = roz.gracze.find((x) => x.id === wybranyGracz);
@@ -652,6 +783,11 @@ function stuknietoGracza(g) {
 }
 
 el('btn-gotowy').addEventListener('click', () => {
+  if (pokoj && !pokoj.wLobby.some((g) => g.id === mojeId)) {   // wyrzucony wraca
+    zglosSie();
+    pokazInfoLobby('Wracasz do lobby…');
+    return;
+  }
   const ja = rozstawienie && rozstawienie.gracze.find((g) => g.id === mojeId);
   if (!ja) return;
   wyslijLobby({ t: 'gotowy', id: mojeId, tak: !ja.gotowy });
@@ -673,12 +809,18 @@ async function startPartii(roz) {
   if (startWToku) return;
   startWToku = true;
   try {
-    const seed = (Math.random() * 0xffffffff) >>> 0;
+    const ustawienia = U.normalizuj(pokoj.ustawienia);
+    // Styl mapy wynika z seeda — przy wybranej mapie losujemy, aż wypadnie ten styl.
+    let seed = (Math.random() * 0xffffffff) >>> 0;
+    for (let i = 0; i < 400 && ustawienia.mapa !== 'losowa' && stylMapy(seed) !== ustawienia.mapa; i++) {
+      seed = (Math.random() * 0xffffffff) >>> 0;
+    }
     // Jeśli ktoś nas ubiegł, serwer odpowie { ok: false } i niczego nie założy.
     await net.wyslij({
       t: 'nowa',
       seed,
       druzyny: roz.n,
+      ustawienia,
       v: P.WERSJA,
       gracze: roz.gracze.map((g) => ({ id: g.id, name: g.name, color: g.color, druzyna: g.druzyna }))
     });
@@ -750,7 +892,8 @@ function zbudujGre() {
   pasy.swieze = true;
   tura = pustaTura();
   partia = pustaPartia();
-  const opisMapy = OPISY_MAP[rg.state.terrain.styl];
+  const zasady = U.opisZmian(rg.state.ust).filter((z) => !z.startsWith('mapa'));
+  const opisMapy = (OPISY_MAP[rg.state.terrain.styl] || '') + (zasady.length ? ' Zasady: ' + zasady.join(' · ') + '.' : '');
   if (dotykowy() && window.innerHeight > window.innerWidth * 1.2) {
     pokazInfo('Obróć telefon poziomo — zobaczysz więcej areny.');
   } else if (opisMapy) {
@@ -1008,7 +1151,8 @@ function wybierzBron(id) {
     const akt = S.activeWorm(st);
     if ((akt.amunicja[id] ?? 1) <= 0) {
       // ekwipunek zostaje otwarty — można od razu wybrać coś innego
-      pokazInfo(id === 'kij' ? 'Kij tylko ze skrzynki z zaopatrzeniem!' : w.name + ': brak amunicji.');
+      pokazInfo(wylaczoneBronie(st).includes(id) ? w.name + ': wyłączona w tej partii.'
+        : id === 'kij' ? 'Kij tylko ze skrzynki z zaopatrzeniem!' : w.name + ': brak amunicji.');
       return;
     }
     if (st.charging) return;
@@ -1225,7 +1369,7 @@ function rysujBronie() {
   const ja = st ? st.worms.find((w) => w.id === mojeId) : null;
   const wybrana = moge ? st.weapon : mojaBron;
   const w = WEAPONS[wybrana] || WEAPONS.bazooka;
-  const amunicja = ja ? ja.amunicja : startowaAmunicja();
+  const amunicja = ja ? ja.amunicja : startowaAmunicja(st ? st.ust.bronie : 'pelny', U.KLASYKA);
   const zapas = amunicja[wybrana];
   el('bron-ikona').replaceChildren(ikonaBroni(w.id));
   el('bron-nazwa').textContent = w.name;
@@ -1234,7 +1378,14 @@ function rysujBronie() {
   z.textContent = '×' + zapas;
   z.classList.toggle('zero', zapas !== undefined && zapas <= 0);
   el('btn-bron').classList.toggle('nieaktywna', !moge);
-  ekwipunek.rysuj({ wybrana, amunicja, moge });
+  ekwipunek.rysuj({ wybrana, amunicja, moge, wylaczone: wylaczoneBronie(st) });
+}
+
+/* Bronie wyłączone w ustawieniach partii (zestaw „Klasyka”) — kij wyłączony
+   nie jest, bo i tak przychodzi tylko ze skrzynek. */
+function wylaczoneBronie(st) {
+  if (!st || st.ust.bronie !== 'klasyka') return [];
+  return Object.keys(WEAPONS).filter((id) => !WEAPONS[id].ukryta && !U.KLASYKA.includes(id));
 }
 
 let wstrzas = 0;                 // siła trzęsienia ekranu po wybuchu (px), tylko grafika
@@ -1313,7 +1464,8 @@ function odswiezHud(moge, teraz) {
       const sklad = st.worms.filter((x) => x.druzyna === +row.dataset.druzyna && !x.odszedl);
       const hp = sklad.reduce((a, x) => a + (x.alive ? x.hp : 0), 0);
       row.querySelector('.suma').textContent = hp;
-      row.querySelector('.pasek i').style.width = Math.min(100, sklad.length ? hp / sklad.length : 0) + '%';
+      // pasek względem życia na start (ustawienia partii), nie sztywnych 100 HP
+      row.querySelector('.pasek i').style.width = Math.min(100, sklad.length ? hp / (sklad.length * st.ust.hp) * 100 : 0) + '%';
       row.classList.toggle('pokonana', hp <= 0);
       continue;
     }
@@ -1367,6 +1519,8 @@ window.__arena = () => ({
   hash: rg && S.stateHash(rg.state),
   odwrotKrok: rg && rg.state.odwrotKrok,
   druzyny: rg ? (rg.state.druzynowa ? rg.state.worms.map((w) => w.name + ':' + w.druzyna) : null) : null,
+  ustawienia: pokoj && pokoj.ustawienia,
+  ustawieniaGry: rg && rg.state.ust,
   lobby: rozstawienie && { tryb: rozstawienie.n, gracze: rozstawienie.gracze.map((g) => ({ name: g.name, druzyna: g.druzyna, gotowy: g.gotowy })), widzowie: rozstawienie.widzowie.length },
   kamera: kamera && renderer && (() => {
     const w = rg && S.activeWorm(rg.state);

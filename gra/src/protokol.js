@@ -26,6 +26,7 @@
 import * as S from './sim.js';
 import { hashTekstu } from './rng.js';
 import { TRYBY } from './druzyny.js';
+import * as U from './ustawienia.js';
 
 export const GRACE_PAS = 12;          // s po terminie tury, zanim gospodarz odda ją za gracza
 export const ROZLACZONY_PAS = 15;     // s bez pulsu gracza z turą — tura oddana od razu
@@ -34,9 +35,8 @@ export const ZYWY_PULS = 20;          // s — dłuższa cisza wyklucza z wyboru
 export const ZASTEPCZY_STAN = 4;      // s czekania na stan od autora akcji
 export const START_ZWLOKA = 3;        // s na załadowanie planszy po starcie partii
 export const DOGON_PO = 2;            // s — starszego stanu nie animujemy, tylko do niego skaczemy
-export const PORZUCONA_PO = S.TURN_TIME + GRACE_PAS + 35;   // s ciszy = partia porzucona
 export const ODLICZANIE_S = 5;        // s od chwili, gdy wszyscy dali GOTOWY, do startu partii
-export const WERSJA = 2;              // wersja protokołu lobby (4.2: drużyny i gotowość)
+export const WERSJA = 3;              // wersja protokołu lobby (4.2: drużyny i gotowość, 4.3: ustawienia partii)
 export const MAX_GRACZY = 8;          // w partii; kolejni w lobby oglądają
 
 /* Ucieczka na żywo. */
@@ -59,6 +59,10 @@ export function zloz(zdarzenia) {
     druzyny: 0,            // tryb bieżącej partii: 0 = każdy na każdego, n = tyle drużyn
     wLobby: [],            // zgłoszeni: { id, name, color, v, druzyna, druzynaNr, gotowy }
     tryb: 0,               // tryb ustawiony w lobby przez gospodarza
+    ustawienia: U.domyslne(),   // ustawienia następnej partii (lobby, gospodarz)
+    ustawieniaGry: U.domyslne(),// ustawienia bieżącej partii (z 'nowa')
+    czasTury: S.TURN_TIME, // s — czas tury bieżącej partii
+    wyrzuceni: new Set(),  // id wyrzuconych z lobby przez gospodarza (do ich ponownego 'dolacz')
     odliczanieDo: null,    // termin startu w czasie SERWERA
     ostatniaAktywnosc: 0,  // czas serwera ostatniego zdarzenia partii
     zwyciezca: null,
@@ -88,6 +92,7 @@ export function zloz(zdarzenia) {
     if (!z || typeof z.t !== 'string') continue;
     switch (z.t) {
       case 'dolacz': {
+        p.wyrzuceni.delete(z.id);
         const byl = wLobby(z.id);
         if (byl) { byl.name = z.name; byl.color = z.color; byl.v = z.v | 0; }
         else if (typeof z.id === 'string') {
@@ -111,6 +116,54 @@ export function zloz(zdarzenia) {
         g.druzyna = z.d;
         g.druzynaNr = i;
         if (!z.auto) zmianaSkladu();
+        break;
+      }
+
+      case 'ustaw': {
+        // Ustawienie partii (gospodarz lobby). `domyslne` przywraca wszystkie.
+        if (z.domyslne) {
+          const d = U.domyslne();
+          if (U.USTAWIENIA.every((o) => p.ustawienia[o.klucz] === d[o.klucz])) break;
+          p.ustawienia = d;
+        } else {
+          if (!U.poprawna(z.klucz, z.w) || p.ustawienia[z.klucz] === z.w) break;
+          p.ustawienia = { ...p.ustawienia, [z.klucz]: z.w };
+        }
+        zmianaSkladu();          // gotowość dotyczyła innych warunków
+        break;
+      }
+
+      case 'sklad': {
+        // Gospodarz losuje drużyny: cały przydział naraz { id: drużyna }.
+        if (!p.tryb || !z.d || typeof z.d !== 'object') break;
+        let zmiana = false;
+        for (const g of p.wLobby) {
+          const d = z.d[g.id];
+          if (!Number.isInteger(d) || d < 0 || d >= p.tryb) continue;
+          g.druzyna = d;
+          g.druzynaNr = i;
+          zmiana = true;
+        }
+        if (zmiana) zmianaSkladu();
+        break;
+      }
+
+      case 'wyrzuc': {
+        // Gospodarz usuwa gracza z lobby (np. AFK blokuje start). Wyrzucony
+        // nie zgłasza się sam z powrotem — wraca dopiero własnym przyciskiem.
+        if (typeof z.kto !== 'string' || z.kto === z.id || !wLobby(z.id) || !wLobby(z.kto)) break;
+        p.wLobby = p.wLobby.filter((g) => g.id !== z.kto);
+        p.wyrzuceni.add(z.kto);
+        p.odliczanieDo = null;
+        break;
+      }
+
+      case 'korona': {
+        // Gospodarz oddaje koronę: wskazany gracz idzie na początek kolejki
+        // (gospodarzem jest pierwszy obecny w kolejności wejścia).
+        const g = wLobby(z.kto);
+        if (!g || !wLobby(z.id) || z.kto === z.id) break;
+        p.wLobby = [g, ...p.wLobby.filter((x) => x !== g)];
         break;
       }
 
@@ -157,6 +210,11 @@ export function zloz(zdarzenia) {
         p.gracze = z.gracze;
         p.druzyny = TRYBY.includes(z.druzyny) ? z.druzyny : 0;
         p.tryb = p.druzyny;
+        // Ustawienia jadą w 'nowa' (od 4.3) — po partii lobby je pamięta.
+        p.ustawieniaGry = U.normalizuj(z.ustawienia);
+        p.ustawienia = p.ustawieniaGry;
+        p.czasTury = p.ustawieniaGry.czas;
+        p.wyrzuceni = new Set();
         // Log jest zerowany przy nowej partii — lista lobby startuje od graczy
         // partii w tej samej kolejności (gospodarz zostaje ten sam), w tych samych drużynach.
         p.wLobby = z.gracze.filter((g) => g && typeof g.id === 'string')
@@ -273,7 +331,12 @@ function mozeDzialac(p, z) {
   if (z.za !== p.aktywny) return false;
   if (p.odeszli.has(p.aktywny)) return true;
   if (z.powod === 'rozlaczony') return true;
-  return (z.st || 0) - p.turaOdkad >= (S.TURN_TIME + GRACE_PAS) * 1000;
+  return (z.st || 0) - p.turaOdkad >= (p.czasTury + GRACE_PAS) * 1000;
+}
+
+/* Po tylu sekundach ciszy partia jest porzucona (dłuższa tura = dłużej). */
+export function porzuconaPo(p) {
+  return Math.max(p.czasTury, S.TURN_TIME) + GRACE_PAS + 35;
 }
 
 /* Czy partia jeszcze żyje: coś się w niej działo niedawno i jest w niej
@@ -281,7 +344,7 @@ function mozeDzialac(p, z) {
 export function partiaZywa(p, teraz, polaczony) {
   if (!p || p.faza !== 'gra' || !p.gracze.length) return false;
   if (!p.ostatniaAktywnosc) return false;
-  if (teraz - p.ostatniaAktywnosc > PORZUCONA_PO * 1000) return false;
+  if (teraz - p.ostatniaAktywnosc > porzuconaPo(p) * 1000) return false;
   return p.gracze.some((g) => !p.odeszli.has(g.id) && polaczony(g.id));
 }
 
@@ -324,18 +387,19 @@ export function rozstaw(p, jest = () => true) {
   return { n, gracze: gracze.map((g) => ({ ...g, druzyna: wynik.get(g.id) })), widzowie, pojemnosc: cap };
 }
 
-/* Czy można startować: 2+ graczy, wszyscy gotowi, a w trybie drużynowym
-   co najmniej dwie drużyny z kimś w środku. */
+/* Czy można startować: 2+ graczy, wszyscy gotowi i z aktualną wersją gry
+   (starsza nie zna ustawień partii — rozjechałaby się), a w trybie
+   drużynowym co najmniej dwie drużyny z kimś w środku. */
 export function gotowiDoStartu(rozstawienie) {
   const { n, gracze } = rozstawienie;
-  if (gracze.length < 2 || !gracze.every((g) => g.gotowy)) return false;
+  if (gracze.length < 2 || !gracze.every((g) => g.gotowy && (g.v | 0) >= WERSJA)) return false;
   return !n || new Set(gracze.map((g) => g.druzyna)).size >= 2;
 }
 
 /* ---------- rozgrywka po stronie klienta ---------- */
 
 export function nowaRozgrywka(pokoj, mojeId) {
-  const state = S.createGame(pokoj.seed, pokoj.gracze, { sieciowa: true, druzyny: pokoj.druzyny > 0 });
+  const state = S.createGame(pokoj.seed, pokoj.gracze, { sieciowa: true, druzyny: pokoj.druzyny > 0, ustawienia: pokoj.ustawieniaGry });
   const r = {
     mojeId,
     seed: pokoj.seed,
@@ -384,7 +448,7 @@ export function mogeUciekac(r) {
 /* Termin bieżącej tury w czasie serwera (albo null, gdy log jest gdzie indziej). */
 export function terminTury(r, pokoj) {
   if (!pokoj || pokoj.tura !== r.state.turnNumber) return null;
-  return pokoj.turaOdkad + S.TURN_TIME * 1000;
+  return pokoj.turaOdkad + pokoj.czasTury * 1000;
 }
 
 /* Jedna klatka: synchronizacja z logiem, krok symulacji, decyzje o wysyłce.
@@ -423,7 +487,7 @@ export function klatka(r, pokoj, ctx) {
 
   // 2. Moja tura: termin, auto-pas, wysyłka strzału.
   const mojaTura = otwarta && !r.obserwator && pokoj.aktywny === r.mojeId;
-  const termin = otwarta ? pokoj.turaOdkad + S.TURN_TIME * 1000 : null;
+  const termin = otwarta ? pokoj.turaOdkad + pokoj.czasTury * 1000 : null;
   if (termin !== null) st.turnTimeLeft = Math.max(0, (termin - ctx.teraz) / 1000);
 
   zbierzStrzaly(r, mojaTura && !a);
@@ -447,7 +511,7 @@ export function klatka(r, pokoj, ctx) {
     let powod = null;
     if (pokoj.odeszli.has(kto)) powod = 'odszedl';
     else if (rozlaczonyOd(r, pokoj, ctx, kto) >= ROZLACZONY_PAS * 1000) powod = 'rozlaczony';
-    else if (ctx.teraz - pokoj.turaOdkad >= (S.TURN_TIME + GRACE_PAS) * 1000) powod = 'czas';
+    else if (ctx.teraz - pokoj.turaOdkad >= (pokoj.czasTury + GRACE_PAS) * 1000) powod = 'czas';
     if (powod) {
       wyslijRaz(r, 'zastepstwo:' + nr, { t: 'pas', nr, id: r.mojeId, za: kto, powod }, ctx.teraz, 4000);
     }

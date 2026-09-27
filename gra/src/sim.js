@@ -13,6 +13,7 @@
 import { mulberry32, hashNumbers, hashTekstu } from './rng.js';
 import * as T from './terrain.js';
 import { WEAPONS, WEAPON_ORDER, startowaAmunicja } from './weapons.js';
+import { normalizuj, KLASYKA, WIATR_MNOZNIK } from './ustawienia.js';
 
 export const DT = 1 / 120;          // stały krok symulacji, render interpoluje
 
@@ -28,7 +29,7 @@ const AIR_DRAG = 0.06;
 const POWIETRZE_PRZYSP = 520;       // px/s² — sterowanie w locie (po skoku można skręcać)
 const POWIETRZE_MAX = 110;          // do takiej prędkości w bok da się rozpędzić w powietrzu
 
-export const TURN_TIME = 30;
+export const TURN_TIME = 30;           // domyślny; w partii — state.ust.czas (ustawienia lobby)
 const SETTLE_MAX = 5;
 const MAX_POWER_TIME = 1.4;         // ile trwa naładowanie strzału do pełna
 
@@ -43,7 +44,7 @@ export const ODWROT_KROKI = Math.round(ODWROT_S / DT);
 const ODWROT_LEWO = 1, ODWROT_PRAWO = 2, ODWROT_SKOK = 4;
 
 /* Nagła śmierć: po tylu pełnych rundach lawa zaczyna wzbierać,
-   żeby partia nie ciągnęła się w nieskończoność. */
+   żeby partia nie ciągnęła się w nieskończoność. Domyślnie — w partii state.ust.lawa. */
 export const LAWA_PO_RUNDACH = 6;
 const LAWA_ZA_TURE = 12;
 const LAWA_MIN = 260;
@@ -51,12 +52,20 @@ const LAWA_MIN = 260;
 /* Pięć odłamków kasetówki — stała tabela, żadnej losowości. */
 const ODLAMKI = [[-160, -220], [-80, -290], [0, -330], [80, -290], [160, -220]];
 
-/* Zrzuty zaopatrzenia: od drugiej rundy, najwyżej tyle skrzynek naraz. */
+/* Zrzuty zaopatrzenia: od drugiej rundy, najwyżej tyle skrzynek naraz;
+   szansa na zrzut (%) — state.ust.zrzuty. */
 const SKRZYNKI_MAX = 3;
-const SKRZYNKA_SZANSA = 40;         // % szans na zrzut na początku tury
 export const APTECZKA_HP = 35;
 const HP_MAX = 150;
 const INNE_ZAPASY = WEAPON_ORDER.filter((id) => WEAPONS[id].amunicja !== undefined && id !== 'kij');
+
+/* Co może wypaść w skrzynce z zapasem przy danym zestawie broni: tylko bronie
+   z limitem, które są w tej partii dostępne (w „Szale” limitów nie ma wcale). */
+function zapasyDla(zestaw) {
+  if (zestaw === 'szalony') return [];
+  if (zestaw === 'klasyka') return INNE_ZAPASY.filter((id) => KLASYKA.includes(id));
+  return INNE_ZAPASY;
+}
 
 const pusteWejscie = () => ({ left: false, right: false, aimUp: false, aimDown: false });
 
@@ -78,8 +87,12 @@ export function kolejnoscTur(seed, ids) {
 
    opcje.sieciowa: tura nie przechodzi sama — po osiadaniu symulacja staje
    w fazie 'koniec' i czeka, aż warstwa sieciowa poda kanoniczny stan.
-   Wtedy też licznik tury prowadzi warstwa sieciowa (wspólny czas serwera). */
+   Wtedy też licznik tury prowadzi warstwa sieciowa (wspólny czas serwera).
+
+   opcje.ustawienia: ustawienia partii z lobby (ustawienia.js) — czas tury,
+   życie, bronie, zrzuty, wiatr, nagła śmierć. Brak = standardowe. */
 export function createGame(seed, players, opcje = {}) {
+  const ust = normalizuj(opcje.ustawienia);
   const terrain = T.createTerrain(seed);
   const spawns = T.spawnPoints(terrain, players.length, seed);
 
@@ -92,12 +105,12 @@ export function createGame(seed, players, opcje = {}) {
     y: spawns[i].y,
     vx: 0,
     vy: 0,
-    hp: 100,
+    hp: ust.hp,
     facing: spawns[i].x < T.WORLD_W / 2 ? 1 : -1,
     angle: spawns[i].x < T.WORLD_W / 2 ? -0.6 : Math.PI + 0.6,
     alive: true,
     onGround: true,
-    amunicja: startowaAmunicja(),
+    amunicja: startowaAmunicja(ust.bronie, KLASYKA),
     odszedl: false
   }));
 
@@ -108,10 +121,11 @@ export function createGame(seed, players, opcje = {}) {
     order: kolejnoscTur(seed, worms.map((w) => w.id)),
     turnPtr: 0,
     druzynowa: !!opcje.druzyny,
+    ust,                       // ustawienia partii — stałe przez całą partię
     ostatni: {},               // drużyna -> kto z niej grał ostatnio (kolejka w drużynie)
     turnNumber: 0,
     phase: 'aim',
-    turnTimeLeft: TURN_TIME,
+    turnTimeLeft: ust.czas,
     settleTime: 0,
     wind: 0,
     lava: T.LAVA_Y,
@@ -136,13 +150,14 @@ export function createGame(seed, players, opcje = {}) {
     input: pusteWejscie()
   };
 
-  state.wind = windFor(state.seed, 0);
+  state.wind = windFor(state, 0);
   return state;
 }
 
-function windFor(seed, turnNumber) {
-  const rng = mulberry32((seed + turnNumber * 0x85ebca6b) >>> 0);
-  return (rng() * 2 - 1) * 130;
+function windFor(state, turnNumber) {
+  const rng = mulberry32((state.seed + turnNumber * 0x85ebca6b) >>> 0);
+  const m = WIATR_MNOZNIK[state.ust.wiatr] ?? 1;
+  return (rng() * 2 - 1) * 130 * m + 0;
 }
 
 export function activeWorm(state) {
@@ -974,7 +989,8 @@ function nextTurn(state) {
   }
 
   state.turnNumber++;
-  if (state.turnNumber >= state.order.length * LAWA_PO_RUNDACH) {
+  const lawaPo = state.ust.lawa;       // 0 = bez nagłej śmierci
+  if (lawaPo && state.turnNumber >= state.order.length * lawaPo) {
     const nowa = Math.max(LAWA_MIN, state.lava - LAWA_ZA_TURE);
     if (nowa !== state.lava) {
       state.lava = nowa;
@@ -992,8 +1008,9 @@ function nextTurn(state) {
 function zrzutZaopatrzenia(state) {
   if (state.turnNumber < state.order.length || state.skrzynki.length >= SKRZYNKI_MAX) return;
   const rng = mulberry32((state.seed ^ Math.imul(state.turnNumber + 1, 0x27d4eb2d)) >>> 0);
-  if (Math.floor(rng() * 100) >= SKRZYNKA_SZANSA) return;
-  const typ = rng() < 0.6 ? 'apteczka' : 'zapas';
+  if (Math.floor(rng() * 100) >= state.ust.zrzuty) return;
+  let typ = rng() < 0.6 ? 'apteczka' : 'zapas';
+  if (!zapasyDla(state.ust.bronie).length) typ = 'apteczka';   // „Szał”: zapas nie ma czego dać
   for (let proba = 0; proba < 12; proba++) {
     const x = Math.round(T.WORLD_W * (0.1 + rng() * 0.8));
     const y = T.findGround(state.terrain, x, 0, 0, state.lava - 12);
@@ -1023,13 +1040,14 @@ function stepSkrzynki(state) {
     if (!w) continue;
     state.skrzynki.splice(i, 1);
     if (c.typ === 'apteczka') {
-      const ile = Math.min(APTECZKA_HP, HP_MAX - w.hp);
+      const ile = Math.max(0, Math.min(APTECZKA_HP, Math.max(HP_MAX, state.ust.hp) - w.hp));
       w.hp += ile;
       state.events.push({ type: 'skrzynka', typ: c.typ, wormId: w.id, x: c.x, y: c.y, hp: ile });
     } else {
       // kij jest tylko w skrzynkach, więc wypada w co trzeciej
       const los = Math.imul(c.id + 7, 0x9e3779b1) >>> 0;
-      const bron = los % 3 === 0 ? 'kij' : INNE_ZAPASY[(los >>> 4) % INNE_ZAPASY.length];
+      const zapasy = zapasyDla(state.ust.bronie);
+      const bron = los % 3 === 0 || !zapasy.length ? 'kij' : zapasy[(los >>> 4) % zapasy.length];
       w.amunicja[bron] = (w.amunicja[bron] || 0) + 1;
       state.events.push({ type: 'skrzynka', typ: c.typ, wormId: w.id, x: c.x, y: c.y, bron });
     }
@@ -1038,7 +1056,7 @@ function stepSkrzynki(state) {
 
 /* Pola, które na starcie każdej tury są zawsze takie same. */
 export function rozpocznijTure(state) {
-  state.turnTimeLeft = TURN_TIME;
+  state.turnTimeLeft = state.ust.czas;
   state.phase = 'aim';
   state.settleTime = 0;
   state.firedThisTurn = false;
@@ -1051,7 +1069,7 @@ export function rozpocznijTure(state) {
   state.odwrotNagranie = null;
   state.skokWKolejce = false;
   state.projectiles = [];
-  state.wind = windFor(state.seed, state.turnNumber);
+  state.wind = windFor(state, state.turnNumber);
   state.input = pusteWejscie();
   const w = activeWorm(state);
   state.events.push({ type: 'tura', wormId: w ? w.id : null, wind: state.wind, nr: state.turnNumber });
@@ -1141,6 +1159,7 @@ export function stanPoTurze(state, usun = []) {
     worms: state.worms.map((w) => ({ ...w, amunicja: { ...w.amunicja } })),
     turnPtr: state.turnPtr,
     druzynowa: state.druzynowa,
+    ust: state.ust,
     ostatni: { ...state.ostatni },
     turnNumber: state.turnNumber,
     winner: state.winner,

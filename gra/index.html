@@ -143,6 +143,16 @@
       <div class="druzyny" id="lobby-druzyny"></div>
       <p class="info widzowie" id="lobby-widzowie" hidden></p>
 
+      <!-- gospodarz: co zrobić ze stukniętym graczem, losowanie drużyn -->
+      <div class="lobby-akcje" id="lobby-akcje" hidden></div>
+
+      <!-- ustawienia partii: zmienia gospodarz, reszta widzi (od 4.3) -->
+      <details class="ustawienia" id="lobby-ustawienia">
+        <summary>Ustawienia partii <small id="ustawienia-skrot">standardowe</small></summary>
+        <div class="ustawienia-siatka" id="ustawienia-siatka"></div>
+        <button type="button" class="ustawienia-reset" id="btn-ustawienia-reset" hidden>Przywróć standardowe</button>
+      </details>
+
       <button id="btn-gotowy" class="glowny btn-gotowy" type="button" aria-pressed="false">GOTOWY</button>
 
       <div class="trwa-gra" id="trwa-gra" hidden>

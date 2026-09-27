@@ -5,6 +5,16 @@
 (function () {
   var historia = [
     {
+      wersja: '4.3', data: '2026-09-27', tytul: 'Lobby gospodarza: własne zasady partii',
+      zmiany: [
+        'Gospodarz (👑) ustawia zasady partii: czas tury (15–60 s), życie na start (50–200 HP), mapę (losowa albo konkretny styl), bronie (pełny arsenał, podwójna amunicja, Klasyka albo Szał bez limitów), zrzuty skrzynek, wiatr (aż po huragan) i nagłą śmierć (albo bez lawy).',
+        'Reszta widzi zasady w lobby (zmienione są podświetlone) i dostaje komunikat, gdy gospodarz coś zmieni — gotowość wtedy się cofa, żeby nikt nie wszedł w partię, na którą się nie pisał. Na starcie partii baner przypomina zasady.',
+        'Gospodarz może stuknąć gracza i oddać mu koronę albo wyrzucić go z lobby (np. gdy ktoś poszedł zrobić herbatę i blokuje start). Wyrzucony wraca, kiedy chce, przyciskiem.',
+        'W drużynach gospodarz ma przycisk „Losuj drużyny” — wyrównane, losowe składy jednym stuknięciem.',
+        'Poprawki: partię zakłada gospodarz (reszta tylko, gdy on zniknie), więc start nie łapie już czyjegoś nieaktualnego widoku lobby; gracz ze starą wersją strony naprawdę blokuje start, dopóki nie odświeży; pasek życia drużyny liczy się od życia na start; gospodarz nie przestawia lobby w trakcie trwającej partii.'
+      ]
+    },
+    {
       wersja: '4.2', data: '2026-09-26', tytul: 'Drużyny i Arena bez opóźnień',
       zmiany: [
         'Arena: strzał i ucieczkę po nim widać u wszystkich na żywo (ok. 0,15 s za strzelcem) — koniec z zamarzniętym robalem i 5-sekundowym opóźnieniem.',

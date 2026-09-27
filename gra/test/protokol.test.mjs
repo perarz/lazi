@@ -17,6 +17,7 @@ import * as S from '../src/sim.js';
 import * as P from '../src/protokol.js';
 import { WEAPONS, WEAPON_ORDER } from '../src/weapons.js';
 import { mulberry32 } from '../src/rng.js';
+import * as U from '../src/ustawienia.js';
 
 let passed = 0, failed = 0;
 async function test(name, fn) {
@@ -624,6 +625,78 @@ await test('partia druzynowa 2 na 2 do konca: zero rozjazdow, wygrywa druzyna', 
     assert(druz(kto(akcje[i])) !== druz(kto(akcje[i - 1])), 'dwie tury z rzedu jednej druzyny (tura ' + akcje[i].nr + ')');
   }
   console.log('       ' + p.tura + ' tur, wygrala druzyna ' + (zywi[0] ? zywi[0].druzyna : '—'));
+});
+
+await test('ustawienia partii: gospodarz zmienia, gotowosc sie cofa, nowa je niesie, zle wartosci odpadaja', () => {
+  const log = [...wejscie(['a', 'b']), { t: 'gotowy', id: 'a', tak: true }, { t: 'gotowy', id: 'b', tak: true }];
+  let p = P.zloz(log);
+  assert(p.ustawienia.czas === S.TURN_TIME && p.ustawienia.hp === 100, 'domyslne ustawienia nie takie jak dawniej');
+  p = P.zloz([...log, { t: 'ustaw', id: 'a', klucz: 'czas', w: 45 }]);
+  assert(p.ustawienia.czas === 45 && !p.wLobby.some((g) => g.gotowy), 'zmiana czasu nie przeszla albo nie cofnela gotowosci');
+  p = P.zloz([...log, { t: 'ustaw', id: 'a', klucz: 'czas', w: 999 }, { t: 'ustaw', id: 'a', klucz: 'hack', w: 1 }]);
+  assert(p.ustawienia.czas === S.TURN_TIME && !('hack' in p.ustawienia) && p.wLobby.every((g) => g.gotowy), 'zla wartosc przeszla');
+  p = P.zloz([...log, { t: 'ustaw', id: 'a', klucz: 'hp', w: 200 }, { t: 'ustaw', id: 'a', domyslne: 1 }]);
+  assert(p.ustawienia.hp === 100, 'przywrocenie domyslnych nie dziala');
+  // nowa: ustawienia w partii i po partii w lobby, czas tury w protokole
+  const gracze = [{ id: 'a', name: 'a', color: '#fff' }, { id: 'b', name: 'b', color: '#0f0' }];
+  const ust = { czas: 15, hp: 50, bronie: 'klasyka', zrzuty: 0, wiatr: 0, lawa: 0, mapa: 'gory', zle: 5 };
+  p = P.zloz([{ t: 'nowa', seed: 5, gracze, druzyny: 0, ustawienia: ust, v: P.WERSJA, st: 1000 }]);
+  assert(p.czasTury === 15 && p.ustawienia.hp === 50 && !('zle' in p.ustawieniaGry), 'nowa nie przeniosla ustawien');
+  assert(P.terminTury({ state: { turnNumber: 0 } }, p) === p.turaOdkad + 15000, 'termin tury nie z ustawien');
+  const r = P.nowaRozgrywka(p, 'a');
+  const w = r.state.worms[0];
+  assert(w.hp === 50 && w.amunicja.nalot === 0 && w.amunicja.dynamit === 2 && r.state.wind === 0, 'partia nie z ustawien');
+  // stara partia bez ustawień = jak dawniej
+  const stara = P.zloz([{ t: 'nowa', seed: 5, gracze, druzyny: 0, v: 2, st: 1000 }]);
+  assert(stara.czasTury === S.TURN_TIME && P.nowaRozgrywka(stara, 'a').state.worms[0].hp === 100, 'partia bez ustawien nie standardowa');
+  // pas „za czas” gospodarza liczy się od czasu tury z ustawień
+  const pas = { t: 'pas', nr: 0, id: 'b', za: p.aktywny === 'a' ? 'a' : 'b', powod: 'czas', st: p.turaOdkad + (15 + P.GRACE_PAS) * 1000 };
+  pas.id = pas.za === 'a' ? 'b' : 'a';
+  const pp = P.zloz([{ t: 'nowa', seed: 5, gracze, druzyny: 0, ustawienia: ust, v: P.WERSJA, st: 1000 }, pas]);
+  assert(pp.akcje.has(0), 'pas za czas po krotkiej turze odrzucony');
+});
+
+await test('lobby: gospodarz losuje druzyny, oddaje korone i wyrzuca; stara wersja blokuje start', () => {
+  const ids = ['a', 'b', 'c', 'd'];
+  const log = [...wejscie(ids), { t: 'tryb', id: 'a', druzyny: 2 }];
+  log.push({ t: 'sklad', id: 'a', d: { a: 1, b: 1, c: 0, d: 0, obcy: 1 } });
+  let r = P.rozstaw(P.zloz(log));
+  assert(r.gracze.map((g) => g.druzyna).join() === '1,1,0,0', 'losowanie druzyn nie przeszlo: ' + r.gracze.map((g) => g.druzyna).join());
+  // korona: wskazany idzie na początek kolejki (gospodarz = pierwszy obecny)
+  let p = P.zloz([...log, { t: 'korona', id: 'a', kto: 'c' }]);
+  assert(p.wLobby[0].id === 'c' && p.wLobby.length === 4, 'korona nie przeszla');
+  // wyrzucenie: znika z lobby, nie może wyrzucić sam siebie, wraca własnym 'dolacz'
+  p = P.zloz([...log, { t: 'wyrzuc', id: 'a', kto: 'd' }, { t: 'wyrzuc', id: 'b', kto: 'b' }]);
+  assert(!p.wLobby.some((g) => g.id === 'd') && p.wyrzuceni.has('d') && p.wLobby.some((g) => g.id === 'b'), 'wyrzucenie nie dziala');
+  p = P.zloz([...log, { t: 'wyrzuc', id: 'a', kto: 'd' }, ...wejscie(['d'])]);
+  assert(p.wLobby.some((g) => g.id === 'd') && !p.wyrzuceni.has('d'), 'wyrzucony nie moze wrocic');
+  // ktoś ze starą wersją (bez ustawień partii) — mimo gotowości startu nie ma
+  const stary = [...wejscie(['a']), { t: 'dolacz', id: 'b', name: 'b', color: '#fff', v: 2 },
+    { t: 'gotowy', id: 'a', tak: true }, { t: 'gotowy', id: 'b', tak: true }];
+  assert(!P.gotowiDoStartu(P.rozstaw(P.zloz(stary))), 'start ze stara wersja');
+});
+
+await test('partia z wlasnymi ustawieniami (15 s, 50 HP, klasyka, czeste zrzuty, huragan) do konca bez rozjazdow', () => {
+  const serwer = new Serwer();
+  const ids = ['a', 'b', 'c'];
+  const kl = ids.map((id, i) => new Klient(id, serwer, mulberry32(700 + i), { opoznienie: 60 + i * 50, coIle: 300 }));
+  for (const k of kl) serwer.przyjmij({ t: 'puls', id: k.id });
+  const ustawienia = { czas: 15, hp: 50, bronie: 'klasyka', zrzuty: 70, wiatr: 2, lawa: 3, mapa: 'losowa' };
+  serwer.przyjmij({ t: 'nowa', seed: 98765, druzyny: 0, ustawienia, v: P.WERSJA,
+    gracze: ids.map((id) => ({ id, name: id, color: '#fff' })) });
+  for (let i = 0; i < 60 * 900; i++) {
+    serwer.czas += KLATKA;
+    for (const k of kl) k.tik();
+    if (i % 60 === 0 && P.zloz(serwer.log).faza === 'koniec') break;
+  }
+  for (let i = 0; i < 60 * 25; i++) { serwer.czas += KLATKA; for (const k of kl) k.tik(); }
+  const p = P.zloz(serwer.log);
+  assert(p.faza === 'koniec', 'partia nie doszla do konca (tura ' + p.tura + ')');
+  zgodnoscKoncowa({ serwer, pokoj: p, wszyscy: kl, klienci: kl });
+  for (const k of kl) assert(k.r.statystyki.korekty === 0, 'korekty u ' + k.id);
+  const zakazane = [...p.akcje.values()].filter((a) => a.t === 'strzal' && !U.KLASYKA.includes(a.weapon));
+  assert(!zakazane.length, 'strzal bronia spoza klasyki: ' + zakazane.map((a) => a.weapon).join());
+  console.log('       ' + p.tura + ' tur');
 });
 
 console.log('\n' + (failed === 0

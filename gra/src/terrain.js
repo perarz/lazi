@@ -43,17 +43,23 @@ function szum2D(ziarno) {
    od nowa — trzymamy więc kopię ostatnio wygenerowanej. */
 let pamiec = null;
 
+/* Styl mapy wynika z seeda — z osobnego haszu, bo pierwsze losowanie
+   mulberry32 dla sąsiednich seedów wychodzi podobne, a style mają się mieszać.
+   Gospodarz, który wybrał konkretną mapę, po prostu losuje seed z tym stylem. */
+export function stylMapy(seed) {
+  seed = seed >>> 0;
+  let hs = Math.imul(seed ^ (seed >>> 16), 0x85ebca6b);
+  hs = Math.imul(hs ^ (hs >>> 13), 0xc2b2ae35);
+  return STYLE[((hs ^ (hs >>> 16)) >>> 0) % STYLE.length];
+}
+
 export function createTerrain(seed) {
   seed = seed >>> 0;
   if (pamiec && pamiec.seed === seed) {
     return { mask: pamiec.mask.slice(), seed, craters: [], styl: pamiec.styl };
   }
   const rng = mulberry32(seed);
-  // styl z osobnego haszu seeda — pierwsze losowanie mulberry32 dla
-  // sąsiednich seedów wychodzi podobne, a style mają się mieszać
-  let hs = Math.imul(seed ^ (seed >>> 16), 0x85ebca6b);
-  hs = Math.imul(hs ^ (hs >>> 13), 0xc2b2ae35);
-  const styl = STYLE[((hs ^ (hs >>> 16)) >>> 0) % STYLE.length];
+  const styl = stylMapy(seed);
   const mask = new Uint8Array(WORLD_W * WORLD_H);
 
   // --- profil wyspy: kilka oktaw szumu 1D ---

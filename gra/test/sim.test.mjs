@@ -599,6 +599,50 @@ test('odchodzacy jest pomijany w kolejce', () => {
   assert(snap.aktywny !== kolejny, 'ture dostal gracz, ktory wyszedl');
 });
 
+test('ustawienia partii: zycie, bronie, wiatr, czas tury; bez ustawien jak dawniej', () => {
+  const zwykla = S.createGame(77, players(2));
+  assert(zwykla.worms[0].hp === 100 && zwykla.turnTimeLeft === S.TURN_TIME && zwykla.worms[0].amunicja.nalot === 1, 'domyslne inne niz dawniej');
+  const st = S.createGame(77, players(2), { ustawienia: { hp: 200, czas: 45, bronie: 'podwojny', wiatr: 0 } });
+  assert(st.worms[0].hp === 200 && st.turnTimeLeft === 45, 'hp albo czas nie z ustawien');
+  assert(st.worms[0].amunicja.nalot === 2 && st.worms[0].amunicja.most === 6 && st.worms[0].amunicja.kij === 0, 'podwojna amunicja zle');
+  assert(st.wind === 0 && Object.is(st.wind, 0), 'wiatr mimo „bez wiatru”: ' + st.wind);
+  const hur = S.createGame(77, players(2), { ustawienia: { wiatr: 2 } });
+  assert(Math.abs(hur.wind) > Math.abs(zwykla.wind), 'huragan nie silniejszy');
+  const kl = S.createGame(77, players(2), { ustawienia: { bronie: 'klasyka' } });
+  assert(kl.worms[0].amunicja.teleport === 0 && !S.mozeStrzelic(kl, 'teleport') && kl.worms[0].amunicja.dynamit === 2, 'klasyka zle');
+  const szal = S.createGame(77, players(2), { ustawienia: { bronie: 'szalony' } });
+  assert(Object.keys(szal.worms[0].amunicja).length === 0 && S.mozeStrzelic(szal, 'kij'), 'szal ma limity');
+  // ustawienia przeżywają granicę tury (stanPoTurze → snapshot)
+  S.applyPas(st);
+  doKonca(st);
+  S.zastosujSnapshot(st, przezSiec(S.stanPoTurze(st)));
+  assert(st.turnTimeLeft === 45 && st.wind === 0, 'po turze ustawienia zgubione');
+});
+
+test('ustawienia partii: bez nagłej śmierci lawa stoi, bez zrzutów nic nie spada, w szale tylko apteczki', () => {
+  const bez = S.createGame(11, players(2), { sieciowa: true, ustawienia: { lawa: 0, zrzuty: 0 } });
+  const szal = S.createGame(4242, players(3), { sieciowa: true, ustawienia: { bronie: 'szalony', zrzuty: 70 } });
+  const start = bez.lava;
+  let skrzynki = 0;
+  for (let i = 0; i < 3 * S.LAWA_PO_RUNDACH; i++) {
+    nastepnaTura(bez);
+    skrzynki += bez.skrzynki.length;
+    nastepnaTura(szal);
+  }
+  assert(bez.lava === start, 'lawa wzbiera mimo „nigdy”');
+  assert(skrzynki === 0, 'skrzynki mimo wylaczonych zrzutow');
+  assert(szal.skrzynki.length > 0 && szal.skrzynki.every((c) => c.typ === 'apteczka'), 'w szale zapas albo brak skrzynek');
+  const krotka = S.createGame(11, players(2), { sieciowa: true, ustawienia: { lawa: 3 } });
+  for (let i = 0; i < 2 * 3 + 1; i++) nastepnaTura(krotka);
+  assert(krotka.lava < start, 'lawa po 3 rundach nie wzbiera');
+});
+
+test('mapa wybrana w lobby: styl ze seeda zgadza sie z generatorem', () => {
+  for (let seed = 1; seed < 400; seed += 37) {
+    assert(T.stylMapy(seed) === T.createTerrain(seed).styl, 'inny styl dla seeda ' + seed);
+  }
+});
+
 test('stanPoTurze nie zmienia stanu zrodlowego', () => {
   const st = S.createGame(11, players(3), { sieciowa: true });
   S.applyPas(st);
