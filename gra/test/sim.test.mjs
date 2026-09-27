@@ -244,6 +244,28 @@ test('strzelba trafia robala po prostej', () => {
   assert(b.hp < 100, 'strzelba nie trafila, hp=' + b.hp);
 });
 
+test('railgun przebija skale i trafia dwoch robali na linii (75), terenu nie rusza', () => {
+  const st = S.createGame(21, players(3));
+  const a = S.activeWorm(st);
+  const [b, c] = st.worms.filter((w) => w !== a);
+  const kier = a.x < st.terrain.w / 2 ? 1 : -1;
+  a.facing = kier;
+  b.x = a.x + 120 * kier; b.y = a.y;
+  c.x = a.x + 300 * kier; c.y = a.y;
+  // gruba skała na linii strzału między robalami
+  const yl = Math.round(a.y - 10);
+  for (let y = yl - 25; y < yl + 6; y++) for (let x = Math.round(a.x + 180 * kier) - 20; x < Math.round(a.x + 180 * kier) + 20; x++) st.terrain.mask[y * st.terrain.w + x] = 1;
+  const kraterow = st.terrain.craters.length;
+  st.weapon = 'railgun';
+  S.ustawCelownik(st, kier > 0 ? 0 : Math.PI);
+  assert(S.startCharging(st), 'nie da sie strzelic z railguna');
+  S.releaseFire(st);
+  assert(b.hp === 25 && c.hp === 25, 'hp: ' + b.hp + ', ' + c.hp);
+  assert(a.amunicja.railgun === 0, 'amunicja railguna: ' + a.amunicja.railgun);
+  assert(st.terrain.craters.length === kraterow, 'railgun zrobil krater');
+  assert(st.events.some((e) => e.type === 'railgun' && e.trafieni === 2), 'brak zdarzenia railgun');
+});
+
 test('kasetowka rozsypuje odlamki', () => {
   const st = S.createGame(21, players(2));
   st.weapon = 'kasetowa';

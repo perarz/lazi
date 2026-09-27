@@ -40,7 +40,8 @@ export function createFx() {
     smoke: makeSprites(SMOKE),
     shocks: [],
     teksty: [],     // unoszące się napisy: obrażenia, komunikaty nad robalami
-    smugi: []       // ślad strzału ze strzelby
+    smugi: [],      // ślad strzału ze strzelby
+    lasery: []      // promień railguna (4.9)
   };
 }
 
@@ -52,6 +53,24 @@ export function emitTekst(fx, x, y, tekst, kolor = '#ffe9c8', rozmiar = 15) {
 
 export function emitSmuga(fx, x0, y0, x1, y1) {
   fx.smugi.push({ x0, y0, x1, y1, life: 0.35, maxLife: 0.35 });
+}
+
+/* Railgun: gruby, świecący promień z helisą, gasnący przez ~0,9 s, i iskry wzdłuż. */
+export function emitLaser(fx, x0, y0, x1, y1) {
+  fx.lasery.push({ x0, y0, x1, y1, life: 0.9, maxLife: 0.9 });
+  const dl = Math.hypot(x1 - x0, y1 - y0) || 1;
+  const n = Math.min(90, Math.round(dl / 30));
+  for (let i = 0; i < n; i++) {
+    const k = Math.random();
+    const a = Math.random() * 6.283;
+    const s = 20 + Math.random() * 70;
+    emit(fx, {
+      x: x0 + (x1 - x0) * k, y: y0 + (y1 - y0) * k,
+      vx: Math.cos(a) * s, vy: Math.sin(a) * s,
+      grav: 0, drag: 2.5, size: 3 + Math.random() * 5,
+      life: 0.3 + Math.random() * 0.5, tint: 0, cool: 4, alpha: 0.9, set: 'fire'
+    });
+  }
 }
 
 const MAX = 1400;
@@ -140,6 +159,11 @@ export function stepFx(fx, dt) {
     s.life -= dt;
     if (s.life <= 0) fx.smugi.splice(i, 1);
   }
+  for (let i = fx.lasery.length - 1; i >= 0; i--) {
+    const s = fx.lasery[i];
+    s.life -= dt;
+    if (s.life <= 0) fx.lasery.splice(i, 1);
+  }
 }
 
 export function drawFx(fx, ctx) {
@@ -176,6 +200,37 @@ export function drawFx(fx, ctx) {
     ctx.beginPath();
     ctx.moveTo(s.x0, s.y0);
     ctx.lineTo(s.x1, s.y1);
+    ctx.stroke();
+  }
+
+  for (const s of fx.lasery) {
+    const t = s.life / s.maxLife;
+    const dx = s.x1 - s.x0, dy = s.y1 - s.y0;
+    const dl = Math.hypot(dx, dy) || 1;
+    const nx = -dy / dl, ny = dx / dl;
+    // poświata, rdzeń i biały środek
+    for (const [kolor, gr, al] of [['#2fb8ff', 22, 0.35], ['#7fe3ff', 9, 0.8], ['#ffffff', 3, 1]]) {
+      ctx.globalAlpha = al * t;
+      ctx.strokeStyle = kolor;
+      ctx.lineWidth = gr * (0.4 + t * 0.6);
+      ctx.beginPath();
+      ctx.moveTo(s.x0, s.y0);
+      ctx.lineTo(s.x1, s.y1);
+      ctx.stroke();
+    }
+    // helisa wokół promienia
+    ctx.globalAlpha = 0.7 * t;
+    ctx.strokeStyle = '#b48cff';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    const kroki = Math.min(600, Math.round(dl / 6));
+    const faza = (1 - t) * 20;
+    for (let i = 0; i <= kroki; i++) {
+      const k = i / kroki;
+      const o = Math.sin(k * dl / 14 + faza) * 7 * (0.5 + t * 0.5);
+      const px = s.x0 + dx * k + nx * o, py = s.y0 + dy * k + ny * o;
+      if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+    }
     ctx.stroke();
   }
 

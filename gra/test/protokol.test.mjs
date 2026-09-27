@@ -309,7 +309,8 @@ await test('szesciu graczy z duzymi opoznieniami', () => {
 await test('zaden strzal nie przepada (kazda akcja strzal w logu ma swoj wybuch u wszystkich)', () => {
   // seed z długą partią — test liczy strzały. Od 4.2 boty uciekają po strzale i przy
   // niektórych seedach szybko wbiegają do lawy (np. seed 4: koniec po 2 turach).
-  const pr = partia({ seed: 9, n: 2, doTury: 20 });
+  // 4.9: nalot z wyższa i railgun zmieniły przebieg — seed 9 kończył się po 4 strzałach.
+  const pr = partia({ seed: 17, n: 2, doTury: 20 });
   const strzaly = [...pr.pokoj.akcje.values()].filter((a) => a.t === 'strzal').length;
   const wyslane = pr.klienci.reduce((s, k) => s + k.wyslane.filter((z) => z.t === 'strzal').length, 0);
   assert(strzaly > 5, 'za malo strzalow w partii: ' + strzaly);
@@ -398,7 +399,7 @@ await test('wyjscie we wlasnej turze: tura oddana od razu, gra idzie dalej', () 
 await test('zamkniecie karty bez sladu: tury oddawane po 15 s, wyrzucenie po 90 s', () => {
   let znikl = null, kiedy = null;
   const pr = partia({
-    seed: 13, n: 3, doTury: 40, maksSek: 1200,
+    seed: 17, n: 3, doTury: 40, maksSek: 1200,   // 4.9: seed 13 kończył partię przed wyrzuceniem (tura 8)
     zdarzenia: [{ po: 20, fn: (p) => { const k = p.klienci[1]; k.polaczony = false; znikl = k.id; kiedy = p.serwer.czas; } }]
   });
   const p = pr.pokoj;
@@ -567,6 +568,19 @@ await test('odliczanie do startu: 5 s po gotowosci, wpisy starej wersji i „na 
 });
 
 const wejscie = (ids) => ids.map((id) => ({ t: 'dolacz', id, name: id, color: '#fff', v: P.WERSJA }));
+
+await test('start gospodarza bez GOTOWY (4.9): odliczanie z wymus, cofniecie gotowosci go nie kasuje', () => {
+  const st = 2_000_000;
+  const log = [...wejscie(['a', 'b', 'c']), { t: 'gotowy', id: 'b', tak: true }];
+  const roz = P.rozstaw(P.zloz(log));
+  assert(!P.gotowiDoStartu(roz) && P.moznaWymusic(roz), 'moznaWymusic');
+  const wym = { t: 'odliczanie', do: st + P.ODLICZANIE_S * 1000, st, v: P.WERSJA, wymus: 1 };
+  let p = P.zloz([...log, wym, { t: 'gotowy', id: 'b', tak: false }]);
+  assert(p.odliczanieDo === wym.do && p.odliczanieWymus, 'wymuszone odliczanie skasowane');
+  p = P.zloz([...log, wym, ...wejscie(['d'])]);
+  assert(p.odliczanieDo === null, 'nowy gracz nie kasuje odliczania');
+  assert(!P.moznaWymusic(P.rozstaw(P.zloz(wejscie(['a'])))), 'jeden gracz nie moze startowac');
+});
 
 await test('lobby: najwyzej 8 graczy, kolejni czekaja; kazdy na kazdego to osobne druzyny', () => {
   const ids = Array.from({ length: 10 }, (_, i) => 'g' + i);

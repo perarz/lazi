@@ -216,6 +216,7 @@ export function jump(state) {
   if (w && w.lina && state.phase === 'aim') { odczep(w); return; }   // skok puszcza linę
   if (!w || !w.alive || !w.onGround || state.phase !== 'aim') return;
   skocz(w);
+  state.events.push({ type: 'skok', x: w.x, y: w.y });   // tylko dźwięk (4.9)
 }
 
 /* ---------- lina ninja (4.4) ----------
@@ -428,7 +429,7 @@ function obliczStart(w, weapon, angle, power) {
   const c = Math.cos(angle), s = Math.sin(angle);
   const mx = w.x + c * 18;
   const my = w.y - WORM_H * 0.55 + s * 18;
-  if (weapon.kind === 'hitscan') return { x: mx, y: my, vx: c, vy: s };
+  if (weapon.kind === 'hitscan' || weapon.kind === 'railgun') return { x: mx, y: my, vx: c, vy: s };
   if (weapon.kind === 'wiertlo') {
     return { x: w.x + c * 8, y: w.y - WORM_H * 0.5 + s * 8, vx: c * weapon.speed, vy: s * weapon.speed };
   }
@@ -485,6 +486,8 @@ export function applyFire(state, action) {
 
   if (weapon.kind === 'hitscan') {
     strzalNatychmiastowy(state, w, start, weapon);
+  } else if (weapon.kind === 'railgun') {
+    strzalRailgun(state, w, start, weapon);
   } else if (weapon.kind === 'kij') {
     ciosKijem(state, w, start, weapon);
   } else if (weapon.kind === 'teleport') {
@@ -510,7 +513,8 @@ export function applyFire(state, action) {
     const rak = WEAPONS.rakieta;
     const a = GRAVITY * rak.gravityFactor, aw = state.wind * rak.windFactor;
     for (let i = 0; i < n; i++) {
-      const y0 = -40 - i * 22;
+      // od 4.9 rakiety startują z wysokości 1,5× mapy (pół mapy nad jej górną krawędzią)
+      const y0 = -Math.round(state.terrain.h * 0.5) - 40 - i * 22;
       const dy = Math.max(0, cel.y - y0);
       const t = (-110 + Math.sqrt(110 * 110 + 2 * a * dy)) / a;
       const dryf = kier * 55 * t + aw * t * t / 2;
@@ -612,6 +616,34 @@ function strzalNatychmiastowy(state, w, start, weapon) {
     explode(state, x, y, weapon);
   } else if (wSkale) {
     explode(state, x, y, weapon);
+  }
+}
+
+/* Railgun (4.9): laser leci po prostej aż za mapę — przez skały (terenu nie rusza)
+   i przez robale; każdy trafiony dostaje raz pełne obrażenia. Kierunek (vx, vy)
+   policzył strzelający (obliczStart), tu tylko dodawanie i porównania. */
+function strzalRailgun(state, w, start, weapon) {
+  const t = state.terrain;
+  let x = start.x, y = start.y;
+  const dx = start.vx * 2, dy = start.vy * 2;
+  const trafieni = [];
+  for (let i = 0; i < 6000; i++) {
+    x += dx;
+    y += dy;
+    if (x < -40 || x >= t.w + 40 || y < -400 || y > t.h + 40) break;
+    for (const o of state.worms) {
+      if (!o.alive || o === w || trafieni.includes(o) || swoj(state, o, w.id)) continue;
+      if (Math.abs(o.x - x) < 9 && y > o.y - WORM_H - 2 && y < o.y + 2) trafieni.push(o);
+    }
+  }
+  state.events.push({ type: 'railgun', x0: start.x, y0: start.y, x1: x, y1: y, trafieni: trafieni.length });
+  for (const o of trafieni) {
+    damageWorm(state, o, weapon.damage, 'railgun');
+    if (o.alive) {
+      o.vx += start.vx * weapon.knockback + 0;
+      o.vy += start.vy * weapon.knockback - 80 + 0;
+      o.onGround = false;
+    }
   }
 }
 

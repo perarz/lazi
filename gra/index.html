@@ -36,6 +36,8 @@
       </div>
       <div class="hud-przyciski">
         <span id="obserwatorzy" class="panel obserwatorzy" title="Tylu obserwatorów ogląda partię" hidden><span aria-hidden="true">👁</span> <b id="obserwatorzy-ile">0</b></span>
+        <button id="btn-dzwiek" class="panel przycisk-hud" type="button" aria-label="Dźwięki" aria-pressed="true" title="Dźwięki wł./wył.">🔊</button>
+        <button id="btn-muzyka" class="panel przycisk-hud" type="button" aria-label="Muzyka" aria-pressed="true" title="Muzyka wł./wył.">🎵</button>
         <button id="btn-mapa" class="panel przycisk-hud" type="button" aria-label="Cała mapa" aria-pressed="false" title="Cała mapa (M)">🗺️</button>
         <button id="btn-pelny" class="panel przycisk-hud" type="button" aria-label="Pełny ekran" title="Pełny ekran" hidden>⛶</button>
         <button id="btn-opusc" class="panel przycisk-hud" type="button">Opuść grę</button>
@@ -86,13 +88,14 @@
           </button>
           <!-- obrót mostu (R) i emotki (E) — obok broni, pod kciukiem (4.5) -->
           <button type="button" class="przycisk-obok" id="btn-obrot" aria-label="Obróć most" title="Obróć most (R)" hidden>⟳</button>
+          <button type="button" class="przycisk-obok" id="btn-ping" aria-label="Zaznacz miejsce na mapie" aria-pressed="false" title="Zaznacz miejsce na mapie — widzą wszyscy (P albo środkowy przycisk myszy)" hidden>📍</button>
           <button type="button" class="przycisk-obok" id="btn-emotki" aria-label="Emotki i tańce" aria-haspopup="dialog" aria-expanded="false" title="Emotki i tańce (E)" hidden>💬</button>
         </div>
         <div class="moc"><div class="moc-wypelnienie" id="moc-wypelnienie"></div></div>
       </div>
       <div class="pomoc">
         <b>A</b>/<b>D</b> ruch &nbsp; <b>Spacja</b> skok &nbsp; <b>W</b>/<b>S</b> albo mysz: celowanie &nbsp;
-        <b>Q</b> / <b>PPM</b> ekwipunek &nbsp; <b>E</b> emotki &nbsp; <b>R</b> obrót mostu &nbsp; <b>M</b> cała mapa &nbsp; <b>1-0</b> broń &nbsp; <b>F</b> lub <b>Enter</b> (przytrzymaj) strzał
+        <b>Q</b> / <b>PPM</b> ekwipunek &nbsp; <b>E</b> emotki &nbsp; <b>R</b> obrót mostu &nbsp; <b>M</b> cała mapa &nbsp; <b>P</b> zaznacz &nbsp; <b>1-0</b> broń &nbsp; <b>F</b> lub <b>Enter</b> (przytrzymaj) strzał
       </div>
     </div>
 
@@ -287,6 +290,7 @@
           </details>
 
           <button id="btn-gotowy" class="glowny btn-gotowy" type="button" aria-pressed="false">GOTOWY</button>
+          <button id="btn-start-teraz" class="btn-start-teraz" type="button" hidden title="Tylko gospodarz: rusza za 5 s, nawet jeśli nie wszyscy dali GOTOWY">▶ START bez czekania</button>
 
           <div class="trwa-gra" id="trwa-gra" hidden>
             <p>Trwa partia: <b id="trwa-gra-gracze"></b></p>

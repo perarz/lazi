@@ -18,7 +18,7 @@ Stos technologiczny:
 - Bez bundlera, bez `package.json` i bez zależności npm. Zwykłe pliki HTML/CSS/JS, gra jako moduły ES,
   zrzutka jako klasyczne skrypty.
 
-Obecna wersja: **4.8 „Kilka robali na gracza, wyższe mapy i lepsza kamera”** (`wersja.js`).
+Obecna wersja: **4.9 „Railgun, pingi, dźwięki i muzyczka”** (`wersja.js`).
 
 ---
 
@@ -178,7 +178,7 @@ PL, IP 96.62.223.169). Katalog `serwer/` to serwer: Node + WebSocket (`ws`).
   Pusty znika po 10 minutach, restart serwera kasuje wszystkie. **Od 4.7 nie ma domyślnej areny** (`glowny` nie
   jest już na liście) — gra się tylko w arenie, którą ktoś założył. Pokój bez opisu (`?pokoj=` z testów) jest
   publiczny i pojawia się na liście tylko, gdy ktoś w nim jest.
-- **Akcesoria** (4.7): lista id w `AKCESORIA` w `serwer/konta.js` **i** w `gra/src/akcesoria.js` (test serwera
+- **Akcesoria** (4.7; w 4.9 `lama` i `kilof` zastąpione przez `okulary` i `buzka` — nieznane id z konta serwer oddaje jako `null`): lista id w `AKCESORIA` w `serwer/konta.js` **i** w `gra/src/akcesoria.js` (test serwera
   pilnuje, że są równe). Konto trzyma `akcesorium`, `dolacz` niesie `akc` (serwer usuwa nieznane), ranking też.
   **Czapki za osiągnięcia** (4.7.1): `CZAPKI` (czapka → osiągnięcie albo `'*'`) w `konta.js` = `gra/src/czapki.js`,
   a `WSZYSTKIE_OSIAGNIECIA` w `konta.js` = lista z `gra/osiagniecia.js` (test pilnuje obu). `wolnoNosic(konto, id)`
@@ -232,6 +232,7 @@ PL, IP 96.62.223.169). Katalog `serwer/` to serwer: Node + WebSocket (`ws`).
 | `zrzutka:sezon2-intro` | `'1'` = okno sezonu już się samo pokazało |
 | `arena:token` | Token sesji konta Areny (od 4.6) |
 | `arena:akcesorium` | Akcesorium robala (4.7, kopia z konta; pusty napis = bez) |
+| `arena:dzwiek`, `arena:muzyka` | `'0'` = wyciszone efekty / muzyka w Arenie (4.9) |
 | `arena:nazwa`, `arena:kolor`, `arena:bron`, `arena:staty`, `arena:osiagniecia` | Arena. Od 4.6 `staty` i `osiagniecia` to **kopia z konta** (nadpisywana po zalogowaniu i po każdym wyniku, czyszczona przy wylogowaniu) — czytają je reguły osiągnięć i profil na zrzutce |
 | `arena:stare-przeniesione` | `'1'` = dane sprzed kont już poszły do konta (tylko pierwsza rejestracja w przeglądarce je zabiera). `arena:id` z dawnych wersji nie jest już używane |
 
@@ -438,17 +439,18 @@ Lekcje z kalibracji:
 | `src/net.js` | WebSocket do serwera na VPS: log zdarzeń, ponowne łączenie z kursorem, obecność, zegar serwera, `sendBeacon` przy zamknięciu karty (POST `/api/arena` na VPS); `RUCH_CO` — podgląd ruchu co 100 ms |
 | `src/konfig.js` | `SERWER_WS` — adres serwera Areny; lokalnie `?serwer=ws://127.0.0.1:8787/ws` do testów; `adresApi()` = HTTP tego serwera |
 | `src/konto.js` | Konto (4.6): logowanie, rejestracja, `ja`, wygląd (`ustawWyglad`), wynik partii, pokoje, ranking (HTTP), kopia statystyk do `localStorage`, opisy błędów |
-| `src/akcesoria.js` | Akcesoria robala (4.7): `PODSTAWOWE` (5, dla każdego) + `CZAPKI` = `AKCESORIA` (id, nazwa, gra, ikona, `rysuj(ctx, cx, cy, f, t)`, `tyl`, `zaGlowa`, `wys`), `odblokowane(a, zdobyte)`; sama grafika |
+| `src/akcesoria.js` | Akcesoria robala (4.7, od 4.9: korona, okulary, buźka, hełm, wieniec): `PODSTAWOWE` (5, dla każdego) + `CZAPKI` = `AKCESORIA` (id, nazwa, gra, ikona, `rysuj(ctx, cx, cy, f, t)`, `tyl`, `zaGlowa`, `wys`), `odblokowane(a, zdobyte)`; sama grafika |
 | `src/czapki.js` | Czapki za osiągnięcia (4.7.1): Korona Króla GOATów (`krol`, `osiagniecie: '*'` = wszystkie) i 3 czapki za pojedyncze (`irokez` ← masakra, `wulkan` ← lawa, `rogi` ← owca); pola `wys` (o ile podnieść pasek życia i nick) i opcjonalnie `zaGlowa` (część za ciałem, np. promienie korony) |
 | `src/main.js` | Logowanie, ekran ładowania, ekran Areny (profil, wygląd, ranking, osiągnięcia + areny/lobby), lobby (tryb, drużyny, GOTOWY), HUD, kamera, pętla gry, zdarzenia → efekty, statystyki, osiągnięcia (UI) |
 | `src/druzyny.js` | Nazwy i kolory drużyn (`DRUZYNY`), tryby lobby (`TRYBY`) |
 | `src/ustawienia.js` | Ustawienia partii z lobby (`USTAWIENIA`: czas, hp, mapa, rozmiar, bronie, zrzuty, wiatr, lawaOd, lawaTempo; pozycje z `opcje` = lista, z `liczba` = wpisywane), `normalizuj`, `zLiczby`, `opisZmian` |
-| `src/emotki.js` | Emotki i tańce (`EMOTKI`: 5 emotek + 2 tańce), czasy i limit wysyłania |
+| `src/emotki.js` | Emotki i tańce (`EMOTKI`: 5 emotek + 7 tańców), czasy i limit wysyłania |
+| `src/dzwieki.js` | Dźwięki i muzyczka (4.9): Web Audio bez plików, `graj(nazwa, opcje)` pod zdarzenia w `obsluzZdarzenia`, `muzykaStart/Stop` (pętla 104 BPM planowana 0,3 s do przodu), wyciszanie `arena:dzwiek` / `arena:muzyka`; kontekst budzi pierwszy gest, karta w tle go usypia |
 | `src/ekwipunek.js` | Ekwipunek broni jak w Worms Armageddon: rzędy (`GRUPY`), ikony SVG broni, otwieranie/zamykanie |
 | `src/input.js` | Klawiatura, przyciski dotykowe, przeciąganie/szczypanie, PPM/Q = ekwipunek |
 | `src/render.js`, `src/fx.js` | Grafika (tu wolno trygonometrię i `Math.random`); w `render.js` też kamera, podgląd robala (`rysujPodgladRobala`, `mini` = kafelek akcesorium) i scena ekranu ładowania (`rysujSceneLadowania`) |
 | `src/osiagniecia-reguly.js` | Reguły osiągnięć — czyste funkcje |
-| `test/sim.test.mjs`, `test/protokol.test.mjs` | Testy w Node (84 i 22) |
+| `test/sim.test.mjs`, `test/protokol.test.mjs` | Testy w Node (86 i 23) |
 
 ### Determinizm (święta zasada)
 - Symulacja (`sim.js`, `terrain.js`) używa tylko:
@@ -554,6 +556,7 @@ Lekcje z kalibracji:
   - Gracz ze starą wersją (`v` < `WERSJA`) ma w lobby znaczek „STARA WERSJA” i **blokuje start**
     (`gotowiDoStartu` wymaga `v >= WERSJA`), bo nie zna ustawień partii i rozjechałby się.
   - Partię (`nowa`) zakłada gospodarz lobby; inni próbują dopiero 2,5 s po terminie (gdy gospodarz zniknął).
+  - **Start bez GOTOWY (4.9, `WERSJA` = 7)**: gospodarz ma `#btn-start-teraz`, gdy `P.moznaWymusic(roz)` (jak `gotowiDoStartu`, tylko bez gotowości) — publikuje `odliczanie` z `wymus: 1`, `zloz` ustawia `p.odliczanieWymus` (cofnięcie gotowości go nie kasuje, nowy gracz i wyjście tak). W `odswiezLobby` `gotowi` = gotowi albo wymuszone odliczanie.
 - **Lobby od 4.3 (`WERSJA` = 3)** — gospodarz dodatkowo:
   - **Ustawienia partii** `{t:'ustaw', klucz, w}` / `{t:'ustaw', domyslne:1}` (tabela w `ustawienia.js`,
     walidacja `poprawna`), cofają gotowość. `p.ustawienia` = lobby, `nowa.ustawienia` → `p.ustawieniaGry`
@@ -589,6 +592,7 @@ Lekcje z kalibracji:
   świeże (≤ 6 s zegara serwera), `R.draw` dostaje `emotki` (dymek nad głową, taniec = przesunięcie i obrót
   rysunku w `drawWorm`). Panel `#emotki-panel` ma `pointer-events: auto` (HUD ma `none`). Od 4.5 przycisk 💬
   stoi obok broni na dole (`.rzad-broni` z `#btn-bron`, `#btn-obrot`, `#btn-emotki`), panel wisi tuż nad nim.
+- **Pingi (4.9)**: `{t:'ping', id, x, y}` w logu — jak emotka, `zloz` go nie zna. Wysyła każdy z partią na ekranie (także obserwator): przycisk 📍 `#btn-ping` włącza `trybPingu` (następne stuknięcie w planszę albo minimapę), klawisz **P** (pozycja myszy) i środkowy przycisk myszy (`onPing`/`trybPingu` w `input.js`), najwyżej co 0,9 s. `czytajEmotki` czyta też pingi (`dodajPing`, świeże ≤ 5 s, jeden na gracza), `R.draw` dostaje `pingi` (pinezka w kolorze gracza, rozmiar niezależny od zoomu, strzałka przy krawędzi, gdy poza kadrem), minimapa też.
 - **Obserwatorzy**: oczko 👁 z liczbą w HUD (`#obserwatorzy`) = obecni w pokoju spoza partii (albo po wyjściu).
 - **Kolory**: gracz wybiera kolor robala przy wejściu (`PALETA` w `main.js`, 12 kolorów, `arena:kolor`),
   kolor leci w `dolacz`. Przy kolizji `rozdzielKolory` zostawia go temu, kto dołączył wcześniej, reszta
@@ -633,7 +637,7 @@ Lekcje z kalibracji:
 | 3 | Strzelba | hitscan | ∞ | |
 | 4 | Kasetówka | odbijany | 2 | rozpada się na odłamki |
 | 5 | Dynamit | podkładany | 2 | lont 6 s, ucieczka |
-| 6 | Nalot | celowany | 1 | rakiety z nieba; od 4.8 start rakiety przesunięty o dryf policzony z wysokości celu (lot ukośny + wiatr, tylko `sqrt`), więc trafia też wysoko |
+| 6 | Nalot | celowany | 1 | rakiety z nieba; od 4.8 start rakiety przesunięty o dryf policzony z wysokości celu (lot ukośny + wiatr, tylko `sqrt`), więc trafia też wysoko; od 4.9 start z wysokości 1,5× mapy (`y0 = −h/2 − 40 − 22·i`) |
 | 7 | Koza (id `owca`) | owca | 1 | biega, przeskakuje przeszkody, wybucha przy wrogu; od 4.3.1 rysowana jako koza (render + ikona), id zostaje |
 | 8 | Kij | kij | **0** | tylko ze skrzynek (co 3. „zapas”), dmg 15, odrzut 360 |
 | 9 | Teleport | celowany | 1 | |
@@ -641,6 +645,7 @@ Lekcje z kalibracji:
 | - | Wiertło | wiertło | 2 | jedzie prosto bez grawitacji, co 8 kroków `carve` → tunel (zdarzenie `wiercenie` przemalowuje teren), na końcu mały wybuch |
 | = | Most | celowany | 3 | belka 90×7 px, do 260 px od robala, nie na robalu (`powodBrakuMostu`) |
 | [ | Święty GOAT | odbijany | 1 | jak granat, lont 3,5 s, promień 118 (największy), dmg 90, odrzut 480; napis „ALLELUJA!” przy wybuchu r ≥ 100 |
+| \\ | Railgun | railgun | 1 | 4.9: `strzalRailgun` — laser po prostej od `start` (wektor od strzelca) aż za mapę, co 2 px; przebija skałę (terenu nie rusza) i każdego robala (poza swoimi w drużynie), 75 obrażeń każdemu raz, odrzut 150; zdarzenie `railgun` (x0,y0,x1,y1,trafieni) → `emitLaser` w `fx.js` |
 | ] | Lina ninja | lina (`narzedzie`) | 5 | nie strzał: `linaPrzelacz` (OGNIA/F zaczepia i puszcza, SKOK puszcza), `krokLiny` = wahadło (tylko sqrt) |
 
 - **Lina ninja (4.4)**: stan `w.lina = {x, y, dl}` tylko u gracza z turą, jak chodzenie — nie ma go w `stanRobali`,
@@ -711,9 +716,10 @@ kolejności — zapytaj, zanim zaczniesz. Każdy etap to osobna wersja z testami
 nowych kanałów (dane doklejone do `dolacz`, `nowa`, strzału).
 
 **Etap 1 — klimat Wormsów (wersja 4.2, małe ryzyko)**
-- **Dźwięki**: Arena jest dziś całkiem niema. Syntezowane Web Audio jak `dzwieki` w `zrzutka/app.js`
+- ~~**Dźwięki**~~ — zrobione w 4.9 (`dzwieki.js`, plus muzyczka). Pierwotny pomysł: Syntezowane Web Audio jak `dzwieki` w `zrzutka/app.js`
   (bez plików): wybuch, wystrzał, odbicie granatu, owca, lont, plusk lawy, zrzut, dżingiel tury, „ała”.
   Podpięte pod zdarzenia w `obsluzZdarzenia`; wyciszenie w `localStorage` (np. `arena:dzwiek`).
+- **Wygląd od 4.9**: robal bez ogonka, skrzynki (`drawSkrzynka`: wojskowa skrzynka z pasem i nabojami, apteczka z uchwytem i plusikami, poświata, spadochron w pasy), lawa z poświatą i bąblami, w tle (`drawTlo`) krwawy księżyc i łuna wulkanu. Tańce z obrotem (`obrot` w `drawWorm`) rysują nick i pasek osobno (`tylkoNapis`).
 - **Nagrobki**: tylko `render.js` — martwy robal (`!alive && !odszedl`) ma w stanie swoje x, y.
 - **Dymki z tekstami** przy trafieniu, eliminacji i wpadnięciu do lawy; lokalnie, jak `emitTekst` w `fx.js`.
 - **Czapki postaci ze zrzutki** wybierane przy wejściu obok koloru (rogi Kozaka, hełm Stozhinia, opaska
@@ -799,14 +805,15 @@ więcej akcesoriów (np. czapki postaci ze zrzutki), ewentualnie konto także w 
   - **4.7** pasek Fortnite/0 A.D./Arena w grze, panel + lobby na jednym ekranie, bez domyślnej areny, 5 akcesoriów robala, nowy ekran ładowania
   - **4.7.1** kurtyna przy przejściu zrzutka ↔ Arena, wejście na Arenę bez ekranu ładowania, Korona Króla GOATów za wszystkie osiągnięcia + 3 czapki
   - **4.8** 1–3 robale na gracza, wyższa mapa ekstremalna, celny nalot, minimapa i podgląd całej mapy
+  - **4.9** railgun, pingi, dźwięki i muzyczka, 5 nowych tańców, okulary i buźka zamiast lamy i kilofa, bez ogonków, nowe skrzynki i tło, start gospodarza bez GOTOWY
 
 ---
 
 ## 9. Testy i sprawdzanie
 
 ```
-node gra/test/sim.test.mjs        # symulacja, bronie, determinizm, drużyny, ustawienia, skrzynki, spawny, osiągnięcia, kamera, lina, most obracany, rozmiar mapy, kilka robali (84)
-node gra/test/protokol.test.mjs   # protokół: lag, rozłączenia, ucieczka na żywo, lobby, ustawienia, partie 2v2, z własnymi zasadami i z kilkoma robalami (22, ~35 s)
+node gra/test/sim.test.mjs        # symulacja, bronie, determinizm, drużyny, ustawienia, skrzynki, spawny, osiągnięcia, kamera, lina, most obracany, rozmiar mapy, kilka robali, railgun (86)
+node gra/test/protokol.test.mjs   # protokół: lag, rozłączenia, ucieczka na żywo, lobby, ustawienia, partie 2v2, z własnymi zasadami i z kilkoma robalami, start bez GOTOWY (23, ~35 s)
 cd serwer && npm install && node test.mjs   # serwer na VPS: Arena (10) + konta, pokoje, akcesoria i czapki (10) + zrzutka (7)
 ```
 Obie muszą przejść przed pushem. Dodatkowo `node --check` na zmienionych plikach JS.

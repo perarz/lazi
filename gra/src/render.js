@@ -143,7 +143,7 @@ export function repaintRect(r, terrain, rect) {
 
 /* Minimapa w rogu HUD-u (od 4.8): cały teren w skali, lawa, skrzynki, robale
    (aktywny z białą obwódką) i prostokąt tego, co widać na ekranie. */
-export function rysujMinimape(canvas, r, state, cam) {
+export function rysujMinimape(canvas, r, state, cam, pingi = null) {
   const dpr = Math.min(window.devicePixelRatio || 1, 2);
   const W = canvas.clientWidth, H = canvas.clientHeight;
   if (!W || !H) return;
@@ -170,6 +170,17 @@ export function rysujMinimape(canvas, r, state, cam) {
     ctx.arc(v.x * sx, (v.y - 8) * sy, w === akt ? 3.6 : 2.6, 0, 6.283);
     ctx.fill();
     if (w === akt) { ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.2; ctx.stroke(); }
+  }
+  // pingi (4.9): migające kółka w kolorze gracza
+  for (const p of pingi || []) {
+    const t = (performance.now() - p.od) / 1000;
+    ctx.strokeStyle = p.kolor;
+    ctx.lineWidth = 2;
+    ctx.globalAlpha = 0.5 + 0.5 * Math.sin(t * 10);
+    ctx.beginPath();
+    ctx.arc(p.x * sx, p.y * sy, 4 + (t * 6) % 5, 0, 6.283);
+    ctx.stroke();
+    ctx.globalAlpha = 1;
   }
   // kadr kamery
   const kw = r.viewW / cam.zoom, kh = r.viewH / cam.zoom;
@@ -310,6 +321,78 @@ export function draw(r, state, cam, fx, dt, opcje = {}) {
   }
 
   if (fx) drawFx(fx, ctx);
+  if (opcje.pingi) for (const p of opcje.pingi) drawPing(ctx, p, cam.zoom);
+  ctx.restore();
+  // pingi poza kadrem: strzałka przy krawędzi ekranu w kolorze gracza
+  if (opcje.pingi) for (const p of opcje.pingi) strzalkaPingu(ctx, r, cam, p);
+}
+
+/* Ping (4.9): pinezka z pulsującymi kręgami i nickiem — rozmiar niezależny od zoomu. */
+function drawPing(ctx, p, zoom) {
+  const s = 1 / Math.max(0.35, Math.min(1.6, zoom));
+  const znik = Math.min(1, (p.dl - p.t) / 0.6);
+  const wejscie = Math.min(1, p.t / 0.25);
+  ctx.save();
+  ctx.translate(p.x, p.y);
+  ctx.scale(s, s);
+  ctx.globalAlpha = znik;
+  for (let k = 0; k < 3; k++) {
+    const f = (p.t * 0.9 + k / 3) % 1;
+    ctx.globalAlpha = znik * (1 - f) * 0.8;
+    ctx.strokeStyle = p.kolor;
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.ellipse(0, 0, 8 + f * 34, (8 + f * 34) * 0.45, 0, 0, 6.283);
+    ctx.stroke();
+  }
+  ctx.globalAlpha = znik;
+  const skok = -Math.abs(Math.sin(p.t * 5)) * 6 * (1 - Math.min(1, p.t / 2)) - 30 * (1 - wejscie);
+  ctx.translate(0, skok);
+  // pinezka: kropla w kolorze gracza z białym środkiem
+  ctx.fillStyle = p.kolor;
+  ctx.strokeStyle = 'rgba(0,0,0,0.7)';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(0, 0);
+  ctx.bezierCurveTo(-4, -8, -12, -14, -12, -24);
+  ctx.arc(0, -24, 12, Math.PI, 0);
+  ctx.bezierCurveTo(12, -14, 4, -8, 0, 0);
+  ctx.fill();
+  ctx.stroke();
+  ctx.fillStyle = '#fff';
+  ctx.beginPath();
+  ctx.arc(0, -24, 4.5, 0, 6.283);
+  ctx.fill();
+  ctx.font = '800 13px system-ui, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.lineJoin = 'round';
+  ctx.lineWidth = 3.5;
+  ctx.strokeStyle = 'rgba(0,0,0,0.8)';
+  ctx.strokeText(p.nick, 0, -42);
+  ctx.fillStyle = p.kolor;
+  ctx.fillText(p.nick, 0, -42);
+  ctx.restore();
+}
+
+function strzalkaPingu(ctx, r, cam, p) {
+  const sx = (p.x - cam.x) * cam.zoom + r.viewW / 2;
+  const sy = (p.y - cam.y) * cam.zoom + r.viewH / 2;
+  const m = 26;
+  if (sx >= m && sx <= r.viewW - m && sy >= m && sy <= r.viewH - m) return;
+  const x = Math.max(m, Math.min(r.viewW - m, sx)), y = Math.max(m, Math.min(r.viewH - m, sy));
+  const kat = Math.atan2(sy - y, sx - x);
+  ctx.save();
+  ctx.globalAlpha = Math.min(1, (p.dl - p.t) / 0.6) * (0.75 + 0.25 * Math.sin(p.t * 8));
+  ctx.translate(x, y);
+  ctx.rotate(kat);
+  ctx.fillStyle = p.kolor;
+  ctx.strokeStyle = 'rgba(0,0,0,0.75)';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(14, 0); ctx.lineTo(-8, -10); ctx.lineTo(-3, 0); ctx.lineTo(-8, 10);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
   ctx.restore();
 }
 
@@ -343,6 +426,43 @@ function drawTlo(ctx, r, cam, W, H) {
   ctx.globalAlpha = 1;
   // pasma gór: im dalej, tym wolniej przesuwają się z kamerą
   const horyzont = H * 0.62 + (swiatLawa - cam.y) * cam.zoom * 0.12;
+  // 4.9: krwawy księżyc z poświatą i daleki wulkan z łuną
+  const kx = W * 0.78 - cam.x * 0.01, ky = H * 0.2 - cam.y * 0.01;
+  const kr = Math.max(26, Math.min(W, H) * 0.07);
+  const halo = ctx.createRadialGradient(kx, ky, kr * 0.6, kx, ky, kr * 3.2);
+  halo.addColorStop(0, 'rgba(255,120,70,0.28)');
+  halo.addColorStop(1, 'rgba(255,80,40,0)');
+  ctx.fillStyle = halo;
+  ctx.fillRect(kx - kr * 3.2, ky - kr * 3.2, kr * 6.4, kr * 6.4);
+  const ks = ctx.createRadialGradient(kx - kr * 0.3, ky - kr * 0.3, kr * 0.1, kx, ky, kr);
+  ks.addColorStop(0, '#ffc9a0');
+  ks.addColorStop(1, '#c2462a');
+  ctx.fillStyle = ks;
+  ctx.beginPath();
+  ctx.arc(kx, ky, kr, 0, 6.283);
+  ctx.fill();
+  ctx.fillStyle = 'rgba(120,30,20,0.35)';
+  for (const [ox, oy, rr] of [[-0.3, -0.1, 0.22], [0.25, 0.3, 0.16], [0.1, -0.4, 0.1]]) {
+    ctx.beginPath(); ctx.arc(kx + ox * kr, ky + oy * kr, rr * kr, 0, 6.283); ctx.fill();
+  }
+  const wx = W * 0.3 - (cam.x * 0.06) % (W * 1.6), wy = horyzont - 20;
+  for (const wxx of [wx, wx + W * 1.6]) {
+    const luna = ctx.createRadialGradient(wxx, wy - 150, 5, wxx, wy - 150, 160);
+    luna.addColorStop(0, 'rgba(255,120,30,' + (0.35 + 0.1 * Math.sin(r.time * 1.3)) + ')');
+    luna.addColorStop(1, 'rgba(255,60,0,0)');
+    ctx.fillStyle = luna;
+    ctx.fillRect(wxx - 160, wy - 310, 320, 320);
+    ctx.fillStyle = '#140707';
+    ctx.beginPath();
+    ctx.moveTo(wxx - 190, wy + 40);
+    ctx.lineTo(wxx - 30, wy - 150);
+    ctx.lineTo(wxx + 30, wy - 150);
+    ctx.lineTo(wxx + 200, wy + 40);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = 'rgba(255,110,20,0.8)';
+    ctx.fillRect(wxx - 26, wy - 152, 52, 4);
+  }
   for (const g of GORY_TLA) {
     const skok = 90;
     const przes = -(cam.x * g.par) % skok;
@@ -387,6 +507,30 @@ function drawLava(ctx, time, poziom) {
   ctx.fillStyle = g;
   // lawa sięga daleko za mapę — kamera potrafi tam zajrzeć
   ctx.fillRect(-1400, poziom, swiatW + 2800, swiatH - poziom + 1400);
+
+  // poświata nad lawą (4.9)
+  const zar = ctx.createLinearGradient(0, poziom - 90, 0, poziom);
+  zar.addColorStop(0, 'rgba(255,90,0,0)');
+  zar.addColorStop(1, 'rgba(255,110,10,0.28)');
+  ctx.fillStyle = zar;
+  ctx.fillRect(-1400, poziom - 90, swiatW + 2800, 90);
+  // bąble i jaśniejsze plamy pod powierzchnią
+  for (let i = 0; i < Math.ceil(swiatW / 70); i++) {
+    const x = i * 70 + Math.sin(i * 12.7) * 30;
+    const faza = (time * (0.35 + (i % 5) * 0.08) + i * 0.37) % 1;
+    ctx.fillStyle = 'rgba(255,200,80,' + (0.25 * (1 - faza)) + ')';
+    ctx.beginPath();
+    ctx.ellipse(x, poziom + 14 + (i % 3) * 10, 16 + (i % 4) * 5, 4, 0, 0, 6.283);
+    ctx.fill();
+    if (faza < 0.35) {
+      const rr = 2 + faza * 12;
+      ctx.strokeStyle = 'rgba(255,230,150,' + (0.8 - faza * 2) + ')';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.arc(x + 8, poziom - 1, rr, Math.PI, 0);
+      ctx.stroke();
+    }
+  }
 
   // falująca, świecąca powierzchnia
   ctx.strokeStyle = 'rgba(255,220,120,0.8)';
@@ -461,46 +605,138 @@ function drawSkrzynka(ctx, r, c) {
   const t0 = r.zrzuty.get(c.id);
   const f = t0 === undefined ? 1 : Math.min(1, (r.time - t0) / 1.6);
   const spad = (1 - f) * 420;
+  const apteczka = c.typ === 'apteczka';
+  const t = r.time + c.id;
   ctx.save();
   ctx.translate(c.x + Math.sin(r.time * 3 + c.id) * (1 - f) * 10, c.y - spad);
   if (f < 1) {
-    // spadochron
-    ctx.strokeStyle = 'rgba(255,240,220,0.8)';
+    // spadochron w pasy, linki do rogów skrzynki
+    ctx.strokeStyle = 'rgba(255,240,220,0.85)';
     ctx.lineWidth = 1;
     ctx.beginPath();
-    ctx.moveTo(-8, -14); ctx.lineTo(-16, -36);
-    ctx.moveTo(8, -14); ctx.lineTo(16, -36);
+    for (const x of [-11, -4, 4, 11]) { ctx.moveTo(x * 0.9, -18); ctx.lineTo(x * 2.1, -40); }
     ctx.stroke();
-    ctx.fillStyle = c.typ === 'apteczka' ? '#f4f1ea' : '#e0a93a';
+    const segm = 6;
+    for (let i = 0; i < segm; i++) {
+      const a0 = Math.PI + (i / segm) * Math.PI, a1 = Math.PI + ((i + 1) / segm) * Math.PI;
+      ctx.fillStyle = i % 2 ? '#f6efe2' : (apteczka ? '#e0302a' : '#e0a93a');
+      ctx.beginPath();
+      ctx.moveTo(0, -38);
+      ctx.arc(0, -38, 25, a0, a1);
+      ctx.closePath();
+      ctx.fill();
+    }
+    ctx.strokeStyle = 'rgba(0,0,0,0.35)';
+    ctx.lineWidth = 1;
     ctx.beginPath();
-    ctx.arc(0, -34, 19, Math.PI, 0);
+    ctx.arc(0, -38, 25, Math.PI, 0);
+    ctx.stroke();
+  } else {
+    // poświata: pulsuje, żeby skrzynkę było widać z daleka
+    const puls = 0.5 + 0.5 * Math.sin(t * 3);
+    const g = ctx.createRadialGradient(0, -9, 2, 0, -9, 26);
+    g.addColorStop(0, apteczka ? 'rgba(120,255,150,' + (0.35 + puls * 0.25) + ')' : 'rgba(255,210,70,' + (0.3 + puls * 0.25) + ')');
+    g.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = g;
+    ctx.fillRect(-28, -36, 56, 54);
+    // cień na gruncie
+    ctx.fillStyle = 'rgba(0,0,0,0.4)';
+    ctx.beginPath();
+    ctx.ellipse(0, 0, 13, 2.8, 0, 0, 6.283);
     ctx.fill();
-    ctx.fillStyle = c.typ === 'apteczka' ? '#d8261c' : '#8a5a1a';
-    ctx.fillRect(-4, -52, 8, 18);
   }
   const bujanie = f >= 1 ? Math.sin(r.time * 2.4 + c.id) * 1.2 : 0;
   ctx.translate(0, bujanie);
-  if (c.typ === 'apteczka') {
-    ctx.fillStyle = '#f4f1ea';
-    ctx.fillRect(-9, -16, 18, 16);
-    ctx.fillStyle = '#d8261c';
-    ctx.fillRect(-2.5, -13, 5, 10);
-    ctx.fillRect(-6, -10.5, 12, 5);
-  } else {
-    ctx.fillStyle = '#9a6a2e';
-    ctx.fillRect(-10, -16, 20, 16);
-    ctx.strokeStyle = '#5a3a14';
-    ctx.lineWidth = 1.5;
-    ctx.strokeRect(-9.5, -15.5, 19, 15);
+  const zaokr = (x, y, w, h, rr) => {
     ctx.beginPath();
-    ctx.moveTo(-9, -15); ctx.lineTo(9, -1);
-    ctx.moveTo(9, -15); ctx.lineTo(-9, -1);
+    if (ctx.roundRect) ctx.roundRect(x, y, w, h, rr); else ctx.rect(x, y, w, h);
+  };
+  if (apteczka) {
+    // apteczka: biała walizka z uchwytem, połyskiem i czerwonym krzyżem
+    ctx.strokeStyle = '#5a5a5a';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(-5, -17); ctx.lineTo(-5, -21); ctx.lineTo(5, -21); ctx.lineTo(5, -17);
     ctx.stroke();
+    const g = ctx.createLinearGradient(0, -17, 0, 0);
+    g.addColorStop(0, '#ffffff');
+    g.addColorStop(1, '#cfd6dc');
+    ctx.fillStyle = g;
+    zaokr(-11, -17, 22, 17, 3);
+    ctx.fill();
+    ctx.strokeStyle = '#7a8590';
+    ctx.lineWidth = 1.2;
+    ctx.stroke();
+    ctx.fillStyle = '#e02a24';
+    ctx.fillRect(-2.6, -14.5, 5.2, 12);
+    ctx.fillRect(-6.8, -11, 13.6, 5.2);
+    ctx.fillStyle = 'rgba(255,255,255,0.7)';
+    ctx.fillRect(-9.5, -15.6, 19, 2);
+    // unoszące się plusiki
     if (f >= 1) {
-      ctx.fillStyle = '#ffd23b';
-      ctx.font = 'bold 9px system-ui, sans-serif';
+      for (let k = 0; k < 2; k++) {
+        const u = (t * 0.7 + k * 0.5) % 1;
+        ctx.globalAlpha = (1 - u) * 0.9;
+        ctx.fillStyle = '#7dff9a';
+        const px = (k ? 7 : -7) + Math.sin(u * 6 + k) * 2, py = -22 - u * 18;
+        ctx.fillRect(px - 2.5, py - 0.8, 5, 1.6);
+        ctx.fillRect(px - 0.8, py - 2.5, 1.6, 5);
+      }
+      ctx.globalAlpha = 1;
+    }
+  } else {
+    // skrzynka z amunicją: wojskowa, zielona, z okuciami, pasem ostrzegawczym i nabojami
+    const g = ctx.createLinearGradient(0, -18, 0, 0);
+    g.addColorStop(0, '#6f7f3f');
+    g.addColorStop(1, '#465426');
+    ctx.fillStyle = g;
+    zaokr(-12, -18, 24, 18, 2.5);
+    ctx.fill();
+    ctx.strokeStyle = '#232a12';
+    ctx.lineWidth = 1.4;
+    ctx.stroke();
+    // wieko
+    ctx.fillStyle = '#809149';
+    ctx.fillRect(-12, -18, 24, 4.5);
+    ctx.strokeStyle = '#232a12';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(-12, -18, 24, 4.5);
+    // pas żółto-czarny
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(-12, -9, 24, 4);
+    ctx.clip();
+    ctx.fillStyle = '#ffd23b';
+    ctx.fillRect(-12, -9, 24, 4);
+    ctx.fillStyle = '#1a1a1a';
+    for (let x = -14; x < 14; x += 4) {
+      ctx.beginPath();
+      ctx.moveTo(x, -5); ctx.lineTo(x + 2, -9); ctx.lineTo(x + 4, -9); ctx.lineTo(x + 2, -5);
+      ctx.fill();
+    }
+    ctx.restore();
+    // okucia i nity
+    ctx.fillStyle = '#c9ced2';
+    for (const [x, y] of [[-10.5, -12], [10.5, -12], [-10.5, -2], [10.5, -2]]) {
+      ctx.beginPath(); ctx.arc(x, y, 1.1, 0, 6.283); ctx.fill();
+    }
+    // naboje wystające spod wieka
+    for (const x of [-6, -2, 2, 6]) {
+      ctx.fillStyle = '#d9a441';
+      ctx.fillRect(x - 1.2, -22, 2.4, 4.5);
+      ctx.fillStyle = '#b87333';
+      ctx.beginPath();
+      ctx.arc(x, -22, 1.2, Math.PI, 0);
+      ctx.fill();
+    }
+    if (f >= 1) {
+      ctx.font = '800 8px system-ui, sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillText('AMMO', 0, -19);
+      ctx.lineWidth = 2.5;
+      ctx.strokeStyle = 'rgba(0,0,0,0.75)';
+      ctx.strokeText('AMMO', 0, -26 - Math.abs(Math.sin(t * 2)) * 2);
+      ctx.fillStyle = '#ffd23b';
+      ctx.fillText('AMMO', 0, -26 - Math.abs(Math.sin(t * 2)) * 2);
     }
   }
   ctx.restore();
@@ -720,8 +956,28 @@ function drawProjectile(ctx, p) {
 function drawWorm(ctx, w, isActive, time, o) {
   const e = o.emotka;
   if (!e) { rysujRobala(ctx, w, isActive, time, o); return; }
-  let dx = 0, dy = 0, odwroc = false;
-  if (e.taniec === 'szczescie') {
+  let dx = 0, dy = 0, odwroc = false, obrot = 0;
+  const v0 = w.widok || w;
+  if (e.taniec === 'breakdance') {
+    obrot = e.t * 9;                                  // kręci się na głowie
+    dy = -8 - Math.abs(Math.sin(e.t * 9)) * 3;
+  } else if (e.taniec === 'floss') {
+    dx = Math.sin(e.t * 14) * 6;                     // szybkie bujanie na boki
+    obrot = Math.sin(e.t * 14 + 1.5) * 0.35;
+    odwroc = Math.floor(e.t * 4.5) % 2 === 1;
+  } else if (e.taniec === 'helikopter') {
+    dy = -Math.sin(Math.min(1, e.t / e.dl) * Math.PI) * 30;   // wznosi się i ląduje
+    odwroc = Math.floor(e.t * 12) % 2 === 1;                  // wirnik
+    obrot = Math.sin(e.t * 3) * 0.15;
+  } else if (e.taniec === 'disco') {
+    dy = -Math.abs(Math.sin(e.t * 6)) * 7;
+    obrot = Math.sin(e.t * 3) * 0.45;                // ręka w górę, ręka w dół
+    odwroc = Math.sin(e.t * 3) < 0;
+  } else if (e.taniec === 'kozi') {
+    dy = -Math.abs(Math.sin(e.t * 7)) * 16;           // kozie susy z obrotem w locie
+    obrot = Math.sin(e.t * 7) > 0.2 ? Math.sin(e.t * 3.5) * 0.9 : 0;
+    dx = Math.sin(e.t * 3.5) * 10;
+  } else if (e.taniec === 'szczescie') {
     dy = -Math.abs(Math.sin(e.t * 9)) * 12;          // podskoki
     odwroc = Math.floor(e.t * 2.2) % 2 === 1;        // obrót co skok albo dwa
   } else if (e.taniec === 'robak') {
@@ -731,8 +987,16 @@ function drawWorm(ctx, w, isActive, time, o) {
   }
   ctx.save();
   ctx.translate(dx, dy);
-  rysujRobala(ctx, w, isActive, time, { ...o, bron: e.taniec ? null : o.bron, odwroc });
+  if (obrot) {
+    const oy = v0.y - WORM_H / 2;
+    ctx.translate(v0.x, oy);
+    ctx.rotate(obrot);
+    ctx.translate(-v0.x, -oy);
+  }
+  rysujRobala(ctx, w, isActive, time, { ...o, bron: e.taniec ? null : o.bron, odwroc, bezNapisu: o.bezNapisu || !!obrot });
   ctx.restore();
+  // przy obrocie nick i pasek życia rysujemy osobno, prosto
+  if (obrot && !o.bezNapisu) rysujRobala(ctx, w, false, time, { ...o, tylkoNapis: true });
   if (e.tekst) dymekEmotki(ctx, w.widok || w, e);
 }
 
@@ -768,6 +1032,7 @@ function rysujRobala(ctx, w, isActive, time, o) {
   const v = w.widok || w;
   const cx = v.x;
   const cy = v.y - WORM_H / 2;
+  if (o.tylkoNapis) { napisRobala(ctx, w, v, cx, cy, o); return; }
   const facing = (v.facing ?? w.facing) * (o.odwroc ? -1 : 1);
   const angle = v.angle ?? w.angle;
 
@@ -788,15 +1053,9 @@ function rysujRobala(ctx, w, isActive, time, o) {
   ctx.fill();
   // oddech: lekkie rozciąganie w pionie
   const oddech = 1 + Math.sin(time * 3 + cx * 0.1) * 0.04;
-  // akcesorium na plecach (kilof) i tylne części czapek (wstęgi, pióropusz) są za ciałem
+  // akcesorium na plecach i tylne części czapek (wstęgi, pióropusz) są za ciałem
   if (o.akc && o.akc.tyl) o.akc.rysuj(ctx, cx, cy, facing, time);
   if (o.akc && o.akc.zaGlowa) o.akc.zaGlowa(ctx, cx, cy, facing, time);
-  // ogonek z dwóch segmentów za plecami
-  ctx.fillStyle = w.color;
-  ctx.beginPath();
-  ctx.ellipse(cx - facing * 8, v.y - 3.5, 4.6, 3.5, 0, 0, 6.283);
-  ctx.ellipse(cx - facing * 12.5, v.y - 2.2, 3, 2.2, 0, 0, 6.283);
-  ctx.fill();
   // ciało z połyskiem
   const g = ctx.createRadialGradient(cx - facing * 2 - 1, cy - 5, 1, cx, cy, 12);
   g.addColorStop(0, 'rgba(255,255,255,0.55)');
@@ -838,7 +1097,7 @@ function rysujRobala(ctx, w, isActive, time, o) {
   // broń w łapach aktywnego robala, ustawiona wzdłuż celownika
   if (isActive && o.bron) {
     const rura = o.bron === 'bazooka' || o.bron === 'salwa';
-    const dl = o.bron === 'strzelba' ? 16 : rura ? 18 : o.bron === 'kij' ? 17 : o.bron === 'wiertlo' ? 15 : 0;
+    const dl = o.bron === 'strzelba' ? 16 : rura ? 18 : o.bron === 'kij' ? 17 : o.bron === 'wiertlo' ? 15 : o.bron === 'railgun' ? 21 : 0;
     if (dl) {
       ctx.save();
       ctx.translate(cx + facing * 2, cy + 3);
@@ -849,6 +1108,22 @@ function rysujRobala(ctx, w, isActive, time, o) {
         ctx.fillStyle = '#b8c2cc';
         ctx.beginPath();
         ctx.moveTo(4, -3.5); ctx.lineTo(dl, 0); ctx.lineTo(4, 3.5);
+        ctx.fill();
+      } else if (o.bron === 'railgun') {
+        // railgun (4.9): dwie szyny z pulsującą, błękitną energią między nimi
+        const puls = 0.55 + Math.sin(time * 9) * 0.35;
+        ctx.fillStyle = '#39414d';
+        ctx.fillRect(-5, -3.5, 10, 7);
+        ctx.fillStyle = '#9aa7b6';
+        ctx.fillRect(2, -3.6, dl - 2, 2);
+        ctx.fillRect(2, 1.6, dl - 2, 2);
+        ctx.globalAlpha = puls;
+        ctx.fillStyle = '#6fe0ff';
+        ctx.fillRect(3, -1.4, dl - 4, 2.8);
+        ctx.globalAlpha = 1;
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.arc(dl, 0, 1.6 + puls, 0, 6.283);
         ctx.fill();
       } else if (o.bron === 'kij') {
         // kij bejsbolowy: grubieje ku końcowi
@@ -895,6 +1170,10 @@ function rysujRobala(ctx, w, isActive, time, o) {
   }
 
   if (o.bezNapisu) return;
+  napisRobala(ctx, w, v, cx, cy, o);
+}
+
+function napisRobala(ctx, w, v, cx, cy, o) {
   // pasek zdrowia i nazwa (nad akcesorium trochę wyżej)
   const barW = 34;
   const top = cy - 26 - (o.akc && !o.akc.tyl ? o.akc.wys ?? 5 : 0);

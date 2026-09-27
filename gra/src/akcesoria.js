@@ -6,7 +6,7 @@
 
    rysuj(ctx, cx, cy, f, t): cx, cy = środek ciała robala, f = zwrot (1 w prawo,
    -1 w lewo), t = czas w s. Ciało to elipsa 8×10, oczy na wysokości cy − 4.
-   `tyl: true` = rysowane przed ciałem (np. kilof na plecach). */
+   `tyl: true` = rysowane przed ciałem (np. coś na plecach). */
 
 import { CZAPKI } from './czapki.js';
 
@@ -47,64 +47,94 @@ export const PODSTAWOWE = [
     }
   },
   {
-    id: 'lama', nazwa: 'Czapka lamy z łupami', gra: 'Fortnite', ikona: '🦙',
+    // 4.9: zamiast czapki lamy — okulary przeciwsłoneczne z odblaskiem
+    id: 'okulary', nazwa: 'Okulary przeciwsłoneczne', gra: 'Fortnite', ikona: '🕶️',
     rysuj(ctx, cx, cy, f, t) {
-      const y = cy - 7;
-      const machniecie = Math.sin(t * 4) * 0.12;
-      // uszy lamy
-      for (const s of [-1, 1]) {
+      const y = cy - 4.2;
+      // zausznik do tyłu głowy
+      ctx.strokeStyle = '#111';
+      ctx.lineWidth = 1.3;
+      ctx.beginPath();
+      ctx.moveTo(cx + f * 0.2, y - 1.2);
+      ctx.lineTo(cx - f * 6.5, y - 0.4);
+      ctx.stroke();
+      // szkła: ciemne, z fioletowo-niebieskim połyskiem
+      for (const ox of [1.2, 5.9]) {
+        const x = cx + f * ox;
+        const g = ctx.createLinearGradient(x, y - 3, x, y + 3);
+        g.addColorStop(0, '#3a2a6a');
+        g.addColorStop(0.5, '#0c0c14');
+        g.addColorStop(1, '#1d3d6a');
+        ctx.fillStyle = g;
+        ctx.strokeStyle = '#000';
+        ctx.lineWidth = 0.8;
+        ctx.beginPath();
+        ctx.moveTo(x - 3.1, y - 2.4);
+        ctx.lineTo(x + 3.1, y - 2.4);
+        ctx.quadraticCurveTo(x + 3.2, y + 2.8, x, y + 2.9);
+        ctx.quadraticCurveTo(x - 3.2, y + 2.8, x - 3.1, y - 2.4);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+      }
+      // mostek
+      ctx.strokeStyle = '#111';
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.moveTo(cx + f * 4.2, y - 1.6);
+      ctx.lineTo(cx + f * 2.9, y - 1.6);
+      ctx.stroke();
+      // przesuwający się odblask
+      const b = ((t * 0.6) % 2);
+      if (b < 1) {
         ctx.save();
-        ctx.translate(cx + s * 4.5, y - 7);
-        ctx.rotate(s * (0.25 + machniecie));
-        ctx.fillStyle = '#b35cff';
-        ctx.beginPath(); ctx.ellipse(0, -4, 2, 5, 0, 0, 6.283); ctx.fill();
-        ctx.fillStyle = '#ffd1f4';
-        ctx.beginPath(); ctx.ellipse(0, -3.5, 0.9, 3.2, 0, 0, 6.283); ctx.fill();
+        ctx.globalAlpha = 0.75 * Math.sin(b * Math.PI);
+        ctx.strokeStyle = '#fff';
+        ctx.lineWidth = 0.9;
+        for (const ox of [1.2, 5.9]) {
+          const x = cx + f * ox - 2.2 + b * 4;
+          ctx.beginPath();
+          ctx.moveTo(x, y + 1.6);
+          ctx.lineTo(x + 1.6, y - 1.8);
+          ctx.stroke();
+        }
         ctx.restore();
       }
-      // czapka: fioletowa jak lama z łupami, z kolorowymi pasami
-      ctx.fillStyle = '#9b3cf0';
-      ctx.strokeStyle = '#4a1580';
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.ellipse(cx, y, 8.6, 7.2, 0, Math.PI, 0);
-      ctx.closePath();
-      ctx.fill();
-      ctx.stroke();
-      ctx.fillStyle = '#ffd93b';
-      ctx.fillRect(cx - 8.2, y - 2.2, 16.4, 1.6);
-      ctx.fillStyle = '#35d2ff';
-      ctx.fillRect(cx - 7.4, y - 4.6, 14.8, 1.3);
-      // pompon
-      ctx.fillStyle = '#ff7ad9';
-      ctx.beginPath(); ctx.arc(cx, y - 7.6, 2.2, 0, 6.283); ctx.fill();
     }
   },
   {
-    id: 'kilof', nazwa: 'Kilof na plecach', gra: 'Fortnite', ikona: '⛏️', tyl: true,
-    rysuj(ctx, cx, cy, f) {
-      ctx.save();
-      ctx.translate(cx - f * 5, cy + 2);
-      ctx.rotate(-f * 0.6);
-      // trzonek
-      ctx.fillStyle = '#8a5a2b';
-      ctx.fillRect(-1.3, -20, 2.6, 24);
-      ctx.fillStyle = '#5c3a17';
-      ctx.fillRect(-1.5, 0, 3, 3.5);
-      // głowica: zakrzywione ostrze
-      ctx.fillStyle = '#c9d3dc';
-      ctx.strokeStyle = '#4c5660';
-      ctx.lineWidth = 1;
+    // 4.9: zamiast kilofa — szeroki uśmiech z rumieńcami
+    id: 'buzka', nazwa: 'Szeroki uśmiech', gra: 'Arena', ikona: '😁',
+    rysuj(ctx, cx, cy, f, t) {
+      const x = cx + f * 3.6, y = cy + 1.4;
+      const sz = 3.6 + Math.sin(t * 2.4) * 0.25;
+      // rumieńce
+      ctx.fillStyle = 'rgba(255, 110, 130, 0.45)';
       ctx.beginPath();
-      ctx.moveTo(-10, -15);
-      ctx.quadraticCurveTo(0, -24, 10, -15);
-      ctx.lineTo(8, -14);
-      ctx.quadraticCurveTo(0, -20, -8, -14);
+      ctx.ellipse(cx + f * 7.2, cy - 0.3, 1.8, 1.1, 0, 0, 6.283);
+      ctx.ellipse(cx - f * 0.6, cy - 0.3, 1.6, 1, 0, 0, 6.283);
+      ctx.fill();
+      // usta: półksiężyc
+      ctx.fillStyle = '#5a0f14';
+      ctx.strokeStyle = '#2a0508';
+      ctx.lineWidth = 0.8;
+      ctx.beginPath();
+      ctx.moveTo(x - sz, y - 0.6);
+      ctx.quadraticCurveTo(x, y - 1.4, x + sz, y - 0.6);
+      ctx.quadraticCurveTo(x + sz * 0.8, y + sz * 1.05, x, y + sz * 1.05);
+      ctx.quadraticCurveTo(x - sz * 0.8, y + sz * 1.05, x - sz, y - 0.6);
       ctx.closePath();
       ctx.fill();
       ctx.stroke();
-      ctx.fillStyle = '#6b7580';
-      ctx.fillRect(-2.2, -21, 4.4, 4);
+      // zęby i język
+      ctx.save();
+      ctx.clip();
+      ctx.fillStyle = '#fffaf0';
+      ctx.fillRect(x - sz, y - 1.4, sz * 2, 1.9);
+      ctx.fillStyle = '#ff6f86';
+      ctx.beginPath();
+      ctx.ellipse(x + f * 0.4, y + sz * 1.05, sz * 0.6, sz * 0.45, 0, 0, 6.283);
+      ctx.fill();
       ctx.restore();
     }
   },

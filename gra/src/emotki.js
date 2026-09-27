@@ -10,7 +10,13 @@ export const EMOTKI = [
   { id: 'smiech', tekst: '😂', nazwa: 'Śmiech' },
   { id: 'szok', tekst: '😱', nazwa: 'Szok' },
   { id: 'szczescie', taniec: 'szczescie', tekst: '🎉', nazwa: 'Taniec szczęścia' },
-  { id: 'robak', taniec: 'robak', tekst: '🕺', nazwa: 'Taniec robaczka' }
+  { id: 'robak', taniec: 'robak', tekst: '🕺', nazwa: 'Taniec robaczka' },
+  // 4.9: więcej tańców
+  { id: 'breakdance', taniec: 'breakdance', tekst: '🌀', nazwa: 'Breakdance' },
+  { id: 'floss', taniec: 'floss', tekst: '💃', nazwa: 'Floss' },
+  { id: 'helikopter', taniec: 'helikopter', tekst: '🚁', nazwa: 'Helikopter' },
+  { id: 'disco', taniec: 'disco', tekst: '🪩', nazwa: 'Disco' },
+  { id: 'kozi', taniec: 'kozi', tekst: '🐐', nazwa: 'Kozi taniec' }
 ];
 
 export const EMOTKA_S = 3;          // s — tyle trwa dymek
