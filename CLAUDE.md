@@ -404,7 +404,7 @@ Lekcje z kalibracji:
 | `src/input.js` | Klawiatura, przyciski dotykowe, przeciąganie/szczypanie, PPM/Q = ekwipunek |
 | `src/render.js`, `src/fx.js` | Grafika (tu wolno trygonometrię i `Math.random`); w `render.js` też kamera i podgląd robala na ekranie wejścia |
 | `src/osiagniecia-reguly.js` | Reguły osiągnięć — czyste funkcje |
-| `test/sim.test.mjs`, `test/protokol.test.mjs` | Testy w Node (73 i 20) |
+| `test/sim.test.mjs`, `test/protokol.test.mjs` | Testy w Node (73 i 21) |
 
 ### Determinizm (święta zasada)
 - Symulacja (`sim.js`, `terrain.js`) używa tylko:
@@ -477,6 +477,12 @@ Lekcje z kalibracji:
     **losuj drużyny** `{t:'sklad', d:{id: drużyna}}`. W UI: stuknięcie gracza → pasek `#lobby-akcje`.
   - Pola ustawień (`<select>`) buduje się raz i tylko podmienia wartości — przebudowa zamykałaby listę pod palcem.
   - W trakcie trwającej partii gospodarz niczego nie zmienia (`steruje` w `odswiezLobby`).
+- **Podgląd na żywo (`ruch`, co `RUCH_CO`)** niesie od 4.3 oprócz pozycji/celownika/mocy/broni (`b`) także
+  życie `h`, zapas wybranej broni `z` i ostatnie ≤ 4 zdarzenia tury `e: [[nr, 'o'|'d'|'s', x, y, …]]`
+  (upadek, śmierć, skrzynka z `id`) — `zbierzEfekty` w `protokol.js`, tylko przed strzałem, bo ucieczkę widz
+  symuluje sam. Świeże zdarzenie wysyła podgląd bez czekania na odstęp. Widz (`pokazEfekty` w `main.js`) pokazuje
+  każde raz (po numerze), trzyma `widok.hp`/`widok.zapas`, chowa zebrane skrzynki (`zebraneSkrzynki` w `R.draw`),
+  a przycisk broni na dole pokazuje broń gracza z turą i jego nick (`cudzaBron`). Limit `ruch` na serwerze: 600 B.
 - **Kolory**: gracz wybiera kolor robala przy wejściu (`PALETA` w `main.js`, 12 kolorów, `arena:kolor`),
   kolor leci w `dolacz`. Przy kolizji `rozdzielKolory` zostawia go temu, kto dołączył wcześniej, reszta
   dostaje pierwszy wolny (lobby mówi o tym graczowi). Nick nad robalem jest w kolorze robala, a w drużynach
@@ -654,12 +660,15 @@ w drużynie (2 czy 3); czy robimy czapki i bronie z postaci ekipy; czy robimy ws
 
 ```
 node gra/test/sim.test.mjs        # symulacja, bronie, determinizm, drużyny, ustawienia, skrzynki, spawny, osiągnięcia, kamera (73)
-node gra/test/protokol.test.mjs   # protokół: lag, rozłączenia, ucieczka na żywo, lobby, ustawienia, partie 2v2 i z własnymi zasadami (20, ~30 s)
+node gra/test/protokol.test.mjs   # protokół: lag, rozłączenia, ucieczka na żywo, lobby, ustawienia, partie 2v2 i z własnymi zasadami (21, ~30 s)
 cd serwer && npm install && node test.mjs   # serwer na VPS: Arena (10) + zrzutka: wpłaty, na żywo, limity, plik, migracja (7)
 ```
 Obie muszą przejść przed pushem. Dodatkowo `node --check` na zmienionych plikach JS.
 Test protokołu gra losowe partie. Zmiana listy broni zmienia ich przebieg. Jeśli padnie test zależny od
 długości partii (np. „za mało strzałów”), sprawdź przyczynę, zanim zmienisz seed. Rozjazd stanu to zawsze błąd.
+Każda dodatkowa wiadomość klienta (np. więcej podglądów `ruch`) zużywa losowanie opóźnienia w atrapie i zmienia
+przebieg partii. Test przerywany na numerze tury musi potem dać klientom chwilę (`dogon`), bo partia mogła
+skończyć się właśnie wtedy — inaczej „różny stan” to tylko nieprzyjęty ostatni stan.
 
 **E2E i zrzuty**
 - Robimy je Playwrightem. Chromium jest w `/opt/pw-browsers`, moduł ładujesz przez

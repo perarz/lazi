@@ -266,6 +266,11 @@ function zgodnoscKoncowa(pr) {
   }
 }
 
+/* Po przerwaniu pętli na końcu partii: kilka sekund, żeby klienci przyjęli ostatni stan. */
+function dogon(serwer, kl, sek = 25) {
+  for (let i = 0; i < 60 * sek; i++) { serwer.czas += KLATKA; for (const k of kl) k.tik(); }
+}
+
 function najdluzszaTura(pr) {
   const zd = pr.serwer.log;
   let poprz = zd.find((z) => z.t === 'nowa').st, maks = 0;
@@ -335,6 +340,8 @@ await test('ucieczka na zywo: odbiorca gra strzal i ucieczke ulamek sekundy za s
   assert(pomiary > 300, 'za malo pomiarow: ' + pomiary);
   assert(maks * S.DT < 0.8, 'odbiorca za daleko za strzelcem: ' + (maks * S.DT).toFixed(2) + ' s');
   console.log('       najwieksze opoznienie ucieczki u odbiorcy: ' + (maks * S.DT).toFixed(2) + ' s (dawniej ~5 s)');
+  // partia mogła się skończyć właśnie na 6. turze — chwila, żeby wszyscy przyjęli ostatni stan
+  dogon(serwer, kl);
   zgodnoscKoncowa({ serwer, pokoj: P.zloz(serwer.log), wszyscy: kl, klienci: kl });
   for (const k of kl) assert(k.r.statystyki.korekty === 0, 'korekty u ' + k.id);
 });
@@ -478,6 +485,7 @@ await test('wyscig: karta wlasciciela w tle, gospodarz oddaje ture, wlasciciel w
       }
       if (P.zloz(serwer.log).tura >= 5) break;
     }
+    if (P.zloz(serwer.log).faza === 'koniec') dogon(serwer, kl);   // koniec partii w chwili przerwania pętli
     const p = P.zloz(serwer.log);
     assert(p.tura >= 5 || p.faza === 'koniec', 'partia stanela po wyscigu (seed ' + seed + ', tura ' + p.tura + ')');
     const a0 = p.akcje.get(0);
@@ -517,6 +525,33 @@ await test('karta w tle przez minute: po powrocie dogania log bez rozjazdu', () 
   });
   zgodnoscKoncowa(pr);
   assert(schowany.r.statystyki.skoki > 0, 'powracajacy nie skoczyl do najnowszego stanu');
+});
+
+await test('podglad na zywo: widz dostaje bron, zapas, zycie, zebrana skrzynke i upadek gracza z tura', () => {
+  const gracze = [{ id: 'a', name: 'a', color: '#fff' }, { id: 'b', name: 'b', color: '#0f0' }];
+  const p = P.zloz([{ t: 'nowa', seed: 4242, gracze, druzyny: 0, v: P.WERSJA, st: 1000 }]);
+  const r = P.nowaRozgrywka(p, p.aktywny);
+  const st = r.state;
+  const w = S.activeWorm(st);
+  st.weapon = 'dynamit';
+  w.hp = 60;
+  st.skrzynki.push({ id: 77, typ: 'apteczka', x: w.x, y: w.y });
+  const ctx = { teraz: p.turaOdkad + 1000, dt: KLATKA / 1000, obecnosc: {}, obecnoscTeraz: 0, obecnoscSwieza: false, ruchCo: 100 };
+  P.klatka(r, p, ctx);
+  let ruch = r.doWyslania.filter((z) => z.t === 'ruch').pop();
+  assert(ruch && ruch.b === 'dynamit' && ruch.z === 2, 'brak broni albo zapasu w podgladzie');
+  assert(ruch.h === 60 + S.APTECZKA_HP, 'zycie po apteczce nie w podgladzie: ' + ruch.h);
+  const e = ruch.e && ruch.e.find((x) => x[1] === 's');
+  assert(e && e[4] === 77 && e[5] === S.APTECZKA_HP, 'zebrana skrzynka nie w podgladzie: ' + JSON.stringify(ruch.e));
+  // upadek: robal leci z wysoka — obrażenia idą w podglądzie od razu (bez czekania na odstęp)
+  r.doWyslania.length = 0;
+  st.events.length = 0;
+  w.y -= 120; w.vy = 900; w.onGround = false;
+  for (let i = 0; i < 60; i++) { ctx.teraz += KLATKA; P.klatka(r, p, ctx); }
+  ruch = r.doWyslania.filter((z) => z.t === 'ruch').pop();
+  const upadek = ruch && ruch.e && ruch.e.find((x) => x[1] === 'o');
+  assert(upadek && upadek[4] > 0 && ruch.h < 60 + S.APTECZKA_HP, 'upadek nie w podgladzie: ' + JSON.stringify(ruch && ruch.e));
+  assert(JSON.stringify(ruch).length < 600, 'podglad za duzy dla serwera: ' + JSON.stringify(ruch).length);
 });
 
 console.log('\nLOBBY');

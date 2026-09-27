@@ -421,6 +421,8 @@ export function nowaRozgrywka(pokoj, mojeId) {
     odwrotRuszyl: false,   // odbiorca: bufor ucieczki się napełnił, gramy
     odwrotKoniec: false,   // wysłałem już paczkę z końcem ucieczki
     odwrotPotw: 0, odwrotPotwCzas: 0, odwrotPonowCzas: 0,   // postęp potwierdzony w logu
+    efekty: [],            // moja tura: ostatnie zdarzenia do podglądu (upadek, skrzynka) — [nr, …]
+    efektNr: 0,
     statystyki: { korekty: 0, przesymulowania: 0, skoki: 0 }
   };
   if (pokoj.ostatniStan) wejdzWStan(r, pokoj.ostatniStan);
@@ -578,23 +580,58 @@ export function klatka(r, pokoj, ctx) {
     }
   }
 
-  // 6. Podgląd na żywo dla reszty (poza logiem): pozycja, celownik, moc.
-  if (mogeGrac(r, pokoj)) {
-    const w = S.activeWorm(st);
+  // 6. Podgląd na żywo dla reszty (poza logiem): pozycja, celownik, moc,
+  //    wybrana broń i jej zapas, życie oraz ostatnie zdarzenia (upadek,
+  //    zebrana skrzynka, śmierć) — widz nie symuluje cudzego chodzenia,
+  //    więc bez tego zobaczyłby je dopiero w strzale.
+  // Zbieramy też w klatce, w której tura skończyła się sama (np. upadek do lawy),
+  // i wysyłamy wtedy ostatni podgląd — inaczej widz nie zobaczy, co się stało.
+  const mojeChodzenie = otwarta && !r.obserwator && pokoj.aktywny === r.mojeId && !st.firedThisTurn &&
+    (!a || a.id === r.mojeId);
+  const przedEfektami = r.efektNr;
+  if (mojeChodzenie) zbierzEfekty(r);
+  const akt6 = S.activeWorm(st);
+  if (mogeGrac(r, pokoj) || (mojeChodzenie && r.efektNr > przedEfektami && akt6 && akt6.id === r.mojeId)) {
+    const w = akt6;
+    const zapas = w.amunicja[st.weapon];
     const ruch = {
       t: 'ruch', nr: st.turnNumber, id: r.mojeId,
       x: Math.round(w.x), y: Math.round(w.y), f: w.facing,
       k: Math.round(w.angle * 40) / 40,
       b: st.weapon,
       m: st.charging ? Math.round(st.power * 10) / 10 : 0,
-      c: st.cel ? [st.cel.x, st.cel.y] : null
+      c: st.cel ? [st.cel.x, st.cel.y] : null,
+      h: w.hp,
+      z: zapas === undefined ? null : zapas,
+      e: r.efekty.length ? r.efekty : undefined
     };
     const sygnatura = JSON.stringify(ruch);
-    if (sygnatura !== r.ostatniRuch && ctx.teraz - r.ostatniRuchCzas >= (ctx.ruchCo ?? 450)) {
+    const pilne = r.efektNr > przedEfektami;    // świeże zdarzenie nie czeka na odstęp
+    if (sygnatura !== r.ostatniRuch && (pilne || ctx.teraz - r.ostatniRuchCzas >= (ctx.ruchCo ?? 450))) {
       r.ostatniRuch = sygnatura;
       r.ostatniRuchCzas = ctx.teraz;
       r.doWyslania.push(ruch);
     }
+  }
+}
+
+/* Moja tura przed strzałem: zdarzenia z mojej symulacji, których widzowie
+   nie policzą sami (chodzą po podglądzie). Kolejne numery w turze, w podglądzie
+   leci kilka ostatnich — widz pokazuje te, których jeszcze nie widział,
+   więc zgubiony podgląd nic nie gubi. Wydarzeń nie zjadamy (main.js je rysuje). */
+const EFEKTY_W_RUCHU = 4;
+function zbierzEfekty(r) {
+  const st = r.state;
+  for (const e of st.events) {
+    if (e.wPodgladzie) continue;       // testy nie czyszczą zdarzeń co klatkę
+    e.wPodgladzie = true;
+    let ef = null;
+    if (e.type === 'obrazenia') ef = ['o', Math.round(e.x), Math.round(e.y), e.amount];
+    else if (e.type === 'smierc') ef = ['d', Math.round(e.x), Math.round(e.y), e.cause === 'lawa' ? 1 : 0];
+    else if (e.type === 'skrzynka') ef = ['s', e.x, e.y, e.id, e.typ === 'apteczka' ? e.hp : e.bron];
+    if (!ef) continue;
+    r.efekty.push([++r.efektNr, ...ef]);
+    if (r.efekty.length > EFEKTY_W_RUCHU) r.efekty.shift();
   }
 }
 
@@ -696,6 +733,8 @@ function wejdzWStan(r, stan) {
   r.odwrotPotw = 0;
   r.odwrotPotwCzas = 0;
   r.odwrotPonowCzas = 0;
+  r.efekty = [];
+  r.efektNr = 0;
 
   const ja = st.worms.find((w) => w.id === r.mojeId);
   if (ja && ja.odszedl && !r.obserwator) {

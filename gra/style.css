@@ -196,6 +196,9 @@ html, body {
 .bron-wybrana:hover:not(:disabled) { background: rgba(40, 20, 10, 0.9); border-color: var(--zar-jasny); }
 .bron-wybrana.otwarty { border-color: var(--zar-jasny); box-shadow: 0 0 24px rgba(255, 140, 0, 0.45); }
 .bron-wybrana.nieaktywna { opacity: 0.78; }
+/* cudza tura: broń gracza z turą (podgląd na żywo), nad nazwą jego nick */
+.bron-wybrana.cudza { opacity: 1; border-style: dashed; }
+.bron-wybrana.cudza .bron-tekst small { letter-spacing: 0.06em; text-transform: none; opacity: 0.85; max-width: 110px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .bron-ikona {
   width: 36px; height: 36px; flex: none;
   display: grid; place-items: center;

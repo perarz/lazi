@@ -1009,7 +1009,8 @@ function petla(teraz) {
   R.draw(renderer, st, kamera, fx, dt, {
     mojeId,
     rozlaczeni: rozlaczeni(),
-    celNalotu: celNalotu(moge)
+    celNalotu: celNalotu(moge),
+    zebraneSkrzynki: podglad.nr === st.turnNumber ? podglad.skrzynki : null
   });
   kamera.x -= tx; kamera.y -= ty;
   wstrzas *= Math.max(0, 1 - dt * 7);
@@ -1051,6 +1052,8 @@ function podgladNaZywo(dt, moge) {
   const ruch = net.ruch;
   for (const w of st.worms) if (w !== akt) w.widok = null;
   if (!akt) return;
+  if (podglad.nr !== st.turnNumber) podglad = { nr: st.turnNumber, efekt: 0, skrzynki: new Set() };
+  if (ruch && ruch.nr === st.turnNumber && ruch.id === akt.id && ruch.id !== mojeId) pokazEfekty(ruch, akt);
   if (moge || st.phase !== 'aim' || !ruch || ruch.nr !== st.turnNumber || ruch.id !== akt.id || ruch.id === mojeId) {
     akt.widok = null;
     return;
@@ -1068,7 +1071,34 @@ function podgladNaZywo(dt, moge) {
   v.angle += dk * k;
   v.moc = ruch.m || 0;
   v.bron = ruch.b;
+  v.zapas = typeof ruch.z === 'number' ? ruch.z : undefined;
+  if (typeof ruch.h === 'number') v.hp = ruch.h;
   v.cel = Array.isArray(ruch.c) ? { x: ruch.c[0], y: ruch.c[1] } : null;
+}
+
+/* Cudza tura przed strzałem: widz nie liczy cudzego chodzenia, więc upadek,
+   zebraną skrzynkę i śmierć zna tylko z podglądu (ruch.e: [nr, rodzaj, x, y, …]).
+   Pokazujemy każde zdarzenie raz — w podglądzie lecą ostatnie, z numerami. */
+let podglad = { nr: -1, efekt: 0, skrzynki: new Set() };
+function pokazEfekty(ruch, akt) {
+  if (!Array.isArray(ruch.e)) return;
+  for (const e of ruch.e) {
+    if (!Array.isArray(e) || !(e[0] > podglad.efekt)) continue;
+    podglad.efekt = e[0];
+    const [, rodzaj, x, y, a, b] = e;
+    if (rodzaj === 'o') {
+      emitTekst(fx, x, y - 34, '-' + a, '#ff7a55');
+    } else if (rodzaj === 'd') {
+      emitTekst(fx, x, y - 50, a ? 'do lawy!' : 'RIP', '#ffd93b', 17);
+    } else if (rodzaj === 's') {
+      podglad.skrzynki.add(a);
+      emitSpark(fx, x, y - 8, 16);
+      const apteczka = typeof b === 'number';
+      emitTekst(fx, x, y - 30, apteczka ? '+' + b + ' HP' : '+1 ' + (WEAPONS[b] ? WEAPONS[b].name : '?'),
+        apteczka ? '#7dff9a' : '#ffd23b', 16);
+      pokazInfo(akt.name + (apteczka ? ' zebrał apteczkę: +' + b + ' HP' : ' zebrał zaopatrzenie: +1 ' + (WEAPONS[b] ? WEAPONS[b].name : '?')));
+    }
+  }
 }
 
 /* Sygnały z protokołu: nowa tura, przebudowa terenu, wyrzucenie. */
@@ -1368,17 +1398,33 @@ function rysujBronie() {
   const moge = !!rg && P.mogeGrac(rg, pokoj);
   const ja = st ? st.worms.find((w) => w.id === mojeId) : null;
   const wybrana = moge ? st.weapon : mojaBron;
-  const w = WEAPONS[wybrana] || WEAPONS.bazooka;
   const amunicja = ja ? ja.amunicja : startowaAmunicja(st ? st.ust.bronie : 'pelny', U.KLASYKA);
-  const zapas = amunicja[wybrana];
+  // Cudza tura: na dole widać broń, którą gracz z turą ma teraz w łapach (z podglądu
+  // na żywo), a po strzale — tą, którą strzelił. Ekwipunek dalej pokazuje moje bronie.
+  const cudza = cudzaBron(st);
+  const pokazana = cudza ? cudza.bron : wybrana;
+  const w = WEAPONS[pokazana] || WEAPONS.bazooka;
+  const zapas = cudza ? cudza.zapas : amunicja[wybrana];
   el('bron-ikona').replaceChildren(ikonaBroni(w.id));
   el('bron-nazwa').textContent = w.name;
+  el('bron-kto').textContent = cudza ? cudza.kto : 'Broń';
+  el('btn-bron').classList.toggle('cudza', !!cudza);
   const z = el('bron-zapas');
   z.hidden = zapas === undefined;
   z.textContent = '×' + zapas;
   z.classList.toggle('zero', zapas !== undefined && zapas <= 0);
   el('btn-bron').classList.toggle('nieaktywna', !moge);
   ekwipunek.rysuj({ wybrana, amunicja, moge, wylaczone: wylaczoneBronie(st) });
+}
+
+/* Broń gracza z turą, gdy to nie ja: { bron, zapas, kto } albo null. */
+function cudzaBron(st) {
+  if (!st || st.phase === 'over') return null;
+  const akt = S.activeWorm(st);
+  if (!akt || akt.id === mojeId) return null;
+  if (akt.widok && WEAPONS[akt.widok.bron]) return { bron: akt.widok.bron, zapas: akt.widok.zapas, kto: akt.name };
+  if (st.phase !== 'aim' && WEAPONS[st.weapon]) return { bron: st.weapon, zapas: akt.amunicja[st.weapon], kto: akt.name };
+  return null;
 }
 
 /* Bronie wyłączone w ustawieniach partii (zestaw „Klasyka”) — kij wyłączony
@@ -1390,6 +1436,11 @@ function wylaczoneBronie(st) {
 
 let wstrzas = 0;                 // siła trzęsienia ekranu po wybuchu (px), tylko grafika
 let ostatniPodpisBroni = '', ostatniPodpisGraczy = '', bylaUcieczka = false;
+
+/* Życie z podglądu na żywo (upadek, apteczka gracza z turą), inaczej ze stanu. */
+function hpNaZywo(w) {
+  return w.widok && typeof w.widok.hp === 'number' ? w.widok.hp : w.hp;
+}
 
 function odswiezHud(moge, teraz) {
   const st = rg.state;
@@ -1406,7 +1457,8 @@ function odswiezHud(moge, teraz) {
   if (ekwipunek.otwarty && (uciekam || (moge && st.charging))) ekwipunek.zamknij();
 
   const ja = st.worms.find((w) => w.id === mojeId);
-  const podpisBroni = [moge, st.weapon, mojaBron, ja ? JSON.stringify(ja.amunicja) : ''].join('|');
+  const cb = cudzaBron(st);
+  const podpisBroni = [moge, st.weapon, mojaBron, ja ? JSON.stringify(ja.amunicja) : '', cb ? cb.bron + cb.zapas + cb.kto : ''].join('|');
   if (podpisBroni !== ostatniPodpisBroni) { ostatniPodpisBroni = podpisBroni; rysujBronie(); }
 
   const podpisGraczy = st.worms.map((w) => [w.id, w.alive, w.odszedl, rozl.has(w.id)].join(':')).join('|');
@@ -1462,7 +1514,7 @@ function odswiezHud(moge, teraz) {
   for (const row of el('panel-gracze').children) {
     if (row.dataset.druzyna !== undefined) {
       const sklad = st.worms.filter((x) => x.druzyna === +row.dataset.druzyna && !x.odszedl);
-      const hp = sklad.reduce((a, x) => a + (x.alive ? x.hp : 0), 0);
+      const hp = sklad.reduce((a, x) => a + (x.alive ? hpNaZywo(x) : 0), 0);
       row.querySelector('.suma').textContent = hp;
       // pasek względem życia na start (ustawienia partii), nie sztywnych 100 HP
       row.querySelector('.pasek i').style.width = Math.min(100, sklad.length ? hp / (sklad.length * st.ust.hp) * 100 : 0) + '%';
@@ -1471,7 +1523,7 @@ function odswiezHud(moge, teraz) {
     }
     const w = st.worms.find((x) => x.id === row.dataset.worm);
     if (!w) continue;
-    row.querySelector('.hp').textContent = w.odszedl ? '' : w.hp;
+    row.querySelector('.hp').textContent = w.odszedl ? '' : hpNaZywo(w);
     row.classList.toggle('aktywny', !!akt && akt.id === w.id && st.phase !== 'over');
   }
 

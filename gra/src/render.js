@@ -219,7 +219,11 @@ export function draw(r, state, cam, fx, dt, opcje = {}) {
   if (opcje.celNalotu) drawCel(ctx, opcje.celNalotu, r.time);
 
   const akt = activeOf(state);
-  for (const c of state.skrzynki || []) drawSkrzynka(ctx, r, c);
+  for (const c of state.skrzynki || []) {
+    // skrzynka zebrana przez gracza z turą — widz wie o tym z podglądu na żywo
+    if (opcje.zebraneSkrzynki && opcje.zebraneSkrzynki.has(c.id)) continue;
+    drawSkrzynka(ctx, r, c);
+  }
   for (const p of state.projectiles) drawProjectile(ctx, p);
   for (const w of state.worms) {
     if (!w.alive) continue;
@@ -229,7 +233,8 @@ export function draw(r, state, cam, fx, dt, opcje = {}) {
       kolorNicku: state.druzynowa && DRUZYNY[w.druzyna] ? DRUZYNY[w.druzyna].kolor : w.color,
       rozlaczony: !!opcje.rozlaczeni && opcje.rozlaczeni.has(w.id),
       moc: w === akt && state.phase === 'aim' ? (w.widok ? w.widok.moc : state.charging ? state.power : 0) : 0,
-      bron: w === akt ? (w.widok ? w.widok.bron : state.weapon) : null
+      bron: w === akt ? (w.widok ? w.widok.bron : state.weapon) : null,
+      hpMax: state.ust ? state.ust.hp : 100
     });
   }
 
@@ -695,8 +700,11 @@ function drawWorm(ctx, w, isActive, time, o) {
   const top = cy - 26;
   ctx.fillStyle = 'rgba(0,0,0,0.55)';
   ctx.fillRect(cx - barW / 2, top, barW, 4);
-  ctx.fillStyle = w.hp > 50 ? '#5ec26a' : w.hp > 22 ? '#ffb020' : '#ff3b23';
-  ctx.fillRect(cx - barW / 2, top, (barW * w.hp) / 100, 4);
+  // życie z podglądu na żywo (upadek, apteczka u gracza z turą), pasek względem życia na start
+  const hp = v.hp ?? w.hp;
+  const czesc = Math.min(1, hp / (o.hpMax || 100));
+  ctx.fillStyle = czesc > 0.5 ? '#5ec26a' : czesc > 0.22 ? '#ffb020' : '#ff3b23';
+  ctx.fillRect(cx - barW / 2, top, barW * czesc, 4);
 
   // nick w kolorze gracza (w drużynach — drużyny), z ciemną obwódką dla czytelności
   const nazwa = (o.ja ? '▸ ' : '') + w.name + (o.rozlaczony ? ' (brak sieci)' : '');

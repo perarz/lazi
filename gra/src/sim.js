@@ -1042,14 +1042,14 @@ function stepSkrzynki(state) {
     if (c.typ === 'apteczka') {
       const ile = Math.max(0, Math.min(APTECZKA_HP, Math.max(HP_MAX, state.ust.hp) - w.hp));
       w.hp += ile;
-      state.events.push({ type: 'skrzynka', typ: c.typ, wormId: w.id, x: c.x, y: c.y, hp: ile });
+      state.events.push({ type: 'skrzynka', id: c.id, typ: c.typ, wormId: w.id, x: c.x, y: c.y, hp: ile });
     } else {
       // kij jest tylko w skrzynkach, więc wypada w co trzeciej
       const los = Math.imul(c.id + 7, 0x9e3779b1) >>> 0;
       const zapasy = zapasyDla(state.ust.bronie);
       const bron = los % 3 === 0 || !zapasy.length ? 'kij' : zapasy[(los >>> 4) % zapasy.length];
       w.amunicja[bron] = (w.amunicja[bron] || 0) + 1;
-      state.events.push({ type: 'skrzynka', typ: c.typ, wormId: w.id, x: c.x, y: c.y, bron });
+      state.events.push({ type: 'skrzynka', id: c.id, typ: c.typ, wormId: w.id, x: c.x, y: c.y, bron });
     }
   }
 }

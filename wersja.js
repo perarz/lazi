@@ -7,6 +7,7 @@
     {
       wersja: '4.3', data: '2026-09-27', tytul: 'Lobby gospodarza: własne zasady partii',
       zmiany: [
+        'Oglądasz cudzą turę? Na dole ekranu widać na żywo, jaką broń gracz ma w łapach i ile mu jej zostało (z jego nickiem), a nad robalem — obrażenia od upadku, zebraną apteczkę (+HP) albo zaopatrzenie (+1 broń) i wpadnięcie do lawy. Życie w panelu i nad robalem zmienia się od razu, a zebrana skrzynka od razu znika.',
         'Gospodarz (👑) ustawia zasady partii: czas tury (15–60 s), życie na start (50–200 HP), mapę (losowa albo konkretny styl), bronie (pełny arsenał, podwójna amunicja, Klasyka albo Szał bez limitów), zrzuty skrzynek, wiatr (aż po huragan) i nagłą śmierć (albo bez lawy).',
         'Reszta widzi zasady w lobby (zmienione są podświetlone) i dostaje komunikat, gdy gospodarz coś zmieni — gotowość wtedy się cofa, żeby nikt nie wszedł w partię, na którą się nie pisał. Na starcie partii baner przypomina zasady.',
         'Gospodarz może stuknąć gracza i oddać mu koronę albo wyrzucić go z lobby (np. gdy ktoś poszedł zrobić herbatę i blokuje start). Wyrzucony wraca, kiedy chce, przyciskiem.',
