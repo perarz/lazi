@@ -253,10 +253,20 @@ await test('wygląd robala: kolor i akcesorium na koncie, złe akcesorium odrzuc
   a.ws.close();
 });
 
-await test('lista akcesoriów na serwerze = lista w grze (gra/src/akcesoria.js)', async () => {
-  const { AKCESORIA } = require('./konta.js');
+await test('lista akcesoriów i czapek na serwerze = lista w grze (akcesoria.js, czapki.js)', async () => {
+  const { AKCESORIA, CZAPKI, WSZYSTKIE_OSIAGNIECIA } = require('./konta.js');
   const gra = await import('../gra/src/akcesoria.js');
+  const cz = await import('../gra/src/czapki.js');
   assert(JSON.stringify(gra.AKCESORIA_ID) === JSON.stringify(AKCESORIA), JSON.stringify([gra.AKCESORIA_ID, AKCESORIA]));
+  const zGry = Object.fromEntries(cz.CZAPKI.map((c) => [c.id, c.osiagniecie]));
+  assert(JSON.stringify(zGry) === JSON.stringify(CZAPKI), 'czapki: ' + JSON.stringify([zGry, CZAPKI]));
+  // korona za wszystkie: serwer zna tę samą listę osiągnięć co gra
+  globalThis.window = globalThis.window || {};
+  globalThis.localStorage = globalThis.localStorage || { getItem: () => null, setItem() {} };
+  await import('../gra/osiagniecia.js');
+  const ids = window.ARENA_OSIAGNIECIA.lista.map((o) => o.id);
+  assert(JSON.stringify(ids) === JSON.stringify(WSZYSTKIE_OSIAGNIECIA), 'lista osiągnięć na serwerze inna niż w grze');
+  for (const o of Object.values(CZAPKI)) assert(o === '*' || ids.includes(o), 'czapka za nieznane osiągnięcie: ' + o);
 });
 
 await test('wynik partii: kille do rankingu, jeden wynik na partię, limit killi, osiągnięcia na koncie', async () => {
@@ -271,6 +281,26 @@ await test('wynik partii: kille do rankingu, jeden wynik na partię, limit killi
   assert((await post('/api/konto/wynik', { token: 'x', partia: '3', kille: 1 })).status === 401, 'bez konta');
   const r = await (await fetch(API('/api/ranking'))).json();
   assert(r.ranking[0].nick === 'Bolek' && r.ranking[0].kille === 10 && !r.ranking.some((x) => x.nick === 'Ala'), JSON.stringify(r));
+});
+
+await test('czapka za osiągnięcie: bez osiągnięcia zablokowana (wygląd i dolacz), z nim wolno', async () => {
+  const { WSZYSTKIE_OSIAGNIECIA } = require('./konta.js');
+  let d = await (await post('/api/konto/wyglad', { token: BOLEK.token, akcesorium: 'krol' })).json();
+  assert(d.konto.akcesorium !== 'krol', 'korona bez wszystkich osiągnięć przyjęta');
+  await post('/api/konto/wynik', { token: BOLEK.token, partia: 'kw', tylkoOsiagniecia: true, osiagniecia: ['masakra'] });
+  d = await (await post('/api/konto/wyglad', { token: BOLEK.token, akcesorium: 'irokez' })).json();
+  assert(d.konto.akcesorium === 'irokez', 'odblokowana czapka odrzucona: ' + JSON.stringify(d.konto));
+  await post('/api/konto/wynik', { token: BOLEK.token, partia: 'kw', tylkoOsiagniecia: true, osiagniecia: WSZYSTKIE_OSIAGNIECIA });
+  d = await (await post('/api/konto/wyglad', { token: BOLEK.token, akcesorium: 'krol' })).json();
+  assert(d.konto.akcesorium === 'krol', 'korona po wszystkich osiągnięciach odrzucona');
+  const a = klient('k3');
+  await a.otwarty;
+  a.wyslij({ typ: 'hej', od: 0, epoka: null });
+  await a.czekaj((m) => m.typ === 'stan');
+  await a.zd({ t: 'dolacz', id: 'x', akc: 'wulkan' });
+  const s1 = await a.czekaj((m) => m.typ === 'stan' && m.zdarzenia.length);
+  assert(!('akc' in s1.zdarzenia[0]), 'zablokowana czapka przeszła w dolacz');
+  a.ws.close();
 });
 
 await test('pokój na hasło: lista, wejście bez klucza 403, złe hasło 403, dobre daje klucz', async () => {

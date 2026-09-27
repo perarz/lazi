@@ -30,8 +30,22 @@ const PAMIETANE_PARTIE = 40;
 const RANKING_ILE = 50;
 
 const NICK = /^[\p{L}\p{N}_. -]{3,14}$/u;
-// akcesoria robala (od 4.7) — ta sama lista jest w gra/src/akcesoria.js
-const AKCESORIA = ['korona', 'lama', 'kilof', 'helm', 'wieniec'];
+// akcesoria robala (od 4.7) — ta sama lista jest w gra/src/akcesoria.js; czapki (4.7.1) odblokowuje
+// osiągnięcie — lista i przypisanie jak w gra/src/czapki.js (test serwera pilnuje zgodności)
+// '*' = wszystkie osiągnięcia (lista jak w gra/osiagniecia.js — test pilnuje zgodności)
+const CZAPKI = { krol: '*', irokez: 'masakra', wulkan: 'lawa', rogi: 'owca' };
+const WSZYSTKIE_OSIAGNIECIA = ['pierwsza-krew', 'piec-fragow', 'rzeznik', 'lawa', 'nalot', 'saper', 'snajper',
+  'kasetowka', 'owca', 'home-run', 'dublet', 'masakra', 'ucieczka', 'zwyciestwo', 'na-wlosku', 'nietykalny',
+  'weteran', 'samoboja'];
+const AKCESORIA = ['korona', 'lama', 'kilof', 'helm', 'wieniec', ...Object.keys(CZAPKI)];
+/* Czy konto może nosić to akcesorium (czapka wymaga zdobytego osiągnięcia). */
+function wolnoNosic(k, id) {
+  if (!AKCESORIA.includes(id)) return false;
+  const trzeba = CZAPKI[id];
+  if (!trzeba) return true;
+  const ma = (k && k.osiagniecia) || {};
+  return trzeba === '*' ? WSZYSTKIE_OSIAGNIECIA.every((o) => ma[o]) : !!ma[trzeba];
+}
 
 const skrot = (haslo, sol) => new Promise((ok, zle) =>
   crypto.scrypt(haslo, sol, 32, { N: 16384, r: 8, p: 1 }, (e, k) => (e ? zle(e) : ok(k.toString('hex')))));
@@ -169,7 +183,7 @@ class Konta {
   ustawWyglad(k, body) {
     body = body && typeof body === 'object' ? body : {};
     if (typeof body.kolor === 'string' && /^#[0-9a-f]{6}$/i.test(body.kolor)) k.kolor = body.kolor;
-    if (body.akcesorium === null || AKCESORIA.includes(body.akcesorium)) k.akcesorium = body.akcesorium;
+    if (body.akcesorium === null || wolnoNosic(k, body.akcesorium)) k.akcesorium = body.akcesorium;
     this.zapiszPozniej();
     return { status: 200, dane: { konto: this.widok(k) } };
   }
@@ -247,4 +261,4 @@ class Konta {
   }
 }
 
-module.exports = { Konta, idKonta, NICK, AKCESORIA };
+module.exports = { Konta, idKonta, NICK, AKCESORIA, CZAPKI, WSZYSTKIE_OSIAGNIECIA, wolnoNosic };

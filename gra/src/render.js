@@ -742,8 +742,9 @@ function rysujRobala(ctx, w, isActive, time, o) {
   ctx.fill();
   // oddech: lekkie rozciąganie w pionie
   const oddech = 1 + Math.sin(time * 3 + cx * 0.1) * 0.04;
-  // akcesorium na plecach (kilof) jest za ciałem
+  // akcesorium na plecach (kilof) i tylne części czapek (wstęgi, pióropusz) są za ciałem
   if (o.akc && o.akc.tyl) o.akc.rysuj(ctx, cx, cy, facing, time);
+  if (o.akc && o.akc.zaGlowa) o.akc.zaGlowa(ctx, cx, cy, facing, time);
   // ogonek z dwóch segmentów za plecami
   ctx.fillStyle = w.color;
   ctx.beginPath();
@@ -850,7 +851,7 @@ function rysujRobala(ctx, w, isActive, time, o) {
   if (o.bezNapisu) return;
   // pasek zdrowia i nazwa (nad akcesorium trochę wyżej)
   const barW = 34;
-  const top = cy - 26 - (o.akc && !o.akc.tyl ? 5 : 0);
+  const top = cy - 26 - (o.akc && !o.akc.tyl ? o.akc.wys ?? 5 : 0);
   ctx.fillStyle = 'rgba(0,0,0,0.55)';
   ctx.fillRect(cx - barW / 2, top, barW, 4);
   // życie z podglądu na żywo (upadek, apteczka u gracza z turą), pasek względem życia na start
@@ -896,7 +897,7 @@ export function rysujPodgladRobala(canvas, { kolor, nazwa, czas = 0, akc = null,
   ctx.fillStyle = '#ffc46e';
   ctx.fillRect(0, g, W, 1.2);
   // od stóp do nicku robal ma ok. 50 px świata (mini: bez nicku, ok. 36 px) — tyle musi się zmieścić nad gruntem
-  const skala = Math.max(0.5, Math.min(mini ? 3 : 2.4, (g - 4) / (mini ? 36 : 50), W / (mini ? 40 : 90)));
+  const skala = Math.max(0.5, Math.min(mini ? 3 : 2.4, (g - 4) / (mini ? 46 : 50), W / (mini ? 40 : 90)));
   ctx.save();
   ctx.translate(W * (mini ? 0.5 : 0.42), g);
   ctx.scale(skala, skala);

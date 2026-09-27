@@ -18,7 +18,7 @@ Stos technologiczny:
 - Bez bundlera, bez `package.json` i bez zależności npm. Zwykłe pliki HTML/CSS/JS, gra jako moduły ES,
   zrzutka jako klasyczne skrypty.
 
-Obecna wersja: **4.7 „Nowy panel Areny i akcesoria robala”** (`wersja.js`).
+Obecna wersja: **4.7.1 „Kurtyna, czapki za osiągnięcia i poprawki”** (`wersja.js`).
 
 ---
 
@@ -179,7 +179,11 @@ PL, IP 96.62.223.169). Katalog `serwer/` to serwer: Node + WebSocket (`ws`).
   jest już na liście) — gra się tylko w arenie, którą ktoś założył. Pokój bez opisu (`?pokoj=` z testów) jest
   publiczny i pojawia się na liście tylko, gdy ktoś w nim jest.
 - **Akcesoria** (4.7): lista id w `AKCESORIA` w `serwer/konta.js` **i** w `gra/src/akcesoria.js` (test serwera
-  pilnuje, że są równe). Konto trzyma `akcesorium`, `dolacz` niesie `akc` (serwer usuwa nieznane), ranking też. Lista liczy graczy po połączeniach (nicki z kont), „trwa partia” = log od `nowa` i strzał/pas/stan
+  pilnuje, że są równe). Konto trzyma `akcesorium`, `dolacz` niesie `akc` (serwer usuwa nieznane), ranking też.
+  **Czapki za osiągnięcia** (4.7.1): `CZAPKI` (czapka → osiągnięcie albo `'*'`) w `konta.js` = `gra/src/czapki.js`,
+  a `WSZYSTKIE_OSIAGNIECIA` w `konta.js` = lista z `gra/osiagniecia.js` (test pilnuje obu). `wolnoNosic(konto, id)`
+  — bez osiągnięcia (dla korony: bez kompletu) serwer nie zapisze czapki i wytnie ją z `dolacz`. Użytkownik chciał
+  jedną czapkę za wszystkie osiągnięcia; trzy dodatkowe zostały z odrzuconej wersji „czapka za każde”. Lista liczy graczy po połączeniach (nicki z kont), „trwa partia” = log od `nowa` i strzał/pas/stan
   w ostatnich 2 min.
 - **Reset hasła** (nie ma maila): na VPS `cd /opt/lazi/serwer && node konto-haslo.mjs NICK 'NOWE_HASLO'`
   (jako root sam zatrzymuje i wznawia usługę — to urywa trwające partie).
@@ -211,6 +215,7 @@ PL, IP 96.62.223.169). Katalog `serwer/` to serwer: Node + WebSocket (`ws`).
 | `gra/` | **Arena GOATów** (sekcja 7) |
 | `gra/osiagniecia.js` | Lista osiągnięć Areny (18) — klasyczny skrypt, czyta go gra i strona główna |
 | `wersja.js` | Numer wersji + historia zmian (jedno źródło); znaczek `vX.Y` w rogu stron |
+| `przejscie.js`, `przejscie.css` | Kurtyna **między stronami** zrzutka ↔ Arena (4.7.1): link z `data-przejscie="fortnite|zeroad|arena"` zasłania ekran jak kurtyna kategorii, cel leci w `sessionStorage['przejscie']`, nowa strona startuje zasłonięta i odsłania się (`PRZEJSCIE.zaslon/odslon`). Strona z `<html data-przejscie-czeka>` (Arena) odsłania się sama, gdy ma dane; inne po 0,35 s. Klasyczny skrypt w `<head>` obu stron |
 | `zmiany/` | Strona „Co nowego” (rysuje historię z `wersja.js`) |
 | `goat/` | Stara, ukryta strona „ŁAZI TO GOAT” — nie ruszać |
 | `serwer/` | Serwer na VPS: `pokoj.js` (Arena), `zrzutka.js` (zrzutka w pliku), `konta.js` (konta Areny, 3.1), `gracze.js` (**lista graczy `GRACZE`, `SEZON`, limity wpłat**), `serwer.js` (HTTP + WebSocket, pokoje z panelu), `konto-haslo.mjs` (reset hasła), `migruj-zrzutke.mjs` (jednorazowo z Redisa), `test.mjs`, `instaluj.sh`, `INSTALACJA.md`; ma własne `package.json` (zależność `ws`) — to jedyne miejsce z npm |
@@ -236,7 +241,8 @@ PL, IP 96.62.223.169). Katalog `serwer/` to serwer: Node + WebSocket (`ws`).
 
 ### 5.1 Ogólnie
 - Dwie kategorie: **Fortnite** (V-dolce) i **0 A.D.** (srebrniki), przełączane hashem `#fortnite` / `#0ad`
-  z animacją kurtyny. Trzecia zakładka „Arena” to zwykły link do `gra/`.
+  z animacją kurtyny. Trzecia zakładka „Arena” to link do `gra/` z `data-przejscie="arena"` — ta sama kurtyna,
+  tylko między stronami (`przejscie.js`); w pasku Areny Fortnite / 0 A.D. wracają tak samo.
 - Motyw zmienia cały wygląd:
   - Fortnite: niebieski, żółte skośne przyciski, font Anton.
   - 0 A.D.: pergamin, pieczęcie, font Cinzel.
@@ -432,7 +438,8 @@ Lekcje z kalibracji:
 | `src/net.js` | WebSocket do serwera na VPS: log zdarzeń, ponowne łączenie z kursorem, obecność, zegar serwera, `sendBeacon` przy zamknięciu karty (POST `/api/arena` na VPS); `RUCH_CO` — podgląd ruchu co 100 ms |
 | `src/konfig.js` | `SERWER_WS` — adres serwera Areny; lokalnie `?serwer=ws://127.0.0.1:8787/ws` do testów; `adresApi()` = HTTP tego serwera |
 | `src/konto.js` | Konto (4.6): logowanie, rejestracja, `ja`, wygląd (`ustawWyglad`), wynik partii, pokoje, ranking (HTTP), kopia statystyk do `localStorage`, opisy błędów |
-| `src/akcesoria.js` | Akcesoria robala (4.7): `AKCESORIA` (id, nazwa, gra, ikona, `rysuj(ctx, cx, cy, f, t)`, `tyl`), sama grafika |
+| `src/akcesoria.js` | Akcesoria robala (4.7): `PODSTAWOWE` (5, dla każdego) + `CZAPKI` = `AKCESORIA` (id, nazwa, gra, ikona, `rysuj(ctx, cx, cy, f, t)`, `tyl`, `zaGlowa`, `wys`), `odblokowane(a, zdobyte)`; sama grafika |
+| `src/czapki.js` | Czapki za osiągnięcia (4.7.1): Korona Króla GOATów (`krol`, `osiagniecie: '*'` = wszystkie) i 3 czapki za pojedyncze (`irokez` ← masakra, `wulkan` ← lawa, `rogi` ← owca); pola `wys` (o ile podnieść pasek życia i nick) i opcjonalnie `zaGlowa` (część za ciałem, np. promienie korony) |
 | `src/main.js` | Logowanie, ekran ładowania, ekran Areny (profil, wygląd, ranking, osiągnięcia + areny/lobby), lobby (tryb, drużyny, GOTOWY), HUD, kamera, pętla gry, zdarzenia → efekty, statystyki, osiągnięcia (UI) |
 | `src/druzyny.js` | Nazwy i kolory drużyn (`DRUZYNY`), tryby lobby (`TRYBY`) |
 | `src/ustawienia.js` | Ustawienia partii z lobby (`USTAWIENIA`: czas, hp, mapa, rozmiar, bronie, zrzuty, wiatr, lawaOd, lawaTempo; pozycje z `opcje` = lista, z `liczba` = wpisywane), `normalizuj`, `zLiczby`, `opisZmian` |
@@ -476,8 +483,10 @@ Lekcje z kalibracji:
 ### Wejście do Areny (4.6, układ od 4.7)
 - Ekrany (`EKRANY`, `pokazEkran` w `main.js`): `#ekran-logowanie` (zakładki Zaloguj/Załóż konto; pierwszy raz
   w przeglądarce otwiera się na zakładaniu) → `#ekran-ladowanie` → `#ekran-arena` (+ `#ekran-koniec` po partii).
-  Z zapamiętanym tokenem strona startuje od razu od ładowania (`start()`); 401 = z powrotem do logowania,
-  brak sieci = komunikat i „Spróbuj jeszcze raz”.
+  Od 4.7.1 z zapamiętanym tokenem **nie ma ekranu ładowania**: `start()` trzyma kurtynę Areny (`przejscie.js`,
+  także przy wejściu prosto z adresu — min. 0,7 s), pobiera konto, areny i ranking, potem ją odsłania.
+  Scena ładowania jest tylko po zalogowaniu formularzem. 401 = logowanie, brak sieci = scena z komunikatem
+  i „Spróbuj jeszcze raz” (`pokazBladStartu`).
 - **Pasek `#nawigacja`** (Fortnite → `/#fortnite`, 0 A.D. → `/#0ad`, Arena) jest jeden: `pokazEkran` wkłada go
   na początek ekranu logowania albo Areny (sticky), w trakcie partii i na ładowaniu jest schowany. Po prawej
   kropka w kolorze robala, nick i „Wyloguj”.
@@ -670,6 +679,7 @@ Lekcje z kalibracji:
   1. Wpis w `gra/osiagniecia.js`.
   2. Reguła w `osiagniecia-reguly.js`.
   3. Test, który pilnuje, że każde id z reguł jest na liście, i sprawdza liczbę osiągnięć.
+  4. Id także w `WSZYSTKIE_OSIAGNIECIA` w `serwer/konta.js` (korona wymaga kompletu) + `arena-aktualizuj`.
 - **Coś w stanie gry** (np. nowy obiekt jak skrzynki):
   1. Pole w `createGame`.
   2. Kopia w `snapshot` / `zastosujSnapshot` / `stanPoTurze`.
@@ -773,6 +783,7 @@ więcej akcesoriów (np. czapki postaci ze zrzutki), ewentualnie konto także w 
   - **4.5.1** ekstremalna = wszystkie style naraz, iglice pod niebo
   - **4.6** konta Areny (logowanie, statystyki i osiągnięcia na koncie), ekran ładowania, panel z GRAJ, pokoje na hasło, ranking killi
   - **4.7** pasek Fortnite/0 A.D./Arena w grze, panel + lobby na jednym ekranie, bez domyślnej areny, 5 akcesoriów robala, nowy ekran ładowania
+  - **4.7.1** kurtyna przy przejściu zrzutka ↔ Arena, wejście na Arenę bez ekranu ładowania, Korona Króla GOATów za wszystkie osiągnięcia + 3 czapki
 
 ---
 
@@ -781,7 +792,7 @@ więcej akcesoriów (np. czapki postaci ze zrzutki), ewentualnie konto także w 
 ```
 node gra/test/sim.test.mjs        # symulacja, bronie, determinizm, drużyny, ustawienia, skrzynki, spawny, osiągnięcia, kamera, lina, most obracany, rozmiar mapy (80)
 node gra/test/protokol.test.mjs   # protokół: lag, rozłączenia, ucieczka na żywo, lobby, ustawienia, partie 2v2 i z własnymi zasadami (21, ~30 s)
-cd serwer && npm install && node test.mjs   # serwer na VPS: Arena (10) + konta, pokoje i akcesoria (9) + zrzutka (7)
+cd serwer && npm install && node test.mjs   # serwer na VPS: Arena (10) + konta, pokoje, akcesoria i czapki (10) + zrzutka (7)
 ```
 Obie muszą przejść przed pushem. Dodatkowo `node --check` na zmienionych plikach JS.
 Test protokołu gra losowe partie. Zmiana listy broni zmienia ich przebieg. Jeśli padnie test zależny od

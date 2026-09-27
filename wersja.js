@@ -5,6 +5,17 @@
 (function () {
   var historia = [
     {
+      wersja: '4.7.1', data: '2026-09-27', tytul: 'Kurtyna, czapki za osiągnięcia i poprawki',
+      zmiany: [
+        'Korona Króla GOATów za zdobycie WSZYSTKICH osiągnięć Areny: złota korona z wielkimi rogami kozła, pulsującym rubinem, krążącymi iskrami i promieniami chwały za głową. Do tego trzy czapki za pojedyncze osiągnięcia: płonący irokez (Masakra), korona z lawy (Kąpiel w lawie) i rogi prawdziwego GOATa (Kozi róg).',
+        'Zablokowaną czapkę widać jako ciemną sylwetkę z kłódką; przy koronie jest licznik zdobytych osiągnięć. Nową czapkę pokazuje też ekran końca partii.',
+        'Hełm spartański obrócony: twarz jest z przodu, osłona karku z tyłu.',
+        'W profilu zamiast niejasnego „rekord tury” jest „max obrażeń w turze”.',
+        'Przejście na Arenę i z Areny na Fortnite albo 0 A.D. ma teraz tę samą kurtynę co przełączanie Fortnite ↔ 0 A.D.: koło rośnie od miejsca stuknięcia, na środku moneta i nazwa, a nowa strona odsłania się spod kurtyny.',
+        'Wejście na Arenę z zapamiętanym kontem to już tylko kurtyna Areny (płonąca moneta ze skrzyżowanymi mieczami) — bez ekranu ładowania. Scena z robalem i paskiem zostaje tylko po zalogowaniu.'
+      ]
+    },
+    {
       wersja: '4.7', data: '2026-09-27', tytul: 'Nowy panel Areny i akcesoria robala',
       zmiany: [
         'Na górze Areny jest znowu pasek Fortnite / 0 A.D. / Arena, jak na stronie zrzutki — jednym stuknięciem wracasz do zbiórki.',

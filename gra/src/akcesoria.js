@@ -8,7 +8,10 @@
    -1 w lewo), t = czas w s. Ciało to elipsa 8×10, oczy na wysokości cy − 4.
    `tyl: true` = rysowane przed ciałem (np. kilof na plecach). */
 
-export const AKCESORIA = [
+import { CZAPKI } from './czapki.js';
+
+/* Akcesoria dla każdego (od 4.7). Czapki za osiągnięcia są w czapki.js (od 4.7.1). */
+export const PODSTAWOWE = [
   {
     id: 'korona', nazwa: 'Korona Victory Royale', gra: 'Fortnite', ikona: '👑',
     rysuj(ctx, cx, cy, f, t) {
@@ -115,31 +118,38 @@ export const AKCESORIA = [
       ctx.strokeStyle = '#6e0a0e';
       ctx.lineWidth = 0.8;
       ctx.beginPath();
-      ctx.moveTo(cx + f * 6, y - 8);
-      ctx.quadraticCurveTo(cx, y - 19 + fal, cx - f * 10, y - 5);
-      ctx.quadraticCurveTo(cx - f * 3, y - 11, cx + f * 6, y - 8);
+      ctx.moveTo(cx + f * 5, y - 9);
+      ctx.quadraticCurveTo(cx - f * 1, y - 21 + fal, cx - f * 12, y - 2);
+      ctx.quadraticCurveTo(cx - f * 4, y - 12, cx + f * 5, y - 9);
       ctx.fill();
       ctx.stroke();
-      // hełm koryncki z brązu: kopuła i osłona policzka po stronie oczu
-      const g = ctx.createLinearGradient(cx - 8, 0, cx + 8, 0);
-      g.addColorStop(0, '#8a5a1c');
-      g.addColorStop(0.45, '#e0a84c');
-      g.addColorStop(1, '#8a5a1c');
+      // hełm koryncki z brązu: kopuła, długa osłona karku z tyłu, twarz otwarta z przodu (tam patrzą oczy)
+      const g = ctx.createLinearGradient(cx - f * 9, 0, cx + f * 9, 0);
+      g.addColorStop(0, '#7a4c14');
+      g.addColorStop(0.55, '#e3ab4f');
+      g.addColorStop(1, '#a8702a');
       ctx.fillStyle = g;
       ctx.strokeStyle = '#4e320c';
       ctx.lineWidth = 1;
       ctx.beginPath();
-      ctx.ellipse(cx, y + 1, 8.8, 8.5, 0, Math.PI, 0);
-      ctx.lineTo(cx + f * 8.8, y + 5);
-      ctx.lineTo(cx + f * 3.5, y + 5);
-      ctx.lineTo(cx + f * 3.5, y + 1.5);
-      ctx.lineTo(cx - f * 8.8, y + 1);
+      ctx.moveTo(cx + f * 8.7, y - 1);
+      ctx.quadraticCurveTo(cx + f * 9, y - 10, cx, y - 10.5);
+      ctx.quadraticCurveTo(cx - f * 9.8, y - 10, cx - f * 9.4, y + 2);
+      ctx.lineTo(cx - f * 8.4, y + 9);
+      ctx.lineTo(cx - f * 3, y + 8);
+      ctx.lineTo(cx - f * 1.8, y - 0.6);
       ctx.closePath();
       ctx.fill();
       ctx.stroke();
-      // nosal między oczami
-      ctx.fillStyle = '#b07a2c';
-      ctx.fillRect(cx + f * 3.4 - 0.8, y + 1, 1.6, 4.5);
+      // brzeg nad oczami i nit na skroni
+      ctx.strokeStyle = '#ffd98a';
+      ctx.lineWidth = 0.9;
+      ctx.beginPath();
+      ctx.moveTo(cx - f * 1.8, y - 1.4);
+      ctx.lineTo(cx + f * 8.4, y - 1.8);
+      ctx.stroke();
+      ctx.fillStyle = '#ffe2a0';
+      ctx.beginPath(); ctx.arc(cx - f * 5.5, y + 1.5, 0.9, 0, 6.283); ctx.fill();
     }
   },
   {
@@ -175,5 +185,15 @@ export const AKCESORIA = [
   }
 ];
 
+export const AKCESORIA = [...PODSTAWOWE, ...CZAPKI];
 export const AKCESORIA_ID = AKCESORIA.map((a) => a.id);
+/* Czy wolno założyć: podstawowe zawsze, czapka — gdy zdobyte jej osiągnięcie ({ id: czas });
+   osiagniecie '*' = wszystkie z listy `wszystkie` (id osiągnięć z gra/osiagniecia.js). */
+export function odblokowane(a, zdobyte, wszystkie = []) {
+  if (!a) return false;
+  if (!a.osiagniecie) return true;
+  if (!zdobyte) return false;
+  if (a.osiagniecie === '*') return wszystkie.length > 0 && wszystkie.every((id) => zdobyte[id]);
+  return !!zdobyte[a.osiagniecie];
+}
 export const akcesorium = (id) => AKCESORIA.find((a) => a.id === id) || null;

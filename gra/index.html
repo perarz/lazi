@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="pl">
+<html lang="pl" data-przejscie-czeka>
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
@@ -12,8 +12,11 @@
   <title>Arena GOATów</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Creepster&family=Russo+One&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Anton&family=Cinzel+Decorative:wght@900&family=Creepster&family=Russo+One&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
+  <!-- kurtyna przy przejściu do zrzutki i z powrotem (od 4.7.1); Arena odsłania ją sama, gdy ma konto -->
+  <script src="/przejscie.js"></script>
+  <link rel="stylesheet" href="/przejscie.css">
 </head>
 <body>
   <canvas id="plotno"></canvas>
@@ -157,11 +160,11 @@
       <span>ARENA <b class="plonie">GOAT</b>ÓW</span>
     </a>
     <nav class="nawigacja-kat" aria-label="Części strony">
-      <a class="nkat nkat-fortnite" href="/#fortnite">
+      <a class="nkat nkat-fortnite" href="/#fortnite" data-przejscie="fortnite">
         <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="11" fill="#1a6fe0"></circle><circle cx="12" cy="12" r="8.5" fill="#35a4ff"></circle><path d="M7 7h3.6L12 12.6 13.4 7H17l-3.4 10h-3.2z" fill="#fff4b0"></path></svg>
         <span>Fortnite</span>
       </a>
-      <a class="nkat nkat-zeroad" href="/#0ad">
+      <a class="nkat nkat-zeroad" href="/#0ad" data-przejscie="zeroad">
         <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="11" fill="#5b636d"></circle><circle cx="12" cy="12" r="8.5" fill="#a9b2bc"></circle><path d="M7.5 13c0-4 2.5-6 5-6s4.5 2 4.5 4.5v2l-1.6.4.4 3.3c-1.5 1-3.6 1-5 .3l-.7-2.5c-1.6-.4-2.6-1.2-2.6-2z" fill="#6f7984"></path></svg>
         <span>0 A.D.</span>
       </a>
@@ -181,7 +184,7 @@
   </header>
 
   <!-- Ekran przejściowy: ładowanie po zalogowaniu (i przy wejściu z zapamiętanym kontem) -->
-  <div class="ekran ekran-ladowanie" id="ekran-ladowanie">
+  <div class="ekran ekran-ladowanie" id="ekran-ladowanie" hidden>
     <canvas class="ladowanie-scena" id="ladowanie-scena" aria-hidden="true"></canvas>
     <div class="ladowanie">
       <p class="ladowanie-nad" id="ladowanie-nad">Wchodzisz na</p>
@@ -213,6 +216,9 @@
           <div class="kolory" id="kolory" role="radiogroup" aria-label="Kolor robala"></div>
           <p class="etykieta-sekcji">Akcesorium</p>
           <div class="akcesoria" id="akcesoria" role="radiogroup" aria-label="Akcesorium robala"></div>
+          <p class="etykieta-sekcji">Czapki za osiągnięcia <b id="czapki-licznik"></b></p>
+          <div class="akcesoria czapki" id="czapki" role="radiogroup" aria-label="Czapki za osiągnięcia"></div>
+          <p class="info info-wyglad" id="info-wyglad" role="status"></p>
         </section>
 
         <section class="karta-a karta-ranking" aria-labelledby="ranking-tytul">

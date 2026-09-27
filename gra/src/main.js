@@ -18,7 +18,8 @@ import * as U from './ustawienia.js';
 import { EMOTKI, EMOTKA_S, TANIEC_S, EMOTKA_CO, emotka } from './emotki.js';
 import { stylMapy } from './terrain.js';
 import * as K from './konto.js';
-import { AKCESORIA, AKCESORIA_ID, akcesorium } from './akcesoria.js';
+import { PODSTAWOWE, AKCESORIA_ID, akcesorium, odblokowane } from './akcesoria.js';
+import { CZAPKI } from './czapki.js';
 
 /* Kolory robali do wyboru przy wejściu. Kolejność ma znaczenie: przy
    kolizji dostaje się pierwszy wolny, więc najbardziej różne są na początku. */
@@ -166,6 +167,14 @@ function rysujOsiagnieciaLobby() {
     const opis = document.createElement('small');
     opis.textContent = ma || !o.ukryta ? o.opis : 'Tajne. Kombinuj.';
     tekst.append(b, opis);
+    // nagroda: czapka za to osiągnięcie (od 4.7.1)
+    const czapka = CZAPKI.find((c) => c.osiagniecie === o.id);
+    if (czapka) {
+      const nagroda = document.createElement('em');
+      nagroda.className = 'nagroda';
+      nagroda.textContent = (ma ? '🎩 ' : '🔒 ') + czapka.nazwa;
+      tekst.append(nagroda);
+    }
     li.append(ik, tekst);
     lista.append(li);
   }
@@ -326,37 +335,73 @@ boxKolorow.addEventListener('keydown', (e) => {
   boxKolorow.children[i].focus();
 });
 
-/* Akcesoria: kafelki z robalem, który już je nosi (plus „bez”). */
-const boxAkcesoriow = el('akcesoria');
+/* Akcesoria: kafelki z robalem, który już je nosi (plus „bez”), a niżej czapki za
+   osiągnięcia (od 4.7.1) — zablokowana ma kłódkę i nazwę osiągnięcia, które ją daje. */
 const kafelkiAkcesoriow = [];
-for (const a of [{ id: null, nazwa: 'Bez dodatków', gra: '' }, ...AKCESORIA]) {
+const osiagniecieCzapki = (a) => (OSIAGNIECIA ? OSIAGNIECIA.lista.find((o) => o.id === a.osiagniecie) : null);
+const WSZYSTKIE = OSIAGNIECIA ? OSIAGNIECIA.lista.map((o) => o.id) : [];
+const ileZdobytych = (zdobyte) => WSZYSTKIE.filter((id) => zdobyte && zdobyte[id]).length;
+function kafelek(box, a) {
   const b = document.createElement('button');
   b.type = 'button';
   b.className = 'akcesorium';
   b.setAttribute('role', 'radio');
-  b.title = a.nazwa + (a.gra ? ' (' + a.gra + ')' : '');
   const plotnoA = document.createElement('canvas');
   plotnoA.setAttribute('aria-hidden', 'true');
   const podpis = document.createElement('span');
   podpis.textContent = a.nazwa;
   b.append(plotnoA);
+  const zn = document.createElement('small');
   if (a.gra) {
-    const gra = document.createElement('small');
-    gra.className = 'akcesorium-gra ' + (a.gra === 'Fortnite' ? 'fn' : 'ad');
-    gra.textContent = a.gra;
-    b.append(gra);
+    zn.className = 'akcesorium-gra ' + (a.gra === 'Fortnite' ? 'fn' : 'ad');
+    zn.textContent = a.gra;
+    b.append(zn);
+  } else if (a.osiagniecie) {
+    const o = osiagniecieCzapki(a);
+    zn.className = 'akcesorium-gra os';
+    zn.textContent = a.osiagniecie === '*' ? '🏆 wszystkie osiągnięcia' : o ? o.ikona + ' ' + (o.ukryta ? '???' : o.nazwa) : '';
+    if (a.osiagniecie === '*') b.classList.add('krolewska');
+    b.append(zn);
+    const klodka = document.createElement('i');
+    klodka.className = 'klodka';
+    klodka.setAttribute('aria-hidden', 'true');
+    klodka.textContent = '🔒';
+    b.append(klodka);
   }
   b.append(podpis);
-  b.addEventListener('click', () => zmienWyglad({ akcesorium: a.id }));
-  boxAkcesoriow.append(b);
-  kafelkiAkcesoriow.push({ id: a.id, b, plotno: plotnoA });
+  b.title = a.nazwa + (a.gra ? ' (' + a.gra + ')' : '');
+  b.addEventListener('click', () => {
+    const zdobyte = OSIAGNIECIA ? OSIAGNIECIA.wczytaj() : {};
+    if (a.osiagniecie && !odblokowane(a, zdobyte, WSZYSTKIE)) {
+      const o = osiagniecieCzapki(a);
+      el('info-wyglad').textContent = a.osiagniecie === '*'
+        ? '🔒 ' + a.nazwa + ' — zdobądź wszystkie osiągnięcia Areny (masz ' + ileZdobytych(zdobyte) + '/' + WSZYSTKIE.length + ').'
+        : '🔒 ' + a.nazwa + ' — zdobądź osiągnięcie „' + (o && !o.ukryta ? o.nazwa + '”: ' + o.opis : '???”: to tajemnica. Kombinuj.');
+      return;
+    }
+    el('info-wyglad').textContent = '';
+    zmienWyglad({ akcesorium: a.id });
+  });
+  box.append(b);
+  kafelkiAkcesoriow.push({ id: a.id, a, b, plotno: plotnoA });
 }
+for (const a of [{ id: null, nazwa: 'Bez dodatków', gra: '' }, ...PODSTAWOWE]) kafelek(el('akcesoria'), a);
+for (const a of CZAPKI) kafelek(el('czapki'), a);
 function zaznaczAkcesorium() {
+  const zdobyte = OSIAGNIECIA ? OSIAGNIECIA.wczytaj() : {};
+  let ile = 0;
   for (const k of kafelkiAkcesoriow) {
     const tak = k.id === mojeAkcesorium;
+    const zablokowana = !!k.a.osiagniecie && !odblokowane(k.a, zdobyte, WSZYSTKIE);
+    if (k.a.osiagniecie === '*') k.b.querySelector('.akcesorium-gra').textContent = '🏆 ' + ileZdobytych(zdobyte) + '/' + WSZYSTKIE.length + ' osiągnięć';
+    if (k.a.osiagniecie && !zablokowana) ile++;
+    k.b.classList.toggle('zablokowane', zablokowana);
+    k.b.setAttribute('aria-disabled', zablokowana ? 'true' : 'false');
+    if (k.a.osiagniecie) k.b.title = k.a.nazwa + (zablokowana ? ' — zablokowana' : '');
     k.b.setAttribute('aria-checked', tak ? 'true' : 'false');
     k.b.tabIndex = tak ? 0 : -1;
   }
+  el('czapki-licznik').textContent = ile + '/' + CZAPKI.length;
 }
 zaznaczKolor();
 zaznaczAkcesorium();
@@ -375,8 +420,8 @@ function petlaPodgladu(t) {
   const dane = { kolor: mojKolor, nazwa: konto ? konto.nick : 'Ty', czas, akc: mojeAkcesorium };
   if (arena) {
     R.rysujPodgladRobala(el('podglad-robala'), dane);
-    // kafelki co drugą klatkę — sześć małych płócien to i tak drobiazg
-    if (klatkaPodgladu++ % 2 === 0) {
+    // kafelki co trzecią klatkę — 24 małe płótna
+    if (klatkaPodgladu++ % 3 === 0) {
       for (const k of kafelkiAkcesoriow) R.rysujPodgladRobala(k.plotno, { kolor: mojKolor, czas, akc: k.id, mini: true });
     }
   }
@@ -448,19 +493,33 @@ async function ladowanie(zadanie, nad = 'Wchodzisz na') {
   }
 }
 
-/* Start strony: zapamiętane konto → ładowanie → Arena (albo od razu arena z adresu). */
+/* Start strony: zapamiętane konto → kurtyna Areny (jak przejście Fortnite ↔ 0 A.D.
+   na zrzutce, przejscie.js) → ekran Areny (albo od razu arena z adresu).
+   Ekran ładowania ze sceną jest tylko po zalogowaniu formularzem. */
+const kurtyna = window.PRZEJSCIE || { zaslon() {}, odslon() {}, wejscie: null };
 async function start() {
-  if (!K.token()) return pokazLogowanie();
-  const w = await ladowanie(async () => {
+  if (!K.token()) { pokazLogowanie(); kurtyna.odslon(); return; }
+  kurtyna.zaslon(kurtyna.wejscie || 'arena');
+  const [w] = await Promise.all([(async () => {
     const w = await K.ja();
     if (w.status === 200) {
-      ustawKonto(w.dane.konto);           // robal na ekranie ładowania już z nickiem, kolorem i akcesorium
+      ustawKonto(w.dane.konto);
       await Promise.all([odswiezPokoje(), odswiezRanking()]);
     }
     return w;
-  });
-  if (w.status === 200) return poZalogowaniu(w.dane.konto);
-  if (w.status === 401) return pokazLogowanie('Sesja wygasła — zaloguj się jeszcze raz.');
+  })(), czekaj(kurtyna.wejscie ? 250 : 700)]);   // bez przejścia kurtyna nie może tylko mignąć
+  if (w.status === 200) await poZalogowaniu(w.dane.konto);
+  else if (w.status === 401) pokazLogowanie('Sesja wygasła — zaloguj się jeszcze raz.');
+  else pokazBladStartu(w);
+  kurtyna.odslon();
+}
+/* Serwer nie odpowiada: scena ładowania z komunikatem i „Spróbuj jeszcze raz”. */
+function pokazBladStartu(w) {
+  pokazEkran('ekran-ladowanie');
+  el('ladowanie-nad').textContent = 'Nie udało się wejść na';
+  el('ladowanie-postep').style.width = '0%';
+  el('ladowanie-procent').textContent = '';
+  el('ladowanie-porada').textContent = '';
   el('ladowanie-tekst').textContent = K.opisBledu(w.dane) + ' Serwer mógł się właśnie restartować.';
   el('btn-ponow').hidden = false;
 }
@@ -521,6 +580,7 @@ function ustawKonto(k) {
   mojaNazwa = k.nick.slice(0, 14);
   if (KOLORY.includes(k.kolor)) mojKolor = k.kolor;
   if (k.akcesorium === null || AKCESORIA_ID.includes(k.akcesorium)) mojeAkcesorium = k.akcesorium;
+  if (mojeAkcesorium && !odblokowane(akcesorium(mojeAkcesorium), k.osiagniecia, WSZYSTKIE)) mojeAkcesorium = null;
   zaznaczKolor();
   zaznaczAkcesorium();
   el('nawigacja-nick').textContent = k.nick;
@@ -558,6 +618,7 @@ function otworzArene() {
   rysujProfil();
   podpisOsiagniec = null;
   rysujOsiagnieciaLobby();
+  zaznaczAkcesorium();
   rysujPokoje(true);
   rysujRanking();
   clearInterval(arenaTimer);
@@ -582,7 +643,7 @@ function rysujProfil() {
   lista.replaceChildren();
   const skutecznosc = s.partie ? Math.round(s.wygrane / s.partie * 100) + '%' : '—';
   for (const [ikona, ile, nazwa] of [['💀', s.fragi, 'killi'], ['🏆', s.wygrane, 'wygranych'], ['🎮', s.partie, 'partii'],
-    ['📈', skutecznosc, 'wygrywa'], ['💥', s.obrazenia, 'obrażeń'], ['🔥', s.rekordTury, 'rekord tury']]) {
+    ['📈', skutecznosc, 'wygrywa'], ['💥', s.obrazenia, 'obrażeń'], ['🔥', s.rekordTury, 'max obrażeń w turze']]) {
     const li = document.createElement('li');
     const b = document.createElement('b');
     b.textContent = ikona + ' ' + ile;
@@ -799,7 +860,7 @@ el('btn-panel').addEventListener('click', async () => {
 /* Koniec partii: wynik na konto (kille do rankingu, osiągnięcia). */
 function wyslijWynikPartii(wynik) {
   K.wyslijWynik(wynik).then((w) => {
-    if (w.status === 200) { konto = w.dane.konto; rysujProfil(); podpisOsiagniec = null; rysujOsiagnieciaLobby(); }
+    if (w.status === 200) { konto = w.dane.konto; rysujProfil(); podpisOsiagniec = null; rysujOsiagnieciaLobby(); zaznaczAkcesorium(); }
   });
 }
 
@@ -1996,7 +2057,15 @@ function pokazKoniec(winnerId) {
   nowe.replaceChildren();
   for (const o of partia.nowe) {
     const li = document.createElement('li');
-    li.textContent = o.ikona + ' ' + o.nazwa;
+    const czapka = CZAPKI.find((c) => c.osiagniecie === o.id);
+    li.textContent = o.ikona + ' ' + o.nazwa + (czapka ? ' → nowa czapka: ' + czapka.nazwa + ' ' + czapka.ikona : '');
+    nowe.append(li);
+  }
+  // komplet osiągnięć właśnie w tej partii — Korona Króla GOATów
+  if (partia.nowe.length && OSIAGNIECIA && ileZdobytych(OSIAGNIECIA.wczytaj()) === WSZYSTKIE.length) {
+    const li = document.createElement('li');
+    li.className = 'korona-odblokowana';
+    li.textContent = '👑 Komplet osiągnięć! Odblokowana Korona Króla GOATów';
     nowe.append(li);
   }
   nowe.hidden = partia.nowe.length === 0;
