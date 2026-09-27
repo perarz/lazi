@@ -258,11 +258,19 @@ test('kasetowka rozsypuje odlamki', () => {
   assert(maks >= 5, 'po wybuchu bylo tylko ' + maks + ' pociskow');
 });
 
+/* Nalot spada z nieba: na piętrowych mapach cel bywa pod nawisem — czyścimy
+   szyb nad nim i wyłączamy wiatr, żeby test sprawdzał broń, a nie kształt mapy. */
+function otworzNiebo(st, w) {
+  for (let y = 0; y < w.y - 30; y += 20) T.carve(st.terrain, w.x, y, 45);
+  st.wind = 0;
+}
+
 test('nalot wymaga celu i zrzuca rakiety', () => {
   const st = S.createGame(21, players(2));
   st.weapon = 'nalot';
   assert(!S.startCharging(st), 'nalot bez celu nie powinien ruszyc');
   const cel = st.worms.find((w) => w !== S.activeWorm(st));
+  otworzNiebo(st, cel);
   S.ustawCel(st, cel.x, cel.y);
   assert(S.startCharging(st), 'nalot z celem nie ruszyl');
   S.releaseFire(st);
@@ -662,7 +670,7 @@ test('druzyny: wybuch nie rani i nie odrzuca kolegi, rani siebie i wroga', () =>
   const akt = S.activeWorm(st);
   const kolega = st.worms.find((w) => w !== akt && w.druzyna === akt.druzyna);
   const wrog = st.worms.find((w) => w.druzyna !== akt.druzyna);
-  for (const w of [akt, kolega, wrog]) { w.x = 1000 + st.worms.indexOf(w) * 12; w.vx = 0; w.vy = 0; }
+  for (const w of [akt, kolega, wrog]) { w.x = 1000 + st.worms.indexOf(w) * 12; w.y = akt.y; w.vx = 0; w.vy = 0; }
   const hp = st.worms.map((w) => w.hp);
   S.explode(st, 1012, (akt.y - S.WORM_H * 0.5), WEAPONS.bazooka);
   assert(kolega.hp === hp[st.worms.indexOf(kolega)] && kolega.vx === 0 && kolega.vy === 0, 'kolega oberwal: hp ' + kolega.hp + ' vx ' + kolega.vx);
@@ -839,6 +847,7 @@ test('zabicie nalotem daje „Nalot dywanowy” i „Pierwsza krew”', () => {
   const ja = S.activeWorm(st);
   const wrog = st.worms.find((w) => w !== ja);
   wrog.hp = 1;
+  otworzNiebo(st, wrog);
   st.weapon = 'nalot';
   S.ustawCel(st, wrog.x, wrog.y);
   assert(S.startCharging(st), 'nalot nie wystartowal');

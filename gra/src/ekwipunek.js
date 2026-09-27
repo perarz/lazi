@@ -126,7 +126,7 @@ function rzedy() {
 /* opts: { panel, tlo, siatka, opis, przycisk, zamknij, onWybierz(id) } — elementy z index.html. */
 export function createEkwipunek(opts) {
   let otwarty = false;
-  let stan = { wybrana: 'bazooka', amunicja: {}, moge: false, wylaczone: [] };
+  let stan = { wybrana: 'bazooka', amunicja: {}, moge: false, wylaczone: [], kto: null };
   const kafelki = new Map();
 
   for (const r of rzedy()) {
@@ -175,6 +175,8 @@ export function createEkwipunek(opts) {
       k.zapas.textContent = zapas === undefined ? '∞' : id === 'kij' && pusta ? 'zrzut' : '×' + zapas;
       k.zapas.classList.toggle('bez-limitu', zapas === undefined);
     }
+    // obserwator ogląda ekwipunek gracza z turą — tytuł mówi czyj
+    if (opts.tytul) opts.tytul.textContent = stan.kto ? 'Ekwipunek: ' + stan.kto : 'Ekwipunek';
     if (otwarty) pokazOpis(stan.wybrana);
   }
 

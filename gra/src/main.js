@@ -52,6 +52,7 @@ const ekwipunek = createEkwipunek({
   tlo: el('ekw-tlo'),
   siatka: el('ekw-siatka'),
   opis: el('ekw-opis'),
+  tytul: el('ekw-tytul'),
   przycisk: el('btn-bron'),
   zamknij: el('ekw-zamknij'),
   onWybierz: (id) => wybierzBron(id)
@@ -1072,6 +1073,7 @@ function podgladNaZywo(dt, moge) {
   v.moc = ruch.m || 0;
   v.bron = ruch.b;
   v.zapas = typeof ruch.z === 'number' ? ruch.z : undefined;
+  v.amunicja = ruch.a && typeof ruch.a === 'object' ? ruch.a : null;
   if (typeof ruch.h === 'number') v.hp = ruch.h;
   v.cel = Array.isArray(ruch.c) ? { x: ruch.c[0], y: ruch.c[1] } : null;
 }
@@ -1404,7 +1406,8 @@ function rysujBronie() {
   const cudza = cudzaBron(st);
   const pokazana = cudza ? cudza.bron : wybrana;
   const w = WEAPONS[pokazana] || WEAPONS.bazooka;
-  const zapas = cudza ? cudza.zapas : amunicja[wybrana];
+  // Gracz partii widzi u przeciwnika tylko broń w łapach; obserwator (spoza partii) także ile jej ma.
+  const zapas = cudza ? (cudza.amunicja ? cudza.zapas : undefined) : amunicja[wybrana];
   el('bron-ikona').replaceChildren(ikonaBroni(w.id));
   el('bron-nazwa').textContent = w.name;
   el('bron-kto').textContent = cudza ? cudza.kto : 'Broń';
@@ -1414,16 +1417,27 @@ function rysujBronie() {
   z.textContent = '×' + zapas;
   z.classList.toggle('zero', zapas !== undefined && zapas <= 0);
   el('btn-bron').classList.toggle('nieaktywna', !moge);
-  ekwipunek.rysuj({ wybrana, amunicja, moge, wylaczone: wylaczoneBronie(st) });
+  // Obserwator: ekwipunek pokazuje zapasy gracza z turą (z podglądu na żywo).
+  if (cudza && cudza.amunicja) ekwipunek.rysuj({ wybrana: cudza.bron, amunicja: cudza.amunicja, moge: false, wylaczone: wylaczoneBronie(st), kto: cudza.kto });
+  else ekwipunek.rysuj({ wybrana, amunicja, moge, wylaczone: wylaczoneBronie(st), kto: null });
 }
 
-/* Broń gracza z turą, gdy to nie ja: { bron, zapas, kto } albo null. */
+/* Broń gracza z turą, gdy to nie ja: { bron, zapas, kto, amunicja } albo null.
+   `amunicja` (cały ekwipunek) tylko dla obserwatora spoza partii — gracz
+   partii nie podgląda, co przeciwnik ma w plecaku. */
 function cudzaBron(st) {
   if (!st || st.phase === 'over') return null;
   const akt = S.activeWorm(st);
   if (!akt || akt.id === mojeId) return null;
-  if (akt.widok && WEAPONS[akt.widok.bron]) return { bron: akt.widok.bron, zapas: akt.widok.zapas, kto: akt.name };
-  if (st.phase !== 'aim' && WEAPONS[st.weapon]) return { bron: st.weapon, zapas: akt.amunicja[st.weapon], kto: akt.name };
+  const obs = !!rg && rg.obserwator;
+  if (akt.widok && WEAPONS[akt.widok.bron]) {
+    const am = obs ? { ...akt.amunicja, ...(akt.widok.amunicja || {}) } : null;
+    if (am && akt.widok.zapas !== undefined) am[akt.widok.bron] = akt.widok.zapas;
+    return { bron: akt.widok.bron, zapas: akt.widok.zapas, kto: akt.name, amunicja: am };
+  }
+  if (st.phase !== 'aim' && WEAPONS[st.weapon]) {
+    return { bron: st.weapon, zapas: akt.amunicja[st.weapon], kto: akt.name, amunicja: obs ? akt.amunicja : null };
+  }
   return null;
 }
 
@@ -1458,7 +1472,8 @@ function odswiezHud(moge, teraz) {
 
   const ja = st.worms.find((w) => w.id === mojeId);
   const cb = cudzaBron(st);
-  const podpisBroni = [moge, st.weapon, mojaBron, ja ? JSON.stringify(ja.amunicja) : '', cb ? cb.bron + cb.zapas + cb.kto : ''].join('|');
+  const podpisBroni = [moge, st.weapon, mojaBron, ja ? JSON.stringify(ja.amunicja) : '',
+    cb ? cb.bron + cb.zapas + cb.kto + JSON.stringify(cb.amunicja) : ''].join('|');
   if (podpisBroni !== ostatniPodpisBroni) { ostatniPodpisBroni = podpisBroni; rysujBronie(); }
 
   const podpisGraczy = st.worms.map((w) => [w.id, w.alive, w.odszedl, rozl.has(w.id)].join(':')).join('|');

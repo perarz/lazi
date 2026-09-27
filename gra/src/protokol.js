@@ -603,6 +603,7 @@ export function klatka(r, pokoj, ctx) {
       c: st.cel ? [st.cel.x, st.cel.y] : null,
       h: w.hp,
       z: zapas === undefined ? null : zapas,
+      a: w.amunicja,                  // cały ekwipunek — pokazuje go tylko obserwator (nie gracz partii)
       e: r.efekty.length ? r.efekty : undefined
     };
     const sygnatura = JSON.stringify(ruch);

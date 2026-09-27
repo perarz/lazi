@@ -417,6 +417,10 @@ Lekcje z kalibracji:
 - Mapa nie leci przez sieć, tylko seed + lista kraterów.
   - Generator 2D robi nawisy, komory, pływające skały i czasem wielką jaskinię (zamiast dawnych cienkich tuneli).
   - 4 style z seeda: góry, archipelag, kaniony, jaskinie.
+  - Od 4.3 mapy „szalone”: relief do 660 px (szczyty nie wyżej niż y=110), szum dużej skali `n3` (wielkie nawisy),
+    2–7 **pięter** (długie, pochylone i poszarpane jaskinie jedna nad drugą), **kominy** (pionowe szyby między
+    piętrami), 1–3 wielkie hale, więcej wiszących skał. Generowanie ok. 250 ms (raz na partię, potem kopia).
+    Testy broni, które zależą od kształtu mapy, czyszczą teren (`polka`, `otworzNiebo` w `sim.test.mjs`).
   - Kopia bazowej maski jest cache'owana.
 - `spawnPoints` nigdy nie stawia robala w powietrzu. Gdy w wycinku gracza nie ma gruntu (przerwa
   między wyspami), szuka gruntu na całej mapie (`zapasowyStart`). Test sprawdza to na wielu seedach.
@@ -483,6 +487,8 @@ Lekcje z kalibracji:
   symuluje sam. Świeże zdarzenie wysyła podgląd bez czekania na odstęp. Widz (`pokazEfekty` w `main.js`) pokazuje
   każde raz (po numerze), trzyma `widok.hp`/`widok.zapas`, chowa zebrane skrzynki (`zebraneSkrzynki` w `R.draw`),
   a przycisk broni na dole pokazuje broń gracza z turą i jego nick (`cudzaBron`). Limit `ruch` na serwerze: 600 B.
+  Gracz partii widzi u przeciwnika tylko broń (bez zapasu); **obserwator** (`rg.obserwator`) także zapas i w ekwipunku
+  cały plecak gracza z turą (`ruch.a` = amunicja, tytuł „Ekwipunek: nick”).
 - **Kolory**: gracz wybiera kolor robala przy wejściu (`PALETA` w `main.js`, 12 kolorów, `arena:kolor`),
   kolor leci w `dolacz`. Przy kolizji `rozdzielKolory` zostawia go temu, kto dołączył wcześniej, reszta
   dostaje pierwszy wolny (lobby mówi o tym graczowi). Nick nad robalem jest w kolorze robala, a w drużynach
@@ -512,7 +518,7 @@ Lekcje z kalibracji:
 **Bronie** (`weapons.js`, kolejność = klawisze)
 | Klawisz | Broń | Rodzaj | Amunicja | Uwagi |
 |---|---|---|---|---|
-| 1 | Bazooka | pocisk | ∞ | wiatr, wybuch przy kontakcie |
+| 1 | Bazooka | pocisk | ∞ | wiatr, wybuch przy kontakcie (4.3: prędkość 882, zasięg ×1,5; wiatr ×1,35 u wszystkich) |
 | 2 | Granat | odbijany | ∞ | lont |
 | 3 | Strzelba | hitscan | ∞ | |
 | 4 | Kasetówka | odbijany | 2 | rozpada się na odłamki |
