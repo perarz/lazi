@@ -254,18 +254,19 @@ await test('wygląd robala: kolor i akcesorium na koncie, złe akcesorium odrzuc
 });
 
 await test('lista akcesoriów i czapek na serwerze = lista w grze (akcesoria.js, czapki.js)', async () => {
-  const { AKCESORIA, CZAPKI } = require('./konta.js');
+  const { AKCESORIA, CZAPKI, WSZYSTKIE_OSIAGNIECIA } = require('./konta.js');
   const gra = await import('../gra/src/akcesoria.js');
   const cz = await import('../gra/src/czapki.js');
   assert(JSON.stringify(gra.AKCESORIA_ID) === JSON.stringify(AKCESORIA), JSON.stringify([gra.AKCESORIA_ID, AKCESORIA]));
   const zGry = Object.fromEntries(cz.CZAPKI.map((c) => [c.id, c.osiagniecie]));
   assert(JSON.stringify(zGry) === JSON.stringify(CZAPKI), 'czapki: ' + JSON.stringify([zGry, CZAPKI]));
-  // każde osiągnięcie ma swoją czapkę
+  // korona za wszystkie: serwer zna tę samą listę osiągnięć co gra
   globalThis.window = globalThis.window || {};
   globalThis.localStorage = globalThis.localStorage || { getItem: () => null, setItem() {} };
   await import('../gra/osiagniecia.js');
-  const ids = window.ARENA_OSIAGNIECIA.lista.map((o) => o.id).sort();
-  assert(JSON.stringify(ids) === JSON.stringify(Object.values(CZAPKI).sort()), 'osiągnięcie bez czapki albo odwrotnie');
+  const ids = window.ARENA_OSIAGNIECIA.lista.map((o) => o.id);
+  assert(JSON.stringify(ids) === JSON.stringify(WSZYSTKIE_OSIAGNIECIA), 'lista osiągnięć na serwerze inna niż w grze');
+  for (const o of Object.values(CZAPKI)) assert(o === '*' || ids.includes(o), 'czapka za nieznane osiągnięcie: ' + o);
 });
 
 await test('wynik partii: kille do rankingu, jeden wynik na partię, limit killi, osiągnięcia na koncie', async () => {
@@ -283,15 +284,20 @@ await test('wynik partii: kille do rankingu, jeden wynik na partię, limit killi
 });
 
 await test('czapka za osiągnięcie: bez osiągnięcia zablokowana (wygląd i dolacz), z nim wolno', async () => {
-  let d = await (await post('/api/konto/wyglad', { token: ALA.token, akcesorium: 'cylinder' })).json();
-  assert(d.konto.akcesorium !== 'cylinder', 'zablokowana czapka przyjęta');
-  d = await (await post('/api/konto/wyglad', { token: BOLEK.token, akcesorium: 'opaska-krwi' })).json();
-  assert(d.konto.akcesorium === 'opaska-krwi', 'odblokowana czapka odrzucona: ' + JSON.stringify(d.konto));
+  const { WSZYSTKIE_OSIAGNIECIA } = require('./konta.js');
+  let d = await (await post('/api/konto/wyglad', { token: BOLEK.token, akcesorium: 'krol' })).json();
+  assert(d.konto.akcesorium !== 'krol', 'korona bez wszystkich osiągnięć przyjęta');
+  await post('/api/konto/wynik', { token: BOLEK.token, partia: 'kw', tylkoOsiagniecia: true, osiagniecia: ['masakra'] });
+  d = await (await post('/api/konto/wyglad', { token: BOLEK.token, akcesorium: 'irokez' })).json();
+  assert(d.konto.akcesorium === 'irokez', 'odblokowana czapka odrzucona: ' + JSON.stringify(d.konto));
+  await post('/api/konto/wynik', { token: BOLEK.token, partia: 'kw', tylkoOsiagniecia: true, osiagniecia: WSZYSTKIE_OSIAGNIECIA });
+  d = await (await post('/api/konto/wyglad', { token: BOLEK.token, akcesorium: 'krol' })).json();
+  assert(d.konto.akcesorium === 'krol', 'korona po wszystkich osiągnięciach odrzucona');
   const a = klient('k3');
   await a.otwarty;
   a.wyslij({ typ: 'hej', od: 0, epoka: null });
   await a.czekaj((m) => m.typ === 'stan');
-  await a.zd({ t: 'dolacz', id: 'x', akc: 'cylinder' });
+  await a.zd({ t: 'dolacz', id: 'x', akc: 'wulkan' });
   const s1 = await a.czekaj((m) => m.typ === 'stan' && m.zdarzenia.length);
   assert(!('akc' in s1.zdarzenia[0]), 'zablokowana czapka przeszła w dolacz');
   a.ws.close();

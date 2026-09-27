@@ -187,6 +187,13 @@ export const PODSTAWOWE = [
 
 export const AKCESORIA = [...PODSTAWOWE, ...CZAPKI];
 export const AKCESORIA_ID = AKCESORIA.map((a) => a.id);
-/* Czy wolno założyć: podstawowe zawsze, czapka — gdy zdobyte jej osiągnięcie ({ id: czas }). */
-export const odblokowane = (a, zdobyte) => !!a && (!a.osiagniecie || !!(zdobyte && zdobyte[a.osiagniecie]));
+/* Czy wolno założyć: podstawowe zawsze, czapka — gdy zdobyte jej osiągnięcie ({ id: czas });
+   osiagniecie '*' = wszystkie z listy `wszystkie` (id osiągnięć z gra/osiagniecia.js). */
+export function odblokowane(a, zdobyte, wszystkie = []) {
+  if (!a) return false;
+  if (!a.osiagniecie) return true;
+  if (!zdobyte) return false;
+  if (a.osiagniecie === '*') return wszystkie.length > 0 && wszystkie.every((id) => zdobyte[id]);
+  return !!zdobyte[a.osiagniecie];
+}
 export const akcesorium = (id) => AKCESORIA.find((a) => a.id === id) || null;

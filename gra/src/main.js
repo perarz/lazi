@@ -339,6 +339,8 @@ boxKolorow.addEventListener('keydown', (e) => {
    osiągnięcia (od 4.7.1) — zablokowana ma kłódkę i nazwę osiągnięcia, które ją daje. */
 const kafelkiAkcesoriow = [];
 const osiagniecieCzapki = (a) => (OSIAGNIECIA ? OSIAGNIECIA.lista.find((o) => o.id === a.osiagniecie) : null);
+const WSZYSTKIE = OSIAGNIECIA ? OSIAGNIECIA.lista.map((o) => o.id) : [];
+const ileZdobytych = (zdobyte) => WSZYSTKIE.filter((id) => zdobyte && zdobyte[id]).length;
 function kafelek(box, a) {
   const b = document.createElement('button');
   b.type = 'button';
@@ -357,7 +359,8 @@ function kafelek(box, a) {
   } else if (a.osiagniecie) {
     const o = osiagniecieCzapki(a);
     zn.className = 'akcesorium-gra os';
-    zn.textContent = o ? o.ikona + ' ' + (o.ukryta ? '???' : o.nazwa) : '';
+    zn.textContent = a.osiagniecie === '*' ? '🏆 wszystkie osiągnięcia' : o ? o.ikona + ' ' + (o.ukryta ? '???' : o.nazwa) : '';
+    if (a.osiagniecie === '*') b.classList.add('krolewska');
     b.append(zn);
     const klodka = document.createElement('i');
     klodka.className = 'klodka';
@@ -368,9 +371,12 @@ function kafelek(box, a) {
   b.append(podpis);
   b.title = a.nazwa + (a.gra ? ' (' + a.gra + ')' : '');
   b.addEventListener('click', () => {
-    if (a.osiagniecie && !odblokowane(a, OSIAGNIECIA ? OSIAGNIECIA.wczytaj() : {})) {
+    const zdobyte = OSIAGNIECIA ? OSIAGNIECIA.wczytaj() : {};
+    if (a.osiagniecie && !odblokowane(a, zdobyte, WSZYSTKIE)) {
       const o = osiagniecieCzapki(a);
-      el('info-wyglad').textContent = '🔒 ' + a.nazwa + ' — zdobądź osiągnięcie „' + (o && !o.ukryta ? o.nazwa + '”: ' + o.opis : '???”: to tajemnica. Kombinuj.');
+      el('info-wyglad').textContent = a.osiagniecie === '*'
+        ? '🔒 ' + a.nazwa + ' — zdobądź wszystkie osiągnięcia Areny (masz ' + ileZdobytych(zdobyte) + '/' + WSZYSTKIE.length + ').'
+        : '🔒 ' + a.nazwa + ' — zdobądź osiągnięcie „' + (o && !o.ukryta ? o.nazwa + '”: ' + o.opis : '???”: to tajemnica. Kombinuj.');
       return;
     }
     el('info-wyglad').textContent = '';
@@ -386,7 +392,8 @@ function zaznaczAkcesorium() {
   let ile = 0;
   for (const k of kafelkiAkcesoriow) {
     const tak = k.id === mojeAkcesorium;
-    const zablokowana = !!k.a.osiagniecie && !odblokowane(k.a, zdobyte);
+    const zablokowana = !!k.a.osiagniecie && !odblokowane(k.a, zdobyte, WSZYSTKIE);
+    if (k.a.osiagniecie === '*') k.b.querySelector('.akcesorium-gra').textContent = '🏆 ' + ileZdobytych(zdobyte) + '/' + WSZYSTKIE.length + ' osiągnięć';
     if (k.a.osiagniecie && !zablokowana) ile++;
     k.b.classList.toggle('zablokowane', zablokowana);
     k.b.setAttribute('aria-disabled', zablokowana ? 'true' : 'false');
@@ -573,7 +580,7 @@ function ustawKonto(k) {
   mojaNazwa = k.nick.slice(0, 14);
   if (KOLORY.includes(k.kolor)) mojKolor = k.kolor;
   if (k.akcesorium === null || AKCESORIA_ID.includes(k.akcesorium)) mojeAkcesorium = k.akcesorium;
-  if (mojeAkcesorium && !odblokowane(akcesorium(mojeAkcesorium), k.osiagniecia)) mojeAkcesorium = null;
+  if (mojeAkcesorium && !odblokowane(akcesorium(mojeAkcesorium), k.osiagniecia, WSZYSTKIE)) mojeAkcesorium = null;
   zaznaczKolor();
   zaznaczAkcesorium();
   el('nawigacja-nick').textContent = k.nick;
@@ -2052,6 +2059,13 @@ function pokazKoniec(winnerId) {
     const li = document.createElement('li');
     const czapka = CZAPKI.find((c) => c.osiagniecie === o.id);
     li.textContent = o.ikona + ' ' + o.nazwa + (czapka ? ' → nowa czapka: ' + czapka.nazwa + ' ' + czapka.ikona : '');
+    nowe.append(li);
+  }
+  // komplet osiągnięć właśnie w tej partii — Korona Króla GOATów
+  if (partia.nowe.length && OSIAGNIECIA && ileZdobytych(OSIAGNIECIA.wczytaj()) === WSZYSTKIE.length) {
+    const li = document.createElement('li');
+    li.className = 'korona-odblokowana';
+    li.textContent = '👑 Komplet osiągnięć! Odblokowana Korona Króla GOATów';
     nowe.append(li);
   }
   nowe.hidden = partia.nowe.length === 0;

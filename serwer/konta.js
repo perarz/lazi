@@ -32,17 +32,19 @@ const RANKING_ILE = 50;
 const NICK = /^[\p{L}\p{N}_. -]{3,14}$/u;
 // akcesoria robala (od 4.7) — ta sama lista jest w gra/src/akcesoria.js; czapki (4.7.1) odblokowuje
 // osiągnięcie — lista i przypisanie jak w gra/src/czapki.js (test serwera pilnuje zgodności)
-const CZAPKI = {
-  'opaska-krwi': 'pierwsza-krew', czaszka: 'piec-fragow', wiking: 'rzeznik', wulkan: 'lawa', pilot: 'nalot',
-  saper: 'saper', kowboj: 'snajper', fajerwerk: 'kasetowka', rogi: 'owca', bejsbol: 'home-run', piorun: 'dublet',
-  irokez: 'masakra', ninja: 'ucieczka', cylinder: 'zwyciestwo', aureola: 'na-wlosku', rycerz: 'nietykalny',
-  general: 'weteran', blazen: 'samoboja'
-};
+// '*' = wszystkie osiągnięcia (lista jak w gra/osiagniecia.js — test pilnuje zgodności)
+const CZAPKI = { krol: '*', irokez: 'masakra', wulkan: 'lawa', rogi: 'owca' };
+const WSZYSTKIE_OSIAGNIECIA = ['pierwsza-krew', 'piec-fragow', 'rzeznik', 'lawa', 'nalot', 'saper', 'snajper',
+  'kasetowka', 'owca', 'home-run', 'dublet', 'masakra', 'ucieczka', 'zwyciestwo', 'na-wlosku', 'nietykalny',
+  'weteran', 'samoboja'];
 const AKCESORIA = ['korona', 'lama', 'kilof', 'helm', 'wieniec', ...Object.keys(CZAPKI)];
 /* Czy konto może nosić to akcesorium (czapka wymaga zdobytego osiągnięcia). */
 function wolnoNosic(k, id) {
   if (!AKCESORIA.includes(id)) return false;
-  return !CZAPKI[id] || !!(k && k.osiagniecia && k.osiagniecia[CZAPKI[id]]);
+  const trzeba = CZAPKI[id];
+  if (!trzeba) return true;
+  const ma = (k && k.osiagniecia) || {};
+  return trzeba === '*' ? WSZYSTKIE_OSIAGNIECIA.every((o) => ma[o]) : !!ma[trzeba];
 }
 
 const skrot = (haslo, sol) => new Promise((ok, zle) =>
@@ -259,4 +261,4 @@ class Konta {
   }
 }
 
-module.exports = { Konta, idKonta, NICK, AKCESORIA, CZAPKI, wolnoNosic };
+module.exports = { Konta, idKonta, NICK, AKCESORIA, CZAPKI, WSZYSTKIE_OSIAGNIECIA, wolnoNosic };
