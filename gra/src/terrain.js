@@ -90,6 +90,23 @@ export function createTerrain(seed, opcje = {}) {
   for (let i = 0, n = randInt(rng, 3, 5); i < n; i++) {
     ciecia.push({ u: randRange(rng, 0.18, 0.82), w: randRange(rng, 0.018, 0.04), g: randRange(rng, 0.3, 0.8) });
   }
+  // ekstremalna (4.5.1): wszystkie style naraz — strefy gór i masywów z jaskiniami,
+  // do tego iglice pod sufit, wąwozy do samej lawy i przerwy jak w archipelagu.
+  // Losowane tylko dla tego stylu, więc zwykłe mapy z seeda się nie zmieniają.
+  let strefy = null;
+  const iglice = [], wawozy = [], przerwy = [];
+  if (ekstremalna) {
+    strefy = valueNoise1D(rng, 5);
+    for (let i = 0, n = ile(randInt(rng, 4, 6)); i < n; i++) {
+      iglice.push({ u: randRange(rng, 0.08, 0.92), w: randRange(rng, 0.012, 0.03) / skala, h: randRange(rng, 0.35, 0.6) });
+    }
+    for (let i = 0, n = ile(randInt(rng, 2, 3)); i < n; i++) {
+      wawozy.push({ u: randRange(rng, 0.12, 0.88), w: randRange(rng, 0.012, 0.025) / skala, g: randRange(rng, 0.6, 1.0) });
+    }
+    for (let i = 0, n = ile(randInt(rng, 1, 2)); i < n; i++) {
+      przerwy.push({ u: randRange(rng, 0.2, 0.8), w: randRange(rng, 0.03, 0.05) / skala });
+    }
+  }
 
   const surface = new Float64Array(W);
   for (let x = 0; x < W; x++) {
@@ -113,7 +130,24 @@ export function createTerrain(seed, opcje = {}) {
         if (d < 1) wys -= c.g * (1 - d * d) * (1 - d * d);
       }
     } else if (styl === 'ekstremalna') {
-      wys = 0.82 + s * 0.4;                      // jedna wielka góra-mrowisko od brzegu do brzegu
+      // strefy: raz ostre góry, raz gruby masyw na jaskinie (płynne przejścia)
+      const r = 1 - Math.abs(2 * s - 1);
+      const gorska = 0.4 + r * r * 1.0;
+      const masyw = 0.72 + s * 0.3;
+      const m = smoothstep(0.35, 0.65, strefy(u * 3));
+      wys = masyw + (gorska - masyw) * m;
+      for (const c of iglice) {                  // iglice prawie pod sufit świata
+        const d = Math.abs(u - c.u) / c.w;
+        if (d < 1) wys += c.h * (1 - d * d) * (1 - d * d);
+      }
+      for (const c of wawozy) {                  // kaniony aż do lawy
+        const d = Math.abs(u - c.u) / c.w;
+        if (d < 1) wys -= c.g * (1 - d * d) * (1 - d * d);
+      }
+      for (const c of przerwy) {                 // archipelag: przerwa z lawą między wyspami
+        const d = Math.abs(u - c.u) / c.w;
+        if (d < 1) wys = wys * smoothstep(0.55, 1, d) - 0.15 * (1 - d);
+      }
     } else {
       wys = 0.3 + s * 0.75;
     }
@@ -125,7 +159,7 @@ export function createTerrain(seed, opcje = {}) {
     // schodzi pod lawę, więc powstaje wyspa, z której da się spaść.
     const brzeg = ekstremalna ? 0.012 : 0.03, brzeg2 = ekstremalna ? 0.06 : 0.16;
     const edge = smoothstep(brzeg, brzeg2, x / WORLD_W) * smoothstep(brzeg, brzeg2, (W - x) / WORLD_W);
-    surface[x] = Math.max(110, LAVA_Y - relief * edge);   // nad szczytem zostaje niebo na lot pocisków
+    surface[x] = Math.max(ekstremalna ? 45 : 110, LAVA_Y - relief * edge);   // nad szczytem zostaje niebo na lot pocisków
   }
 
   // --- bryła 2D: szum przesuwa powierzchnię w pionie i w poziomie,
@@ -200,7 +234,7 @@ export function createTerrain(seed, opcje = {}) {
     elipsa(cx, cy, randRange(rng, 55, 170), randRange(rng, 30, 90), 0);
   }
   // --- wielkie jaskinie: wysokie hale z podłogą ---
-  const duze = ile(styl === 'jaskinie' ? randInt(rng, 2, 3) : randInt(rng, 1, 2));
+  const duze = ile(styl === 'jaskinie' || ekstremalna ? randInt(rng, 2, 3) : randInt(rng, 1, 2));
   for (let i = 0; i < duze; i++) {
     const cx = randRange(rng, W * 0.22, W * 0.78);
     const top = surface[Math.floor(cx)];
@@ -216,6 +250,14 @@ export function createTerrain(seed, opcje = {}) {
     const cy = Math.max(90, top - randRange(rng, 130, 300));
     elipsa(cx, cy, randRange(rng, 55, 130), randRange(rng, 16, 34), 1);
   }
+  // ekstremalna: wiszące skały nad przerwami — przejście „po kamieniach” nad lawą
+  for (const c of przerwy) {
+    const cx = c.u * W;
+    elipsa(cx, randRange(rng, 520, 700), randRange(rng, 40, 70), randRange(rng, 14, 22), 1);
+  }
+
+  // ekstremalna: pas nieba nad iglicami, żeby pocisk dało się przerzucić górą
+  if (ekstremalna) mask.fill(0, 0, 36 * W);
 
   usunOkruchy(mask, W, 450);
 

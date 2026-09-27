@@ -5,6 +5,13 @@
 (function () {
   var historia = [
     {
+      wersja: '4.5.1', data: '2026-09-27', tytul: 'Ekstremalna jeszcze wyżej',
+      zmiany: [
+        'Mapa „Ekstremalna” to teraz wszystkie mapy w jednej: pasma ostrych gór, grube masywy z piętrami jaskiń, wąwozy aż do lawy, przerwy jak w archipelagu (z wiszącymi kamieniami nad lawą) i wielkie hale.',
+        'Dużo bardziej w górę: skalne iglice sięgają prawie pod niebo, a nad nimi zostaje wąski pas powietrza na przerzut pocisku.'
+      ]
+    },
+    {
       wersja: '4.5', data: '2026-09-27', tytul: 'Mapy na zamówienie i obracane mosty',
       zmiany: [
         'Nowa mapa „Ekstremalna”: jedna wielka góra-mrowisko od brzegu do brzegu — piętra, kominy i ukośne tunele połączone w jedną sieć. Lina ninja obowiązkowa.',

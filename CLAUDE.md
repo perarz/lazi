@@ -18,7 +18,7 @@ Stos technologiczny:
 - Bez bundlera, bez `package.json` i bez zależności npm. Zwykłe pliki HTML/CSS/JS, gra jako moduły ES,
   zrzutka jako klasyczne skrypty.
 
-Obecna wersja: **4.5 „Mapy na zamówienie i obracane mosty”** (`wersja.js`).
+Obecna wersja: **4.5.1 „Ekstremalna jeszcze wyżej”** (`wersja.js`).
 
 ---
 
@@ -430,7 +430,10 @@ Lekcje z kalibracji:
     rozciągnięty, a liczba pięter/komór/skał rośnie proporcjonalnie (`ile`).
   - **Styl `ekstremalna`** (4.5) nie jest w losowaniu z seeda (`stylMapy` zwraca tylko 4 style) — przychodzi
     z ustawień (`ust.mapa`) przez `createGame` → `createTerrain(…, { styl })`. Wysoka bryła od brzegu do brzegu,
-    9–12 wąskich pięter, 6–8 kominów i 7–10 ukośnych tuneli.
+    9–12 wąskich pięter, 6–8 kominów i 7–10 ukośnych tuneli. Od 4.5.1 profil łączy wszystkie style: strefy
+    (`strefy`, szum 1D) mieszają góry i masyw, do tego `iglice` (prawie pod sufit, powierzchnia min. y=45),
+    `wawozy` do lawy i `przerwy` jak w archipelagu (z wiszącą skałą nad każdą); pas y < 36 jest zawsze pusty
+    (przerzut górą). Losowania tych elementów są tylko w gałęzi ekstremalnej — zwykłe mapy z seeda się nie zmieniły.
 - `spawnPoints` nigdy nie stawia robala w powietrzu. Gdy w wycinku gracza nie ma gruntu (przerwa
   między wyspami), szuka gruntu na całej mapie (`zapasowyStart`). Test sprawdza to na wielu seedach.
 
@@ -670,6 +673,36 @@ brak obrażeń od swoich i tury na zmianę drużynami są już w 4.2*; zostaje t
 dorzucać po kilka w wersji. **Otwarte pytania do użytkownika**: od czego zaczynamy; ile robali domyślnie
 w drużynie (2 czy 3); czy robimy czapki i bronie z postaci ekipy; czy robimy wspólny ranking.
 
+### Plan: konta, ekran „GRAJ” i panel aren (propozycja 2026-09-27, czeka na decyzję)
+Użytkownik zapowiedział przejście na konta i „cały panel aren i lobby”. Na razie tylko plan, bez kodu.
+
+**Etap A — ekran przejściowy z GRAJ (4.6, sam klient)**
+- Klik „Arena” → `gra/` pokazuje najpierw **hub**: duży przycisk **GRAJ**, karta profilu (nick, kolor robala,
+  statystyki i osiągnięcia z `localStorage`), przyciski Pokoje (na razie wyszarzone), Ustawienia (dźwięk),
+  Osiągnięcia. Dzisiejszy ekran wejścia (nick + kolor) staje się edycją profilu w hubie.
+- GRAJ = wejście do domyślnego pokoju jak dziś. Protokół i serwer bez zmian.
+
+**Etap B — lista pokoi (4.7, serwer)**
+- Serwer ma już pokoje (`?pokoj=`). Dochodzi `GET /api/pokoje` (nazwa, gospodarz, gracze n/8, lobby/partia,
+  skrót ustawień), odświeżane w hubie co kilka sekund albo przez gniazdo.
+- „Stwórz pokój” (nazwa, publiczny/prywatny z 4-znakowym kodem), „Dołącz kodem”, GRAJ = szybka gra
+  (najpełniejsze otwarte lobby albo nowy pokój). Pusty pokój znika po kilku minutach. Limit pokoi na IP.
+
+**Etap C — konta (5.0, serwer + klient)**
+- Rejestracja: nick (unikalny bez względu na wielkość liter) + hasło, **bez maila** (mniej danych osobowych).
+  Hasło tylko jako skrót `crypto.scrypt` z solą (wbudowany Node, bez nowych zależności), plik
+  `/var/lib/arena/konta.json` z kopiami jak zrzutka. Reset hasła robi właściciel promptem na VPS.
+- Logowanie daje losowy token sesji (np. 30 dni) w `localStorage`; token idzie w `dolacz` i przy wpłatach.
+  Serwer podmienia nick na ten z konta — nikt nie podszyje się pod cudzy nick. Limity prób logowania na IP.
+- Konto trzyma: nick, kolor, (później czapkę), statystyki i osiągnięcia Areny, odznaki zrzutki. Przy pierwszym
+  logowaniu przenosi to, co było w `localStorage`. Granie **jako gość** zostaje.
+- Jedno konto na całą stronę (Arena + zrzutka: nick sponsora = nick konta).
+
+**Etap D — dalej**: wspólny ranking Areny, znajomi i zaproszenia do pokoju, historia partii, czapki postaci.
+
+**Otwarte pytania**: nick + hasło czy logowanie Google; czy konto obejmuje też zrzutkę; czy goście mogą grać
+(propozycja: tak); czy ranking ma być publiczny. Kolejność proponowana: A → B → C → D.
+
 ---
 
 ## 8. Wersje i log zmian
@@ -698,6 +731,7 @@ w drużynie (2 czy 3); czy robimy czapki i bronie z postaci ekipy; czy robimy ws
   - **4.3** ustawienia partii u gospodarza, wyrzucanie, oddawanie korony, losowanie drużyn, szalone mapy, podgląd na żywo
   - **4.4** lina ninja, Święty GOAT, emotki i tańce, licznik obserwatorów, lawa od tury i jej tempo, dwa zestawy broni, koza zamiast owcy, niższy skok
   - **4.5** mapa ekstremalna, rozmiar mapy, wpisywane życie/czas/lawa, obracany most (R), dalszy rzut granatów
+  - **4.5.1** ekstremalna = wszystkie style naraz, iglice pod niebo
 
 ---
 

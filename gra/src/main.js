@@ -87,7 +87,7 @@ const OPISY_MAP = {
   archipelag: 'Mapa: Archipelag — między wyspami jest lawa. Skacz ostrożnie.',
   kaniony: 'Mapa: Kaniony — wąwozy do samej lawy i skalne łuki.',
   jaskinie: 'Mapa: Jaskinie — wielkie groty, nawisy i pływające skały. Granat się przyda.',
-  ekstremalna: 'Mapa: Ekstremalna — jedna wielka góra-mrowisko: piętra, kominy i tunele, wszystko połączone. Lina ninja w dłoń!'
+  ekstremalna: 'Mapa: Ekstremalna — wszystkie mapy naraz: iglice pod niebo, wąwozy do lawy, wyspy, piętra jaskiń i tunele. Lina ninja w dłoń!'
 };
 
 /* Statystyki gracza liczone wyłącznie w przeglądarce (localStorage) —
