@@ -21,3 +21,8 @@ export function adresSerwera() {
 export function adresHttp(ws) {
   return ws.replace(/^ws/, 'http').replace(/\/ws(\?.*)?$/, '/api/arena');
 }
+
+/* Adres HTTP API serwera (konta, pokoje, ranking) — od 4.6. */
+export function adresApi(ws = adresSerwera()) {
+  return ws ? ws.replace(/^ws/, 'http').replace(/\/ws(\?.*)?$/, '') : null;
+}

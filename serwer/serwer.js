@@ -19,6 +19,20 @@
      GET  /api/zrzutka[?sezon=N]      — sumy i ostatnie wpłaty (jak dawne api/zrzutka.js)
      POST /api/zrzutka                — wpłata
 
+   Konta i pokoje (od 4.6, token sesji zawsze w treści POST, nigdy w adresie GET):
+     POST /api/konto/rejestracja      { nick, haslo, stare? } → { token, konto }
+     POST /api/konto/logowanie        { nick, haslo } → { token, konto }
+     POST /api/konto/ja               { token } → { konto }
+     POST /api/konto/wyloguj          { token }
+     POST /api/konto/kolor            { token, kolor }
+     POST /api/konto/wynik            { token, partia, kille, obrazenia, wygrana, rekordTury, osiagniecia }
+     GET  /api/ranking                — top 50 po killach
+     GET  /api/pokoje                 — lista pokoi (nazwa, hasło tak/nie, gracze, czy trwa partia)
+     POST /api/pokoje                 { token, nazwa, haslo? } → { id, klucz }
+     POST /api/pokoje/wejdz           { token, id, haslo } → { klucz }
+   WebSocket Areny wymaga zalogowania: /ws?pokoj=ID&token=…[&klucz=…] (klucz = pokój na hasło).
+   Serwer sam wpisuje w zdarzenia id gracza z konta (i nick w 'dolacz') — nikt nie gra za kogoś.
+
    Zrzutka na żywo: WebSocket /zrzutka/ws — po połączeniu i po każdej wpłacie
    serwer wysyła { typ: 'zrzutka', sumy, wplaty, teraz, sezon }.
 
@@ -26,14 +40,18 @@
      ARENA_PORT      (8787)  — port lokalny; z zewnątrz ruch idzie przez Caddy (HTTPS)
      ARENA_ORIGINS           — dodatkowe dozwolone strony, po przecinku
                                (zawsze wolno *.vercel.app i localhost)
-     ZRZUTKA_PLIK            — plik z danymi zrzutki (brak = tylko w pamięci, do testów) */
+     ZRZUTKA_PLIK            — plik z danymi zrzutki (brak = tylko w pamięci, do testów)
+     KONTA_PLIK              — plik z kontami graczy (brak = tylko w pamięci, do testów) */
 
 'use strict';
 
 const http = require('http');
+const crypto = require('crypto');
 const { WebSocketServer } = require('ws');
 const { Pokoj, MAX_ZDARZENIE } = require('./pokoj');
 const { Zrzutka, SEZON } = require('./zrzutka');
+const { Konta } = require('./konta');
+const { czystyTekst } = require('./gracze');
 
 const PORT = Number(process.env.ARENA_PORT) || 8787;
 const DODATKOWE_ORIGINS = String(process.env.ARENA_ORIGINS || '')
@@ -49,6 +67,19 @@ const POKOJ_PORZUCONY_MS = 6 * 3600 * 1000;
 const zrzutka = new Zrzutka(process.env.ZRZUTKA_PLIK || null);
 const widzowieZrzutki = new Set();   // połączenia /zrzutka/ws
 const MAX_WPLATA_BAJTY = 2048;
+
+// Bez KONTA_PLIK konta leżą obok zrzutki (na VPS /var/lib/arena/konta.json) — bez zmian w usłudze systemd.
+const konta = new Konta(process.env.KONTA_PLIK ||
+  (process.env.ZRZUTKA_PLIK ? require('path').join(require('path').dirname(process.env.ZRZUTKA_PLIK), 'konta.json') : null));
+const MAX_KONTO_BAJTY = 4096;
+
+/* Pokoje założone w panelu (od 4.6): id → { nazwa, zalozyl, sol, hasloHash, klucz, pustyOd }.
+   Pokój bez wpisu (np. 'glowny' albo ?pokoj= z testów) jest publiczny. */
+const opisy = new Map();
+const MAX_WLASNYCH_POKOI = 40;
+const POKOI_NA_KONTO = 3;
+const PUSTY_POKOJ_MS = 10 * 60 * 1000;
+const skrotHasla = (haslo, sol) => crypto.createHash('sha256').update(sol + ':' + haslo).digest('hex');
 
 const pokoje = new Map();            // nazwa → Pokoj
 const polaczenia = new Map();        // nazwa pokoju → Set<ws>
@@ -67,6 +98,81 @@ function pokoj(nazwa) {
     pokoje.set(nazwa, p);
   }
   return p;
+}
+
+/* Czy wolno wejść do pokoju: publiczny albo z właściwym kluczem (dostaje się go za hasło). */
+function wstepDoPokoju(nazwa, klucz) {
+  const o = opisy.get(nazwa);
+  if (!o || !o.hasloHash) return true;
+  return typeof klucz === 'string' && klucz.length === o.klucz.length &&
+    crypto.timingSafeEqual(Buffer.from(klucz), Buffer.from(o.klucz));
+}
+
+/* Zdarzenie od zalogowanego gracza: id (i nick przy dołączeniu) bierzemy z konta. */
+function przypnijKonto(z, konto) {
+  if (!z || typeof z !== 'object' || Array.isArray(z) || !konto) return z;
+  const wynik = { ...z };
+  if ('id' in wynik) wynik.id = konto.id;
+  if (wynik.t === 'dolacz') wynik.name = konto.nick.slice(0, 14);
+  return wynik;
+}
+
+const NAZWA_GLOWNEGO = 'Arena główna';
+function listaPokoi(teraz = Date.now()) {
+  const wynik = [];
+  const nazwy = new Set(['glowny', ...opisy.keys(), ...polaczenia.keys()]);
+  for (const id of nazwy) {
+    const o = opisy.get(id);
+    const p = pokoje.get(id);
+    const nicki = new Set();
+    for (const ws of polaczenia.get(id) || []) if (ws.konto) nicki.add(ws.konto.nick);
+    // partia trwa, jeśli log zaczyna się od 'nowa' i ktoś ostatnio strzelił albo spasował
+    let partia = false;
+    if (p && p.log.length && p.log[0].t === 'nowa') {
+      for (let i = p.log.length - 1; i >= 0 && i >= p.log.length - 400; i--) {
+        const z = p.log[i];
+        if ((z.t === 'strzal' || z.t === 'pas' || z.t === 'stan' || z.t === 'nowa') && teraz - z.st < 120000) { partia = true; break; }
+      }
+    }
+    wynik.push({
+      id,
+      nazwa: o ? o.nazwa : id === 'glowny' ? NAZWA_GLOWNEGO : id,
+      haslo: !!(o && o.hasloHash),
+      zalozyl: o ? o.zalozyl : null,
+      gracze: [...nicki].slice(0, 12),
+      ile: nicki.size,
+      partia
+    });
+  }
+  // główny zawsze pierwszy, potem najpełniejsze
+  wynik.sort((a, b) => (b.id === 'glowny') - (a.id === 'glowny') || b.ile - a.ile || a.nazwa.localeCompare(b.nazwa));
+  return { pokoje: wynik.slice(0, 60) };
+}
+
+function nowyPokoj(konto, body) {
+  const nazwa = czystyTekst(body.nazwa, 24);
+  const haslo = typeof body.haslo === 'string' ? body.haslo.slice(0, 40) : '';
+  if (nazwa.length < 3) return { status: 400, dane: { blad: 'zla-nazwa' } };
+  if (haslo && haslo.length < 3) return { status: 400, dane: { blad: 'zle-haslo' } };
+  if (opisy.size >= MAX_WLASNYCH_POKOI) return { status: 503, dane: { blad: 'za-duzo-pokoi' } };
+  if ([...opisy.values()].filter((o) => o.zalozyl === konto.nick).length >= POKOI_NA_KONTO) {
+    return { status: 429, dane: { blad: 'masz-za-duzo-pokoi' } };
+  }
+  let id;
+  do { id = 'p-' + crypto.randomBytes(4).toString('hex'); } while (opisy.has(id) || pokoje.has(id));
+  const sol = crypto.randomBytes(8).toString('hex');
+  const klucz = crypto.randomBytes(12).toString('hex');
+  opisy.set(id, { nazwa, zalozyl: konto.nick, sol, hasloHash: haslo ? skrotHasla(haslo, sol) : null, klucz, pustyOd: Date.now() });
+  return { status: 200, dane: { id, klucz: haslo ? klucz : null } };
+}
+
+function wejdzDoPokoju(body) {
+  const o = opisy.get(body.id);
+  if (!o) return { status: 404, dane: { blad: 'nie-ma-pokoju' } };
+  if (!o.hasloHash) return { status: 200, dane: { klucz: null } };
+  const haslo = typeof body.haslo === 'string' ? body.haslo.slice(0, 40) : '';
+  if (skrotHasla(haslo, o.sol) !== o.hasloHash) return { status: 403, dane: { blad: 'zle-haslo' } };
+  return { status: 200, dane: { klucz: o.klucz } };
 }
 
 function dozwolonyOrigin(origin) {
@@ -150,7 +256,8 @@ const serwer = http.createServer((req, res) => {
     return res.end(JSON.stringify({ ok: true, pokoje: pokoje.size, polaczenia: n, teraz: Date.now() }));
   }
 
-  if (req.method === 'OPTIONS' && (u.pathname === '/api/arena' || u.pathname === '/api/zrzutka')) {
+  if (req.method === 'OPTIONS' && (u.pathname === '/api/arena' || u.pathname === '/api/zrzutka' ||
+      u.pathname.startsWith('/api/konto/') || u.pathname.startsWith('/api/pokoje') || u.pathname === '/api/ranking')) {
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST');
     res.setHeader('Access-Control-Max-Age', '86400');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -163,6 +270,9 @@ const serwer = http.createServer((req, res) => {
     if (origin && !dozwolonyOrigin(origin)) { res.statusCode = 403; return res.end(); }
     const nazwa = nazwaPokoju(u.searchParams.get('pokoj'));
     if (!nazwa) { res.statusCode = 400; return res.end(); }
+    const konto = konta.zTokenu(u.searchParams.get('token'));
+    if (!konto) { res.statusCode = 401; return res.end(); }
+    if (!wstepDoPokoju(nazwa, u.searchParams.get('klucz'))) { res.statusCode = 403; return res.end(); }
     let body = '';
     req.on('data', (c) => {
       body += c;
@@ -171,7 +281,7 @@ const serwer = http.createServer((req, res) => {
     req.on('end', () => {
       let dane;
       try { dane = JSON.parse(body || '{}'); } catch { res.statusCode = 400; return res.end(); }
-      const wynik = obsluzZdarzenie(nazwa, dane && dane.zdarzenie);
+      const wynik = obsluzZdarzenie(nazwa, przypnijKonto(dane && dane.zdarzenie, konto));
       res.setHeader('Content-Type', 'application/json');
       if (wynik.blad) res.statusCode = 400;
       res.end(JSON.stringify(wynik.blad ? { blad: wynik.blad } : wynik.odp));
@@ -198,6 +308,39 @@ const serwer = http.createServer((req, res) => {
     });
   }
 
+  if (req.method === 'GET' && u.pathname === '/api/ranking') return json(res, 200, konta.ranking());
+  if (req.method === 'GET' && u.pathname === '/api/pokoje') return json(res, 200, listaPokoi());
+
+  if (req.method === 'POST' && (u.pathname.startsWith('/api/konto/') || u.pathname.startsWith('/api/pokoje'))) {
+    if (origin && !dozwolonyOrigin(origin)) return json(res, 403, { blad: 'obca-strona' });
+    return czytajCialo(req, MAX_KONTO_BAJTY, async (body) => {
+      let dane;
+      try { dane = JSON.parse(body || '{}'); } catch { return json(res, 400, { blad: 'zly-json' }); }
+      if (!dane || typeof dane !== 'object') return json(res, 400, { blad: 'zly-json' });
+      try {
+        const ip = ipKlienta(req);
+        let w;
+        if (u.pathname === '/api/konto/rejestracja') w = await konta.rejestracja(dane, ip);
+        else if (u.pathname === '/api/konto/logowanie') w = await konta.logowanie(dane, ip);
+        else if (u.pathname === '/api/konto/wyloguj') w = konta.wyloguj(dane.token);
+        else {
+          const k = konta.zTokenu(dane.token);
+          if (!k) return json(res, 401, { blad: 'zaloguj-sie' });
+          if (u.pathname === '/api/konto/ja') w = { status: 200, dane: { konto: konta.widok(k) } };
+          else if (u.pathname === '/api/konto/kolor') w = konta.ustawKolor(k, dane.kolor);
+          else if (u.pathname === '/api/konto/wynik') w = konta.wynik(k, dane);
+          else if (u.pathname === '/api/pokoje') w = nowyPokoj(k, dane);
+          else if (u.pathname === '/api/pokoje/wejdz') w = wejdzDoPokoju(dane);
+          else w = { status: 404, dane: { blad: 'nie-ma' } };
+        }
+        json(res, w.status, w.dane);
+      } catch (e) {
+        console.error('konta:', e);
+        json(res, 500, { blad: 'serwer' });
+      }
+    });
+  }
+
   res.statusCode = 404;
   res.end();
 });
@@ -218,7 +361,12 @@ serwer.on('upgrade', (req, socket, head) => {
     return odmow('403 Forbidden');
   }
   if ((polaczeniaNaIp.get(ip) || 0) >= MAX_POLACZEN_NA_IP) return odmow('429 Too Many Requests');
+  // Arena tylko dla zalogowanych; pokój na hasło tylko z kluczem
+  const konto = doZrzutki ? null : konta.zTokenu(u.searchParams.get('token'));
+  if (!doZrzutki && !konto) return odmow('401 Unauthorized');
+  if (!doZrzutki && !wstepDoPokoju(nazwa, u.searchParams.get('klucz'))) return odmow('403 Forbidden');
   wss.handleUpgrade(req, socket, head, (ws) => {
+    ws.konto = konto;
     ws.pokoj = doZrzutki ? null : nazwa;
     ws.zrzutka = doZrzutki;
     ws.ip = ip;
@@ -263,7 +411,7 @@ wss.on('connection', (ws) => {
       ws.kursor = p.log.length;
       ws.epoka = p.epoka;
     } else if (m.typ === 'zd') {
-      const wynik = obsluzZdarzenie(nazwa, m.zdarzenie);
+      const wynik = obsluzZdarzenie(nazwa, przypnijKonto(m.zdarzenie, ws.konto));
       wyslij(ws, { typ: 'odp', nr: m.nr, dane: wynik.blad ? { blad: wynik.blad } : wynik.odp });
     }
   });
@@ -308,17 +456,22 @@ setInterval(() => {
   for (const [nazwa, p] of pokoje) {
     if (!polaczenia.has(nazwa) && teraz - p.ostatniaZmiana > POKOJ_PORZUCONY_MS) pokoje.delete(nazwa);
   }
+  // pokój z panelu znika po 10 minutach pustki
+  for (const [id, o] of opisy) {
+    if (polaczenia.has(id)) { o.pustyOd = teraz; continue; }
+    if (teraz - o.pustyOd > PUSTY_POKOJ_MS) { opisy.delete(id); pokoje.delete(id); }
+  }
 }, PING_MS).unref();
 
 process.on('uncaughtException', (e) => { console.error('nieobsłużony wyjątek:', e); });
 
 /* systemctl restart/stop: wpłaty czekające na zapis lądują na dysku. */
 for (const sygnal of ['SIGTERM', 'SIGINT']) {
-  process.on(sygnal, () => { zrzutka.zapiszTeraz(); process.exit(0); });
+  process.on(sygnal, () => { zrzutka.zapiszTeraz(); konta.zapiszTeraz(); process.exit(0); });
 }
 
 if (require.main === module) {
   serwer.listen(PORT, '127.0.0.1', () => console.log('Arena nasłuchuje na 127.0.0.1:' + PORT));
 }
 
-module.exports = { serwer, pokoje, zrzutka, dozwolonyOrigin };
+module.exports = { serwer, pokoje, zrzutka, konta, opisy, dozwolonyOrigin };

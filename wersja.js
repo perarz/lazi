@@ -5,6 +5,17 @@
 (function () {
   var historia = [
     {
+      wersja: '4.6', data: '2026-09-27', tytul: 'Konta i panel Areny',
+      zmiany: [
+        'Arena ma konta: przy wejściu logujesz się albo zakładasz konto (nick + hasło, bez maila). Nikt już nie zagra pod Twoim nickiem.',
+        'Kille, wygrane, partie i osiągnięcia zapisują się na koncie — zalogujesz się na innym telefonie i wszystko jest. Statystyki i osiągnięcia zebrane wcześniej w tej przeglądarce przechodzą na pierwsze założone konto.',
+        'Po zalogowaniu ekran ładowania z robalem i paskiem, a potem panel Areny: wielki przycisk GRAJ (Arena główna), Twoje statystyki, kolor robala i wszystkie osiągnięcia na dole.',
+        'Pokoje: w panelu widać listę aren z graczami w środku i znaczkiem „trwa partia”. Możesz założyć własny pokój — otwarty albo na hasło 🔒. Pusty pokój znika po 10 minutach.',
+        'Ranking killi: zakładka w panelu z listą najlepszych zabójców Areny.',
+        'Z lobby wracasz do panelu przyciskiem „← Panel”.'
+      ]
+    },
+    {
       wersja: '4.5.1', data: '2026-09-27', tytul: 'Ekstremalna jeszcze wyżej',
       zmiany: [
         'Mapa „Ekstremalna” to teraz wszystkie mapy w jednej: pasma ostrych gór, grube masywy z piętrami jaskiń, wąwozy aż do lawy, przerwy jak w archipelagu (z wiszącymi kamieniami nad lawą) i wielkie hale.',
