@@ -241,7 +241,7 @@ html, body {
   position: fixed; z-index: 21;
   left: 0; right: 0; margin-inline: auto;
   bottom: calc(96px + var(--bezp-d));
-  width: min(560px, calc(100vw - 20px - var(--bezp-l) - var(--bezp-p)));
+  width: min(660px, calc(100vw - 20px - var(--bezp-l) - var(--bezp-p)));
   max-height: calc(100dvh - 20px - var(--bezp-g) - var(--bezp-d));
   overflow-y: auto;
   pointer-events: auto;
@@ -264,7 +264,7 @@ html, body {
 }
 .ekw-zamknij { flex: none; width: 34px; height: 34px; padding: 0; border-radius: 50%; font-size: 14px; }
 .ekw-siatka { display: grid; gap: 6px; }
-.ekw-rzad { display: grid; grid-template-columns: 62px repeat(3, minmax(0, 1fr)); gap: 6px; }
+.ekw-rzad { display: grid; grid-template-columns: 62px repeat(4, minmax(0, 1fr)); gap: 6px; }
 .ekw-grupa {
   align-self: center;
   font-size: 9.5px; letter-spacing: 0.1em; text-transform: uppercase; text-align: right;
@@ -310,7 +310,7 @@ body.dotykowy .ekwipunek { top: 0; bottom: 0; margin-block: auto; height: fit-co
   .ekw-gora { margin-bottom: 6px; }
 }
 @media (max-width: 420px) {
-  .ekw-rzad { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .ekw-rzad { grid-template-columns: repeat(4, minmax(0, 1fr)); }
   .ekw-grupa { grid-column: 1 / -1; text-align: left; margin: 2px 0 -2px 2px; }
   .ekw-bron { font-size: 11px; gap: 5px; padding: 5px 6px; }
   .ekw-ikona, .ekw-ikona svg { width: 28px; height: 28px; }

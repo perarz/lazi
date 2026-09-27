@@ -167,7 +167,7 @@ class Klient {
     const w = S.activeWorm(st);
     if (!this.plan) {
       const rng = this.rng;
-      const dostepne = WEAPON_ORDER.filter((b) => (w.amunicja[b] ?? 1) > 0);
+      const dostepne = WEAPON_ORDER.filter((b) => (w.amunicja[b] ?? 1) > 0 && !WEAPONS[b].narzedzie);
       this.plan = {
         start: ctx.teraz + 400 + rng() * 3500,
         idz: rng() < 0.4 ? (rng() < 0.5 ? -1 : 1) : 0,

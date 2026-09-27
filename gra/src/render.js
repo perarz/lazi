@@ -225,6 +225,22 @@ export function draw(r, state, cam, fx, dt, opcje = {}) {
     drawSkrzynka(ctx, r, c);
   }
   for (const p of state.projectiles) drawProjectile(ctx, p);
+  // lina ninja: od haka do robala (u gracza z turą ze stanu, u widzów z podglądu na żywo)
+  for (const w of state.worms) {
+    const v = w.widok || w;
+    const hak = w.widok ? w.widok.lina : w.lina;
+    if (!w.alive || !hak) continue;
+    ctx.strokeStyle = '#d8c7a0';
+    ctx.lineWidth = 1.6;
+    ctx.beginPath();
+    ctx.moveTo(hak.x, hak.y);
+    ctx.lineTo(v.x, v.y - WORM_H * 0.6);
+    ctx.stroke();
+    ctx.fillStyle = '#8e979f';
+    ctx.beginPath();
+    ctx.arc(hak.x, hak.y, 3, 0, 6.283);
+    ctx.fill();
+  }
   for (const w of state.worms) {
     if (!w.alive) continue;
     drawWorm(ctx, w, w === akt && state.phase === 'aim', r.time, {
@@ -539,6 +555,40 @@ function drawProjectile(ctx, p) {
       ctx.beginPath();
       ctx.moveTo(dl / 2, 0); ctx.lineTo(dl / 2 - 6, -4); ctx.lineTo(dl / 2 - 6, 4);
       ctx.fill();
+    }
+  } else if (weapon.id === 'swiety') {
+    // Święty GOAT: złota kula z rogami i aureolą, lont odlicza nad nią
+    const t = performance.now() / 1000;
+    ctx.strokeStyle = 'rgba(255, 236, 150, 0.9)';
+    ctx.lineWidth = 1.6;
+    ctx.beginPath();
+    ctx.ellipse(0, -13 + Math.sin(t * 4) * 1, 7, 2.2, 0, 0, 6.283);
+    ctx.stroke();
+    const g = ctx.createRadialGradient(-2, -3, 1, 0, 0, 8);
+    g.addColorStop(0, '#fff6c4');
+    g.addColorStop(1, '#d9a81c');
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.arc(0, 0, 7.5, 0, 6.283);
+    ctx.fill();
+    ctx.strokeStyle = '#8a6a1a';
+    ctx.lineWidth = 1.8;
+    ctx.beginPath();
+    ctx.moveTo(-3, -6); ctx.quadraticCurveTo(-7, -11, -10, -8);
+    ctx.moveTo(3, -6); ctx.quadraticCurveTo(7, -11, 10, -8);
+    ctx.stroke();
+    ctx.fillStyle = '#3a2a10';
+    ctx.fillRect(-3.4, -1.5, 1.6, 1.6);
+    ctx.fillRect(1.8, -1.5, 1.6, 1.6);
+    if (p.fuse !== null) {
+      ctx.font = 'bold 13px system-ui, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillStyle = p.fuse < 1.5 ? '#ff3b23' : '#fff1c2';
+      ctx.strokeStyle = 'rgba(0,0,0,0.7)';
+      ctx.lineWidth = 3;
+      const napis = Math.ceil(p.fuse).toString();
+      ctx.strokeText(napis, 0, -20);
+      ctx.fillText(napis, 0, -20);
     }
   } else if (weapon.id === 'dynamit') {
     // laska dynamitu z tlącym się lontem i odliczaniem nad nią

@@ -115,6 +115,37 @@ export const WEAPONS = {
     amunicja: 1,
     opis: 'Szarżuje przed siebie i wybucha'
   },
+  swiety: {
+    id: 'swiety',
+    name: 'Święty GOAT',
+    key: '[',
+    kind: 'odbijany',      // jak granat, tylko cięższy i z chórem
+    speed: 600,
+    gravityFactor: 1,
+    windFactor: 0.34,
+    restitution: 0.3,
+    radius: 118,           // największy wybuch w grze
+    damage: 90,
+    knockback: 480,
+    fuse: 3.5,
+    amunicja: 1,
+    opis: 'Alleluja! Ogromny wybuch po 3,5 s'
+  },
+  lina: {
+    id: 'lina',
+    name: 'Lina ninja',
+    key: ']',
+    kind: 'lina',          // narzędzie: nie kończy tury, sterowanie w sim.js (linaPrzelacz, krokLiny)
+    narzedzie: true,
+    zasieg: 420,           // px — jak daleko sięga hak
+    radius: 0,
+    damage: 0,
+    knockback: 0,
+    fuse: null,
+    bezMocy: true,
+    amunicja: 5,
+    opis: 'OGNIA: zaczep o skałę; ◀ ▶ bujanie, ▲▼ lina; OGNIA albo SKOK puszcza'
+  },
   kij: {
     id: 'kij',
     name: 'Kij',
@@ -233,7 +264,7 @@ export const WEAPONS = {
   }
 };
 
-export const WEAPON_ORDER = ['bazooka', 'granat', 'strzelba', 'kasetowa', 'dynamit', 'nalot', 'owca', 'kij', 'teleport', 'salwa', 'wiertlo', 'most'];
+export const WEAPON_ORDER = ['bazooka', 'granat', 'strzelba', 'kasetowa', 'dynamit', 'nalot', 'owca', 'kij', 'teleport', 'salwa', 'wiertlo', 'most', 'swiety', 'lina'];
 
 /* Startowy zapas dla broni z limitem — ta sama wartość u każdego klienta.
    zestaw (ustawienia partii): 'pelny' (domyślny: limity, kij tylko ze skrzynek)

@@ -5,8 +5,10 @@
 (function () {
   var historia = [
     {
-      wersja: '4.3.1', data: '2026-09-27', tytul: 'Emotki, tańce i lawa na zamówienie',
+      wersja: '4.4', data: '2026-09-27', tytul: 'Lina ninja, Święty GOAT, emotki i tańce',
       zmiany: [
+        'Nowość: Lina ninja (klawisz ], ekwipunek → Sprzęt, 5 sztuk). Celuj w skałę i stuknij OGNIA — hak się zaczepia. ◀ ▶ bujanie, ▲▼ skracanie i wydłużanie liny, OGNIA albo SKOK puszcza. Nie kończy tury, więc można przebujać się między piętrami jaskiń i dopiero strzelić. Inni widzą linę na żywo.',
+        'Nowość: Święty GOAT (klawisz [, ekwipunek → Granaty, 1 sztuka). Złota kula z rogami i aureolą, odbija się jak granat i po 3,5 s robi największy wybuch w grze. ALLELUJA!',
         'Emotki w Arenie: stuknij chmurkę 💬 w rogu (albo klawisz E) — w swojej turze i w cudzej — i wybierz GG, 😄, EZ, 😂 albo 😱. Nad robalem wyskakuje dymek. Do tego dwa tańce: taniec szczęścia (podskoki) i taniec robaczka (wężyk).',
         'Oczko 👁 z liczbą w rogu ekranu pokazuje, ile osób ogląda partię z boku.',
         'Bronie w ustawieniach partii: już tylko dwa zestawy — normalne limity (kij tylko ze skrzynek) albo Szał, gdzie wszystko jest bez limitu.',

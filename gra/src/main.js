@@ -858,6 +858,11 @@ function zbudujGre() {
       onBron: wybierzBron,
       onEkwipunek: () => ekwipunek.przelacz(),
       onEmotki: () => przelaczEmotki(),
+      onLina: () => {
+        const wynik = S.linaPrzelacz(rg.state);
+        if (wynik === 'pudlo') pokazInfo('Lina nie sięga — celuj w skałę bliżej (do ok. 400 px).');
+        else if (wynik === 'brak') pokazInfo('Lina ninja się skończyła.');
+      },
       zamknijEkwipunek: () => { ekwipunek.zamknij(); zamknijEmotki(); },
       onPodpowiedz: pokazInfo,
       onPrzesun: (dx, dy) => {
@@ -1177,6 +1182,7 @@ function podgladNaZywo(dt, moge) {
   v.amunicja = ruch.a && typeof ruch.a === 'object' ? ruch.a : null;
   if (typeof ruch.h === 'number') v.hp = ruch.h;
   v.cel = Array.isArray(ruch.c) ? { x: ruch.c[0], y: ruch.c[1] } : null;
+  v.lina = Array.isArray(ruch.l) ? { x: ruch.l[0], y: ruch.l[1] } : null;
 }
 
 /* Cudza tura przed strzałem: widz nie liczy cudzego chodzenia, więc upadek,
@@ -1289,7 +1295,10 @@ function wybierzBron(id) {
     }
     if (st.charging) return;
     st.weapon = id;
-    if (w.celowany) {
+    if (w.kind === 'lina') {
+      pokazInfo(dotykowy() ? 'Celuj w skałę i stuknij OGNIA — hak się zaczepi. ◀ ▶ bujanie, ▲▼ lina, OGNIA/SKOK puszcza.'
+        : 'Celuj w skałę i wciśnij F — hak się zaczepi. A/D bujanie, W/S lina, F albo spacja puszcza.');
+    } else if (w.celowany) {
       const co = id === 'teleport' ? 'miejsce teleportu' : id === 'most' ? 'miejsce mostu (blisko robala)' : 'cel nalotu';
       pokazInfo(dotykowy() ? 'Dotknij mapy, żeby wskazać ' + co + ', potem OGNIA.' : 'Kliknij na mapie ' + co + ', potem przytrzymaj F.');
     }
@@ -1386,6 +1395,7 @@ function obsluzZdarzenia() {
     switch (e.type) {
       case 'wybuch':
         emitExplosion(fx, e.x, e.y, e.r);
+        if (e.r >= 100) emitTekst(fx, e.x, e.y - e.r * 0.6, 'ALLELUJA! 🐐', '#ffe27a', 22);   // Święty GOAT
         wstrzas = Math.min(14, wstrzas + e.r * 0.16);
         R.repaintRect(renderer, st.terrain, { x0: e.x - e.r - 3, x1: e.x + e.r + 3 });
         break;
@@ -1401,6 +1411,7 @@ function obsluzZdarzenia() {
         emitSpark(fx, e.x1, e.y1 - 10, 24);
         break;
       case 'plusk': emitSpark(fx, e.x, e.y, 18); break;
+      case 'lina': emitSpark(fx, e.x, e.y, 8); break;
       case 'wiercenie':
         emitSpark(fx, e.x, e.y, 3);
         R.repaintRect(renderer, st.terrain, { x0: e.x - e.r - 3, x1: e.x + e.r + 3 });
@@ -1686,6 +1697,7 @@ window.__arena = () => ({
   przesuniecieZegara: net && Math.round(net.przesuniecieZegara),
   hash: rg && S.stateHash(rg.state),
   odwrotKrok: rg && rg.state.odwrotKrok,
+  lina: rg && (() => { const w = S.activeWorm(rg.state); return w ? (w.lina || (w.widok && w.widok.lina) || null) : null; })(),
   druzyny: rg ? (rg.state.druzynowa ? rg.state.worms.map((w) => w.name + ':' + w.druzyna) : null) : null,
   ustawienia: pokoj && pokoj.ustawienia,
   ustawieniaGry: rg && rg.state.ust,

@@ -18,7 +18,7 @@ Stos technologiczny:
 - Bez bundlera, bez `package.json` i bez zależności npm. Zwykłe pliki HTML/CSS/JS, gra jako moduły ES,
   zrzutka jako klasyczne skrypty.
 
-Obecna wersja: **4.3.1 „Emotki, tańce i lawa na zamówienie”** (`wersja.js`).
+Obecna wersja: **4.4 „Lina ninja, Święty GOAT, emotki i tańce”** (`wersja.js`).
 
 ---
 
@@ -405,7 +405,7 @@ Lekcje z kalibracji:
 | `src/input.js` | Klawiatura, przyciski dotykowe, przeciąganie/szczypanie, PPM/Q = ekwipunek |
 | `src/render.js`, `src/fx.js` | Grafika (tu wolno trygonometrię i `Math.random`); w `render.js` też kamera i podgląd robala na ekranie wejścia |
 | `src/osiagniecia-reguly.js` | Reguły osiągnięć — czyste funkcje |
-| `test/sim.test.mjs`, `test/protokol.test.mjs` | Testy w Node (73 i 21) |
+| `test/sim.test.mjs`, `test/protokol.test.mjs` | Testy w Node (76 i 21) |
 
 ### Determinizm (święta zasada)
 - Symulacja (`sim.js`, `terrain.js`) używa tylko:
@@ -478,7 +478,7 @@ Lekcje z kalibracji:
   - **Bronie** (od 4.3.1 tylko dwa zestawy): `startowaAmunicja(zestaw)` — `pelny` (normalne limity, kij 0)
     albo `szalony` (pusta amunicja = wszystko bez limitu, kij też), wtedy zrzuty to same apteczki (`zapasyDla`).
     Stare wartości (`klasyka`, `podwojny`) `normalizuj` zamienia na `pelny`.
-  - **Lawa** (4.3.1, `WERSJA` = 4): `lawa` ujemne = od tylu rund (standard −6), dodatnie = od tej tury,
+  - **Lawa** (4.4, `WERSJA` = 4): `lawa` ujemne = od tylu rund (standard −6), dodatnie = od tej tury,
     0 = nigdy; `lawaTempo` = px na turę (6/12/24/40). `LAWA_MIN` = 40 (dawniej 260 — na wysokich mapach
     lawa nie dochodziła do szczytów).
   - **Wyrzuć** `{t:'wyrzuc', kto}` (trafia do `p.wyrzuceni`, nie zgłasza się sam, wraca przyciskiem
@@ -494,7 +494,7 @@ Lekcje z kalibracji:
   a przycisk broni na dole pokazuje broń gracza z turą i jego nick (`cudzaBron`). Limit `ruch` na serwerze: 600 B.
   Gracz partii widzi u przeciwnika tylko broń (bez zapasu); **obserwator** (`rg.obserwator`) także zapas i w ekwipunku
   cały plecak gracza z turą (`ruch.a` = amunicja, tytuł „Ekwipunek: nick”).
-- **Emotki i tańce (4.3.1, `emotki.js`)**: zdarzenie w logu `{t:'emotka', id, e}` — `zloz` go nie zna, więc nie
+- **Emotki i tańce (4.4, `emotki.js`)**: zdarzenie w logu `{t:'emotka', id, e}` — `zloz` go nie zna, więc nie
   rusza protokołu ani symulacji. Wysyła żywy uczestnik partii (chmurka `#btn-emotki` albo klawisz E, także
   w cudzej turze), najwyżej co `EMOTKA_CO` (2,5 s). `main.js` czyta log od `emotkiIndeks`, pokazuje tylko
   świeże (≤ 6 s zegara serwera), `R.draw` dostaje `emotki` (dymek nad głową, taniec = przesunięcie i obrót
@@ -542,6 +542,15 @@ Lekcje z kalibracji:
 | 0 | Blitzkrieg | salwa | 2 | 3 rakietki wachlarzem |
 | - | Wiertło | wiertło | 2 | jedzie prosto bez grawitacji, co 8 kroków `carve` → tunel (zdarzenie `wiercenie` przemalowuje teren), na końcu mały wybuch |
 | = | Most | celowany | 3 | belka 90×7 px, do 260 px od robala, nie na robalu (`powodBrakuMostu`) |
+| [ | Święty GOAT | odbijany | 1 | jak granat, lont 3,5 s, promień 118 (największy), dmg 90, odrzut 480; napis „ALLELUJA!” przy wybuchu r ≥ 100 |
+| ] | Lina ninja | lina (`narzedzie`) | 5 | nie strzał: `linaPrzelacz` (OGNIA/F zaczepia i puszcza, SKOK puszcza), `krokLiny` = wahadło (tylko sqrt) |
+
+- **Lina ninja (4.4)**: stan `w.lina = {x, y, dl}` tylko u gracza z turą, jak chodzenie — nie ma go w `stanRobali`,
+  `ustawRobale`/`applyPas`/`rozpocznijTure`/`releaseFire` go zerują, więc w strzale i pasie lina jest puszczona.
+  Hak szuka skały od 26 px do `zasieg` (420) po celowniku (trygonometria u gracza z turą, jak `obliczStart`).
+  `mozeStrzelic` odrzuca `narzedzie`, więc lina nigdy nie jest akcją `strzal`; w `input.js` OGNIA z liną woła `onLina`.
+  Widzowie dostają hak w podglądzie `ruch.l` i rysują linę (`widok.lina`). Bot testów i test „odbiorca odtwarza
+  strzał” pomijają narzędzia. Klawisze `[` `]` = 13. i 14. broń; rzędy ekwipunku mają 4 kolumny.
 
 - **Most w terenie**: siedzi na liście kraterów jako `{x, y, r: -1}` (`carve` z ujemnym r uruchamia `zbudujMost`),
   więc `rebuild()` odtwarza go w tej samej kolejności co wybuchy. W masce ma wartość **2** (`solidAt`
@@ -622,10 +631,10 @@ brak obrażeń od swoich i tury na zmianę drużynami są już w 4.2*; zostaje t
 - **Skrzynki**: pułapka (wybucha po otwarciu) i skrzynka z narzędziami.
 
 **Etap 3 — ruch i nowe bronie (5.1+)**
-- **Plecak odrzutowy, spadochron, potem lina ninja.** Przed strzałem to zwykły ruch lokalny, jak chodzenie:
+- **Plecak odrzutowy, spadochron** (lina ninja jest od 4.4). Przed strzałem to zwykły ruch lokalny, jak chodzenie:
   odbiorca dostaje stan robali w `strzal`/`pas`, więc protokół się nie zmienia. W podglądzie `ruch` można
   dokleić punkt zaczepienia liny. W ucieczce (`odwrot`) na razie niedostępne, bo nagranie RLE tego nie umie.
-- **Klasyki WA**: Święty granat, bananowa bomba, rakieta samonaprowadzająca (skręt przez wektor i `sqrt`,
+- **Klasyki WA** (Święty GOAT jest od 4.4): bananowa bomba, rakieta samonaprowadzająca (skręt przez wektor i `sqrt`,
   bez trygonometrii), moździerz, Uzi, trzęsienie ziemi, Armagedon (deszcz meteorów jak nalot).
 - **Bronie ekipy**: Babcia Nolliego (wolna „owca”, „atakuje jak babcia”), Spartańskie kopnięcie („THIS IS
   SPARTA”, wariant kija), Szarża słoni Kozaka (trzy duże „owce”), Full box PowPowa (4 belki wokół robala —
@@ -671,14 +680,14 @@ w drużynie (2 czy 3); czy robimy czapki i bronie z postaci ekipy; czy robimy ws
   - **4.1.1** Arena i zrzutka na własnym serwerze (VPS, WebSocket), koniec Redisa i `api/`
   - **4.2** ucieczka po strzale na żywo, lobby do 8 graczy, drużyny (tryb, GOTOWY, przenoszenie, zamiana)
   - **4.3** ustawienia partii u gospodarza, wyrzucanie, oddawanie korony, losowanie drużyn, szalone mapy, podgląd na żywo
-  - **4.3.1** emotki i tańce, licznik obserwatorów, lawa od tury i jej tempo, dwa zestawy broni, koza zamiast owcy, niższy skok
+  - **4.4** lina ninja, Święty GOAT, emotki i tańce, licznik obserwatorów, lawa od tury i jej tempo, dwa zestawy broni, koza zamiast owcy, niższy skok
 
 ---
 
 ## 9. Testy i sprawdzanie
 
 ```
-node gra/test/sim.test.mjs        # symulacja, bronie, determinizm, drużyny, ustawienia, skrzynki, spawny, osiągnięcia, kamera (73)
+node gra/test/sim.test.mjs        # symulacja, bronie, determinizm, drużyny, ustawienia, skrzynki, spawny, osiągnięcia, kamera, lina (76)
 node gra/test/protokol.test.mjs   # protokół: lag, rozłączenia, ucieczka na żywo, lobby, ustawienia, partie 2v2 i z własnymi zasadami (21, ~30 s)
 cd serwer && npm install && node test.mjs   # serwer na VPS: Arena (10) + zrzutka: wpłaty, na żywo, limity, plik, migracja (7)
 ```

@@ -32,6 +32,8 @@ export function attachInput(opts) {
   function nacisnijSpust() {
     const st = stan();
     if (!st || spust || !opts.mogeGrac()) return;
+    // lina ninja: OGNIA zaczepia albo puszcza hak, bez ładowania i bez końca tury
+    if (WEAPONS[st.weapon] && WEAPONS[st.weapon].kind === 'lina') { opts.onLina?.(); return; }
     if (!S.startCharging(st)) {
       const w = S.activeWorm(st);
       const bron = WEAPONS[st.weapon];
@@ -82,7 +84,7 @@ export function attachInput(opts) {
 
     if (e.code === 'Space' || e.code === 'KeyJ') { e.preventDefault(); skok(); return; }
 
-    const idx = ['Digit1', 'Digit2', 'Digit3', 'Digit4', 'Digit5', 'Digit6', 'Digit7', 'Digit8', 'Digit9', 'Digit0', 'Minus', 'Equal'].indexOf(e.code);
+    const idx = ['Digit1', 'Digit2', 'Digit3', 'Digit4', 'Digit5', 'Digit6', 'Digit7', 'Digit8', 'Digit9', 'Digit0', 'Minus', 'Equal', 'BracketLeft', 'BracketRight'].indexOf(e.code);
     if (idx >= 0 && idx < WEAPON_ORDER.length) {
       opts.onBron?.(WEAPON_ORDER[idx]);
       return;
