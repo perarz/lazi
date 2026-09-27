@@ -5,6 +5,13 @@
 (function () {
   var historia = [
     {
+      wersja: '4.7.1', data: '2026-09-27', tytul: 'Kurtyna między zrzutką a Areną',
+      zmiany: [
+        'Przejście na Arenę i z Areny na Fortnite albo 0 A.D. ma teraz tę samą kurtynę co przełączanie Fortnite ↔ 0 A.D.: koło rośnie od miejsca stuknięcia, na środku moneta i nazwa, a nowa strona odsłania się spod kurtyny.',
+        'Wejście na Arenę z zapamiętanym kontem to już tylko kurtyna Areny (płonąca moneta ze skrzyżowanymi mieczami) — bez ekranu ładowania. Scena z robalem i paskiem zostaje tylko po zalogowaniu.'
+      ]
+    },
+    {
       wersja: '4.7', data: '2026-09-27', tytul: 'Nowy panel Areny i akcesoria robala',
       zmiany: [
         'Na górze Areny jest znowu pasek Fortnite / 0 A.D. / Arena, jak na stronie zrzutki — jednym stuknięciem wracasz do zbiórki.',

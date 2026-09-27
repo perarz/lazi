@@ -448,19 +448,33 @@ async function ladowanie(zadanie, nad = 'Wchodzisz na') {
   }
 }
 
-/* Start strony: zapamiętane konto → ładowanie → Arena (albo od razu arena z adresu). */
+/* Start strony: zapamiętane konto → kurtyna Areny (jak przejście Fortnite ↔ 0 A.D.
+   na zrzutce, przejscie.js) → ekran Areny (albo od razu arena z adresu).
+   Ekran ładowania ze sceną jest tylko po zalogowaniu formularzem. */
+const kurtyna = window.PRZEJSCIE || { zaslon() {}, odslon() {}, wejscie: null };
 async function start() {
-  if (!K.token()) return pokazLogowanie();
-  const w = await ladowanie(async () => {
+  if (!K.token()) { pokazLogowanie(); kurtyna.odslon(); return; }
+  kurtyna.zaslon(kurtyna.wejscie || 'arena');
+  const [w] = await Promise.all([(async () => {
     const w = await K.ja();
     if (w.status === 200) {
-      ustawKonto(w.dane.konto);           // robal na ekranie ładowania już z nickiem, kolorem i akcesorium
+      ustawKonto(w.dane.konto);
       await Promise.all([odswiezPokoje(), odswiezRanking()]);
     }
     return w;
-  });
-  if (w.status === 200) return poZalogowaniu(w.dane.konto);
-  if (w.status === 401) return pokazLogowanie('Sesja wygasła — zaloguj się jeszcze raz.');
+  })(), czekaj(kurtyna.wejscie ? 250 : 700)]);   // bez przejścia kurtyna nie może tylko mignąć
+  if (w.status === 200) await poZalogowaniu(w.dane.konto);
+  else if (w.status === 401) pokazLogowanie('Sesja wygasła — zaloguj się jeszcze raz.');
+  else pokazBladStartu(w);
+  kurtyna.odslon();
+}
+/* Serwer nie odpowiada: scena ładowania z komunikatem i „Spróbuj jeszcze raz”. */
+function pokazBladStartu(w) {
+  pokazEkran('ekran-ladowanie');
+  el('ladowanie-nad').textContent = 'Nie udało się wejść na';
+  el('ladowanie-postep').style.width = '0%';
+  el('ladowanie-procent').textContent = '';
+  el('ladowanie-porada').textContent = '';
   el('ladowanie-tekst').textContent = K.opisBledu(w.dane) + ' Serwer mógł się właśnie restartować.';
   el('btn-ponow').hidden = false;
 }

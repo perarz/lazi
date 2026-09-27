@@ -1,0 +1,57 @@
+/* Kurtyna między stronami (przejscie.js): zrzutka ↔ Arena. Wygląd jak kurtyna
+   kategorii na zrzutce, ale samowystarczalny — ten sam plik na obu stronach. */
+
+/* przyjście z kurtyną: zanim skrypt ją postawi, treść jest schowana */
+html.przejscie-wejscie body { visibility: hidden; }
+
+.kurtyna-strony {
+  position: fixed; inset: 0; z-index: 2147483000;
+  display: grid; place-items: center;
+  pointer-events: auto;
+}
+.kurtyna-strony[hidden] { display: none; }
+.kurtyna-strony-srodek { display: grid; justify-items: center; gap: 14px; padding: 0 16px; text-align: center; }
+.kurtyna-strony-ikona svg {
+  width: clamp(110px, 24vw, 170px); height: clamp(110px, 24vw, 170px); display: block;
+  filter: drop-shadow(0 16px 30px rgba(0, 0, 0, 0.5));
+}
+.kurtyna-strony-napis { font-size: clamp(2.4rem, 9vw, 4.4rem); line-height: 1; }
+
+.kurtyna-strony[data-cel="fortnite"] {
+  background:
+    repeating-linear-gradient(115deg, rgba(255, 255, 255, 0.05) 0 26px, transparent 26px 52px),
+    radial-gradient(ellipse at 50% 40%, #3f7dff, #133a9f 60%, #0a1646);
+}
+.kurtyna-strony[data-cel="fortnite"] .kurtyna-strony-napis {
+  font-family: 'Anton', 'Impact', sans-serif; text-transform: uppercase;
+  color: #ffe34d; text-shadow: 0 5px 0 #b86f00, 0 10px 0 #06174f;
+  transform: rotate(-3deg);
+}
+
+.kurtyna-strony[data-cel="zeroad"] {
+  background:
+    radial-gradient(ellipse at 50% 45%, rgba(255, 170, 70, 0.3), transparent 60%),
+    radial-gradient(ellipse at 50% 40%, #4a3018, #22160b 60%, #0e0905);
+}
+.kurtyna-strony[data-cel="zeroad"] .kurtyna-strony-napis {
+  font-family: 'Cinzel Decorative', Georgia, serif; font-weight: 900;
+  color: #f0c75e; text-shadow: 0 3px 0 #2a1a0a, 0 12px 30px rgba(0, 0, 0, 0.6);
+}
+
+.kurtyna-strony[data-cel="arena"] {
+  background:
+    repeating-linear-gradient(-35deg, rgba(255, 120, 30, 0.06) 0 22px, transparent 22px 44px),
+    radial-gradient(ellipse 120% 80% at 50% 120%, #ff4500 0%, #b22000 22%, #1a0300 55%, #0a0a0a 80%);
+}
+.kurtyna-strony[data-cel="arena"] .kurtyna-strony-ikona svg { filter: drop-shadow(0 0 26px rgba(255, 120, 0, 0.7)); }
+.kurtyna-strony[data-cel="arena"] .kurtyna-strony-napis {
+  font-family: 'Russo One', 'Impact', sans-serif; letter-spacing: 0.05em; color: #ffe9c8;
+  text-shadow: 0 6px 24px rgba(0, 0, 0, 0.7);
+}
+.kurtyna-strony[data-cel="arena"] .kurtyna-strony-napis b {
+  font-family: 'Creepster', cursive; font-weight: 400; font-size: 1.3em;
+  background-image: linear-gradient(180deg, #fff6cf 0%, #ffd93b 25%, #ff6a00 60%, #c81000 100%);
+  -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent; color: transparent;
+  filter: drop-shadow(0 0 12px rgba(255, 110, 0, 0.75));
+}

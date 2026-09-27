@@ -18,7 +18,7 @@ Stos technologiczny:
 - Bez bundlera, bez `package.json` i bez zależności npm. Zwykłe pliki HTML/CSS/JS, gra jako moduły ES,
   zrzutka jako klasyczne skrypty.
 
-Obecna wersja: **4.7 „Nowy panel Areny i akcesoria robala”** (`wersja.js`).
+Obecna wersja: **4.7.1 „Kurtyna między zrzutką a Areną”** (`wersja.js`).
 
 ---
 
@@ -211,6 +211,7 @@ PL, IP 96.62.223.169). Katalog `serwer/` to serwer: Node + WebSocket (`ws`).
 | `gra/` | **Arena GOATów** (sekcja 7) |
 | `gra/osiagniecia.js` | Lista osiągnięć Areny (18) — klasyczny skrypt, czyta go gra i strona główna |
 | `wersja.js` | Numer wersji + historia zmian (jedno źródło); znaczek `vX.Y` w rogu stron |
+| `przejscie.js`, `przejscie.css` | Kurtyna **między stronami** zrzutka ↔ Arena (4.7.1): link z `data-przejscie="fortnite|zeroad|arena"` zasłania ekran jak kurtyna kategorii, cel leci w `sessionStorage['przejscie']`, nowa strona startuje zasłonięta i odsłania się (`PRZEJSCIE.zaslon/odslon`). Strona z `<html data-przejscie-czeka>` (Arena) odsłania się sama, gdy ma dane; inne po 0,35 s. Klasyczny skrypt w `<head>` obu stron |
 | `zmiany/` | Strona „Co nowego” (rysuje historię z `wersja.js`) |
 | `goat/` | Stara, ukryta strona „ŁAZI TO GOAT” — nie ruszać |
 | `serwer/` | Serwer na VPS: `pokoj.js` (Arena), `zrzutka.js` (zrzutka w pliku), `konta.js` (konta Areny, 3.1), `gracze.js` (**lista graczy `GRACZE`, `SEZON`, limity wpłat**), `serwer.js` (HTTP + WebSocket, pokoje z panelu), `konto-haslo.mjs` (reset hasła), `migruj-zrzutke.mjs` (jednorazowo z Redisa), `test.mjs`, `instaluj.sh`, `INSTALACJA.md`; ma własne `package.json` (zależność `ws`) — to jedyne miejsce z npm |
@@ -236,7 +237,8 @@ PL, IP 96.62.223.169). Katalog `serwer/` to serwer: Node + WebSocket (`ws`).
 
 ### 5.1 Ogólnie
 - Dwie kategorie: **Fortnite** (V-dolce) i **0 A.D.** (srebrniki), przełączane hashem `#fortnite` / `#0ad`
-  z animacją kurtyny. Trzecia zakładka „Arena” to zwykły link do `gra/`.
+  z animacją kurtyny. Trzecia zakładka „Arena” to link do `gra/` z `data-przejscie="arena"` — ta sama kurtyna,
+  tylko między stronami (`przejscie.js`); w pasku Areny Fortnite / 0 A.D. wracają tak samo.
 - Motyw zmienia cały wygląd:
   - Fortnite: niebieski, żółte skośne przyciski, font Anton.
   - 0 A.D.: pergamin, pieczęcie, font Cinzel.
@@ -476,8 +478,10 @@ Lekcje z kalibracji:
 ### Wejście do Areny (4.6, układ od 4.7)
 - Ekrany (`EKRANY`, `pokazEkran` w `main.js`): `#ekran-logowanie` (zakładki Zaloguj/Załóż konto; pierwszy raz
   w przeglądarce otwiera się na zakładaniu) → `#ekran-ladowanie` → `#ekran-arena` (+ `#ekran-koniec` po partii).
-  Z zapamiętanym tokenem strona startuje od razu od ładowania (`start()`); 401 = z powrotem do logowania,
-  brak sieci = komunikat i „Spróbuj jeszcze raz”.
+  Od 4.7.1 z zapamiętanym tokenem **nie ma ekranu ładowania**: `start()` trzyma kurtynę Areny (`przejscie.js`,
+  także przy wejściu prosto z adresu — min. 0,7 s), pobiera konto, areny i ranking, potem ją odsłania.
+  Scena ładowania jest tylko po zalogowaniu formularzem. 401 = logowanie, brak sieci = scena z komunikatem
+  i „Spróbuj jeszcze raz” (`pokazBladStartu`).
 - **Pasek `#nawigacja`** (Fortnite → `/#fortnite`, 0 A.D. → `/#0ad`, Arena) jest jeden: `pokazEkran` wkłada go
   na początek ekranu logowania albo Areny (sticky), w trakcie partii i na ładowaniu jest schowany. Po prawej
   kropka w kolorze robala, nick i „Wyloguj”.
@@ -773,6 +777,7 @@ więcej akcesoriów (np. czapki postaci ze zrzutki), ewentualnie konto także w 
   - **4.5.1** ekstremalna = wszystkie style naraz, iglice pod niebo
   - **4.6** konta Areny (logowanie, statystyki i osiągnięcia na koncie), ekran ładowania, panel z GRAJ, pokoje na hasło, ranking killi
   - **4.7** pasek Fortnite/0 A.D./Arena w grze, panel + lobby na jednym ekranie, bez domyślnej areny, 5 akcesoriów robala, nowy ekran ładowania
+  - **4.7.1** kurtyna przy przejściu zrzutka ↔ Arena, wejście na Arenę bez ekranu ładowania
 
 ---
 
