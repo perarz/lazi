@@ -36,7 +36,7 @@ export const ZASTEPCZY_STAN = 4;      // s czekania na stan od autora akcji
 export const START_ZWLOKA = 3;        // s na załadowanie planszy po starcie partii
 export const DOGON_PO = 2;            // s — starszego stanu nie animujemy, tylko do niego skaczemy
 export const ODLICZANIE_S = 5;        // s od chwili, gdy wszyscy dali GOTOWY, do startu partii
-export const WERSJA = 3;              // wersja protokołu lobby (4.2: drużyny i gotowość, 4.3: ustawienia partii)
+export const WERSJA = 4;              // wersja protokołu lobby (4.2: drużyny i gotowość, 4.3: ustawienia partii, 4.4: lawa w turach, emotki)
 export const MAX_GRACZY = 8;          // w partii; kolejni w lobby oglądają
 
 /* Ucieczka na żywo. */
@@ -604,6 +604,7 @@ export function klatka(r, pokoj, ctx) {
       h: w.hp,
       z: zapas === undefined ? null : zapas,
       a: w.amunicja,                  // cały ekwipunek — pokazuje go tylko obserwator (nie gracz partii)
+      l: w.lina ? [w.lina.x, w.lina.y] : undefined,   // hak liny ninja (4.4)
       e: r.efekty.length ? r.efekty : undefined
     };
     const sygnatura = JSON.stringify(ruch);

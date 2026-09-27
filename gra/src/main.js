@@ -15,6 +15,7 @@ import { nowaPartiaOs, zdarzenieOs, koniecTuryOs, koniecPartiiOs } from './osiag
 import { createEkwipunek, ikonaBroni } from './ekwipunek.js';
 import { DRUZYNY, TRYBY, nazwaTrybu } from './druzyny.js';
 import * as U from './ustawienia.js';
+import { EMOTKI, EMOTKA_S, TANIEC_S, EMOTKA_CO, emotka } from './emotki.js';
 import { stylMapy } from './terrain.js';
 
 /* Kolory robali do wyboru przy wejściu. Kolejność ma znaczenie: przy
@@ -338,7 +339,7 @@ async function wejdz() {
   net = createNet({
     id: mojeId,
     onStan: naStanSieci,
-    onReset: () => { pokoj = null; },
+    onReset: () => { pokoj = null; emotkiIndeks = 0; },
     onBlad: naBladSieci
   });
   net.start();
@@ -856,7 +857,13 @@ function zbudujGre() {
       ekranNaSwiat: (sx, sy) => R.ekranNaSwiat(renderer, kamera, sx, sy),
       onBron: wybierzBron,
       onEkwipunek: () => ekwipunek.przelacz(),
-      zamknijEkwipunek: () => ekwipunek.zamknij(),
+      onEmotki: () => przelaczEmotki(),
+      onLina: () => {
+        const wynik = S.linaPrzelacz(rg.state);
+        if (wynik === 'pudlo') pokazInfo('Lina nie sięga — celuj w skałę bliżej (do ok. 400 px).');
+        else if (wynik === 'brak') pokazInfo('Lina ninja się skończyła.');
+      },
+      zamknijEkwipunek: () => { ekwipunek.zamknij(); zamknijEmotki(); },
       onPodpowiedz: pokazInfo,
       onPrzesun: (dx, dy) => {
         kamera.tx -= dx / kamera.zoom;
@@ -909,6 +916,7 @@ function zakonczGre() {
   rg = null;
   sterowanie?.zwolnij();
   ekwipunek.zamknij();
+  zamknijEmotki();
   hud.hidden = true;
   document.body.classList.remove('moja-tura');
   el('ekran-koniec').hidden = true;
@@ -1011,11 +1019,109 @@ function petla(teraz) {
     mojeId,
     rozlaczeni: rozlaczeni(),
     celNalotu: celNalotu(moge),
+    emotki: aktywneEmotki(),
     zebraneSkrzynki: podglad.nr === st.turnNumber ? podglad.skrzynki : null
   });
   kamera.x -= tx; kamera.y -= ty;
   wstrzas *= Math.max(0, 1 - dt * 7);
   odswiezHud(moge, teraz);
+}
+
+/* ---------- emotki, tańce i obserwatorzy (4.3.1) ---------- */
+
+/* Emotka to zdarzenie w logu pokoju { t: 'emotka', id, e }. Pokazujemy tylko
+   świeże (≤ 6 s wg zegara serwera) — po dołączeniu nie odtwarzamy starych. */
+const emotkiGraczy = new Map();       // id robala → { def, od (ms, performance.now) }
+let emotkiIndeks = 0;                 // do którego zdarzenia w net.zdarzenia już przejrzeliśmy
+let ostatniaEmotka = -Infinity;
+
+function czytajEmotki() {
+  const zd = net.zdarzenia;
+  if (emotkiIndeks > zd.length) emotkiIndeks = 0;     // nowa epoka — log od zera
+  for (; emotkiIndeks < zd.length; emotkiIndeks++) {
+    const z = zd[emotkiIndeks];
+    if (!z || z.t !== 'emotka' || typeof z.id !== 'string') continue;
+    const def = emotka(z.e);
+    if (!def || net.czas() - (z.st || 0) > 6000) continue;
+    emotkiGraczy.set(z.id, { def, od: performance.now() });
+  }
+}
+
+function aktywneEmotki() {
+  czytajEmotki();
+  const teraz = performance.now();
+  const wynik = new Map();
+  for (const [id, { def, od }] of emotkiGraczy) {
+    const dl = def.taniec ? TANIEC_S : EMOTKA_S;
+    const t = (teraz - od) / 1000;
+    if (t > dl) { emotkiGraczy.delete(id); continue; }
+    wynik.set(id, { tekst: def.tekst, taniec: def.taniec || null, t, dl });
+  }
+  return wynik;
+}
+
+/* Emotki wysyła tylko żywy uczestnik partii — w swojej turze i w cudzej. */
+function mogeEmotki() {
+  if (!rg || rg.obserwator || rg.state.phase === 'over') return false;
+  const ja = rg.state.worms.find((w) => w.id === mojeId);
+  return !!ja && ja.alive && !ja.odszedl;
+}
+
+const panelEmotek = el('emotki-panel');
+for (const def of EMOTKI) {
+  const b = document.createElement('button');
+  b.type = 'button';
+  b.title = def.nazwa;
+  b.setAttribute('aria-label', def.nazwa);
+  if (def.taniec) {
+    b.className = 'taniec';
+    const ik = document.createElement('span');
+    ik.textContent = def.tekst;
+    const n = document.createElement('span');
+    n.textContent = def.nazwa;
+    b.append(ik, n);
+  } else {
+    b.textContent = def.tekst;
+  }
+  b.addEventListener('click', () => wyslijEmotke(def.id));
+  panelEmotek.append(b);
+}
+el('btn-emotki').addEventListener('click', (e) => {
+  przelaczEmotki();
+  if (e.detail > 0) e.currentTarget.blur();   // spacja (skok) nie ma „klikać” przycisku
+});
+
+function przelaczEmotki() {
+  if (!panelEmotek.hidden) { zamknijEmotki(); return; }
+  if (!mogeEmotki()) return;
+  ekwipunek.zamknij();
+  panelEmotek.hidden = false;
+  el('btn-emotki').setAttribute('aria-expanded', 'true');
+}
+function zamknijEmotki() {
+  panelEmotek.hidden = true;
+  el('btn-emotki').setAttribute('aria-expanded', 'false');
+}
+
+function wyslijEmotke(id) {
+  zamknijEmotki();
+  if (!mogeEmotki()) return;
+  const teraz = performance.now();
+  if (teraz - ostatniaEmotka < EMOTKA_CO) { pokazInfo('Spokojnie z emotkami — chwila przerwy.'); return; }
+  ostatniaEmotka = teraz;
+  net.wyslij({ t: 'emotka', id: mojeId, e: id });
+}
+
+/* Obserwatorzy: obecni w pokoju, którzy nie grają w tej partii (albo z niej wyszli). */
+function liczObserwatorow() {
+  if (!pokoj || !net) return 0;
+  let n = 0;
+  for (const id of net.zywi()) {
+    const gra = pokoj.gracze.some((g) => g.id === id) && !pokoj.odeszli.has(id);
+    if (!gra) n++;
+  }
+  if (rg && rg.obserwator && !net.zywi().has(mojeId)) n++;   // ja sam, zanim puls do mnie wróci
+  return n;
 }
 
 /* Gracze, którzy od dłuższej chwili nie dają znaku życia (do podpisu). */
@@ -1076,6 +1182,7 @@ function podgladNaZywo(dt, moge) {
   v.amunicja = ruch.a && typeof ruch.a === 'object' ? ruch.a : null;
   if (typeof ruch.h === 'number') v.hp = ruch.h;
   v.cel = Array.isArray(ruch.c) ? { x: ruch.c[0], y: ruch.c[1] } : null;
+  v.lina = Array.isArray(ruch.l) ? { x: ruch.l[0], y: ruch.l[1] } : null;
 }
 
 /* Cudza tura przed strzałem: widz nie liczy cudzego chodzenia, więc upadek,
@@ -1183,13 +1290,15 @@ function wybierzBron(id) {
     const akt = S.activeWorm(st);
     if ((akt.amunicja[id] ?? 1) <= 0) {
       // ekwipunek zostaje otwarty — można od razu wybrać coś innego
-      pokazInfo(wylaczoneBronie(st).includes(id) ? w.name + ': wyłączona w tej partii.'
-        : id === 'kij' ? 'Kij tylko ze skrzynki z zaopatrzeniem!' : w.name + ': brak amunicji.');
+      pokazInfo(id === 'kij' ? 'Kij tylko ze skrzynki z zaopatrzeniem!' : w.name + ': brak amunicji.');
       return;
     }
     if (st.charging) return;
     st.weapon = id;
-    if (w.celowany) {
+    if (w.kind === 'lina') {
+      pokazInfo(dotykowy() ? 'Celuj w skałę i stuknij OGNIA — hak się zaczepi. ◀ ▶ bujanie, ▲▼ lina, OGNIA/SKOK puszcza.'
+        : 'Celuj w skałę i wciśnij F — hak się zaczepi. A/D bujanie, W/S lina, F albo spacja puszcza.');
+    } else if (w.celowany) {
       const co = id === 'teleport' ? 'miejsce teleportu' : id === 'most' ? 'miejsce mostu (blisko robala)' : 'cel nalotu';
       pokazInfo(dotykowy() ? 'Dotknij mapy, żeby wskazać ' + co + ', potem OGNIA.' : 'Kliknij na mapie ' + co + ', potem przytrzymaj F.');
     }
@@ -1286,6 +1395,7 @@ function obsluzZdarzenia() {
     switch (e.type) {
       case 'wybuch':
         emitExplosion(fx, e.x, e.y, e.r);
+        if (e.r >= 100) emitTekst(fx, e.x, e.y - e.r * 0.6, 'ALLELUJA! 🐐', '#ffe27a', 22);   // Święty GOAT
         wstrzas = Math.min(14, wstrzas + e.r * 0.16);
         R.repaintRect(renderer, st.terrain, { x0: e.x - e.r - 3, x1: e.x + e.r + 3 });
         break;
@@ -1301,6 +1411,7 @@ function obsluzZdarzenia() {
         emitSpark(fx, e.x1, e.y1 - 10, 24);
         break;
       case 'plusk': emitSpark(fx, e.x, e.y, 18); break;
+      case 'lina': emitSpark(fx, e.x, e.y, 8); break;
       case 'wiercenie':
         emitSpark(fx, e.x, e.y, 3);
         R.repaintRect(renderer, st.terrain, { x0: e.x - e.r - 3, x1: e.x + e.r + 3 });
@@ -1400,7 +1511,7 @@ function rysujBronie() {
   const moge = !!rg && P.mogeGrac(rg, pokoj);
   const ja = st ? st.worms.find((w) => w.id === mojeId) : null;
   const wybrana = moge ? st.weapon : mojaBron;
-  const amunicja = ja ? ja.amunicja : startowaAmunicja(st ? st.ust.bronie : 'pelny', U.KLASYKA);
+  const amunicja = ja ? ja.amunicja : startowaAmunicja(st ? st.ust.bronie : 'pelny');
   // Cudza tura: na dole widać broń, którą gracz z turą ma teraz w łapach (z podglądu
   // na żywo), a po strzale — tą, którą strzelił. Ekwipunek dalej pokazuje moje bronie.
   const cudza = cudzaBron(st);
@@ -1418,8 +1529,8 @@ function rysujBronie() {
   z.classList.toggle('zero', zapas !== undefined && zapas <= 0);
   el('btn-bron').classList.toggle('nieaktywna', !moge);
   // Obserwator: ekwipunek pokazuje zapasy gracza z turą (z podglądu na żywo).
-  if (cudza && cudza.amunicja) ekwipunek.rysuj({ wybrana: cudza.bron, amunicja: cudza.amunicja, moge: false, wylaczone: wylaczoneBronie(st), kto: cudza.kto });
-  else ekwipunek.rysuj({ wybrana, amunicja, moge, wylaczone: wylaczoneBronie(st), kto: null });
+  if (cudza && cudza.amunicja) ekwipunek.rysuj({ wybrana: cudza.bron, amunicja: cudza.amunicja, moge: false, kto: cudza.kto });
+  else ekwipunek.rysuj({ wybrana, amunicja, moge, kto: null });
 }
 
 /* Broń gracza z turą, gdy to nie ja: { bron, zapas, kto, amunicja } albo null.
@@ -1439,13 +1550,6 @@ function cudzaBron(st) {
     return { bron: st.weapon, zapas: akt.amunicja[st.weapon], kto: akt.name, amunicja: obs ? akt.amunicja : null };
   }
   return null;
-}
-
-/* Bronie wyłączone w ustawieniach partii (zestaw „Klasyka”) — kij wyłączony
-   nie jest, bo i tak przychodzi tylko ze skrzynek. */
-function wylaczoneBronie(st) {
-  if (!st || st.ust.bronie !== 'klasyka') return [];
-  return Object.keys(WEAPONS).filter((id) => !WEAPONS[id].ukryta && !U.KLASYKA.includes(id));
 }
 
 let wstrzas = 0;                 // siła trzęsienia ekranu po wybuchu (px), tylko grafika
@@ -1562,6 +1666,14 @@ function odswiezHud(moge, teraz) {
   el('moc-wypelnienie').style.width = (moc * 100).toFixed(0) + '%';
 
   el('btn-opusc').textContent = rg.obserwator ? 'Wyjdź' : 'Opuść grę';
+
+  const moznaEmotki = mogeEmotki();
+  el('btn-emotki').hidden = !moznaEmotki;
+  if (!moznaEmotki && !panelEmotek.hidden) zamknijEmotki();
+  const obs = liczObserwatorow();
+  el('obserwatorzy').hidden = obs === 0;
+  el('obserwatorzy-ile').textContent = obs;
+  el('obserwatorzy').title = obs === 1 ? '1 obserwator ogląda partię' : obs + ' obserwatorów ogląda partię';
 }
 
 setInterval(() => { if (!el('ekran-lobby').hidden) odswiezLobby(); }, 500);
@@ -1585,6 +1697,7 @@ window.__arena = () => ({
   przesuniecieZegara: net && Math.round(net.przesuniecieZegara),
   hash: rg && S.stateHash(rg.state),
   odwrotKrok: rg && rg.state.odwrotKrok,
+  lina: rg && (() => { const w = S.activeWorm(rg.state); return w ? (w.lina || (w.widok && w.widok.lina) || null) : null; })(),
   druzyny: rg ? (rg.state.druzynowa ? rg.state.worms.map((w) => w.name + ':' + w.druzyna) : null) : null,
   ustawienia: pokoj && pokoj.ustawienia,
   ustawieniaGry: rg && rg.state.ust,

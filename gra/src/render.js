@@ -225,6 +225,22 @@ export function draw(r, state, cam, fx, dt, opcje = {}) {
     drawSkrzynka(ctx, r, c);
   }
   for (const p of state.projectiles) drawProjectile(ctx, p);
+  // lina ninja: od haka do robala (u gracza z turą ze stanu, u widzów z podglądu na żywo)
+  for (const w of state.worms) {
+    const v = w.widok || w;
+    const hak = w.widok ? w.widok.lina : w.lina;
+    if (!w.alive || !hak) continue;
+    ctx.strokeStyle = '#d8c7a0';
+    ctx.lineWidth = 1.6;
+    ctx.beginPath();
+    ctx.moveTo(hak.x, hak.y);
+    ctx.lineTo(v.x, v.y - WORM_H * 0.6);
+    ctx.stroke();
+    ctx.fillStyle = '#8e979f';
+    ctx.beginPath();
+    ctx.arc(hak.x, hak.y, 3, 0, 6.283);
+    ctx.fill();
+  }
   for (const w of state.worms) {
     if (!w.alive) continue;
     drawWorm(ctx, w, w === akt && state.phase === 'aim', r.time, {
@@ -234,7 +250,8 @@ export function draw(r, state, cam, fx, dt, opcje = {}) {
       rozlaczony: !!opcje.rozlaczeni && opcje.rozlaczeni.has(w.id),
       moc: w === akt && state.phase === 'aim' ? (w.widok ? w.widok.moc : state.charging ? state.power : 0) : 0,
       bron: w === akt ? (w.widok ? w.widok.bron : state.weapon) : null,
-      hpMax: state.ust ? state.ust.hp : 100
+      hpMax: state.ust ? state.ust.hp : 100,
+      emotka: opcje.emotki ? opcje.emotki.get(w.id) || null : null
     });
   }
 
@@ -431,30 +448,61 @@ function drawProjectile(ctx, p) {
   ctx.translate(p.x, p.y);
 
   if (weapon.kind === 'owca') {
-    // owca: wełna z kilku kółek, czarny łepek w stronę biegu, przebierające nóżki
+    // koza (GOAT): smukłe ciało, rogi zagięte do tyłu, bródka, przebierające nóżki
     const kier = p.vx >= 0 ? 1 : -1;
     const t = performance.now() / 1000;
-    ctx.strokeStyle = '#222';
+    ctx.scale(kier, 1);                              // rysujemy w prawo, lustro dla biegu w lewo
+    ctx.strokeStyle = '#3b2a1c';
     ctx.lineWidth = 2;
-    for (const [lx, faza] of [[-5, 0], [-1, 1.6], [3, 3.1], [6, 4.7]]) {
-      const kr = Math.sin(t * 16 + faza) * 2;
+    ctx.lineCap = 'round';
+    for (const [lx, faza] of [[-6, 0], [-2, 1.6], [3, 3.1], [6.5, 4.7]]) {
+      const kr = Math.sin(t * 18 + faza) * 2.2;
       ctx.beginPath();
-      ctx.moveTo(lx * kier, -5);
-      ctx.lineTo(lx * kier + kr, 0);
+      ctx.moveTo(lx, -5);
+      ctx.lineTo(lx + kr, 0);
       ctx.stroke();
     }
-    ctx.fillStyle = '#f4f1ea';
-    for (const [bx, by, br] of [[-6, -9, 5], [-1, -11, 5.5], [4, -9, 5], [-3, -6, 5], [3, -6, 4.5]]) {
-      ctx.beginPath();
-      ctx.arc(bx * kier, by, br, 0, 6.283);
-      ctx.fill();
-    }
-    ctx.fillStyle = '#222';
+    // ogonek do góry
+    ctx.fillStyle = '#e9e1d2';
     ctx.beginPath();
-    ctx.ellipse(10 * kier, -10, 4.2, 3.4, 0, 0, 6.283);
+    ctx.ellipse(-9.5, -11, 1.6, 3, -0.5, 0, 6.283);
     ctx.fill();
-    ctx.fillStyle = '#fff';
-    ctx.fillRect(10 * kier + kier * 1.2 - 0.8, -11.5, 1.6, 1.6);
+    // tułów z łatą
+    ctx.fillStyle = '#efe7d8';
+    ctx.beginPath();
+    ctx.ellipse(0, -8.5, 9.5, 5, 0, 0, 6.283);
+    ctx.fill();
+    ctx.fillStyle = '#b89a78';
+    ctx.beginPath();
+    ctx.ellipse(-3, -10, 3.4, 2.4, 0.3, 0, 6.283);
+    ctx.fill();
+    // szyja i łeb
+    ctx.fillStyle = '#efe7d8';
+    ctx.beginPath();
+    ctx.moveTo(5, -11); ctx.lineTo(9, -17); ctx.lineTo(12, -15); ctx.lineTo(9, -8);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(12, -16, 3.8, 2.8, 0.35, 0, 6.283);
+    ctx.fill();
+    // rogi zagięte do tyłu
+    ctx.strokeStyle = '#6b5a45';
+    ctx.lineWidth = 1.8;
+    ctx.beginPath();
+    ctx.moveTo(10.5, -18.5); ctx.quadraticCurveTo(8, -23.5, 4.5, -22);
+    ctx.moveTo(12, -18.8); ctx.quadraticCurveTo(10.5, -24.5, 7, -24);
+    ctx.stroke();
+    // ucho, oko, bródka
+    ctx.fillStyle = '#d8ccb6';
+    ctx.beginPath();
+    ctx.ellipse(9, -16, 2.6, 1.1, -0.4, 0, 6.283);
+    ctx.fill();
+    ctx.fillStyle = '#1a1210';
+    ctx.fillRect(12.4, -17.4, 1.5, 1.5);
+    ctx.fillStyle = '#d8ccb6';
+    ctx.beginPath();
+    ctx.moveTo(13.5, -14); ctx.lineTo(15.2, -9.5); ctx.lineTo(12.6, -12.8);
+    ctx.fill();
+    ctx.scale(kier, 1);                              // napis lontu bez lustra
     if (p.fuse !== null) {
       ctx.font = 'bold 12px system-ui, sans-serif';
       ctx.textAlign = 'center';
@@ -462,8 +510,8 @@ function drawProjectile(ctx, p) {
       ctx.strokeStyle = 'rgba(0,0,0,0.7)';
       ctx.lineWidth = 3;
       const napis = Math.ceil(p.fuse).toString();
-      ctx.strokeText(napis, 0, -22);
-      ctx.fillText(napis, 0, -22);
+      ctx.strokeText(napis, 0, -30);                 // nad rogami
+      ctx.fillText(napis, 0, -30);
     }
     ctx.restore();
     return;
@@ -507,6 +555,40 @@ function drawProjectile(ctx, p) {
       ctx.beginPath();
       ctx.moveTo(dl / 2, 0); ctx.lineTo(dl / 2 - 6, -4); ctx.lineTo(dl / 2 - 6, 4);
       ctx.fill();
+    }
+  } else if (weapon.id === 'swiety') {
+    // Święty GOAT: złota kula z rogami i aureolą, lont odlicza nad nią
+    const t = performance.now() / 1000;
+    ctx.strokeStyle = 'rgba(255, 236, 150, 0.9)';
+    ctx.lineWidth = 1.6;
+    ctx.beginPath();
+    ctx.ellipse(0, -13 + Math.sin(t * 4) * 1, 7, 2.2, 0, 0, 6.283);
+    ctx.stroke();
+    const g = ctx.createRadialGradient(-2, -3, 1, 0, 0, 8);
+    g.addColorStop(0, '#fff6c4');
+    g.addColorStop(1, '#d9a81c');
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.arc(0, 0, 7.5, 0, 6.283);
+    ctx.fill();
+    ctx.strokeStyle = '#8a6a1a';
+    ctx.lineWidth = 1.8;
+    ctx.beginPath();
+    ctx.moveTo(-3, -6); ctx.quadraticCurveTo(-7, -11, -10, -8);
+    ctx.moveTo(3, -6); ctx.quadraticCurveTo(7, -11, 10, -8);
+    ctx.stroke();
+    ctx.fillStyle = '#3a2a10';
+    ctx.fillRect(-3.4, -1.5, 1.6, 1.6);
+    ctx.fillRect(1.8, -1.5, 1.6, 1.6);
+    if (p.fuse !== null) {
+      ctx.font = 'bold 13px system-ui, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillStyle = p.fuse < 1.5 ? '#ff3b23' : '#fff1c2';
+      ctx.strokeStyle = 'rgba(0,0,0,0.7)';
+      ctx.lineWidth = 3;
+      const napis = Math.ceil(p.fuse).toString();
+      ctx.strokeText(napis, 0, -20);
+      ctx.fillText(napis, 0, -20);
     }
   } else if (weapon.id === 'dynamit') {
     // laska dynamitu z tlącym się lontem i odliczaniem nad nią
@@ -569,12 +651,60 @@ function drawProjectile(ctx, p) {
   ctx.restore();
 }
 
+/* Robal z emotką albo w tańcu (od 4.3.1): taniec to tylko przesunięcie
+   i obrót rysunku — symulacja o niczym nie wie. o.emotka = { tekst, taniec, t (s), dl (s) }. */
 function drawWorm(ctx, w, isActive, time, o) {
+  const e = o.emotka;
+  if (!e) { rysujRobala(ctx, w, isActive, time, o); return; }
+  let dx = 0, dy = 0, odwroc = false;
+  if (e.taniec === 'szczescie') {
+    dy = -Math.abs(Math.sin(e.t * 9)) * 12;          // podskoki
+    odwroc = Math.floor(e.t * 2.2) % 2 === 1;        // obrót co skok albo dwa
+  } else if (e.taniec === 'robak') {
+    dx = Math.sin(e.t * 11) * 5;                     // wężyk na boki
+    dy = -Math.abs(Math.sin(e.t * 5.5)) * 4;
+    odwroc = Math.sin(e.t * 5.5) < 0;
+  }
+  ctx.save();
+  ctx.translate(dx, dy);
+  rysujRobala(ctx, w, isActive, time, { ...o, bron: e.taniec ? null : o.bron, odwroc });
+  ctx.restore();
+  if (e.tekst) dymekEmotki(ctx, w.widok || w, e);
+}
+
+/* Dymek nad głową: wyskakuje, trzyma się i znika pod koniec. */
+function dymekEmotki(ctx, v, e) {
+  const wejscie = Math.min(1, e.t / 0.18);
+  const znikanie = Math.min(1, Math.max(0, (e.dl - e.t) / 0.4));
+  const skala = 0.6 + 0.4 * wejscie;
+  const x = v.x, y = v.y - WORM_H - 44;
+  ctx.save();
+  ctx.globalAlpha = znikanie;
+  ctx.translate(x, y);
+  ctx.scale(skala, skala);
+  ctx.font = '800 16px system-ui, sans-serif';
+  const szer = Math.max(34, ctx.measureText(e.tekst).width + 18);
+  ctx.fillStyle = 'rgba(255, 250, 240, 0.96)';
+  ctx.strokeStyle = 'rgba(0, 0, 0, 0.55)';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.roundRect ? ctx.roundRect(-szer / 2, -14, szer, 28, 12) : ctx.rect(-szer / 2, -14, szer, 28);
+  ctx.moveTo(-5, 14); ctx.lineTo(0, 22); ctx.lineTo(5, 14);
+  ctx.fill();
+  ctx.stroke();
+  ctx.fillStyle = '#1a1210';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(e.tekst, 0, 1);
+  ctx.restore();
+}
+
+function rysujRobala(ctx, w, isActive, time, o) {
   // Cudzy robal w trakcie tury: pozycja i celownik z podglądu na żywo.
   const v = w.widok || w;
   const cx = v.x;
   const cy = v.y - WORM_H / 2;
-  const facing = v.facing ?? w.facing;
+  const facing = (v.facing ?? w.facing) * (o.odwroc ? -1 : 1);
   const angle = v.angle ?? w.angle;
 
   if (isActive) {

@@ -610,14 +610,14 @@ test('odchodzacy jest pomijany w kolejce', () => {
 test('ustawienia partii: zycie, bronie, wiatr, czas tury; bez ustawien jak dawniej', () => {
   const zwykla = S.createGame(77, players(2));
   assert(zwykla.worms[0].hp === 100 && zwykla.turnTimeLeft === S.TURN_TIME && zwykla.worms[0].amunicja.nalot === 1, 'domyslne inne niz dawniej');
-  const st = S.createGame(77, players(2), { ustawienia: { hp: 200, czas: 45, bronie: 'podwojny', wiatr: 0 } });
+  const st = S.createGame(77, players(2), { ustawienia: { hp: 200, czas: 45, wiatr: 0 } });
   assert(st.worms[0].hp === 200 && st.turnTimeLeft === 45, 'hp albo czas nie z ustawien');
-  assert(st.worms[0].amunicja.nalot === 2 && st.worms[0].amunicja.most === 6 && st.worms[0].amunicja.kij === 0, 'podwojna amunicja zle');
+  assert(st.worms[0].amunicja.nalot === 1 && st.worms[0].amunicja.kij === 0, 'normalne limity zle');
   assert(st.wind === 0 && Object.is(st.wind, 0), 'wiatr mimo „bez wiatru”: ' + st.wind);
   const hur = S.createGame(77, players(2), { ustawienia: { wiatr: 2 } });
   assert(Math.abs(hur.wind) > Math.abs(zwykla.wind), 'huragan nie silniejszy');
-  const kl = S.createGame(77, players(2), { ustawienia: { bronie: 'klasyka' } });
-  assert(kl.worms[0].amunicja.teleport === 0 && !S.mozeStrzelic(kl, 'teleport') && kl.worms[0].amunicja.dynamit === 2, 'klasyka zle');
+  const stary = S.createGame(77, players(2), { ustawienia: { bronie: 'klasyka' } });   // usunięty w 4.3.1 zestaw = normalny
+  assert(stary.ust.bronie === 'pelny' && stary.worms[0].amunicja.teleport === 1, 'stary zestaw broni nie wrocil do normalnego');
   const szal = S.createGame(77, players(2), { ustawienia: { bronie: 'szalony' } });
   assert(Object.keys(szal.worms[0].amunicja).length === 0 && S.mozeStrzelic(szal, 'kij'), 'szal ma limity');
   // ustawienia przeżywają granicę tury (stanPoTurze → snapshot)
@@ -640,15 +640,70 @@ test('ustawienia partii: bez nagłej śmierci lawa stoi, bez zrzutów nic nie sp
   assert(bez.lava === start, 'lawa wzbiera mimo „nigdy”');
   assert(skrzynki === 0, 'skrzynki mimo wylaczonych zrzutow');
   assert(szal.skrzynki.length > 0 && szal.skrzynki.every((c) => c.typ === 'apteczka'), 'w szale zapas albo brak skrzynek');
-  const krotka = S.createGame(11, players(2), { sieciowa: true, ustawienia: { lawa: 3 } });
-  for (let i = 0; i < 2 * 3 + 1; i++) nastepnaTura(krotka);
-  assert(krotka.lava < start, 'lawa po 3 rundach nie wzbiera');
+  // od 10. tury, błyskawicznie (40 px na turę) — i rośnie wyżej niż dawne 260 px
+  const krotka = S.createGame(11, players(2), { sieciowa: true, ustawienia: { lawa: 10, lawaTempo: 40 } });
+  for (let i = 0; i < 9; i++) nastepnaTura(krotka);
+  assert(krotka.lava === start, 'lawa ruszyla przed 10. tura');
+  nastepnaTura(krotka);
+  assert(krotka.lava === start - 40, 'lawa od 10. tury nie o 40 px: ' + (start - krotka.lava));
+  krotka.lava = 270;
+  for (const w of krotka.worms) { w.y = 100; w.vy = 0; }   // żeby partia trwała
+  nastepnaTura(krotka);
+  assert(krotka.lava === 230, 'lawa stanela na dawnym limicie 260 px: ' + krotka.lava);
 });
 
 test('mapa wybrana w lobby: styl ze seeda zgadza sie z generatorem', () => {
   for (let seed = 1; seed < 400; seed += 37) {
     assert(T.stylMapy(seed) === T.createTerrain(seed).styl, 'inny styl dla seeda ' + seed);
   }
+});
+
+test('lina ninja: zaczepia o skale, buja, nie konczy tury, skok puszcza, zuzywa zapas', () => {
+  const st = S.createGame(77, players(2), { sieciowa: true });
+  const w = S.activeWorm(st);
+  polka(st, w, 240);
+  // sufit nad robalem: pas skały 150 px wyżej
+  for (let x = w.x - 120; x <= w.x + 120; x++) for (let y = w.y - 170; y < w.y - 150; y++) st.terrain.mask[Math.round(y) * T.WORLD_W + Math.round(x)] = 1;
+  st.weapon = 'lina';
+  assert(!S.startCharging(st), 'lina da sie „wystrzelic” jak bron');
+  S.ustawCelownik(st, -Math.PI / 2 + 0.5);        // w górę i w prawo
+  const start = w.amunicja.lina;
+  assert(S.linaPrzelacz(st) === 'zaczepiona' && w.lina, 'hak nie zaczepil sie o sufit');
+  assert(w.amunicja.lina === start - 1, 'lina nie zuzyla zapasu');
+  const d = () => Math.sqrt((w.x - w.lina.x) ** 2 + (w.y - S.WORM_H * 0.5 - w.lina.y) ** 2);
+  st.input.right = true;
+  run(st, 1.5);
+  st.input.right = false;
+  assert(w.lina && d() <= w.lina.dl + 1, 'robal oderwal sie od liny: ' + d().toFixed(1) + ' > ' + (w.lina && w.lina.dl));
+  assert(st.phase === 'aim' && !st.firedThisTurn, 'lina zakonczyla ture');
+  const dl = w.lina.dl;
+  st.input.aimUp = true; run(st, 0.5); st.input.aimUp = false;
+  assert(w.lina.dl < dl - 40, 'wciaganie liny nie dziala');
+  S.jump(st);
+  assert(!w.lina && !w.onGround, 'skok nie puscil liny');
+  // w pasie i snapshocie liny nie ma
+  S.linaPrzelacz(st);
+  S.applyPas(st);
+  assert(!w.lina, 'pas nie puscil liny');
+  const nic = S.createGame(77, players(2), { sieciowa: true });
+  S.ustawCelownik(nic, Math.PI / 2 - 0.01);     // w dół? zasięg kończy się pod ziemią — ale teren jest
+  nic.weapon = 'lina';
+  S.ustawCelownik(nic, -Math.PI / 2 + 0.05);
+  const a = S.activeWorm(nic);
+  for (let y = 0; y < a.y - 10; y++) for (let x = a.x - 40; x <= a.x + 60; x++) nic.terrain.mask[y * T.WORLD_W + Math.round(x)] = 0;
+  assert(S.linaPrzelacz(nic) === 'pudlo' && !a.lina, 'hak zaczepil sie o powietrze');
+});
+
+test('Swiety GOAT: najwiekszy wybuch w grze, 1 sztuka', () => {
+  const najwiekszy = Math.max(...WEAPON_ORDER.filter((b) => b !== 'swiety').map((b) => WEAPONS[b].radius || 0));
+  assert(WEAPONS.swiety.radius > najwiekszy && WEAPONS.swiety.damage >= 90, 'Swiety GOAT nie jest najmocniejszy');
+  const st = S.createGame(77, players(2));
+  assert(st.worms[0].amunicja.swiety === 1, 'zapas Swietego GOAT-a: ' + st.worms[0].amunicja.swiety);
+  const w = S.activeWorm(st);
+  const wrog = st.worms.find((x) => x !== w);
+  const hp = wrog.hp;
+  S.explode(st, wrog.x, wrog.y - 10, WEAPONS.swiety);
+  assert(hp - wrog.hp >= 70 || !wrog.alive, 'Swiety GOAT slabo bije: ' + (hp - wrog.hp));
 });
 
 test('stanPoTurze nie zmienia stanu zrodlowego', () => {
@@ -737,7 +792,7 @@ console.log('\nDETERMINIZM I SYNCHRONIZACJA');
 /* Strzelec gra naprawdę (chodzi, skacze, strzela w locie), odbiorca dostaje
    tylko zdarzenie przez JSON. Po całym locie stany muszą być identyczne
    co do bitu — dla każdej broni. */
-for (const bron of WEAPON_ORDER) {
+for (const bron of WEAPON_ORDER.filter((b) => !WEAPONS[b].narzedzie)) {   // lina to nie strzał
   test('odbiorca odtwarza strzal co do bitu: ' + bron, () => {
     for (const seed of [5, 77, 1234]) {
       const a = S.createGame(seed, players(3), { sieciowa: true });

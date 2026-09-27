@@ -128,6 +128,20 @@ html, body {
   min-height: 40px;
 }
 .przycisk-hud:hover { border-color: var(--zar-jasny); }
+
+/* liczba obserwatorów (oczko) i emotki */
+.obserwatorzy { display: flex; align-items: center; gap: 4px; padding: 8px 10px; font-size: 13px; white-space: nowrap; }
+.obserwatorzy[hidden] { display: none; }
+.obserwatorzy b { font-weight: 700; font-variant-numeric: tabular-nums; color: var(--zar-jasny); }
+.emotki-panel {
+  position: absolute; top: calc(64px + var(--bezp-g)); right: calc(12px + var(--bezp-p)); z-index: 30;
+  display: grid; grid-template-columns: repeat(5, 48px); gap: 6px; padding: 10px;
+  pointer-events: auto;
+}
+.emotki-panel[hidden] { display: none; }
+.emotki-panel button { width: 48px; height: 48px; padding: 0; font-size: 20px; font-weight: 800; line-height: 1; }
+.emotki-panel button.taniec { grid-column: span 2; width: auto; font-size: 13px; font-weight: 600; display: flex; gap: 6px; align-items: center; justify-content: center; }
+.emotki-panel button:disabled { opacity: 0.4; }
 #btn-opusc { border-color: rgba(255, 70, 40, 0.5); }
 
 /* ---------- banery i napis tury ---------- */
@@ -227,7 +241,7 @@ html, body {
   position: fixed; z-index: 21;
   left: 0; right: 0; margin-inline: auto;
   bottom: calc(96px + var(--bezp-d));
-  width: min(560px, calc(100vw - 20px - var(--bezp-l) - var(--bezp-p)));
+  width: min(660px, calc(100vw - 20px - var(--bezp-l) - var(--bezp-p)));
   max-height: calc(100dvh - 20px - var(--bezp-g) - var(--bezp-d));
   overflow-y: auto;
   pointer-events: auto;
@@ -250,7 +264,7 @@ html, body {
 }
 .ekw-zamknij { flex: none; width: 34px; height: 34px; padding: 0; border-radius: 50%; font-size: 14px; }
 .ekw-siatka { display: grid; gap: 6px; }
-.ekw-rzad { display: grid; grid-template-columns: 62px repeat(3, minmax(0, 1fr)); gap: 6px; }
+.ekw-rzad { display: grid; grid-template-columns: 62px repeat(4, minmax(0, 1fr)); gap: 6px; }
 .ekw-grupa {
   align-self: center;
   font-size: 9.5px; letter-spacing: 0.1em; text-transform: uppercase; text-align: right;
@@ -296,7 +310,7 @@ body.dotykowy .ekwipunek { top: 0; bottom: 0; margin-block: auto; height: fit-co
   .ekw-gora { margin-bottom: 6px; }
 }
 @media (max-width: 420px) {
-  .ekw-rzad { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .ekw-rzad { grid-template-columns: repeat(4, minmax(0, 1fr)); }
   .ekw-grupa { grid-column: 1 / -1; text-align: left; margin: 2px 0 -2px 2px; }
   .ekw-bron { font-size: 11px; gap: 5px; padding: 5px 6px; }
   .ekw-ikona, .ekw-ikona svg { width: 28px; height: 28px; }
@@ -634,10 +648,6 @@ button:disabled { opacity: 0.35; cursor: not-allowed; }
 .ustawienie.zmienione select:disabled { border-color: rgba(255, 217, 59, 0.55); }
 .ustawienia-reset { display: block; margin: 0 12px 12px auto; padding: 8px 12px; font-size: 12px; }
 .ustawienia-reset[hidden] { display: none; }
-
-/* bronie wyłączone w ustawieniach partii */
-.ekw-bron.wylaczona { display: none; }
-.ekw-rzad:not(:has(.ekw-bron:not(.wylaczona))) { display: none; }
 
 @media (max-width: 400px) {
   .tryb { grid-template-columns: repeat(2, minmax(0, 1fr)); }

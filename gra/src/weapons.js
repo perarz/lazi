@@ -101,7 +101,7 @@ export const WEAPONS = {
 
   owca: {
     id: 'owca',
-    name: 'Owca',
+    name: 'Koza',          // od 4.3.1 koza (to Arena GOATów); id 'owca' zostaje — leci w strzałach i osiągnięciach
     key: '7',
     kind: 'owca',          // biegnie po terenie przed siebie, zawraca na ścianach
     speed: 0,
@@ -113,7 +113,38 @@ export const WEAPONS = {
     fuse: 4.5,             // wybucha po czasie albo przy pierwszym wrogu
     bezMocy: true,
     amunicja: 1,
-    opis: 'Biegnie przed siebie i wybucha'
+    opis: 'Szarżuje przed siebie i wybucha'
+  },
+  swiety: {
+    id: 'swiety',
+    name: 'Święty GOAT',
+    key: '[',
+    kind: 'odbijany',      // jak granat, tylko cięższy i z chórem
+    speed: 600,
+    gravityFactor: 1,
+    windFactor: 0.34,
+    restitution: 0.3,
+    radius: 118,           // największy wybuch w grze
+    damage: 90,
+    knockback: 480,
+    fuse: 3.5,
+    amunicja: 1,
+    opis: 'Alleluja! Ogromny wybuch po 3,5 s'
+  },
+  lina: {
+    id: 'lina',
+    name: 'Lina ninja',
+    key: ']',
+    kind: 'lina',          // narzędzie: nie kończy tury, sterowanie w sim.js (linaPrzelacz, krokLiny)
+    narzedzie: true,
+    zasieg: 420,           // px — jak daleko sięga hak
+    radius: 0,
+    damage: 0,
+    knockback: 0,
+    fuse: null,
+    bezMocy: true,
+    amunicja: 5,
+    opis: 'OGNIA: zaczep o skałę; ◀ ▶ bujanie, ▲▼ lina; OGNIA albo SKOK puszcza'
   },
   kij: {
     id: 'kij',
@@ -233,18 +264,16 @@ export const WEAPONS = {
   }
 };
 
-export const WEAPON_ORDER = ['bazooka', 'granat', 'strzelba', 'kasetowa', 'dynamit', 'nalot', 'owca', 'kij', 'teleport', 'salwa', 'wiertlo', 'most'];
+export const WEAPON_ORDER = ['bazooka', 'granat', 'strzelba', 'kasetowa', 'dynamit', 'nalot', 'owca', 'kij', 'teleport', 'salwa', 'wiertlo', 'most', 'swiety', 'lina'];
 
 /* Startowy zapas dla broni z limitem — ta sama wartość u każdego klienta.
-   zestaw (ustawienia partii, od 4.3): 'pelny' (domyślny), 'podwojny' (limity ×2),
-   'klasyka' (spoza listy `klasyka` — 0 sztuk, czyli wyłączone), 'szalony' (bez limitu). */
-export function startowaAmunicja(zestaw = 'pelny', klasyka = []) {
+   zestaw (ustawienia partii): 'pelny' (domyślny: limity, kij tylko ze skrzynek)
+   albo 'szalony' (wszystko bez limitu, kij też). */
+export function startowaAmunicja(zestaw = 'pelny') {
   const a = {};
   if (zestaw === 'szalony') return a;
   for (const id of WEAPON_ORDER) {
-    const w = WEAPONS[id];
-    if (zestaw === 'klasyka' && !klasyka.includes(id)) a[id] = 0;
-    else if (w.amunicja !== undefined) a[id] = zestaw === 'podwojny' ? w.amunicja * 2 : w.amunicja;
+    if (WEAPONS[id].amunicja !== undefined) a[id] = WEAPONS[id].amunicja;
   }
   return a;
 }

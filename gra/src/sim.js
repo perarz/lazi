@@ -13,7 +13,7 @@
 import { mulberry32, hashNumbers, hashTekstu } from './rng.js';
 import * as T from './terrain.js';
 import { WEAPONS, WEAPON_ORDER, startowaAmunicja } from './weapons.js';
-import { normalizuj, KLASYKA, WIATR_MNOZNIK } from './ustawienia.js';
+import { normalizuj, WIATR_MNOZNIK } from './ustawienia.js';
 
 export const DT = 1 / 120;          // stały krok symulacji, render interpoluje
 
@@ -21,7 +21,10 @@ const GRAVITY = 520;
 const WALK_SPEED = 82;
 const MAX_STEP = 5;                 // ile pikseli robal wejdzie pod górę
 export const WORM_H = 20;
-const JUMP_VY = -235;
+const JUMP_VY = -195;
+const LINA_BUJANIE = 420;           // px/s² — wymach na linie (◀ ▶)
+const LINA_WCIAGANIE = 160;         // px/s — skracanie/wydłużanie liny (▲▼)
+const LINA_MIN = 24;               // 4.3.1: niższy skok (ok. 70% dawnej wysokości)
 const JUMP_VX = 118;
 const AIM_SPEED = 1.5;              // rad/s
 const FALL_SAFE_V = 330;            // poniżej tej prędkości upadek nie boli
@@ -47,7 +50,7 @@ const ODWROT_LEWO = 1, ODWROT_PRAWO = 2, ODWROT_SKOK = 4;
    żeby partia nie ciągnęła się w nieskończoność. Domyślnie — w partii state.ust.lawa. */
 export const LAWA_PO_RUNDACH = 6;
 const LAWA_ZA_TURE = 12;
-const LAWA_MIN = 260;
+const LAWA_MIN = 40;                // od 4.3.1 mapy są wysokie — lawa dochodzi prawie pod sufit
 
 /* Pięć odłamków kasetówki — stała tabela, żadnej losowości. */
 const ODLAMKI = [[-160, -220], [-80, -290], [0, -330], [80, -290], [160, -220]];
@@ -63,7 +66,6 @@ const INNE_ZAPASY = WEAPON_ORDER.filter((id) => WEAPONS[id].amunicja !== undefin
    z limitem, które są w tej partii dostępne (w „Szale” limitów nie ma wcale). */
 function zapasyDla(zestaw) {
   if (zestaw === 'szalony') return [];
-  if (zestaw === 'klasyka') return INNE_ZAPASY.filter((id) => KLASYKA.includes(id));
   return INNE_ZAPASY;
 }
 
@@ -110,8 +112,9 @@ export function createGame(seed, players, opcje = {}) {
     angle: spawns[i].x < T.WORLD_W / 2 ? -0.6 : Math.PI + 0.6,
     alive: true,
     onGround: true,
-    amunicja: startowaAmunicja(ust.bronie, KLASYKA),
-    odszedl: false
+    amunicja: startowaAmunicja(ust.bronie),
+    odszedl: false,
+    lina: null                 // lina ninja: { x, y, dl } albo null (tylko lokalnie, przed strzałem)
   }));
 
   const state = {
@@ -172,8 +175,79 @@ export function jump(state) {
   const w = activeWorm(state);
   // w czasie ucieczki skok idzie przez nagranie, żeby odbiorca go powtórzył
   if (state.phase === 'odwrot' && state.odwrotNagranie) { state.skokWKolejce = true; return; }
+  if (w && w.lina && state.phase === 'aim') { odczep(w); return; }   // skok puszcza linę
   if (!w || !w.alive || !w.onGround || state.phase !== 'aim') return;
   skocz(w);
+}
+
+/* ---------- lina ninja (4.4) ----------
+   Narzędzie przed strzałem: nie kończy tury i nie leci do sieci jako akcja.
+   Tak jak chodzenie liczy się tylko u gracza z turą — odbiorcy dostają
+   gotowy stan robali w strzale albo pasie (lina jest wtedy już puszczona),
+   a w międzyczasie widzą ją w podglądzie na żywo. Dlatego rzut haka może
+   użyć trygonometrii (jak obliczStart), a samo bujanie i tak liczy tylko sqrt. */
+export function linaPrzelacz(state) {
+  const w = activeWorm(state);
+  if (!w || !w.alive || state.phase !== 'aim' || state.firedThisTurn) return null;
+  if (w.lina) { odczep(w); return 'puszczona'; }
+  const zapas = w.amunicja.lina;
+  if (zapas !== undefined && zapas <= 0) return 'brak';
+  const c = Math.cos(w.angle), s = Math.sin(w.angle);
+  const x0 = w.x, y0 = w.y - WORM_H * 0.5;
+  for (let d = 26; d <= WEAPONS.lina.zasieg; d += 3) {   // od 26 px — nie łapie ściany, o którą robal się opiera
+    const x = x0 + c * d, y = y0 + s * d;
+    if (x < 0 || x >= T.WORLD_W || y < 0) break;
+    if (T.solidAt(state.terrain, x, y)) {
+      w.lina = { x: Math.round(x), y: Math.round(y), dl: d };
+      if (zapas !== undefined) w.amunicja.lina = zapas - 1;
+      w.onGround = false;
+      state.events.push({ type: 'lina', x: w.lina.x, y: w.lina.y });
+      return 'zaczepiona';
+    }
+  }
+  return 'pudlo';
+}
+
+function odczep(w) {
+  w.lina = null;
+  w.onGround = false;
+}
+
+/* Wahadło: grawitacja + wymach, potem długość liny jako więź (tylko sqrt). */
+function krokLiny(state, w, ster, inp) {
+  const L = w.lina;
+  const t = state.terrain;
+  if (!T.solidAt(t, L.x, L.y)) { odczep(w); return; }       // skała pod hakiem zniknęła
+  const dir = ster.left ? -1 : ster.right ? 1 : 0;
+  if (dir) { obroc(w, dir); w.vx += dir * LINA_BUJANIE * DT; }
+  if (inp.aimUp) L.dl = Math.max(LINA_MIN, L.dl - LINA_WCIAGANIE * DT);
+  if (inp.aimDown) L.dl = Math.min(WEAPONS.lina.zasieg, L.dl + LINA_WCIAGANIE * DT);
+  w.vy += GRAVITY * DT;
+  w.vx -= w.vx * 0.2 * DT;
+  w.vy -= w.vy * 0.2 * DT;
+  let nx = w.x + w.vx * DT;
+  let ny = w.y + w.vy * DT;
+  // więź: środek robala nie dalej niż długość liny od haka
+  let dx = nx - L.x, dy = ny - WORM_H * 0.5 - L.y;
+  const d = Math.sqrt(dx * dx + dy * dy);
+  if (d > L.dl && d > 0.001) {
+    const k = L.dl / d;
+    nx = L.x + dx * k;
+    ny = L.y + dy * k + WORM_H * 0.5;
+    dx /= d; dy /= d;
+    const vr = w.vx * dx + w.vy * dy;
+    if (vr > 0) { w.vx -= vr * dx; w.vy -= vr * dy; }
+  }
+  if (cialoWSkale(t, nx, ny)) {
+    // odbicie od skały: tracimy prędkość, zostajemy na miejscu
+    w.vx *= -0.25;
+    w.vy *= -0.25;
+  } else {
+    w.x = nx;
+    w.y = ny;
+  }
+  w.x = Math.max(2, Math.min(T.WORLD_W - 2, w.x));
+  if (w.y > state.lava) { odczep(w); killWorm(state, w, 'lawa'); }
 }
 
 function skocz(w) {
@@ -225,7 +299,7 @@ export function mozeStrzelic(state, weaponId) {
   const w = activeWorm(state);
   if (!w || !w.alive || state.phase !== 'aim' || state.firedThisTurn) return false;
   const weapon = WEAPONS[weaponId];
-  if (!weapon || weapon.ukryta) return false;
+  if (!weapon || weapon.ukryta || weapon.narzedzie) return false;   // lina to nie strzał
   const zapas = w.amunicja[weaponId];
   if (zapas !== undefined && zapas <= 0) return false;
   if (weapon.celowany && !state.cel) return false;
@@ -261,6 +335,8 @@ export function releaseFire(state) {
   if (!state.charging) return null;
   state.charging = false;
   if (!mozeStrzelic(state, state.weapon)) return null;
+  const akt = activeWorm(state);
+  if (akt && akt.lina) odczep(akt);          // strzał z liny: puszczamy i strzelamy w locie
 
   const action = przygotujStrzal(state);
   // Strzelec przechodzi przez tę samą ścieżkę co odbiorca — po normalizacji
@@ -337,6 +413,7 @@ export function zastosujStrzal(state, action) {
 /* Tura oddana bez strzału. */
 export function applyPas(state) {
   if (state.phase === 'over' || state.phase === 'koniec') return;
+  for (const w of state.worms) if (w.lina) odczep(w);
   state.charging = false;
   state.power = 0;
   state.phase = 'settle';
@@ -613,6 +690,10 @@ export function rozwinOdwrot(rle) {
 function stepWorm(state, w, controllable, ster) {
   if (!w.alive) return;
   const t = state.terrain;
+  if (w.lina) {
+    if (controllable && state.phase === 'aim') { krokLiny(state, w, ster, state.input); return; }
+    odczep(w);
+  }
 
   if (controllable && w.onGround) {
     let dir = 0;
@@ -989,9 +1070,11 @@ function nextTurn(state) {
   }
 
   state.turnNumber++;
-  const lawaPo = state.ust.lawa;       // 0 = bez nagłej śmierci
-  if (lawaPo && state.turnNumber >= state.order.length * lawaPo) {
-    const nowa = Math.max(LAWA_MIN, state.lava - LAWA_ZA_TURE);
+  // ustawienie 'lawa': ujemne = po tylu rundach, dodatnie = od tej tury, 0 = nigdy
+  const lawa = state.ust.lawa;
+  const od = lawa < 0 ? state.order.length * -lawa : lawa;
+  if (lawa && state.turnNumber >= od) {
+    const nowa = Math.max(LAWA_MIN, state.lava - (state.ust.lawaTempo || LAWA_ZA_TURE));
     if (nowa !== state.lava) {
       state.lava = nowa;
       state.events.push({ type: 'lawa', y: nowa });
@@ -1056,6 +1139,7 @@ function stepSkrzynki(state) {
 
 /* Pola, które na starcie każdej tury są zawsze takie same. */
 export function rozpocznijTure(state) {
+  for (const w of state.worms) w.lina = null;
   state.turnTimeLeft = state.ust.czas;
   state.phase = 'aim';
   state.settleTime = 0;
@@ -1108,6 +1192,7 @@ export function ustawRobale(state, robale) {
     w.angle = s.angle + 0;
     w.amunicja = { ...(s.amunicja || {}) };
     w.odszedl = !!s.odszedl;
+    w.lina = null;             // lina nie leci przez sieć — w strzale i pasie jest już puszczona
   }
 }
 

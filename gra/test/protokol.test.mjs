@@ -167,7 +167,7 @@ class Klient {
     const w = S.activeWorm(st);
     if (!this.plan) {
       const rng = this.rng;
-      const dostepne = WEAPON_ORDER.filter((b) => (w.amunicja[b] ?? 1) > 0);
+      const dostepne = WEAPON_ORDER.filter((b) => (w.amunicja[b] ?? 1) > 0 && !WEAPONS[b].narzedzie);
       this.plan = {
         start: ctx.teraz + 400 + rng() * 3500,
         idz: rng() < 0.4 ? (rng() < 0.5 ? -1 : 1) : 0,
@@ -674,13 +674,13 @@ await test('ustawienia partii: gospodarz zmienia, gotowosc sie cofa, nowa je nie
   assert(p.ustawienia.hp === 100, 'przywrocenie domyslnych nie dziala');
   // nowa: ustawienia w partii i po partii w lobby, czas tury w protokole
   const gracze = [{ id: 'a', name: 'a', color: '#fff' }, { id: 'b', name: 'b', color: '#0f0' }];
-  const ust = { czas: 15, hp: 50, bronie: 'klasyka', zrzuty: 0, wiatr: 0, lawa: 0, mapa: 'gory', zle: 5 };
+  const ust = { czas: 15, hp: 50, bronie: 'szalony', zrzuty: 0, wiatr: 0, lawa: 0, mapa: 'gory', zle: 5 };
   p = P.zloz([{ t: 'nowa', seed: 5, gracze, druzyny: 0, ustawienia: ust, v: P.WERSJA, st: 1000 }]);
   assert(p.czasTury === 15 && p.ustawienia.hp === 50 && !('zle' in p.ustawieniaGry), 'nowa nie przeniosla ustawien');
   assert(P.terminTury({ state: { turnNumber: 0 } }, p) === p.turaOdkad + 15000, 'termin tury nie z ustawien');
   const r = P.nowaRozgrywka(p, 'a');
   const w = r.state.worms[0];
-  assert(w.hp === 50 && w.amunicja.nalot === 0 && w.amunicja.dynamit === 2 && r.state.wind === 0, 'partia nie z ustawien');
+  assert(w.hp === 50 && w.amunicja.nalot === undefined && r.state.wind === 0, 'partia nie z ustawien');
   // stara partia bez ustawień = jak dawniej
   const stara = P.zloz([{ t: 'nowa', seed: 5, gracze, druzyny: 0, v: 2, st: 1000 }]);
   assert(stara.czasTury === S.TURN_TIME && P.nowaRozgrywka(stara, 'a').state.worms[0].hp === 100, 'partia bez ustawien nie standardowa');
@@ -711,12 +711,12 @@ await test('lobby: gospodarz losuje druzyny, oddaje korone i wyrzuca; stara wers
   assert(!P.gotowiDoStartu(P.rozstaw(P.zloz(stary))), 'start ze stara wersja');
 });
 
-await test('partia z wlasnymi ustawieniami (15 s, 50 HP, klasyka, czeste zrzuty, huragan) do konca bez rozjazdow', () => {
+await test('partia z wlasnymi ustawieniami (15 s, 50 HP, szal, czeste zrzuty, huragan, szybka lawa) do konca bez rozjazdow', () => {
   const serwer = new Serwer();
   const ids = ['a', 'b', 'c'];
   const kl = ids.map((id, i) => new Klient(id, serwer, mulberry32(700 + i), { opoznienie: 60 + i * 50, coIle: 300 }));
   for (const k of kl) serwer.przyjmij({ t: 'puls', id: k.id });
-  const ustawienia = { czas: 15, hp: 50, bronie: 'klasyka', zrzuty: 70, wiatr: 2, lawa: 3, mapa: 'losowa' };
+  const ustawienia = { czas: 15, hp: 50, bronie: 'szalony', zrzuty: 70, wiatr: 2, lawa: 10, lawaTempo: 24, mapa: 'losowa' };
   serwer.przyjmij({ t: 'nowa', seed: 98765, druzyny: 0, ustawienia, v: P.WERSJA,
     gracze: ids.map((id) => ({ id, name: id, color: '#fff' })) });
   for (let i = 0; i < 60 * 900; i++) {
@@ -729,8 +729,6 @@ await test('partia z wlasnymi ustawieniami (15 s, 50 HP, klasyka, czeste zrzuty,
   assert(p.faza === 'koniec', 'partia nie doszla do konca (tura ' + p.tura + ')');
   zgodnoscKoncowa({ serwer, pokoj: p, wszyscy: kl, klienci: kl });
   for (const k of kl) assert(k.r.statystyki.korekty === 0, 'korekty u ' + k.id);
-  const zakazane = [...p.akcje.values()].filter((a) => a.t === 'strzal' && !U.KLASYKA.includes(a.weapon));
-  assert(!zakazane.length, 'strzal bronia spoza klasyki: ' + zakazane.map((a) => a.weapon).join());
   console.log('       ' + p.tura + ' tur');
 });
 
