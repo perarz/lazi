@@ -10,6 +10,10 @@ import { WEAPONS } from './weapons.js';
 import { WORM_H } from './sim.js';
 import { drawFx } from './fx.js';
 
+/* Szerokość bieżącego świata (od 4.5 zależy od rozmiaru mapy w ustawieniach).
+   Ustawia ją buildTerrain; kamera i lawa czytają ją stąd. */
+let swiatW = WORLD_W;
+
 export function createRenderer(canvas) {
   const terrainCanvas = document.createElement('canvas');
   terrainCanvas.width = WORLD_W;
@@ -53,7 +57,7 @@ const PALETY = {
    Całe 2 MB idzie w kilka milionów prostych operacji. */
 function paintColumns(r, terrain, x0, x1) {
   x0 = Math.max(0, Math.floor(x0));
-  x1 = Math.min(WORLD_W - 1, Math.ceil(x1));
+  x1 = Math.min(terrain.w - 1, Math.ceil(x1));
   const w = x1 - x0 + 1;
   if (w <= 0) return;
 
@@ -68,7 +72,7 @@ function paintColumns(r, terrain, x0, x1) {
     // falowanie warstw skalnych — tylko wygląd, więc wolno użyć sinusa
     const fala = Math.sin(x * 0.011) * 14 + Math.sin(x * 0.037 + 1.3) * 6;
     for (let y = 0; y < WORLD_H; y++) {
-      const i = y * WORLD_W + x;
+      const i = y * terrain.w + x;
       const solid = mask[i];
       depth = solid ? depth + 1 : 0;
       const o = (y * w + col) * 4;
@@ -77,7 +81,7 @@ function paintColumns(r, terrain, x0, x1) {
       if (solid === 2) {
         // most: stalowa belka z nitami co 10 px
         // dźwigar: ciemne pasy góra/dół i kratownica (ukośne żebra) w środku
-        const brzeg = depth <= 1 || (y + 1 < WORLD_H && mask[i + WORLD_W] !== 2);
+        const brzeg = depth <= 1 || (y + 1 < WORLD_H && mask[i + terrain.w] !== 2);
         const rz = depth - 1;
         const zebro = ((x - rz * 2) % 12 + 12) % 12 < 2 || ((x + rz * 2) % 12 + 12) % 12 < 2;
         const v = brzeg ? 0.6 : zebro ? 1.3 : 0.82;
@@ -104,9 +108,9 @@ function paintColumns(r, terrain, x0, x1) {
       }
       let rr = c[0] + n - 7, gg = c[1] + (n >> 1) - 3, bb = c[2] + (n >> 2);
       // krawędź od boku (ściany jaskiń, zbocza) — jaśniejsza obwódka
-      if (depth > 2 && ((x > 0 && !mask[i - 1]) || (x < WORLD_W - 1 && !mask[i + 1]))) {
+      if (depth > 2 && ((x > 0 && !mask[i - 1]) || (x < terrain.w - 1 && !mask[i + 1]))) {
         rr += 55; gg += 30; bb += 10;
-      } else if (depth > 2 && y + 1 < WORLD_H && !mask[i + WORLD_W]) {
+      } else if (depth > 2 && y + 1 < WORLD_H && !mask[i + terrain.w]) {
         // sufit komory: przyciemniony, z lekkim żarem od dołu
         rr = rr * 0.7 + 30; gg *= 0.6; bb *= 0.6;
       }
@@ -117,13 +121,15 @@ function paintColumns(r, terrain, x0, x1) {
 }
 
 export function buildTerrain(r, terrain) {
-  r.tctx.clearRect(0, 0, WORLD_W, WORLD_H);
-  paintColumns(r, terrain, 0, WORLD_W - 1);
+  swiatW = terrain.w;
+  if (r.terrainCanvas.width !== terrain.w) r.terrainCanvas.width = terrain.w;   // inny rozmiar mapy
+  r.tctx.clearRect(0, 0, terrain.w, WORLD_H);
+  paintColumns(r, terrain, 0, terrain.w - 1);
 }
 
 export function repaintRect(r, terrain, rect) {
   const x0 = Math.max(0, Math.floor(rect.x0) - 2);
-  const x1 = Math.min(WORLD_W - 1, Math.ceil(rect.x1) + 2);
+  const x1 = Math.min(terrain.w - 1, Math.ceil(rect.x1) + 2);
   r.tctx.clearRect(x0, 0, x1 - x0 + 1, WORLD_H);
   paintColumns(r, terrain, x0, x1);
 }
@@ -167,12 +173,12 @@ export function ograniczKamere(cam, viewW, viewH, dol = 0) {
   const halfH = viewH / (2 * cam.zoom);
   const zapasX = Math.min(ZAPAS_BOK, halfW * 0.8);
   const minX = halfW - zapasX;
-  const maxX = WORLD_W - halfW + zapasX;
+  const maxX = swiatW - halfW + zapasX;
   if (minX <= maxX) {
     cam.x = Math.max(minX, Math.min(maxX, cam.x));
     cam.tx = Math.max(minX, Math.min(maxX, cam.tx));
   } else {
-    cam.x = cam.tx = WORLD_W / 2;
+    cam.x = cam.tx = swiatW / 2;
   }
   const minY = halfH - Math.min(ZAPAS_NIEBO, halfH);
   const maxY = WORLD_H - (viewH / 2 - dol) / cam.zoom;
@@ -332,13 +338,13 @@ function drawLava(ctx, time, poziom) {
   g.addColorStop(1, '#8a0f00');
   ctx.fillStyle = g;
   // lawa sięga daleko za mapę — kamera potrafi tam zajrzeć
-  ctx.fillRect(-1400, poziom, WORLD_W + 2800, WORLD_H - poziom + 1400);
+  ctx.fillRect(-1400, poziom, swiatW + 2800, WORLD_H - poziom + 1400);
 
   // falująca, świecąca powierzchnia
   ctx.strokeStyle = 'rgba(255,220,120,0.8)';
   ctx.lineWidth = 3;
   ctx.beginPath();
-  for (let x = -1400; x <= WORLD_W + 1400; x += 16) {
+  for (let x = -1400; x <= swiatW + 1400; x += 16) {
     const y = poziom + Math.sin(x * 0.012 + time * 1.6) * 3 + Math.sin(x * 0.03 - time * 2.3) * 2;
     if (x === -1400) ctx.moveTo(x, y); else ctx.lineTo(x, y);
   }
@@ -353,8 +359,18 @@ function drawCel(ctx, cel, time) {
     ctx.strokeStyle = cel.zle ? '#ff3b23' : '#ffb347';
     ctx.lineWidth = 1.5;
     ctx.setLineDash([5, 4]);
-    ctx.fillRect(cel.x - 45, cel.y, 90, 7);
-    ctx.strokeRect(cel.x - 45, cel.y, 90, 7);
+    if (cel.k) {
+      // obrócony most (klawisz R): środek belki w punkcie celu, co 22,5°
+      ctx.save();
+      ctx.translate(cel.x, cel.y);
+      ctx.rotate(cel.k * Math.PI / 8);
+      ctx.fillRect(-45, -3.5, 90, 7);
+      ctx.strokeRect(-45, -3.5, 90, 7);
+      ctx.restore();
+    } else {
+      ctx.fillRect(cel.x - 45, cel.y, 90, 7);
+      ctx.strokeRect(cel.x - 45, cel.y, 90, 7);
+    }
     ctx.setLineDash([]);
     return;
   }

@@ -33,7 +33,6 @@
       </div>
       <div class="hud-przyciski">
         <span id="obserwatorzy" class="panel obserwatorzy" title="Tylu obserwatorów ogląda partię" hidden><span aria-hidden="true">👁</span> <b id="obserwatorzy-ile">0</b></span>
-        <button id="btn-emotki" class="panel przycisk-hud" type="button" aria-label="Emotki i tańce" aria-haspopup="dialog" aria-expanded="false" title="Emotki i tańce (E)" hidden>💬</button>
         <button id="btn-pelny" class="panel przycisk-hud" type="button" aria-label="Pełny ekran" title="Pełny ekran" hidden>⛶</button>
         <button id="btn-opusc" class="panel przycisk-hud" type="button">Opuść grę</button>
       </div>
@@ -71,17 +70,22 @@
 
     <div class="hud-dol">
       <div class="pasek-broni">
-        <button type="button" class="bron-wybrana" id="btn-bron" aria-haspopup="dialog" aria-expanded="false" aria-controls="ekwipunek" title="Ekwipunek — Q albo prawy przycisk myszy">
-          <span class="bron-ikona" id="bron-ikona"></span>
-          <span class="bron-tekst"><small id="bron-kto">Broń</small><b id="bron-nazwa">Bazooka</b></span>
-          <span class="zapas" id="bron-zapas" hidden></span>
-          <span class="bron-strzalka" aria-hidden="true">▲</span>
-        </button>
+        <div class="rzad-broni">
+          <button type="button" class="bron-wybrana" id="btn-bron" aria-haspopup="dialog" aria-expanded="false" aria-controls="ekwipunek" title="Ekwipunek — Q albo prawy przycisk myszy">
+            <span class="bron-ikona" id="bron-ikona"></span>
+            <span class="bron-tekst"><small id="bron-kto">Broń</small><b id="bron-nazwa">Bazooka</b></span>
+            <span class="zapas" id="bron-zapas" hidden></span>
+            <span class="bron-strzalka" aria-hidden="true">▲</span>
+          </button>
+          <!-- obrót mostu (R) i emotki (E) — obok broni, pod kciukiem (4.5) -->
+          <button type="button" class="przycisk-obok" id="btn-obrot" aria-label="Obróć most" title="Obróć most (R)" hidden>⟳</button>
+          <button type="button" class="przycisk-obok" id="btn-emotki" aria-label="Emotki i tańce" aria-haspopup="dialog" aria-expanded="false" title="Emotki i tańce (E)" hidden>💬</button>
+        </div>
         <div class="moc"><div class="moc-wypelnienie" id="moc-wypelnienie"></div></div>
       </div>
       <div class="pomoc">
         <b>A</b>/<b>D</b> ruch &nbsp; <b>Spacja</b> skok &nbsp; <b>W</b>/<b>S</b> albo mysz: celowanie &nbsp;
-        <b>Q</b> / <b>PPM</b> ekwipunek &nbsp; <b>E</b> emotki &nbsp; <b>1-0</b> broń &nbsp; <b>F</b> lub <b>Enter</b> (przytrzymaj) strzał
+        <b>Q</b> / <b>PPM</b> ekwipunek &nbsp; <b>E</b> emotki &nbsp; <b>R</b> obrót mostu &nbsp; <b>1-0</b> broń &nbsp; <b>F</b> lub <b>Enter</b> (przytrzymaj) strzał
       </div>
     </div>
 

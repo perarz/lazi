@@ -18,7 +18,7 @@ Stos technologiczny:
 - Bez bundlera, bez `package.json` i bez zależności npm. Zwykłe pliki HTML/CSS/JS, gra jako moduły ES,
   zrzutka jako klasyczne skrypty.
 
-Obecna wersja: **4.4 „Lina ninja, Święty GOAT, emotki i tańce”** (`wersja.js`).
+Obecna wersja: **4.5 „Mapy na zamówienie i obracane mosty”** (`wersja.js`).
 
 ---
 
@@ -399,13 +399,13 @@ Lekcje z kalibracji:
 | `src/konfig.js` | `SERWER_WS` — adres serwera Areny; lokalnie `?serwer=ws://127.0.0.1:8787/ws` do testów |
 | `src/main.js` | Lobby (tryb, drużyny, GOTOWY, kolory), HUD, kamera, pętla gry, zdarzenia → efekty, statystyki, osiągnięcia (UI) |
 | `src/druzyny.js` | Nazwy i kolory drużyn (`DRUZYNY`), tryby lobby (`TRYBY`) |
-| `src/ustawienia.js` | Ustawienia partii z lobby (`USTAWIENIA`: czas, hp, mapa, bronie, zrzuty, wiatr, lawa, lawaTempo), `normalizuj`, `opisZmian` |
+| `src/ustawienia.js` | Ustawienia partii z lobby (`USTAWIENIA`: czas, hp, mapa, rozmiar, bronie, zrzuty, wiatr, lawaOd, lawaTempo; pozycje z `opcje` = lista, z `liczba` = wpisywane), `normalizuj`, `zLiczby`, `opisZmian` |
 | `src/emotki.js` | Emotki i tańce (`EMOTKI`: 5 emotek + 2 tańce), czasy i limit wysyłania |
 | `src/ekwipunek.js` | Ekwipunek broni jak w Worms Armageddon: rzędy (`GRUPY`), ikony SVG broni, otwieranie/zamykanie |
 | `src/input.js` | Klawiatura, przyciski dotykowe, przeciąganie/szczypanie, PPM/Q = ekwipunek |
 | `src/render.js`, `src/fx.js` | Grafika (tu wolno trygonometrię i `Math.random`); w `render.js` też kamera i podgląd robala na ekranie wejścia |
 | `src/osiagniecia-reguly.js` | Reguły osiągnięć — czyste funkcje |
-| `test/sim.test.mjs`, `test/protokol.test.mjs` | Testy w Node (76 i 21) |
+| `test/sim.test.mjs`, `test/protokol.test.mjs` | Testy w Node (80 i 21) |
 
 ### Determinizm (święta zasada)
 - Symulacja (`sim.js`, `terrain.js`) używa tylko:
@@ -422,7 +422,15 @@ Lekcje z kalibracji:
     2–7 **pięter** (długie, pochylone i poszarpane jaskinie jedna nad drugą), **kominy** (pionowe szyby między
     piętrami), 1–3 wielkie hale, więcej wiszących skał. Generowanie ok. 250 ms (raz na partię, potem kopia).
     Testy broni, które zależą od kształtu mapy, czyszczą teren (`polka`, `otworzNiebo` w `sim.test.mjs`).
-  - Kopia bazowej maski jest cache'owana.
+  - Kopia bazowej maski jest cache'owana (klucz: seed + szerokość + styl ekstremalny).
+  - **Od 4.5 szerokość świata jest zmienna**: `createTerrain(seed, { szer, styl })`, teren niesie `t.w` i `t.opcje`
+    (do `rebuild(seed, kratery, t.opcje)`). `SZEROKOSCI` = mala 1536 / normalna 2048 / duza 3072 / ogromna 4096;
+    wysokość zostaje 1024. Wszędzie `t.w` / `state.terrain.w` zamiast `WORLD_W` (to tylko domyślna szerokość);
+    render bierze szerokość z `buildTerrain` (`swiatW` dla kamery i lawy). Na szerszej mapie profil jest
+    rozciągnięty, a liczba pięter/komór/skał rośnie proporcjonalnie (`ile`).
+  - **Styl `ekstremalna`** (4.5) nie jest w losowaniu z seeda (`stylMapy` zwraca tylko 4 style) — przychodzi
+    z ustawień (`ust.mapa`) przez `createGame` → `createTerrain(…, { styl })`. Wysoka bryła od brzegu do brzegu,
+    9–12 wąskich pięter, 6–8 kominów i 7–10 ukośnych tuneli.
 - `spawnPoints` nigdy nie stawia robala w powietrzu. Gdy w wycinku gracza nie ma gruntu (przerwa
   między wyspami), szuka gruntu na całej mapie (`zapasowyStart`). Test sprawdza to na wielu seedach.
 
@@ -478,8 +486,11 @@ Lekcje z kalibracji:
   - **Bronie** (od 4.3.1 tylko dwa zestawy): `startowaAmunicja(zestaw)` — `pelny` (normalne limity, kij 0)
     albo `szalony` (pusta amunicja = wszystko bez limitu, kij też), wtedy zrzuty to same apteczki (`zapasyDla`).
     Stare wartości (`klasyka`, `podwojny`) `normalizuj` zamienia na `pelny`.
-  - **Lawa** (4.4, `WERSJA` = 4): `lawa` ujemne = od tylu rund (standard −6), dodatnie = od tej tury,
-    0 = nigdy; `lawaTempo` = px na turę (6/12/24/40). `LAWA_MIN` = 40 (dawniej 260 — na wysokich mapach
+  - **Lawa**: od 4.5 `lawaOd` = od której rundy (wpisywane, 0 = nigdy, standard 6; w 4.4 był klucz `lawa`),
+    `lawaTempo` = px na turę (6/12/24/40).
+  - **Wpisywane liczby (4.5, `WERSJA` = 5)**: `czas` 10–120 s, `hp` 10–500, `lawaOd` 0–99 — `<input type=number>`,
+    wartość przycina `U.zLiczby`, serwer i `zloz` przyjmują tylko liczby całkowite z zakresu (`poprawna`).
+    Dalej: `mapa` (+ `ekstremalna`), `rozmiar` (mala/normalna/duza/ogromna). `LAWA_MIN` = 40 (dawniej 260 — na wysokich mapach
     lawa nie dochodziła do szczytów).
   - **Wyrzuć** `{t:'wyrzuc', kto}` (trafia do `p.wyrzuceni`, nie zgłasza się sam, wraca przyciskiem
     „Wracam do lobby” = `dolacz`), **oddaj koronę** `{t:'korona', kto}` (gracz na początek `wLobby`),
@@ -498,7 +509,8 @@ Lekcje z kalibracji:
   rusza protokołu ani symulacji. Wysyła żywy uczestnik partii (chmurka `#btn-emotki` albo klawisz E, także
   w cudzej turze), najwyżej co `EMOTKA_CO` (2,5 s). `main.js` czyta log od `emotkiIndeks`, pokazuje tylko
   świeże (≤ 6 s zegara serwera), `R.draw` dostaje `emotki` (dymek nad głową, taniec = przesunięcie i obrót
-  rysunku w `drawWorm`). Panel `#emotki-panel` ma `pointer-events: auto` (HUD ma `none`).
+  rysunku w `drawWorm`). Panel `#emotki-panel` ma `pointer-events: auto` (HUD ma `none`). Od 4.5 przycisk 💬
+  stoi obok broni na dole (`.rzad-broni` z `#btn-bron`, `#btn-obrot`, `#btn-emotki`), panel wisi tuż nad nim.
 - **Obserwatorzy**: oczko 👁 z liczbą w HUD (`#obserwatorzy`) = obecni w pokoju spoza partii (albo po wyjściu).
 - **Kolory**: gracz wybiera kolor robala przy wejściu (`PALETA` w `main.js`, 12 kolorów, `arena:kolor`),
   kolor leci w `dolacz`. Przy kolizji `rozdzielKolory` zostawia go temu, kto dołączył wcześniej, reszta
@@ -531,7 +543,7 @@ Lekcje z kalibracji:
 | Klawisz | Broń | Rodzaj | Amunicja | Uwagi |
 |---|---|---|---|---|
 | 1 | Bazooka | pocisk | ∞ | wiatr, wybuch przy kontakcie (4.3: prędkość 882, zasięg ×1,5; wiatr ×1,35 u wszystkich) |
-| 2 | Granat | odbijany | ∞ | lont |
+| 2 | Granat | odbijany | ∞ | lont; 4.5: prędkość 820 (kasetówka 790, Święty GOAT 720) |
 | 3 | Strzelba | hitscan | ∞ | |
 | 4 | Kasetówka | odbijany | 2 | rozpada się na odłamki |
 | 5 | Dynamit | podkładany | 2 | lont 6 s, ucieczka |
@@ -552,6 +564,10 @@ Lekcje z kalibracji:
   Widzowie dostają hak w podglądzie `ruch.l` i rysują linę (`widok.lina`). Bot testów i test „odbiorca odtwarza
   strzał” pomijają narzędzia. Klawisze `[` `]` = 13. i 14. broń; rzędy ekwipunku mają 4 kolumny.
 
+- **Obrót mostu (4.5)**: R albo ⟳ (`#btn-obrot`) → `S.obrocMost` (`state.mostObrot` 0–7, co 22,5°, tylko lokalnie);
+  w akcji leci `cel.k`, w kraterach `r = -1 - k`. Kierunki to stała tabela `MOST_KIERUNKI` (bez trygonometrii),
+  `wMoscie` sprawdza punkt w belce (też kolizja z robalem w `powodBrakuMostu`). k = 0 to dawny poziomy most
+  (górna krawędź w punkcie celu), obrócony ma środek w punkcie celu. Podgląd `ruch.o`.
 - **Most w terenie**: siedzi na liście kraterów jako `{x, y, r: -1}` (`carve` z ujemnym r uruchamia `zbudujMost`),
   więc `rebuild()` odtwarza go w tej samej kolejności co wybuchy. W masce ma wartość **2** (`solidAt`
   sprawdza `!== 0`, render maluje 2 jako stalowy dźwigar). **Nie zakładaj, że maska ma tylko 0/1.**
@@ -681,13 +697,14 @@ w drużynie (2 czy 3); czy robimy czapki i bronie z postaci ekipy; czy robimy ws
   - **4.2** ucieczka po strzale na żywo, lobby do 8 graczy, drużyny (tryb, GOTOWY, przenoszenie, zamiana)
   - **4.3** ustawienia partii u gospodarza, wyrzucanie, oddawanie korony, losowanie drużyn, szalone mapy, podgląd na żywo
   - **4.4** lina ninja, Święty GOAT, emotki i tańce, licznik obserwatorów, lawa od tury i jej tempo, dwa zestawy broni, koza zamiast owcy, niższy skok
+  - **4.5** mapa ekstremalna, rozmiar mapy, wpisywane życie/czas/lawa, obracany most (R), dalszy rzut granatów
 
 ---
 
 ## 9. Testy i sprawdzanie
 
 ```
-node gra/test/sim.test.mjs        # symulacja, bronie, determinizm, drużyny, ustawienia, skrzynki, spawny, osiągnięcia, kamera, lina (76)
+node gra/test/sim.test.mjs        # symulacja, bronie, determinizm, drużyny, ustawienia, skrzynki, spawny, osiągnięcia, kamera, lina, most obracany, rozmiar mapy (80)
 node gra/test/protokol.test.mjs   # protokół: lag, rozłączenia, ucieczka na żywo, lobby, ustawienia, partie 2v2 i z własnymi zasadami (21, ~30 s)
 cd serwer && npm install && node test.mjs   # serwer na VPS: Arena (10) + zrzutka: wpłaty, na żywo, limity, plik, migracja (7)
 ```

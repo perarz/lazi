@@ -24,7 +24,7 @@ export const WEAPONS = {
     name: 'Granat',
     key: '2',
     kind: 'odbijany',      // odbija się od terenu, wybucha po zapalniku
-    speed: 686,
+    speed: 820,            // 4.5: rzut jeszcze dalej (ok. ×1,4 zasięgu względem 4.3)
     gravityFactor: 1,
     windFactor: 0.34,
     restitution: 0.55,
@@ -53,7 +53,7 @@ export const WEAPONS = {
     name: 'Kasetówka',
     key: '4',
     kind: 'odbijany',
-    speed: 661,
+    speed: 790,
     gravityFactor: 1,
     windFactor: 0.4,
     restitution: 0.5,
@@ -120,7 +120,7 @@ export const WEAPONS = {
     name: 'Święty GOAT',
     key: '[',
     kind: 'odbijany',      // jak granat, tylko cięższy i z chórem
-    speed: 600,
+    speed: 720,
     gravityFactor: 1,
     windFactor: 0.34,
     restitution: 0.3,

@@ -674,7 +674,7 @@ await test('ustawienia partii: gospodarz zmienia, gotowosc sie cofa, nowa je nie
   assert(p.ustawienia.hp === 100, 'przywrocenie domyslnych nie dziala');
   // nowa: ustawienia w partii i po partii w lobby, czas tury w protokole
   const gracze = [{ id: 'a', name: 'a', color: '#fff' }, { id: 'b', name: 'b', color: '#0f0' }];
-  const ust = { czas: 15, hp: 50, bronie: 'szalony', zrzuty: 0, wiatr: 0, lawa: 0, mapa: 'gory', zle: 5 };
+  const ust = { czas: 15, hp: 50, bronie: 'szalony', zrzuty: 0, wiatr: 0, lawaOd: 0, mapa: 'gory', zle: 5 };
   p = P.zloz([{ t: 'nowa', seed: 5, gracze, druzyny: 0, ustawienia: ust, v: P.WERSJA, st: 1000 }]);
   assert(p.czasTury === 15 && p.ustawienia.hp === 50 && !('zle' in p.ustawieniaGry), 'nowa nie przeniosla ustawien');
   assert(P.terminTury({ state: { turnNumber: 0 } }, p) === p.turaOdkad + 15000, 'termin tury nie z ustawien');
@@ -716,7 +716,7 @@ await test('partia z wlasnymi ustawieniami (15 s, 50 HP, szal, czeste zrzuty, hu
   const ids = ['a', 'b', 'c'];
   const kl = ids.map((id, i) => new Klient(id, serwer, mulberry32(700 + i), { opoznienie: 60 + i * 50, coIle: 300 }));
   for (const k of kl) serwer.przyjmij({ t: 'puls', id: k.id });
-  const ustawienia = { czas: 15, hp: 50, bronie: 'szalony', zrzuty: 70, wiatr: 2, lawa: 10, lawaTempo: 24, mapa: 'losowa' };
+  const ustawienia = { czas: 15, hp: 50, bronie: 'szalony', zrzuty: 70, wiatr: 2, lawaOd: 3, lawaTempo: 24, mapa: 'ekstremalna', rozmiar: 'mala' };
   serwer.przyjmij({ t: 'nowa', seed: 98765, druzyny: 0, ustawienia, v: P.WERSJA,
     gracze: ids.map((id) => ({ id, name: id, color: '#fff' })) });
   for (let i = 0; i < 60 * 900; i++) {

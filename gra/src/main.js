@@ -86,7 +86,8 @@ const OPISY_MAP = {
   gory: 'Mapa: Góry — ostre szczyty, z góry widać wszystko, ale i ciebie widać.',
   archipelag: 'Mapa: Archipelag — między wyspami jest lawa. Skacz ostrożnie.',
   kaniony: 'Mapa: Kaniony — wąwozy do samej lawy i skalne łuki.',
-  jaskinie: 'Mapa: Jaskinie — wielkie groty, nawisy i pływające skały. Granat się przyda.'
+  jaskinie: 'Mapa: Jaskinie — wielkie groty, nawisy i pływające skały. Granat się przyda.',
+  ekstremalna: 'Mapa: Ekstremalna — jedna wielka góra-mrowisko: piętra, kominy i tunele, wszystko połączone. Lina ninja w dłoń!'
 };
 
 /* Statystyki gracza liczone wyłącznie w przeglądarce (localStorage) —
@@ -729,18 +730,38 @@ const polaUstawien = new Map();
     label.className = 'ustawienie';
     const nazwa = document.createElement('span');
     nazwa.textContent = o.nazwa;
-    const sel = document.createElement('select');
-    for (const [w, tekst] of o.opcje) {
-      const op = document.createElement('option');
-      op.value = String(w);
-      op.textContent = tekst;
-      sel.append(op);
+    let sel;
+    if (o.liczba) {
+      // od 4.5: życie, czas tury i rundę lawy gospodarz wpisuje sam
+      sel = document.createElement('input');
+      sel.type = 'number';
+      sel.inputMode = 'numeric';
+      sel.min = String(o.liczba.min);
+      sel.max = String(o.liczba.max);
+      sel.step = '1';
+      if (o.liczba.zero) sel.title = '0 = ' + o.liczba.zero;
+      sel.addEventListener('change', () => {
+        const w = U.zLiczby(o.klucz, sel.value);
+        if (w === null || !pokoj) { sel.value = String(pokoj ? pokoj.ustawienia[o.klucz] : o.dom); return; }
+        sel.value = String(w);
+        wyslijLobby({ t: 'ustaw', id: mojeId, klucz: o.klucz, w });
+      });
+      sel.addEventListener('keydown', (e) => { if (e.key === 'Enter') sel.blur(); });
+    } else {
+      sel = document.createElement('select');
+      for (const [w, tekst] of o.opcje) {
+        const op = document.createElement('option');
+        op.value = String(w);
+        op.textContent = tekst;
+        sel.append(op);
+      }
+      sel.addEventListener('change', () => {
+        const w = o.opcje.find(([v]) => String(v) === sel.value);
+        if (!w || !pokoj) return;
+        wyslijLobby({ t: 'ustaw', id: mojeId, klucz: o.klucz, w: w[0] });
+      });
     }
-    sel.addEventListener('change', () => {
-      const w = o.opcje.find(([v]) => String(v) === sel.value);
-      if (!w || !pokoj) return;
-      wyslijLobby({ t: 'ustaw', id: mojeId, klucz: o.klucz, w: w[0] });
-    });
+    if (o.liczba && o.liczba.zero) sel.placeholder = '0 = ' + o.liczba.zero;
     label.append(nazwa, sel);
     siatka.append(label);
     polaUstawien.set(o.klucz, { label, sel });
@@ -814,7 +835,8 @@ async function startPartii(roz) {
     const ustawienia = U.normalizuj(pokoj.ustawienia);
     // Styl mapy wynika z seeda — przy wybranej mapie losujemy, aż wypadnie ten styl.
     let seed = (Math.random() * 0xffffffff) >>> 0;
-    for (let i = 0; i < 400 && ustawienia.mapa !== 'losowa' && stylMapy(seed) !== ustawienia.mapa; i++) {
+    const zSeeda = ustawienia.mapa !== 'losowa' && ustawienia.mapa !== 'ekstremalna';   // ekstremalnej nie ma w losowaniu
+    for (let i = 0; i < 400 && zSeeda && stylMapy(seed) !== ustawienia.mapa; i++) {
       seed = (Math.random() * 0xffffffff) >>> 0;
     }
     // Jeśli ktoś nas ubiegł, serwer odpowie { ok: false } i niczego nie założy.
@@ -858,6 +880,7 @@ function zbudujGre() {
       onBron: wybierzBron,
       onEkwipunek: () => ekwipunek.przelacz(),
       onEmotki: () => przelaczEmotki(),
+      onObrot: () => obrocMost(),
       onLina: () => {
         const wynik = S.linaPrzelacz(rg.state);
         if (wynik === 'pudlo') pokazInfo('Lina nie sięga — celuj w skałę bliżej (do ok. 400 px).');
@@ -1096,6 +1119,9 @@ function przelaczEmotki() {
   if (!mogeEmotki()) return;
   ekwipunek.zamknij();
   panelEmotek.hidden = false;
+  // panel wisi tuż nad przyciskiem 💬 przy broni (na telefonie pionowo pasek broni jest wyżej)
+  const r = el('btn-emotki').getBoundingClientRect();
+  panelEmotek.style.bottom = Math.max(8, window.innerHeight - r.top + 8) + 'px';
   el('btn-emotki').setAttribute('aria-expanded', 'true');
 }
 function zamknijEmotki() {
@@ -1111,6 +1137,17 @@ function wyslijEmotke(id) {
   ostatniaEmotka = teraz;
   net.wyslij({ t: 'emotka', id: mojeId, e: id });
 }
+
+/* Most: R albo ⟳ obraca belkę co 22,5° (tylko w mojej turze, przed strzałem). */
+function obrocMost() {
+  if (!rg || !P.mogeGrac(rg, pokoj) || rg.state.weapon !== 'most') return;
+  const k = S.obrocMost(rg.state);
+  pokazInfo('Most: ' + (k * 22.5).toString().replace('.', ',') + '° — R albo ⟳ obraca dalej.');
+}
+el('btn-obrot').addEventListener('click', (e) => {
+  obrocMost();
+  if (e.detail > 0) e.currentTarget.blur();
+});
 
 /* Obserwatorzy: obecni w pokoju, którzy nie grają w tej partii (albo z niej wyszli). */
 function liczObserwatorow() {
@@ -1145,10 +1182,13 @@ function celNalotu(moge) {
     if (!WEAPONS[st.weapon]?.celowany || !st.cel) return null;
     const most = st.weapon === 'most';
     const akt = S.activeWorm(st);
-    return { ...st.cel, teleport: st.weapon === 'teleport', most, zle: most && !!akt && !!S.powodBrakuMostu(st, akt, st.cel) };
+    return { ...st.cel, teleport: st.weapon === 'teleport', most, k: most ? st.mostObrot : 0,
+      zle: most && !!akt && !!S.powodBrakuMostu(st, akt, st.cel) };
   }
   const akt = S.activeWorm(st);
-  return akt && akt.widok && akt.widok.cel ? { ...akt.widok.cel, teleport: akt.widok.bron === 'teleport', most: akt.widok.bron === 'most' } : null;
+  return akt && akt.widok && akt.widok.cel
+    ? { ...akt.widok.cel, teleport: akt.widok.bron === 'teleport', most: akt.widok.bron === 'most', k: akt.widok.mostK || 0 }
+    : null;
 }
 
 /* Cudza tura: pozycja i celownik z podglądu na żywo, wygładzone. Sama
@@ -1183,6 +1223,7 @@ function podgladNaZywo(dt, moge) {
   if (typeof ruch.h === 'number') v.hp = ruch.h;
   v.cel = Array.isArray(ruch.c) ? { x: ruch.c[0], y: ruch.c[1] } : null;
   v.lina = Array.isArray(ruch.l) ? { x: ruch.l[0], y: ruch.l[1] } : null;
+  v.mostK = Number.isInteger(ruch.o) ? ruch.o : 0;
 }
 
 /* Cudza tura przed strzałem: widz nie liczy cudzego chodzenia, więc upadek,
@@ -1667,6 +1708,7 @@ function odswiezHud(moge, teraz) {
 
   el('btn-opusc').textContent = rg.obserwator ? 'Wyjdź' : 'Opuść grę';
 
+  el('btn-obrot').hidden = !(moge && st.weapon === 'most');
   const moznaEmotki = mogeEmotki();
   el('btn-emotki').hidden = !moznaEmotki;
   if (!moznaEmotki && !panelEmotek.hidden) zamknijEmotki();

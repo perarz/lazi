@@ -7,7 +7,8 @@ import * as T from '../src/terrain.js';
 import * as S from '../src/sim.js';
 import { WEAPONS, WEAPON_ORDER } from '../src/weapons.js';
 import { nowaPartiaOs, zdarzenieOs, koniecTuryOs, koniecPartiiOs } from '../src/osiagniecia-reguly.js';
-import * as R from '../src/render.js';     // tylko kamera (czysta matematyka, bez DOM)
+import * as R from '../src/render.js';
+import * as U from '../src/ustawienia.js';     // tylko kamera (czysta matematyka, bez DOM)
 
 let passed = 0, failed = 0;
 
@@ -497,6 +498,77 @@ test('most stawia belke, po ktorej da sie chodzic, i przezywa rebuild', () => {
   assert(Math.abs(a.y - (cy - 1)) < 1.5 && a.onGround, 'robal spadl z mostu, y=' + a.y);
 });
 
+test('most obracany R: skos i pion, odbiorca stawia to samo, rebuild pamieta obrot', () => {
+  const st = S.createGame(21, players(2), { sieciowa: true });
+  const odb = S.createGame(21, players(2), { sieciowa: true });
+  const a = S.activeWorm(st);
+  polka(st, a, 260);
+  const cx = Math.round(a.x) + 90, cy = Math.round(a.y) - 60;
+  st.weapon = 'most';
+  for (let i = 0; i < 4; i++) S.obrocMost(st);          // 4 × 22,5° = pion
+  assert(st.mostObrot === 4, 'obrot: ' + st.mostObrot);
+  S.ustawCel(st, cx, cy);
+  assert(S.startCharging(st), 'pionowy most nie powstal');
+  S.releaseFire(st);
+  const akcja = przezSiec(st.akcjeDoWyslania[0]);
+  assert(akcja.cel.k === 4, 'obrot nie leci w akcji');
+  // pion: pełno nad i pod środkiem, pusto 20 px w bok
+  assert(T.solidAt(st.terrain, cx, cy - 40) && T.solidAt(st.terrain, cx, cy + 40), 'brak pionowej belki');
+  assert(!T.solidAt(st.terrain, cx + 20, cy - 40) || st.terrain.mask[(cy - 40) * st.terrain.w + cx + 20] !== 2, 'belka za gruba');
+  // odbiorca: ten sam teren
+  // odbiorca buduje teren z listy kraterów (półka testowa jest tylko u strzelca, więc porównujemy odbudowy)
+  S.ustawKratery(odb, S.plaskieKratery(st));
+  const t2 = T.rebuild(21, st.terrain.craters, st.terrain.opcje);
+  assert(T.countSolid(odb.terrain) === T.countSolid(t2), 'odbiorca ma inny most');
+  assert(t2.mask[(cy + 30) * t2.w + cx] === 2 || T.solidAt(t2, cx, cy + 30), 'rebuild zgubil obrot mostu');
+  assert(t2.craters[t2.craters.length - 1].r === -5, 'obrot nie zapisany w kraterach: ' + t2.craters[t2.craters.length - 1].r);
+  // skos (k = 2, 45°) i kolizja z robalem liczy obrót
+  const b = S.createGame(21, players(2), { sieciowa: true });
+  const w = S.activeWorm(b);
+  polka(b, w, 260);
+  b.weapon = 'most';
+  S.obrocMost(b); S.obrocMost(b);
+  S.ustawCel(b, w.x, w.y - 10);
+  assert(S.powodBrakuMostu(b, w, b.cel) === 'robal na drodze', 'skosny most na robalu');
+  assert(T.wMoscie(100, 100, 2, 100 + 30 * 0.7071, 100 + 30 * 0.7071) && !T.wMoscie(100, 100, 2, 130, 100), 'geometria skosu');
+});
+
+test('rozmiar mapy: duza i mala maja inna szerokosc, spawny na gruncie, stan przechodzi przez siec', () => {
+  for (const [rozmiar, szer] of [['mala', 1536], ['duza', 3072], ['ogromna', 4096]]) {
+    const st = S.createGame(99, players(4), { sieciowa: true, ustawienia: { rozmiar } });
+    assert(st.terrain.w === szer && st.terrain.mask.length === szer * T.WORLD_H, rozmiar + ': zla szerokosc ' + st.terrain.w);
+    for (const w of st.worms) {
+      assert(w.x > 0 && w.x < szer && T.solidAt(st.terrain, w.x, w.y + 1), rozmiar + ': robal w powietrzu');
+    }
+    T.carve(st.terrain, szer - 300, 500, 40);
+    const t2 = T.rebuild(99, st.terrain.craters, st.terrain.opcje);
+    assert(t2.w === szer && T.countSolid(t2) === T.countSolid(st.terrain), rozmiar + ': rebuild inny');
+  }
+  const zwykla = S.createGame(99, players(2));
+  assert(zwykla.terrain.w === T.WORLD_W, 'standard nie ma 2048');
+});
+
+test('mapa ekstremalna: styl tylko z ustawien, gesta siec jaskin, spawny na gruncie', () => {
+  const st = S.createGame(12345, players(6), { sieciowa: true, ustawienia: { mapa: 'ekstremalna' } });
+  assert(st.terrain.styl === 'ekstremalna', 'styl: ' + st.terrain.styl);
+  for (const w of st.worms) assert(T.solidAt(st.terrain, w.x, w.y + 1), 'robal w powietrzu na ekstremalnej');
+  // dużo skały nad lawą i dużo pustki w środku (jaskinie)
+  let skala = 0, pustka = 0;
+  for (let y = 300; y < T.LAVA_Y - 40; y += 4) for (let x = 200; x < st.terrain.w - 200; x += 4) {
+    if (T.solidAt(st.terrain, x, y)) skala++; else pustka++;
+  }
+  assert(skala > pustka * 0.8 && pustka > skala * 0.15, 'ekstremalna nie wyglada na mrowisko: skala ' + skala + ', pustka ' + pustka);
+  for (let seed = 1; seed < 200; seed += 23) assert(T.stylMapy(seed) !== 'ekstremalna', 'ekstremalna w losowaniu');
+});
+
+test('wpisywane ustawienia: zycie, czas i runda lawy z zakresu, reszta odpada', () => {
+  assert(U.poprawna('hp', 237) && !U.poprawna('hp', 5) && !U.poprawna('hp', 12.5), 'hp');
+  assert(U.poprawna('lawaOd', 0) && U.poprawna('lawaOd', 17) && !U.poprawna('lawaOd', -3), 'lawaOd');
+  assert(U.zLiczby('hp', '9999') === 500 && U.zLiczby('czas', '7') === 10 && U.zLiczby('hp', 'abc') === null, 'przyciecie');
+  const st = S.createGame(5, players(2), { ustawienia: { hp: 237, czas: 75 } });
+  assert(st.worms[0].hp === 237 && st.turnTimeLeft === 75, 'partia nie z wpisanych liczb');
+});
+
 test('kij tylko ze skrzynki: na starcie 0, skrzynki go dają', () => {
   const st = S.createGame(21, players(2), { sieciowa: true });
   assert(st.worms.every((w) => w.amunicja.kij === 0), 'kij na starcie');
@@ -628,7 +700,7 @@ test('ustawienia partii: zycie, bronie, wiatr, czas tury; bez ustawien jak dawni
 });
 
 test('ustawienia partii: bez nagłej śmierci lawa stoi, bez zrzutów nic nie spada, w szale tylko apteczki', () => {
-  const bez = S.createGame(11, players(2), { sieciowa: true, ustawienia: { lawa: 0, zrzuty: 0 } });
+  const bez = S.createGame(11, players(2), { sieciowa: true, ustawienia: { lawaOd: 0, zrzuty: 0 } });
   const szal = S.createGame(4242, players(3), { sieciowa: true, ustawienia: { bronie: 'szalony', zrzuty: 70 } });
   const start = bez.lava;
   let skrzynki = 0;
@@ -641,7 +713,7 @@ test('ustawienia partii: bez nagłej śmierci lawa stoi, bez zrzutów nic nie sp
   assert(skrzynki === 0, 'skrzynki mimo wylaczonych zrzutow');
   assert(szal.skrzynki.length > 0 && szal.skrzynki.every((c) => c.typ === 'apteczka'), 'w szale zapas albo brak skrzynek');
   // od 10. tury, błyskawicznie (40 px na turę) — i rośnie wyżej niż dawne 260 px
-  const krotka = S.createGame(11, players(2), { sieciowa: true, ustawienia: { lawa: 10, lawaTempo: 40 } });
+  const krotka = S.createGame(11, players(2), { sieciowa: true, ustawienia: { lawaOd: 5, lawaTempo: 40 } });
   for (let i = 0; i < 9; i++) nastepnaTura(krotka);
   assert(krotka.lava === start, 'lawa ruszyla przed 10. tura');
   nastepnaTura(krotka);
