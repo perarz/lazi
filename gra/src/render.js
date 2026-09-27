@@ -4,6 +4,7 @@
    Teren malujemy raz do offscreen canvasu; po wybuchu przemalowujemy
    tylko kolumny objęte kraterem, a nie całe 2 MB. */
 
+import { akcesorium } from './akcesoria.js';
 import { DRUZYNY } from './druzyny.js';
 import { WORLD_W, WORLD_H, LAVA_Y as T_LAVA } from './terrain.js';
 import { WEAPONS } from './weapons.js';
@@ -257,7 +258,8 @@ export function draw(r, state, cam, fx, dt, opcje = {}) {
       moc: w === akt && state.phase === 'aim' ? (w.widok ? w.widok.moc : state.charging ? state.power : 0) : 0,
       bron: w === akt ? (w.widok ? w.widok.bron : state.weapon) : null,
       hpMax: state.ust ? state.ust.hp : 100,
-      emotka: opcje.emotki ? opcje.emotki.get(w.id) || null : null
+      emotka: opcje.emotki ? opcje.emotki.get(w.id) || null : null,
+      akc: opcje.akcesoria ? akcesorium(opcje.akcesoria.get(w.id)) : null
     });
   }
 
@@ -740,6 +742,8 @@ function rysujRobala(ctx, w, isActive, time, o) {
   ctx.fill();
   // oddech: lekkie rozciąganie w pionie
   const oddech = 1 + Math.sin(time * 3 + cx * 0.1) * 0.04;
+  // akcesorium na plecach (kilof) jest za ciałem
+  if (o.akc && o.akc.tyl) o.akc.rysuj(ctx, cx, cy, facing, time);
   // ogonek z dwóch segmentów za plecami
   ctx.fillStyle = w.color;
   ctx.beginPath();
@@ -780,6 +784,8 @@ function rysujRobala(ctx, w, isActive, time, o) {
       ctx.fill();
     }
   }
+  // akcesorium na głowie (korona, czapka, hełm, wieniec)
+  if (o.akc && !o.akc.tyl) o.akc.rysuj(ctx, cx, cy, facing, time);
   ctx.globalAlpha = 1;
 
   // broń w łapach aktywnego robala, ustawiona wzdłuż celownika
@@ -841,9 +847,10 @@ function rysujRobala(ctx, w, isActive, time, o) {
     }
   }
 
-  // pasek zdrowia i nazwa
+  if (o.bezNapisu) return;
+  // pasek zdrowia i nazwa (nad akcesorium trochę wyżej)
   const barW = 34;
-  const top = cy - 26;
+  const top = cy - 26 - (o.akc && !o.akc.tyl ? 5 : 0);
   ctx.fillStyle = 'rgba(0,0,0,0.55)';
   ctx.fillRect(cx - barW / 2, top, barW, 4);
   // życie z podglądu na żywo (upadek, apteczka u gracza z turą), pasek względem życia na start
@@ -866,7 +873,7 @@ function rysujRobala(ctx, w, isActive, time, o) {
 
 /* Podgląd robala na ekranie wejścia (wybór koloru): ten sam rysunek co w grze,
    na kawałku gruntu, z bazooką w łapach i nickiem w wybranym kolorze. */
-export function rysujPodgladRobala(canvas, { kolor, nazwa, czas = 0 }) {
+export function rysujPodgladRobala(canvas, { kolor, nazwa, czas = 0, akc = null, mini = false }) {
   const dpr = Math.min(window.devicePixelRatio || 1, 2);
   const W = canvas.clientWidth || 150, H = canvas.clientHeight || 110;
   if (canvas.width !== Math.round(W * dpr) || canvas.height !== Math.round(H * dpr)) {
@@ -881,19 +888,187 @@ export function rysujPodgladRobala(canvas, { kolor, nazwa, czas = 0 }) {
   ctx.fillStyle = niebo;
   ctx.fillRect(0, 0, W, H);
   // grunt: skorupa i warstwy skały jak na mapie „Góry”
-  const g = H * 0.8;
+  const g = H * (mini ? 0.84 : 0.8);
   ctx.fillStyle = '#704a3a';
   ctx.fillRect(0, g, W, H - g);
   ctx.fillStyle = '#d66e28';
   ctx.fillRect(0, g, W, 3);
   ctx.fillStyle = '#ffc46e';
   ctx.fillRect(0, g, W, 1.2);
-  // od stóp do nicku robal ma ok. 50 px świata — tyle musi się zmieścić nad gruntem
-  const skala = Math.max(0.5, Math.min(2.4, (g - 4) / 50, W / 90));
+  // od stóp do nicku robal ma ok. 50 px świata (mini: bez nicku, ok. 36 px) — tyle musi się zmieścić nad gruntem
+  const skala = Math.max(0.5, Math.min(mini ? 3 : 2.4, (g - 4) / (mini ? 36 : 50), W / (mini ? 40 : 90)));
   ctx.save();
-  ctx.translate(W * 0.42, g);
+  ctx.translate(W * (mini ? 0.5 : 0.42), g);
   ctx.scale(skala, skala);
   const robal = { x: 0, y: 0, facing: 1, angle: -0.5 + Math.sin(czas * 1.2) * 0.12, color: kolor, hp: 100, name: nazwa || 'Ty', widok: null };
-  drawWorm(ctx, robal, true, czas, { ja: false, bron: 'bazooka', moc: 0 });
+  drawWorm(ctx, robal, !mini, czas, { ja: false, bron: mini ? null : 'bazooka', moc: 0, akc: akcesorium(akc), bezNapisu: mini });
   ctx.restore();
+}
+
+/* Scena ekranu ładowania (od 4.7): wzgórza nad lawą, Twój robal (kolor
+   i akcesorium) strzela z bazooki, na spadochronie leci skrzynka.
+   Czysta grafika — nic z symulacji, więc wolno tu trygonometrię. */
+const gwiazdyLadowania = Array.from({ length: 70 }, () => [Math.random(), Math.random() * 0.6, 0.4 + Math.random() * 1.2, Math.random() * 6]);
+export function rysujSceneLadowania(canvas, { kolor, nazwa, czas = 0, akc = null }) {
+  const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+  const W = canvas.clientWidth || window.innerWidth, H = canvas.clientHeight || window.innerHeight;
+  if (canvas.width !== Math.round(W * dpr) || canvas.height !== Math.round(H * dpr)) {
+    canvas.width = Math.round(W * dpr);
+    canvas.height = Math.round(H * dpr);
+  }
+  const ctx = canvas.getContext('2d');
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  // niebo i gwiazdy
+  const niebo = ctx.createLinearGradient(0, 0, 0, H);
+  niebo.addColorStop(0, '#07040a');
+  niebo.addColorStop(0.55, '#2a0a04');
+  niebo.addColorStop(1, '#6a1a02');
+  ctx.fillStyle = niebo;
+  ctx.fillRect(0, 0, W, H);
+  for (const [x, y, r, f] of gwiazdyLadowania) {
+    ctx.globalAlpha = 0.35 + 0.35 * Math.sin(czas * 2 + f);
+    ctx.fillStyle = '#ffe9c8';
+    ctx.fillRect(x * W, y * H, r, r);
+  }
+  ctx.globalAlpha = 1;
+  // odległe góry w dwóch warstwach, powoli przesuwane (paralaksa)
+  const pasmo = (baza, amp, fal, pr, kol) => {
+    ctx.fillStyle = kol;
+    ctx.beginPath();
+    ctx.moveTo(0, H);
+    for (let x = 0; x <= W + 20; x += 20) {
+      const u = x / W * fal + czas * pr;
+      ctx.lineTo(x, H * baza - amp * H * (0.5 + 0.3 * Math.sin(u) + 0.2 * Math.sin(u * 2.7 + 1.3)));
+    }
+    ctx.lineTo(W, H);
+    ctx.fill();
+  };
+  pasmo(0.62, 0.22, 5, 0.03, '#1d0a08');
+  pasmo(0.72, 0.16, 8, 0.06, '#2e120b');
+  // lawa na dole: falująca, z poświatą
+  const lawaY = H * 0.9;
+  const lg = ctx.createLinearGradient(0, lawaY - 30, 0, H);
+  lg.addColorStop(0, 'rgba(255,120,20,0)');
+  lg.addColorStop(0.3, '#ff5a00');
+  lg.addColorStop(1, '#b21a00');
+  ctx.fillStyle = lg;
+  ctx.beginPath();
+  ctx.moveTo(0, H);
+  for (let x = 0; x <= W + 16; x += 16) ctx.lineTo(x, lawaY + Math.sin(x * 0.03 + czas * 2.2) * 4);
+  ctx.lineTo(W, H);
+  ctx.fill();
+  // wzgórze pod robalem i wyspa po prawej (cel strzału)
+  // skala: na wąskim telefonie liczy się szerokość, na szerokim ekranie wysokość
+  const s = Math.max(0.7, Math.min(2.2, H / 420, W / 330));
+  const robX = W * 0.28, robY = H * 0.74;
+  const celX = W * 0.74, celY = H * 0.7;
+  const wyspa = (cx, cy, rx) => {
+    const g = ctx.createLinearGradient(0, cy, 0, cy + rx * 0.9);
+    g.addColorStop(0, '#7a5040');
+    g.addColorStop(1, '#3a2018');
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.moveTo(cx - rx, cy + 4);
+    ctx.quadraticCurveTo(cx - rx * 0.5, cy - 8 * s, cx, cy - 2);
+    ctx.quadraticCurveTo(cx + rx * 0.5, cy - 8 * s, cx + rx, cy + 4);
+    ctx.quadraticCurveTo(cx + rx * 0.4, cy + rx * 0.9, cx, cy + rx);
+    ctx.quadraticCurveTo(cx - rx * 0.4, cy + rx * 0.9, cx - rx, cy + 4);
+    ctx.fill();
+    ctx.strokeStyle = '#ff9a3c';
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.moveTo(cx - rx, cy + 4);
+    ctx.quadraticCurveTo(cx - rx * 0.5, cy - 8 * s, cx, cy - 2);
+    ctx.quadraticCurveTo(cx + rx * 0.5, cy - 8 * s, cx + rx, cy + 4);
+    ctx.stroke();
+  };
+  wyspa(robX, robY, Math.min(120 * s, W * 0.21));
+  wyspa(celX, celY, Math.min(90 * s, W * 0.17));
+
+  // strzał co 2,6 s: pocisk po paraboli z łap robala na wyspę i wybuch
+  const T = 2.6, faza = (czas % T) / T;
+  const x0 = robX + 14 * s, y0 = robY - 18 * s;
+  const kat = -0.62 + Math.sin(czas * 1.2) * 0.05;
+  if (faza < 0.55) {
+    const p = faza / 0.55;
+    const px = x0 + (celX - x0) * p;
+    const py = y0 + (celY - 6 - y0) * p - Math.sin(p * Math.PI) * H * 0.28;
+    // smuga dymu
+    for (let k = 1; k <= 6; k++) {
+      const q = Math.max(0, p - k * 0.025);
+      ctx.globalAlpha = 0.35 * (1 - k / 7);
+      ctx.fillStyle = '#c9b8a8';
+      ctx.beginPath();
+      ctx.arc(x0 + (celX - x0) * q, y0 + (celY - 6 - y0) * q - Math.sin(q * Math.PI) * H * 0.28, (3 + k) * s * 0.7, 0, 6.283);
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = '#5f6b4a';
+    ctx.beginPath();
+    ctx.arc(px, py, 4 * s, 0, 6.283);
+    ctx.fill();
+    ctx.fillStyle = '#ffcf5a';
+    ctx.beginPath();
+    ctx.arc(px, py, 2 * s, 0, 6.283);
+    ctx.fill();
+  } else {
+    const p = (faza - 0.55) / 0.45;
+    const r = (20 + 60 * p) * s;
+    ctx.globalAlpha = 1 - p;
+    const wg = ctx.createRadialGradient(celX, celY - 6, 1, celX, celY - 6, r);
+    wg.addColorStop(0, '#fff6cf');
+    wg.addColorStop(0.35, '#ffb020');
+    wg.addColorStop(1, 'rgba(255,60,0,0)');
+    ctx.fillStyle = wg;
+    ctx.beginPath();
+    ctx.arc(celX, celY - 6, r, 0, 6.283);
+    ctx.fill();
+    // odłamki
+    ctx.fillStyle = '#ffd27a';
+    for (let k = 0; k < 10; k++) {
+      const a = k / 10 * 6.283 + 0.3;
+      ctx.fillRect(celX + Math.cos(a) * r * 0.9, celY - 6 + Math.sin(a) * r * 0.6 - p * 20 * s, 3, 3);
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  // skrzynka na spadochronie dryfuje nad sceną
+  const sx = W * (0.86 + 0.05 * Math.sin(czas * 0.7)), sy = H * 0.46 + ((czas * 18) % (H * 0.26));
+  ctx.save();
+  ctx.translate(sx, sy);
+  ctx.rotate(Math.sin(czas * 1.6) * 0.12);
+  ctx.fillStyle = '#e8e1d0';
+  ctx.beginPath();
+  ctx.arc(0, -26 * s, 18 * s, Math.PI, 0);
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(232,225,208,0.8)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(-18 * s, -26 * s); ctx.lineTo(-6 * s, -6 * s);
+  ctx.moveTo(18 * s, -26 * s); ctx.lineTo(6 * s, -6 * s);
+  ctx.stroke();
+  ctx.fillStyle = '#b07a3a';
+  ctx.fillRect(-8 * s, -8 * s, 16 * s, 14 * s);
+  ctx.fillStyle = '#e8453c';
+  ctx.fillRect(-2 * s, -6 * s, 4 * s, 10 * s);
+  ctx.fillRect(-6 * s, -3 * s, 12 * s, 4 * s);
+  ctx.restore();
+
+  // robal z bazooką — ten sam rysunek co w grze, w dużej skali
+  const skala = 1.7 * s;
+  ctx.save();
+  ctx.translate(robX, robY - 2);
+  ctx.scale(skala, skala);
+  const odrzut = faza < 0.06 ? -2 * (1 - faza / 0.06) : 0;
+  const robal = { x: odrzut, y: 0, facing: 1, angle: kat, color: kolor, hp: 100, name: nazwa || 'Ty', widok: null };
+  drawWorm(ctx, robal, true, czas, { ja: false, bron: 'bazooka', moc: 0, akc: akcesorium(akc) });
+  ctx.restore();
+
+  // unoszący się popiół
+  ctx.fillStyle = 'rgba(255,170,90,0.55)';
+  for (let k = 0; k < 24; k++) {
+    const x = (k * 97.3 + czas * (8 + k % 5) * 3) % W;
+    const y = H - ((k * 53.1 + czas * (14 + k % 7) * 3) % H);
+    ctx.fillRect(x, y, 2, 2);
+  }
 }

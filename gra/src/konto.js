@@ -71,6 +71,7 @@ export function zapiszLokalnie(konto) {
   zapisz('arena:osiagniecia', JSON.stringify(konto.osiagniecia || {}));
   zapisz('arena:nazwa', konto.nick);
   if (konto.kolor) zapisz('arena:kolor', konto.kolor);
+  zapisz('arena:akcesorium', konto.akcesorium || '');
 }
 
 /* To, co ta przeglądarka uzbierała przed kontami — raz, do pierwszego nowego konta. */
@@ -119,7 +120,8 @@ export async function wyloguj() {
   if (t) await zapytanie('/api/konto/wyloguj', { token: t });
 }
 
-export const ustawKolor = (kolor) => zapytanie('/api/konto/kolor', { token: token(), kolor });
+/* Wygląd robala na koncie: { kolor?, akcesorium? } (akcesorium null = bez). */
+export const ustawWyglad = (wyglad) => zapytanie('/api/konto/wyglad', { token: token(), ...wyglad });
 
 export async function wyslijWynik(wynik) {
   const w = await zapytanie('/api/konto/wynik', { token: token(), ...wynik });

@@ -30,6 +30,8 @@ const PAMIETANE_PARTIE = 40;
 const RANKING_ILE = 50;
 
 const NICK = /^[\p{L}\p{N}_. -]{3,14}$/u;
+// akcesoria robala (od 4.7) — ta sama lista jest w gra/src/akcesoria.js
+const AKCESORIA = ['korona', 'lama', 'kilof', 'helm', 'wieniec'];
 
 const skrot = (haslo, sol) => new Promise((ok, zle) =>
   crypto.scrypt(haslo, sol, 32, { N: 16384, r: 8, p: 1 }, (e, k) => (e ? zle(e) : ok(k.toString('hex')))));
@@ -69,7 +71,7 @@ class Konta {
 
   /* Publiczny widok konta (bez hasła i soli). */
   widok(k) {
-    return { nick: k.nick, id: k.id, kolor: k.kolor || null, staty: { ...k.staty }, osiagniecia: { ...k.osiagniecia } };
+    return { nick: k.nick, id: k.id, kolor: k.kolor || null, akcesorium: k.akcesorium || null, staty: { ...k.staty }, osiagniecia: { ...k.osiagniecia } };
   }
 
   nowaSesja(k, teraz) {
@@ -163,8 +165,12 @@ class Konta {
     return { status: 200, dane: { ok: true } };
   }
 
-  ustawKolor(k, kolor) {
-    if (typeof kolor === 'string' && /^#[0-9a-f]{6}$/i.test(kolor)) { k.kolor = kolor; this.zapiszPozniej(); }
+  /* Wygląd robala: kolor i akcesorium (null = bez). Pole pominięte zostaje bez zmian. */
+  ustawWyglad(k, body) {
+    body = body && typeof body === 'object' ? body : {};
+    if (typeof body.kolor === 'string' && /^#[0-9a-f]{6}$/i.test(body.kolor)) k.kolor = body.kolor;
+    if (body.akcesorium === null || AKCESORIA.includes(body.akcesorium)) k.akcesorium = body.akcesorium;
+    this.zapiszPozniej();
     return { status: 200, dane: { konto: this.widok(k) } };
   }
 
@@ -194,7 +200,7 @@ class Konta {
       .filter((k) => k.staty.partie > 0)
       .sort((a, b) => b.staty.kille - a.staty.kille || b.staty.wygrane - a.staty.wygrane || a.utworzono - b.utworzono)
       .slice(0, RANKING_ILE)
-      .map((k) => ({ nick: k.nick, kolor: k.kolor, kille: k.staty.kille, wygrane: k.staty.wygrane, partie: k.staty.partie }));
+      .map((k) => ({ nick: k.nick, kolor: k.kolor, akcesorium: k.akcesorium || null, kille: k.staty.kille, wygrane: k.staty.wygrane, partie: k.staty.partie }));
     return { ranking: lista };
   }
 
@@ -241,4 +247,4 @@ class Konta {
   }
 }
 
-module.exports = { Konta, idKonta, NICK };
+module.exports = { Konta, idKonta, NICK, AKCESORIA };

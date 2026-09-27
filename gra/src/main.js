@@ -18,6 +18,7 @@ import * as U from './ustawienia.js';
 import { EMOTKI, EMOTKA_S, TANIEC_S, EMOTKA_CO, emotka } from './emotki.js';
 import { stylMapy } from './terrain.js';
 import * as K from './konto.js';
+import { AKCESORIA, AKCESORIA_ID, akcesorium } from './akcesoria.js';
 
 /* Kolory robali do wyboru przy wejściu. Kolejność ma znaczenie: przy
    kolizji dostaje się pierwszy wolny, więc najbardziej różne są na początku. */
@@ -232,20 +233,33 @@ function pasyHud(teraz, dt) {
   return pasy;
 }
 
-/* ---------- konto, ekran ładowania i panel Areny (od 4.6) ---------- */
+/* ---------- konto, ekran ładowania i ekran Areny (4.6, układ od 4.7) ---------- */
 
-/* Arena jest tylko dla kont: logowanie → ekran ładowania → panel (GRAJ,
-   pokoje, ranking killi, osiągnięcia) → lobby wybranego pokoju. */
+/* Arena jest tylko dla kont: logowanie → ekran ładowania → ekran Areny.
+   Ekran Areny ma dwie kolumny: po lewej panel gracza (profil, wygląd robala,
+   ranking killi, osiągnięcia), po prawej lista aren albo lobby areny, w której
+   jestem. Domyślnej areny nie ma — ktoś musi ją założyć. */
 let konto = null;
-let aktualnyPokoj = null;             // { id, klucz, nazwa } — pokój, w którym jestem
-const EKRANY = ['ekran-logowanie', 'ekran-ladowanie', 'ekran-panel', 'ekran-lobby', 'ekran-koniec'];
+let aktualnyPokoj = null;             // { id, klucz, nazwa } — arena, w której jestem
+const EKRANY = ['ekran-logowanie', 'ekran-ladowanie', 'ekran-arena', 'ekran-koniec'];
+const Z_PASKIEM = ['ekran-logowanie', 'ekran-arena'];
 function pokazEkran(id) {
   for (const e of EKRANY) el(e).hidden = e !== id;
-  if (id === 'ekran-panel') startPodgladu();
+  // pasek Fortnite / 0 A.D. / Arena na górze ekranu logowania i Areny
+  const pasek = el('nawigacja');
+  if (Z_PASKIEM.includes(id)) { el(id).prepend(pasek); pasek.hidden = false; } else pasek.hidden = true;
+  el('nawigacja-konto').hidden = !konto;
+  if (id === 'ekran-arena' || id === 'ekran-ladowanie') startPodgladu();
 }
+/* Prawa kolumna: lista aren albo lobby. */
+function pokazWidok(lobby) {
+  el('widok-pokoje').hidden = lobby;
+  el('widok-lobby').hidden = !lobby;
+}
+const wLobby = () => !el('ekran-arena').hidden && !el('widok-lobby').hidden;
 const czekaj = (ms) => new Promise((r) => setTimeout(r, ms));
 
-/* Pokój z adresu (?pokoj=…) — link do znajomych albo odświeżenie strony w lobby. */
+/* Arena z adresu (?pokoj=…) — link do znajomych albo odświeżenie strony w lobby. */
 function pokojZAdresu() {
   try {
     const p = new URLSearchParams(location.search).get('pokoj');
@@ -260,11 +274,27 @@ function ustawAdres(pokojId) {
   } catch { /* stara przeglądarka */ }
 }
 
-/* Kolor robala: zapamiętany na koncie i w przeglądarce. */
+/* ----- wygląd robala: kolor i akcesorium (na koncie i w przeglądarce) ----- */
+
 mojKolor = (() => {
   const z = czytaj('arena:kolor');
   return KOLORY.includes(z) ? z : KOLORY[0];
 })();
+let mojeAkcesorium = (() => {
+  const z = czytaj('arena:akcesorium');
+  return AKCESORIA_ID.includes(z) ? z : null;
+})();
+
+/* Zmiana wyglądu: od razu na ekranie, na koncie i — jeśli jestem w lobby — u innych. */
+function zmienWyglad(zmiana) {
+  if ('kolor' in zmiana) { mojKolor = zmiana.kolor; zapisz('arena:kolor', mojKolor); }
+  if ('akcesorium' in zmiana) { mojeAkcesorium = zmiana.akcesorium; zapisz('arena:akcesorium', mojeAkcesorium || ''); }
+  zaznaczKolor();
+  zaznaczAkcesorium();
+  el('nawigacja-kropka').style.background = mojKolor;
+  K.ustawWyglad(zmiana);
+  if (net && !rg) zglosSie();
+}
 
 const boxKolorow = el('kolory');
 for (const [kolor, nazwa] of PALETA) {
@@ -276,12 +306,7 @@ for (const [kolor, nazwa] of PALETA) {
   b.setAttribute('role', 'radio');
   b.setAttribute('aria-label', nazwa);
   b.title = nazwa;
-  b.addEventListener('click', () => {
-    mojKolor = kolor;
-    zapisz('arena:kolor', kolor);
-    zaznaczKolor();
-    K.ustawKolor(kolor);
-  });
+  b.addEventListener('click', () => zmienWyglad({ kolor }));
   boxKolorow.append(b);
 }
 function zaznaczKolor() {
@@ -291,7 +316,6 @@ function zaznaczKolor() {
     b.tabIndex = tak ? 0 : -1;
   }
 }
-zaznaczKolor();
 // strzałki przesuwają wybór jak w zwykłej grupie radiowej
 boxKolorow.addEventListener('keydown', (e) => {
   const kier = e.key === 'ArrowRight' || e.key === 'ArrowDown' ? 1 : e.key === 'ArrowLeft' || e.key === 'ArrowUp' ? -1 : 0;
@@ -302,19 +326,61 @@ boxKolorow.addEventListener('keydown', (e) => {
   boxKolorow.children[i].focus();
 });
 
-/* Podgląd robala w panelu (i na ekranie ładowania) — tym samym kodem co w grze. */
-let podgladDziala = false;
+/* Akcesoria: kafelki z robalem, który już je nosi (plus „bez”). */
+const boxAkcesoriow = el('akcesoria');
+const kafelkiAkcesoriow = [];
+for (const a of [{ id: null, nazwa: 'Bez dodatków', gra: '' }, ...AKCESORIA]) {
+  const b = document.createElement('button');
+  b.type = 'button';
+  b.className = 'akcesorium';
+  b.setAttribute('role', 'radio');
+  b.title = a.nazwa + (a.gra ? ' (' + a.gra + ')' : '');
+  const plotnoA = document.createElement('canvas');
+  plotnoA.setAttribute('aria-hidden', 'true');
+  const podpis = document.createElement('span');
+  podpis.textContent = a.nazwa;
+  b.append(plotnoA);
+  if (a.gra) {
+    const gra = document.createElement('small');
+    gra.className = 'akcesorium-gra ' + (a.gra === 'Fortnite' ? 'fn' : 'ad');
+    gra.textContent = a.gra;
+    b.append(gra);
+  }
+  b.append(podpis);
+  b.addEventListener('click', () => zmienWyglad({ akcesorium: a.id }));
+  boxAkcesoriow.append(b);
+  kafelkiAkcesoriow.push({ id: a.id, b, plotno: plotnoA });
+}
+function zaznaczAkcesorium() {
+  for (const k of kafelkiAkcesoriow) {
+    const tak = k.id === mojeAkcesorium;
+    k.b.setAttribute('aria-checked', tak ? 'true' : 'false');
+    k.b.tabIndex = tak ? 0 : -1;
+  }
+}
+zaznaczKolor();
+zaznaczAkcesorium();
+
+/* Podgląd robala w profilu, kafelki akcesoriów i scena ładowania — tym samym kodem co w grze. */
+let podgladDziala = false, klatkaPodgladu = 0;
 function startPodgladu() {
   if (podgladDziala) return;
   podgladDziala = true;
   requestAnimationFrame(petlaPodgladu);
 }
 function petlaPodgladu(t) {
-  const panel = !el('ekran-panel').hidden, ladowanie = !el('ekran-ladowanie').hidden;
-  if (!panel && !ladowanie) { podgladDziala = false; return; }
-  const dane = { kolor: mojKolor, nazwa: konto ? konto.nick : 'Ty', czas: t / 1000 };
-  if (panel) R.rysujPodgladRobala(el('podglad-robala'), dane);
-  if (ladowanie) R.rysujPodgladRobala(el('ladowanie-robal'), dane);
+  const arena = !el('ekran-arena').hidden, ladowanie = !el('ekran-ladowanie').hidden;
+  if (!arena && !ladowanie) { podgladDziala = false; return; }
+  const czas = t / 1000;
+  const dane = { kolor: mojKolor, nazwa: konto ? konto.nick : 'Ty', czas, akc: mojeAkcesorium };
+  if (arena) {
+    R.rysujPodgladRobala(el('podglad-robala'), dane);
+    // kafelki co drugą klatkę — sześć małych płócien to i tak drobiazg
+    if (klatkaPodgladu++ % 2 === 0) {
+      for (const k of kafelkiAkcesoriow) R.rysujPodgladRobala(k.plotno, { kolor: mojKolor, czas, akc: k.id, mini: true });
+    }
+  }
+  if (ladowanie) R.rysujSceneLadowania(el('ladowanie-scena'), { ...dane, postep: postepLadowania });
   requestAnimationFrame(petlaPodgladu);
 }
 
@@ -322,16 +388,33 @@ function petlaPodgladu(t) {
 
 const TEKSTY_LADOWANIA = [
   'Ostrzę rogi…', 'Podgrzewam lawę…', 'Liczę kozy…', 'Kopię jaskinie…', 'Smaruję linę ninja…',
-  'Święcę Świętego GOATa…', 'Ustawiam wiatr pod bazookę…', 'Rozkładam mosty…', 'Budzę Krayo…'
+  'Święcę Świętego GOATa…', 'Ustawiam wiatr pod bazookę…', 'Rozkładam mosty…', 'Polerujemy koronę Victory Royale…',
+  'Spartanie ustawiają falangę…', 'Lama z łupami się wypakowuje…', 'Wkładam kilof do plecaka…'
 ];
+const PORADY = [
+  'R obraca most co 22,5° — skosy i pionowe ściany.',
+  'Q albo prawy przycisk myszy otwiera ekwipunek.',
+  'Lina ninja nie kończy tury: przebujaj się i dopiero strzelaj.',
+  'Po strzale masz 5 sekund na ucieczkę.',
+  'Święty GOAT robi największy wybuch w grze. ALLELUJA!',
+  'Kij jest tylko w skrzynkach z zapasami.',
+  'E otwiera emotki — GG działa też w cudzej turze.',
+  'Wiatr pcha bazookę, granaty i naloty. Patrz na pasek u góry.',
+  'Każdy kill ląduje na koncie i w rankingu.',
+  'Arenę na hasło widać na liście z kłódką 🔒.'
+];
+let postepLadowania = 0;
 
-/* Ekran przejściowy: pasek i żarty, dopóki `zadanie` nie skończy (min. 1,4 s). */
-async function ladowanie(zadanie) {
+/* Ekran przejściowy: scena, pasek z procentami, żarty i porada, dopóki
+   `zadanie` nie skończy (min. 1,8 s). */
+async function ladowanie(zadanie, nad = 'Wchodzisz na') {
   pokazEkran('ekran-ladowanie');
   podgladDziala = false;
   startPodgladu();
   el('btn-ponow').hidden = true;
-  const pasek = el('ladowanie-postep'), tekst = el('ladowanie-tekst');
+  el('ladowanie-nad').textContent = nad;
+  const pasek = el('ladowanie-postep'), procent = el('ladowanie-procent'), tekst = el('ladowanie-tekst');
+  el('ladowanie-porada').textContent = 'Porada: ' + PORADY[Math.floor(Math.random() * PORADY.length)];
   let gotowe = false;
   const t0 = performance.now();
   let nrTekstu = Math.floor(Math.random() * TEKSTY_LADOWANIA.length);
@@ -339,34 +422,39 @@ async function ladowanie(zadanie) {
   const zmiana = setInterval(() => {
     nrTekstu = (nrTekstu + 1) % TEKSTY_LADOWANIA.length;
     tekst.textContent = TEKSTY_LADOWANIA[nrTekstu];
-  }, 650);
+  }, 700);
+  const pokaz = (p) => {
+    postepLadowania = p;
+    pasek.style.width = (p * 100).toFixed(1) + '%';
+    procent.textContent = Math.floor(p * 100) + '%';
+  };
   const animuj = () => {
     if (gotowe) return;
-    // do 90% w półtorej sekundy, potem powoli — ostatnie 10% dopiero po odpowiedzi serwera
+    // do 90% w niecałe dwie sekundy, potem powoli — ostatnie 10% dopiero po odpowiedzi serwera
     const t = (performance.now() - t0) / 1000;
-    const p = t < 1.4 ? t / 1.4 * 0.9 : 0.9 + 0.08 * (1 - 1 / (1 + (t - 1.4)));
-    pasek.style.width = (p * 100).toFixed(1) + '%';
+    pokaz(t < 1.8 ? (1 - (1 - t / 1.8) ** 2) * 0.9 : 0.9 + 0.08 * (1 - 1 / (1 + (t - 1.8))));
     requestAnimationFrame(animuj);
   };
   requestAnimationFrame(animuj);
   try {
-    const [wynik] = await Promise.all([zadanie(), czekaj(1400)]);
+    const [wynik] = await Promise.all([zadanie(), czekaj(1800)]);
     return wynik;
   } finally {
     gotowe = true;
     clearInterval(zmiana);
-    pasek.style.width = '100%';
-    await czekaj(220);
+    pokaz(1);
+    tekst.textContent = 'Gotowe!';
+    await czekaj(320);
   }
 }
 
-/* Start strony: zapamiętane konto → ładowanie → panel (albo od razu pokój z adresu). */
+/* Start strony: zapamiętane konto → ładowanie → Arena (albo od razu arena z adresu). */
 async function start() {
   if (!K.token()) return pokazLogowanie();
   const w = await ladowanie(async () => {
     const w = await K.ja();
     if (w.status === 200) {
-      ustawKonto(w.dane.konto);           // robal na ekranie ładowania już z nickiem i kolorem
+      ustawKonto(w.dane.konto);           // robal na ekranie ładowania już z nickiem, kolorem i akcesorium
       await Promise.all([odswiezPokoje(), odswiezRanking()]);
     }
     return w;
@@ -423,7 +511,7 @@ el('form-konto').addEventListener('submit', async (e) => {
   el('input-haslo').value = '';
   el('input-haslo2').value = '';
   ustawKonto(w.dane.konto);
-  await ladowanie(() => Promise.all([odswiezPokoje(), odswiezRanking()]));
+  await ladowanie(() => Promise.all([odswiezPokoje(), odswiezRanking()]), rej ? 'Witaj po raz pierwszy na' : 'Wracasz na');
   poZalogowaniu(w.dane.konto);
 });
 
@@ -432,59 +520,69 @@ function ustawKonto(k) {
   mojeId = k.id;
   mojaNazwa = k.nick.slice(0, 14);
   if (KOLORY.includes(k.kolor)) mojKolor = k.kolor;
+  if (k.akcesorium === null || AKCESORIA_ID.includes(k.akcesorium)) mojeAkcesorium = k.akcesorium;
   zaznaczKolor();
+  zaznaczAkcesorium();
+  el('nawigacja-nick').textContent = k.nick;
+  el('nawigacja-kropka').style.background = mojKolor;
 }
 
 async function poZalogowaniu(k) {
   ustawKonto(k);
-  if (!KOLORY.includes(k.kolor)) K.ustawKolor(mojKolor);   // pierwszy raz na koncie — kolor wybrany wcześniej w tej przeglądarce
+  // pierwszy raz na koncie — wygląd wybrany wcześniej w tej przeglądarce
+  if (!KOLORY.includes(k.kolor)) K.ustawWyglad({ kolor: mojKolor, akcesorium: mojeAkcesorium });
+  otworzArene();
   const zAdresu = pokojZAdresu();
-  if (zAdresu) {
-    const p = pokojeLista.find((x) => x.id === zAdresu);
-    if (!p || !p.haslo) return polaczZPokojem(zAdresu, null, p ? p.nazwa : zAdresu === 'glowny' ? 'Arena główna' : zAdresu);
-    otworzPanel();
-    rozwinietyPokoj = zAdresu;          // pokój na hasło: pole hasła od razu otwarte
-    rysujPokoje(true);
-    return;
-  }
-  otworzPanel();
+  if (!zAdresu) return;
+  const p = pokojeLista.find((x) => x.id === zAdresu);
+  if (!p || !p.haslo) return polaczZPokojem(zAdresu, null, p ? p.nazwa : zAdresu);
+  rozwinietyPokoj = zAdresu;            // arena na hasło: pole hasła od razu otwarte
+  rysujPokoje(true);
 }
 
 el('btn-wyloguj').addEventListener('click', async () => {
+  opuscPokoj();
   await K.wyloguj();
   konto = null;
   pokazLogowanie('Wylogowano.');
   ustawTrybKonta('logowanie');
 });
 
-/* ----- panel ----- */
+/* ----- ekran Areny ----- */
 
-let panelTimer = null;
-function otworzPanel() {
-  ustawAdres(null);
-  pokazEkran('ekran-panel');
+let arenaTimer = null, ileOdswiezen = 0;
+function otworzArene() {
+  pokazEkran('ekran-arena');
+  pokazWidok(!!net);
+  if (!net) ustawAdres(null);
   rysujProfil();
   podpisOsiagniec = null;
   rysujOsiagnieciaLobby();
   rysujPokoje(true);
   rysujRanking();
-  clearInterval(panelTimer);
-  // lista pokoi (i ranking, gdy widać) odświeża się, dopóki panel jest na ekranie
-  panelTimer = setInterval(() => {
-    if (el('ekran-panel').hidden) { clearInterval(panelTimer); return; }
+  clearInterval(arenaTimer);
+  // lista aren co 5 s (gdy ją widać), ranking co 20 s — dopóki ekran Areny jest na wierzchu
+  arenaTimer = setInterval(() => {
+    if (el('ekran-arena').hidden) { clearInterval(arenaTimer); return; }
     if (document.hidden) return;
-    odswiezPokoje().then(() => rysujPokoje());
-    if (!el('sekcja-ranking').hidden) odswiezRanking().then(rysujRanking);
+    if (!el('widok-pokoje').hidden) odswiezPokoje().then(() => rysujPokoje());
+    if (++ileOdswiezen % 4 === 0) odswiezRanking().then(rysujRanking);
   }, 5000);
 }
 
+/* Ranga za kille — sam napis w profilu. */
+const RANGI = [[0, 'Świeżak areny'], [1, 'Pierwsza krew'], [5, 'Rekrut z bazooką'], [15, 'Weteran lawy'],
+  [30, 'Rzeźnik Areny'], [60, 'Postrach lobby'], [100, 'GOAT areny']];
 function rysujProfil() {
   if (!konto) return;
   el('profil-nick').textContent = konto.nick;
   const s = wczytajStaty();
+  el('profil-ranga').textContent = RANGI.filter(([od]) => s.fragi >= od).pop()[1];
   const lista = el('profil-staty');
   lista.replaceChildren();
-  for (const [ikona, ile, nazwa] of [['💀', s.fragi, 'killi'], ['🏆', s.wygrane, 'wygranych'], ['🎮', s.partie, 'partii'], ['💥', s.obrazenia, 'obrażeń']]) {
+  const skutecznosc = s.partie ? Math.round(s.wygrane / s.partie * 100) + '%' : '—';
+  for (const [ikona, ile, nazwa] of [['💀', s.fragi, 'killi'], ['🏆', s.wygrane, 'wygranych'], ['🎮', s.partie, 'partii'],
+    ['📈', skutecznosc, 'wygrywa'], ['💥', s.obrazenia, 'obrażeń'], ['🔥', s.rekordTury, 'rekord tury']]) {
     const li = document.createElement('li');
     const b = document.createElement('b');
     b.textContent = ikona + ' ' + ile;
@@ -495,23 +593,11 @@ function rysujProfil() {
   }
 }
 
-function ustawZakladke(ranking) {
-  el('tab-pokoje').setAttribute('aria-selected', ranking ? 'false' : 'true');
-  el('tab-ranking').setAttribute('aria-selected', ranking ? 'true' : 'false');
-  el('sekcja-pokoje').hidden = ranking;
-  el('sekcja-ranking').hidden = !ranking;
-  if (ranking) odswiezRanking().then(rysujRanking);
-}
-el('tab-pokoje').addEventListener('click', () => ustawZakladke(false));
-el('tab-ranking').addEventListener('click', () => ustawZakladke(true));
-
-el('btn-graj').addEventListener('click', () => polaczZPokojem('glowny', null, 'Arena główna'));
-
-/* Pokoje */
+/* Areny */
 let pokojeLista = [];
 let pokojeBlad = '';
 let podpisPokoi = '';
-let rozwinietyPokoj = null;           // pokój na hasło z otwartym polem hasła
+let rozwinietyPokoj = null;           // arena na hasło z otwartym polem hasła
 
 async function odswiezPokoje() {
   const w = await K.pokoje();
@@ -527,27 +613,40 @@ function rysujPokoje(wymus = false) {
   if (!wymus && podpis === podpisPokoi) return;
   podpisPokoi = podpis;
   lista.replaceChildren();
-  const glowny = pokojeLista.find((p) => p.id === 'glowny');
-  el('graj-opis').textContent = 'Arena główna' + (glowny && glowny.ile ? ' · ' + glowny.ile + ' w środku' : '');
+  el('pusto-pokoje').hidden = pokojeLista.length > 0;
+  const graczy = pokojeLista.reduce((s, p) => s + p.ile, 0);
+  el('licznik-pokoi').textContent = pokojeLista.length ? pokojeLista.length + ' · ' + graczy + ' graczy' : '';
   for (const p of pokojeLista) {
     const li = document.createElement('li');
-    li.className = 'pokoj' + (p.id === 'glowny' ? ' glowny-pokoj' : '');
+    li.className = 'pokoj' + (p.partia ? ' w-grze' : '') + (p.haslo ? ' zamkniety' : '');
     const opis = document.createElement('div');
     opis.className = 'pokoj-opis';
     const nazwa = document.createElement('b');
     nazwa.textContent = (p.haslo ? '🔒 ' : '') + p.nazwa;
     const kto = document.createElement('small');
-    kto.textContent = p.ile ? p.ile + ' · ' + p.gracze.join(', ') : 'pusto';
-    opis.append(nazwa, kto);
+    kto.textContent = p.ile ? p.gracze.join(', ') : 'pusto — wejdź pierwszy';
+    const znaczki = document.createElement('div');
+    znaczki.className = 'pokoj-znaczki';
+    const ile = document.createElement('span');
+    ile.className = 'pokoj-ile';
+    ile.textContent = '👥 ' + p.ile + '/' + P.MAX_GRACZY;
+    znaczki.append(ile);
     if (p.partia) {
       const znak = document.createElement('span');
       znak.className = 'pokoj-gra';
       znak.textContent = 'trwa partia';
-      nazwa.append(' ', znak);
+      znaczki.append(znak);
     }
+    if (p.zalozyl) {
+      const z = document.createElement('span');
+      z.className = 'pokoj-zalozyl';
+      z.textContent = '👑 ' + p.zalozyl;
+      znaczki.append(z);
+    }
+    opis.append(nazwa, znaczki, kto);
     const btn = document.createElement('button');
     btn.type = 'button';
-    btn.textContent = 'Wejdź';
+    btn.textContent = p.partia ? 'Oglądaj' : 'Wejdź';
     btn.addEventListener('click', () => {
       if (!p.haslo) return polaczZPokojem(p.id, null, p.nazwa);
       rozwinietyPokoj = rozwinietyPokoj === p.id ? null : p.id;
@@ -562,7 +661,7 @@ function rysujPokoje(wymus = false) {
       const input = document.createElement('input');
       input.type = 'password';
       input.maxLength = 40;
-      input.placeholder = 'Hasło pokoju';
+      input.placeholder = 'Hasło areny';
       input.autocomplete = 'off';
       const ok = document.createElement('button');
       ok.type = 'submit';
@@ -574,7 +673,7 @@ function rysujPokoje(wymus = false) {
         const w = await K.wejdzDoPokoju(p.id, input.value);
         ok.disabled = false;
         if (w.status === 200) return polaczZPokojem(p.id, w.dane.klucz, p.nazwa);
-        el('info-pokoje').textContent = w.status === 403 ? 'Złe hasło do pokoju „' + p.nazwa + '”.' : K.opisBledu(w.dane);
+        el('info-pokoje').textContent = w.status === 403 ? 'Złe hasło do areny „' + p.nazwa + '”.' : K.opisBledu(w.dane);
         input.select();
       });
       li.append(form);
@@ -589,8 +688,8 @@ el('form-pokoj').addEventListener('submit', async (e) => {
   const nazwa = el('input-pokoj-nazwa').value.trim();
   const haslo = el('input-pokoj-haslo').value;
   const info = el('info-pokoje');
-  if (nazwa.length < 3) { info.textContent = 'Nazwa pokoju: co najmniej 3 znaki.'; return; }
-  if (haslo && haslo.length < 3) { info.textContent = 'Hasło pokoju: co najmniej 3 znaki (albo puste).'; return; }
+  if (nazwa.length < 3) { info.textContent = 'Nazwa areny: co najmniej 3 znaki.'; return; }
+  if (haslo && haslo.length < 3) { info.textContent = 'Hasło areny: co najmniej 3 znaki (albo puste).'; return; }
   el('btn-pokoj').disabled = true;
   const w = await K.nowyPokoj(nazwa, haslo || undefined);
   el('btn-pokoj').disabled = false;
@@ -598,8 +697,7 @@ el('form-pokoj').addEventListener('submit', async (e) => {
   info.textContent = '';
   el('input-pokoj-nazwa').value = '';
   el('input-pokoj-haslo').value = '';
-  el('nowy-pokoj').open = false;
-  polaczZPokojem(w.dane.id, w.dane.klucz, nazwa);
+  polaczZPokojem(w.dane.id, w.dane.klucz, nazwa, !!haslo);
 });
 
 /* Ranking killi */
@@ -616,6 +714,7 @@ function rysujRanking() {
     : lista.length ? '' : 'Jeszcze nikt nie zagrał. Bądź pierwszy!';
   lista.forEach((r, i) => {
     const li = document.createElement('li');
+    if (i < 3) li.classList.add('podium', 'miejsce-' + (i + 1));
     if (konto && r.nick === konto.nick) li.classList.add('ja');
     const miejsce = document.createElement('span');
     miejsce.className = 'miejsce';
@@ -625,7 +724,8 @@ function rysujRanking() {
     kropka.style.background = KOLORY.includes(r.kolor) ? r.kolor : '#888';
     const nick = document.createElement('span');
     nick.className = 'nick';
-    nick.textContent = r.nick;
+    const a = akcesorium(r.akcesorium);
+    nick.textContent = r.nick + (a ? ' ' + a.ikona : '');
     const kille = document.createElement('b');
     kille.textContent = r.kille + ' 💀';
     const reszta = document.createElement('small');
@@ -635,20 +735,23 @@ function rysujRanking() {
   });
 }
 
-/* ----- wejście do pokoju i powrót do panelu ----- */
+/* ----- wejście do areny i powrót do listy ----- */
 
 function zglosSie() {
   ostatnieZgloszenie = Date.now();
-  return net.wyslij({ t: 'dolacz', id: mojeId, name: mojaNazwa, color: mojKolor, v: P.WERSJA });
+  return net.wyslij({ t: 'dolacz', id: mojeId, name: mojaNazwa, color: mojKolor, akc: mojeAkcesorium, v: P.WERSJA });
 }
 
-async function polaczZPokojem(id, klucz, nazwa) {
+async function polaczZPokojem(id, klucz, nazwa, haslo) {
   if (net) opuscPokoj();
+  const p = pokojeLista.find((x) => x.id === id);
   aktualnyPokoj = { id, klucz, nazwa };
+  rozwinietyPokoj = null;
   ustawAdres(id);
-  el('lobby-tytul').textContent = nazwa || 'LOBBY';
-  el('info-lobby').textContent = 'Łączę z lobby…';
-  pokazEkran('ekran-lobby');
+  el('lobby-tytul').textContent = ((p ? p.haslo : haslo) ? '🔒 ' : '') + (nazwa || 'Lobby');
+  el('info-lobby').textContent = 'Łączę z areną…';
+  if (el('ekran-arena').hidden) otworzArene();
+  pokazWidok(true);
 
   net = createNet({
     id: mojeId,
@@ -664,10 +767,10 @@ async function polaczZPokojem(id, klucz, nazwa) {
   await zglosSie();
   await net.pobierz();
   // Jeśli właśnie dołączyliśmy do trwającej partii, plansza już jest.
-  if (rg) el('ekran-lobby').hidden = true;
+  if (rg) el('ekran-arena').hidden = true;
 }
 
-/* Wyjście z pokoju do panelu: pożegnanie w logu i koniec połączenia. */
+/* Wyjście z areny do listy: pożegnanie w logu i koniec połączenia. */
 function opuscPokoj() {
   if (!net) return;
   net.opusc();
@@ -686,7 +789,8 @@ function opuscPokoj() {
 }
 el('btn-panel').addEventListener('click', async () => {
   opuscPokoj();
-  otworzPanel();
+  ustawAdres(null);
+  pokazWidok(false);
   await Promise.all([odswiezPokoje(), odswiezRanking()]);
   rysujPokoje(true);
   rysujRanking();
@@ -695,7 +799,7 @@ el('btn-panel').addEventListener('click', async () => {
 /* Koniec partii: wynik na konto (kille do rankingu, osiągnięcia). */
 function wyslijWynikPartii(wynik) {
   K.wyslijWynik(wynik).then((w) => {
-    if (w.status === 200) { konto = w.dane.konto; rysujProfil(); }
+    if (w.status === 200) { konto = w.dane.konto; rysujProfil(); podpisOsiagniec = null; rysujOsiagnieciaLobby(); }
   });
 }
 
@@ -774,7 +878,7 @@ function wyslijLobby(z) {
 }
 
 function odswiezLobby() {
-  if (!pokoj || el('ekran-lobby').hidden) return;
+  if (!pokoj || !wLobby()) return;
 
   const zywi = net.zywi();
   const jest = (id) => zywi.has(id) || id === mojeId;
@@ -1189,7 +1293,7 @@ async function startPartii(roz) {
       druzyny: roz.n,
       ustawienia,
       v: P.WERSJA,
-      gracze: roz.gracze.map((g) => ({ id: g.id, name: g.name, color: g.color, druzyna: g.druzyna }))
+      gracze: roz.gracze.map((g) => ({ id: g.id, name: g.name, color: g.color, akc: g.akc || null, druzyna: g.druzyna }))
     });
   } finally {
     setTimeout(() => { startWToku = false; }, 4000);
@@ -1249,6 +1353,7 @@ function zbudujGre() {
   }
 
   for (const e of EKRANY) el(e).hidden = true;
+  el('nawigacja').hidden = true;
   hud.hidden = false;
   el('baner-obserwator').hidden = !rg.obserwator;
   el('baner-info').hidden = true;
@@ -1283,8 +1388,8 @@ function zakonczGre() {
   zamknijEmotki();
   hud.hidden = true;
   document.body.classList.remove('moja-tura');
-  el('ekran-koniec').hidden = true;
-  el('ekran-lobby').hidden = false;
+  // po partii z powrotem na ekran Areny, w lobby tej samej areny
+  otworzArene();
   if (net) {
     net.ustawTryb('lobby');
     zglosSie();
@@ -1386,6 +1491,7 @@ function petla(teraz) {
     rozlaczeni: rozlaczeni(),
     celNalotu: celNalotu(moge),
     emotki: aktywneEmotki(),
+    akcesoria: akcesoriaPartii(),
     zebraneSkrzynki: podglad.nr === st.turnNumber ? podglad.skrzynki : null
   });
   kamera.x -= tx; kamera.y -= ty;
@@ -1411,6 +1517,17 @@ function czytajEmotki() {
     if (!def || net.czas() - (z.st || 0) > 6000) continue;
     emotkiGraczy.set(z.id, { def, od: performance.now() });
   }
+}
+
+/* Akcesoria robali w partii (z 'nowa.gracze') — mapa id → akcesorium dla render.js. */
+let akcPodpis = null, akcMapa = new Map();
+function akcesoriaPartii() {
+  const gracze = pokoj && pokoj.gracze || [];
+  if (gracze !== akcPodpis) {
+    akcPodpis = gracze;
+    akcMapa = new Map(gracze.filter((g) => g && g.akc).map((g) => [g.id, g.akc]));
+  }
+  return akcMapa;
 }
 
 function aktywneEmotki() {
@@ -2065,7 +2182,7 @@ function odswiezHud(moge, teraz) {
   el('obserwatorzy').title = obs === 1 ? '1 obserwator ogląda partię' : obs + ' obserwatorów ogląda partię';
 }
 
-setInterval(() => { if (!el('ekran-lobby').hidden) odswiezLobby(); }, 500);
+setInterval(() => { if (wLobby()) odswiezLobby(); }, 500);
 
 /* Podgląd stanu do diagnostyki (konsola przeglądarki: __arena()).
    Tylko do odczytu — nic tu nie zmienia przebiegu gry. */
