@@ -50,7 +50,7 @@ const crypto = require('crypto');
 const { WebSocketServer } = require('ws');
 const { Pokoj, MAX_ZDARZENIE } = require('./pokoj');
 const { Zrzutka, SEZON } = require('./zrzutka');
-const { Konta, AKCESORIA } = require('./konta');
+const { Konta, wolnoNosic } = require('./konta');
 const { czystyTekst } = require('./gracze');
 
 const PORT = Number(process.env.ARENA_PORT) || 8787;
@@ -115,7 +115,7 @@ function przypnijKonto(z, konto) {
   if ('id' in wynik) wynik.id = konto.id;
   if (wynik.t === 'dolacz') {
     wynik.name = konto.nick.slice(0, 14);
-    if (wynik.akc != null && !AKCESORIA.includes(wynik.akc)) delete wynik.akc;
+    if (wynik.akc != null && !wolnoNosic(konto, wynik.akc)) delete wynik.akc;
   }
   return wynik;
 }
