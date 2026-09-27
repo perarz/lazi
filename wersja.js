@@ -5,6 +5,18 @@
 (function () {
   var historia = [
     {
+      wersja: '4.7', data: '2026-09-27', tytul: 'Nowy panel Areny i akcesoria robala',
+      zmiany: [
+        'Na górze Areny jest znowu pasek Fortnite / 0 A.D. / Arena, jak na stronie zrzutki — jednym stuknięciem wracasz do zbiórki.',
+        'Panel i lobby na jednym ekranie: po lewej Twój profil, wygląd robala, ranking killi i osiągnięcia, po prawej lista aren albo lobby areny, w której jesteś. Na telefonie wszystko jedno pod drugim.',
+        'Nie ma już domyślnej areny ani przycisku GRAJ: żeby zagrać, ktoś zakłada arenę (otwartą albo na hasło 🔒), a reszta wchodzi z listy. Przy arenie widać, kto w niej siedzi, kto ją założył i czy trwa partia.',
+        'Kolor robala zmienisz w każdej chwili — paleta jest zawsze na wierzchu, także gdy czekasz w lobby.',
+        '5 akcesoriów dla robala: z Fortnite korona Victory Royale, czapka lamy z łupami i kilof na plecach, z 0 A.D. hełm spartański i wieniec laurowy. Widać je w grze, w lobby i w rankingu.',
+        'Nowy ekran ładowania: Twój robal w akcesorium strzela z bazooki nad lawą, spada skrzynka, pasek pokazuje procenty, a do tego porady do gry.',
+        'Profil podrasowany: ranga za kille (od „Świeżaka areny” do „GOATa areny”), procent wygranych i rekord tury.'
+      ]
+    },
+    {
       wersja: '4.6', data: '2026-09-27', tytul: 'Konta i panel Areny',
       zmiany: [
         'Arena ma konta: przy wejściu logujesz się albo zakładasz konto (nick + hasło, bez maila). Nikt już nie zagra pod Twoim nickiem.',

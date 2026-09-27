@@ -234,6 +234,31 @@ await test('Arena bez konta 401; serwer wpisuje id i nick z konta (nie da się g
   a.ws.close();
 });
 
+await test('wygląd robala: kolor i akcesorium na koncie, złe akcesorium odrzucone, w dolacz też', async () => {
+  let d = await (await post('/api/konto/wyglad', { token: ALA.token, kolor: '#4ea3ff', akcesorium: 'korona' })).json();
+  assert(d.konto.kolor === '#4ea3ff' && d.konto.akcesorium === 'korona', JSON.stringify(d.konto));
+  d = await (await post('/api/konto/wyglad', { token: ALA.token, akcesorium: 'rakieta' })).json();
+  assert(d.konto.akcesorium === 'korona', 'złe akcesorium przyjęte');
+  d = await (await post('/api/konto/wyglad', { token: ALA.token, akcesorium: null })).json();
+  assert(d.konto.akcesorium === null && d.konto.kolor === '#4ea3ff', 'zdjęcie akcesorium');
+  const a = klient('k2');
+  await a.otwarty;
+  a.wyslij({ typ: 'hej', od: 0, epoka: null });
+  await a.czekaj((m) => m.typ === 'stan');
+  await a.zd({ t: 'dolacz', id: 'x', akc: 'helm' });
+  const s1 = await a.czekaj((m) => m.typ === 'stan' && m.zdarzenia.length);
+  await a.zd({ t: 'dolacz', id: 'x', akc: '<b>' });
+  const s2 = await a.czekaj((m) => m.typ === 'stan' && m.zdarzenia.length);
+  assert(s1.zdarzenia[0].akc === 'helm' && !('akc' in s2.zdarzenia[0]), JSON.stringify([s1.zdarzenia, s2.zdarzenia]));
+  a.ws.close();
+});
+
+await test('lista akcesoriów na serwerze = lista w grze (gra/src/akcesoria.js)', async () => {
+  const { AKCESORIA } = require('./konta.js');
+  const gra = await import('../gra/src/akcesoria.js');
+  assert(JSON.stringify(gra.AKCESORIA_ID) === JSON.stringify(AKCESORIA), JSON.stringify([gra.AKCESORIA_ID, AKCESORIA]));
+});
+
 await test('wynik partii: kille do rankingu, jeden wynik na partię, limit killi, osiągnięcia na koncie', async () => {
   const w = (body) => post('/api/konto/wynik', { token: BOLEK.token, ...body });
   let d = await (await w({ partia: '111', kille: 3, obrazenia: 250, wygrana: true, osiagniecia: ['pierwsza-krew', 'ZŁE ID'] })).json();
@@ -255,7 +280,7 @@ await test('pokój na hasło: lista, wejście bez klucza 403, złe hasło 403, d
   assert(otwarty.id && otwarty.klucz === null, 'pokój bez hasła');
   assert((await post('/api/pokoje', { token: 'x', nazwa: 'Bez konta' })).status === 401, 'pokój bez konta');
   const lista = (await (await fetch(API('/api/pokoje'))).json()).pokoje;
-  assert(lista[0].id === 'glowny', 'główny nie pierwszy');
+  assert(!lista.some((p) => p.id === 'glowny'), 'domyślna arena na liście (od 4.7 jej nie ma)');
   const moj = lista.find((p) => p.id === d.id);
   assert(moj && moj.haslo && moj.nazwa === 'Kozy tylko' && moj.zalozyl === 'Ala' && !('klucz' in moj), JSON.stringify(moj));
   let odrzucony = false;

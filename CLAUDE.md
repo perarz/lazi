@@ -18,7 +18,7 @@ Stos technologiczny:
 - Bez bundlera, bez `package.json` i bez zależności npm. Zwykłe pliki HTML/CSS/JS, gra jako moduły ES,
   zrzutka jako klasyczne skrypty.
 
-Obecna wersja: **4.6 „Konta i panel Areny”** (`wersja.js`).
+Obecna wersja: **4.7 „Nowy panel Areny i akcesoria robala”** (`wersja.js`).
 
 ---
 
@@ -162,7 +162,8 @@ PL, IP 96.62.223.169). Katalog `serwer/` to serwer: Node + WebSocket (`ws`).
   ważny 60 dni (użycie przedłuża), do 10 sesji na konto. Plik `KONTA_PLIK`, a bez niego obok zrzutki
   (`/var/lib/arena/konta.json`, prawa 600, codzienna kopia `konta-RRRR-MM-DD.json`, 14 dni). Bez żadnego
   z tych plików (testy) — tylko w pamięci.
-- API (token zawsze w treści POST): `POST /api/konto/rejestracja|logowanie|ja|wyloguj|kolor|wynik`,
+- API (token zawsze w treści POST): `POST /api/konto/rejestracja|logowanie|ja|wyloguj|wyglad|wynik`
+  (`wyglad` = `{kolor?, akcesorium?}`, od 4.7; `/kolor` zostaje jako alias),
   `GET /api/ranking` (top 50 po killach), `GET /api/pokoje`, `POST /api/pokoje` (nowy, opcjonalnie hasło),
   `POST /api/pokoje/wejdz` (hasło → `klucz`). Limity: 12 prób logowania/rejestracji na IP na minutę,
   6 nowych kont na IP na godzinę, 3 pokoje na konto, 40 pokoi z panelu.
@@ -174,8 +175,11 @@ PL, IP 96.62.223.169). Katalog `serwer/` to serwer: Node + WebSocket (`ws`).
   tury, nowe osiągnięcia); jedna partia (seed) liczy się raz, serwer pamięta 40 ostatnich. Wyjście w trakcie =
   `tylkoOsiagniecia`. Da się oszukać konsolą — przy żartobliwej stronie akceptujemy (jak minigierki).
 - **Pokoje z panelu** (`opisy` w `serwer.js`) są w pamięci jak partie: nazwa, kto założył, skrót hasła, klucz.
-  Pusty znika po 10 minutach, restart serwera kasuje wszystkie. Pokój bez opisu (`glowny`, `?pokoj=` z testów)
-  jest publiczny. Lista liczy graczy po połączeniach (nicki z kont), „trwa partia” = log od `nowa` i strzał/pas/stan
+  Pusty znika po 10 minutach, restart serwera kasuje wszystkie. **Od 4.7 nie ma domyślnej areny** (`glowny` nie
+  jest już na liście) — gra się tylko w arenie, którą ktoś założył. Pokój bez opisu (`?pokoj=` z testów) jest
+  publiczny i pojawia się na liście tylko, gdy ktoś w nim jest.
+- **Akcesoria** (4.7): lista id w `AKCESORIA` w `serwer/konta.js` **i** w `gra/src/akcesoria.js` (test serwera
+  pilnuje, że są równe). Konto trzyma `akcesorium`, `dolacz` niesie `akc` (serwer usuwa nieznane), ranking też. Lista liczy graczy po połączeniach (nicki z kont), „trwa partia” = log od `nowa` i strzał/pas/stan
   w ostatnich 2 min.
 - **Reset hasła** (nie ma maila): na VPS `cd /opt/lazi/serwer && node konto-haslo.mjs NICK 'NOWE_HASLO'`
   (jako root sam zatrzymuje i wznawia usługę — to urywa trwające partie).
@@ -222,6 +226,7 @@ PL, IP 96.62.223.169). Katalog `serwer/` to serwer: Node + WebSocket (`ws`).
 | `zrzutka:sezon1` | Archiwum sezonu 1 (pobrane raz) |
 | `zrzutka:sezon2-intro` | `'1'` = okno sezonu już się samo pokazało |
 | `arena:token` | Token sesji konta Areny (od 4.6) |
+| `arena:akcesorium` | Akcesorium robala (4.7, kopia z konta; pusty napis = bez) |
 | `arena:nazwa`, `arena:kolor`, `arena:bron`, `arena:staty`, `arena:osiagniecia` | Arena. Od 4.6 `staty` i `osiagniecia` to **kopia z konta** (nadpisywana po zalogowaniu i po każdym wyniku, czyszczona przy wylogowaniu) — czytają je reguły osiągnięć i profil na zrzutce |
 | `arena:stare-przeniesione` | `'1'` = dane sprzed kont już poszły do konta (tylko pierwsza rejestracja w przeglądarce je zabiera). `arena:id` z dawnych wersji nie jest już używane |
 
@@ -426,14 +431,15 @@ Lekcje z kalibracji:
 | `src/protokol.js` | Protokół sieciowy (bez DOM) — kto ma turę, co jest kanoniczne, kto wyrzuca nieobecnych |
 | `src/net.js` | WebSocket do serwera na VPS: log zdarzeń, ponowne łączenie z kursorem, obecność, zegar serwera, `sendBeacon` przy zamknięciu karty (POST `/api/arena` na VPS); `RUCH_CO` — podgląd ruchu co 100 ms |
 | `src/konfig.js` | `SERWER_WS` — adres serwera Areny; lokalnie `?serwer=ws://127.0.0.1:8787/ws` do testów; `adresApi()` = HTTP tego serwera |
-| `src/konto.js` | Konto (4.6): logowanie, rejestracja, `ja`, wynik partii, pokoje, ranking (HTTP), kopia statystyk do `localStorage`, opisy błędów |
-| `src/main.js` | Logowanie, ekran ładowania, panel (GRAJ, pokoje, ranking, osiągnięcia, kolor), lobby (tryb, drużyny, GOTOWY), HUD, kamera, pętla gry, zdarzenia → efekty, statystyki, osiągnięcia (UI) |
+| `src/konto.js` | Konto (4.6): logowanie, rejestracja, `ja`, wygląd (`ustawWyglad`), wynik partii, pokoje, ranking (HTTP), kopia statystyk do `localStorage`, opisy błędów |
+| `src/akcesoria.js` | Akcesoria robala (4.7): `AKCESORIA` (id, nazwa, gra, ikona, `rysuj(ctx, cx, cy, f, t)`, `tyl`), sama grafika |
+| `src/main.js` | Logowanie, ekran ładowania, ekran Areny (profil, wygląd, ranking, osiągnięcia + areny/lobby), lobby (tryb, drużyny, GOTOWY), HUD, kamera, pętla gry, zdarzenia → efekty, statystyki, osiągnięcia (UI) |
 | `src/druzyny.js` | Nazwy i kolory drużyn (`DRUZYNY`), tryby lobby (`TRYBY`) |
 | `src/ustawienia.js` | Ustawienia partii z lobby (`USTAWIENIA`: czas, hp, mapa, rozmiar, bronie, zrzuty, wiatr, lawaOd, lawaTempo; pozycje z `opcje` = lista, z `liczba` = wpisywane), `normalizuj`, `zLiczby`, `opisZmian` |
 | `src/emotki.js` | Emotki i tańce (`EMOTKI`: 5 emotek + 2 tańce), czasy i limit wysyłania |
 | `src/ekwipunek.js` | Ekwipunek broni jak w Worms Armageddon: rzędy (`GRUPY`), ikony SVG broni, otwieranie/zamykanie |
 | `src/input.js` | Klawiatura, przyciski dotykowe, przeciąganie/szczypanie, PPM/Q = ekwipunek |
-| `src/render.js`, `src/fx.js` | Grafika (tu wolno trygonometrię i `Math.random`); w `render.js` też kamera i podgląd robala na ekranie wejścia |
+| `src/render.js`, `src/fx.js` | Grafika (tu wolno trygonometrię i `Math.random`); w `render.js` też kamera, podgląd robala (`rysujPodgladRobala`, `mini` = kafelek akcesorium) i scena ekranu ładowania (`rysujSceneLadowania`) |
 | `src/osiagniecia-reguly.js` | Reguły osiągnięć — czyste funkcje |
 | `test/sim.test.mjs`, `test/protokol.test.mjs` | Testy w Node (80 i 21) |
 
@@ -467,18 +473,31 @@ Lekcje z kalibracji:
 - `spawnPoints` nigdy nie stawia robala w powietrzu. Gdy w wycinku gracza nie ma gruntu (przerwa
   między wyspami), szuka gruntu na całej mapie (`zapasowyStart`). Test sprawdza to na wielu seedach.
 
-### Wejście do Areny (od 4.6)
+### Wejście do Areny (4.6, układ od 4.7)
 - Ekrany (`EKRANY`, `pokazEkran` w `main.js`): `#ekran-logowanie` (zakładki Zaloguj/Załóż konto; pierwszy raz
-  w przeglądarce otwiera się na zakładaniu) → `#ekran-ladowanie` (robal z `rysujPodgladRobala`, pasek, żarty;
-  `ladowanie(zadanie)` trwa min. 1,4 s i czeka na konto, pokoje i ranking) → `#ekran-panel` → `#ekran-lobby`.
+  w przeglądarce otwiera się na zakładaniu) → `#ekran-ladowanie` → `#ekran-arena` (+ `#ekran-koniec` po partii).
   Z zapamiętanym tokenem strona startuje od razu od ładowania (`start()`); 401 = z powrotem do logowania,
   brak sieci = komunikat i „Spróbuj jeszcze raz”.
-- Panel: profil (robal, nick, 4 statystyki), kolor robala (`details`, zapis też na koncie), **GRAJ** = pokój
-  `glowny`, zakładki Pokoje / Ranking killi, na dole wszystkie osiągnięcia (`rysujOsiagnieciaLobby` rysuje je
-  teraz w panelu). Lista pokoi odświeża się co 5 s, tylko gdy panel widać (i nie pod palcem piszącym hasło).
+- **Pasek `#nawigacja`** (Fortnite → `/#fortnite`, 0 A.D. → `/#0ad`, Arena) jest jeden: `pokazEkran` wkłada go
+  na początek ekranu logowania albo Areny (sticky), w trakcie partii i na ładowaniu jest schowany. Po prawej
+  kropka w kolorze robala, nick i „Wyloguj”.
+- **Ekran ładowania**: pełnoekranowe płótno `#ladowanie-scena` (`R.rysujSceneLadowania`: wyspy nad lawą, robal
+  gracza z akcesorium strzela z bazooki, skrzynka na spadochronie), pasek z procentami, żarty (`TEKSTY_LADOWANIA`)
+  i losowa porada (`PORADY`). `ladowanie(zadanie, nad)` trwa min. 1,8 s.
+- **Ekran Areny** (`.arena-uklad`): lewa kolumna `.kolumna-lewa` (~65%) = profil (robal, nick, ranga z `RANGI`,
+  6 statystyk), wygląd (paleta kolorów i 6 kafelków akcesoriów — zawsze widoczne, `zmienWyglad` zapisuje na koncie
+  i ponawia `dolacz`, gdy jestem w lobby), ranking killi i osiągnięcia obok siebie; prawa `.karta-prawa` (~35%,
+  sticky) = `#widok-pokoje` (lista aren, pusty stan, formularz nowej areny) albo `#widok-lobby` (dawne lobby,
+  te same id elementów). `pokazWidok(lobby)`, `wLobby()` = lobby na ekranie (z tego korzystają `odswiezLobby`
+  i interwał). Poniżej 900 px jedna kolumna: `.kolumna-lewa { display: contents }` + `order` (profil, areny/lobby,
+  wygląd, ranking, osiągnięcia).
 - `polaczZPokojem(id, klucz, nazwa)` tworzy `createNet({ pokoj, token, klucz })` i ustawia `?pokoj=` w adresie
-  (odświeżenie strony wraca do pokoju, link działa jak zaproszenie; pokój na hasło otwiera pole hasła w panelu).
-  „← Panel” w lobby = `opuscPokoj()` (`wyjdz`, `net.stop()`, zerowanie stanu lobby). `mojeId` = id konta.
+  (odświeżenie strony wraca do areny, link działa jak zaproszenie; arena na hasło otwiera pole hasła na liście).
+  „← Areny” w lobby = `opuscPokoj()` (`wyjdz`, `net.stop()`, zerowanie stanu lobby). `mojeId` = id konta.
+  Po partii „Wracam do lobby” → `otworzArene()` z lobby tej samej areny.
+- **Akcesoria w grze**: `nowa.gracze[].akc` → `akcesoriaPartii()` (mapa id → akcesorium) → `R.draw(…, { akcesoria })`
+  → `drawWorm` (`o.akc`; `tyl` rysuje przed ciałem, reszta po oczach; pasek HP i nick 5 px wyżej). Poza symulacją
+  i hashem, więc nie rusza determinizmu ani `WERSJA`.
 - Koniec partii: `wyslijWynikPartii` (kille = `partia.os.fragi`), odpowiedź nadpisuje kopię w `localStorage`.
 
 ### Protokół tury
@@ -717,40 +736,11 @@ brak obrażeń od swoich i tury na zmianę drużynami są już w 4.2*; zostaje t
 dorzucać po kilka w wersji. **Otwarte pytania do użytkownika**: od czego zaczynamy; ile robali domyślnie
 w drużynie (2 czy 3); czy robimy czapki i bronie z postaci ekipy; czy robimy wspólny ranking.
 
-### Plan: konta, ekran „GRAJ” i panel aren (propozycja 2026-09-27, czeka na decyzję)
-Użytkownik zapowiedział przejście na konta i „cały panel aren i lobby”. Na razie tylko plan, bez kodu.
-
-**Zrobione w 4.6** (inaczej niż w planie — użytkownik chciał od razu konta): logowanie/rejestracja, ekran
-ładowania, panel z GRAJ, lista pokoi z hasłem albo bez, ranking killi, statystyki i osiągnięcia na koncie
-(sekcja 3.1 i „Wejście do Areny”). Konto jest tylko dla Areny (zrzutka bez zmian). Zostaje z planu: znajomi,
-zaproszenia, historia partii, czapki, ewentualnie konto także w zrzutce i logowanie Google.
-
-**Etap A — ekran przejściowy z GRAJ (4.6, sam klient)**
-- Klik „Arena” → `gra/` pokazuje najpierw **hub**: duży przycisk **GRAJ**, karta profilu (nick, kolor robala,
-  statystyki i osiągnięcia z `localStorage`), przyciski Pokoje (na razie wyszarzone), Ustawienia (dźwięk),
-  Osiągnięcia. Dzisiejszy ekran wejścia (nick + kolor) staje się edycją profilu w hubie.
-- GRAJ = wejście do domyślnego pokoju jak dziś. Protokół i serwer bez zmian.
-
-**Etap B — lista pokoi (4.7, serwer)**
-- Serwer ma już pokoje (`?pokoj=`). Dochodzi `GET /api/pokoje` (nazwa, gospodarz, gracze n/8, lobby/partia,
-  skrót ustawień), odświeżane w hubie co kilka sekund albo przez gniazdo.
-- „Stwórz pokój” (nazwa, publiczny/prywatny z 4-znakowym kodem), „Dołącz kodem”, GRAJ = szybka gra
-  (najpełniejsze otwarte lobby albo nowy pokój). Pusty pokój znika po kilku minutach. Limit pokoi na IP.
-
-**Etap C — konta (5.0, serwer + klient)**
-- Rejestracja: nick (unikalny bez względu na wielkość liter) + hasło, **bez maila** (mniej danych osobowych).
-  Hasło tylko jako skrót `crypto.scrypt` z solą (wbudowany Node, bez nowych zależności), plik
-  `/var/lib/arena/konta.json` z kopiami jak zrzutka. Reset hasła robi właściciel promptem na VPS.
-- Logowanie daje losowy token sesji (np. 30 dni) w `localStorage`; token idzie w `dolacz` i przy wpłatach.
-  Serwer podmienia nick na ten z konta — nikt nie podszyje się pod cudzy nick. Limity prób logowania na IP.
-- Konto trzyma: nick, kolor, (później czapkę), statystyki i osiągnięcia Areny, odznaki zrzutki. Przy pierwszym
-  logowaniu przenosi to, co było w `localStorage`. Granie **jako gość** zostaje.
-- Jedno konto na całą stronę (Arena + zrzutka: nick sponsora = nick konta).
-
-**Etap D — dalej**: wspólny ranking Areny, znajomi i zaproszenia do pokoju, historia partii, czapki postaci.
-
-**Otwarte pytania**: nick + hasło czy logowanie Google; czy konto obejmuje też zrzutkę; czy goście mogą grać
-(propozycja: tak); czy ranking ma być publiczny. Kolejność proponowana: A → B → C → D.
+### Konta i panel Areny — co zostało z planu (2026-09-27)
+Zrobione: konta, ekran ładowania, lista aren z hasłem albo bez, ranking killi, statystyki i osiągnięcia na koncie
+(4.6), pasek nawigacji, panel + lobby na jednym ekranie, bez domyślnej areny, akcesoria (4.7). Konto jest tylko
+dla Areny (zrzutka bez zmian, goście nie grają). Zostaje do decyzji: znajomi i zaproszenia, historia partii,
+więcej akcesoriów (np. czapki postaci ze zrzutki), ewentualnie konto także w zrzutce i logowanie Google.
 
 ---
 
@@ -782,6 +772,7 @@ zaproszenia, historia partii, czapki, ewentualnie konto także w zrzutce i logow
   - **4.5** mapa ekstremalna, rozmiar mapy, wpisywane życie/czas/lawa, obracany most (R), dalszy rzut granatów
   - **4.5.1** ekstremalna = wszystkie style naraz, iglice pod niebo
   - **4.6** konta Areny (logowanie, statystyki i osiągnięcia na koncie), ekran ładowania, panel z GRAJ, pokoje na hasło, ranking killi
+  - **4.7** pasek Fortnite/0 A.D./Arena w grze, panel + lobby na jednym ekranie, bez domyślnej areny, 5 akcesoriów robala, nowy ekran ładowania
 
 ---
 
@@ -790,7 +781,7 @@ zaproszenia, historia partii, czapki, ewentualnie konto także w zrzutce i logow
 ```
 node gra/test/sim.test.mjs        # symulacja, bronie, determinizm, drużyny, ustawienia, skrzynki, spawny, osiągnięcia, kamera, lina, most obracany, rozmiar mapy (80)
 node gra/test/protokol.test.mjs   # protokół: lag, rozłączenia, ucieczka na żywo, lobby, ustawienia, partie 2v2 i z własnymi zasadami (21, ~30 s)
-cd serwer && npm install && node test.mjs   # serwer na VPS: Arena (10) + konta i pokoje (7) + zrzutka (7)
+cd serwer && npm install && node test.mjs   # serwer na VPS: Arena (10) + konta, pokoje i akcesoria (9) + zrzutka (7)
 ```
 Obie muszą przejść przed pushem. Dodatkowo `node --check` na zmienionych plikach JS.
 Test protokołu gra losowe partie. Zmiana listy broni zmienia ich przebieg. Jeśli padnie test zależny od
@@ -816,7 +807,9 @@ skończyć się właśnie wtedy — inaczej „różny stan” to tylko nieprzyj
   gra pod `http://localhost:8765/gra/?serwer=ws://127.0.0.1:8787/ws&pokoj=test1` (dla każdego przebiegu nowy
   pokój — bez duchów w lobby). **Od 4.6 najpierw konto**: w świeżym kontekście otwiera się `#ekran-logowanie`
   na zakładce zakładania — `#input-nick`, `#input-haslo`, `#input-haslo2`, klik `#btn-konto`; z `?pokoj=` po
-  ładowaniu od razu lobby, bez niego `#ekran-panel` (`#btn-graj`). Serwer bez `KONTA_PLIK`/`ZRZUTKA_PLIK` trzyma
+  ładowaniu od razu lobby, bez niego `#ekran-arena` z listą aren — arenę zakłada się formularzem
+  (`#input-pokoj-nazwa`, `#input-pokoj-haslo`, `#btn-pokoj`), drugi gracz wchodzi z `#lista-pokoi` (lista odświeża
+  się co 5 s). Lobby jest w `#widok-lobby`, powrót `#btn-panel`. Serwer bez `KONTA_PLIK`/`ZRZUTKA_PLIK` trzyma
   konta w pamięci (restart = nicki wolne). Konto przez API: `POST /api/konto/rejestracja`, a token włóż do
   `localStorage['arena:token']` przez `addInitScript`. Id gracza to `k-nick`. Partia rusza, gdy wszyscy klikną `#btn-gotowy` (+5 s). `__arena().transport` = `ws`
   (gdy gracz jest w lobby; przed wpisaniem nicku `null`). `__arena().lobby` = tryb i drużyny w lobby,

@@ -57,7 +57,7 @@ export function zloz(zdarzenia) {
     seed: null,
     gracze: [],            // uczestnicy bieżącej partii (z polem druzyna)
     druzyny: 0,            // tryb bieżącej partii: 0 = każdy na każdego, n = tyle drużyn
-    wLobby: [],            // zgłoszeni: { id, name, color, v, druzyna, druzynaNr, gotowy }
+    wLobby: [],            // zgłoszeni: { id, name, color, akc, v, druzyna, druzynaNr, gotowy }
     tryb: 0,               // tryb ustawiony w lobby przez gospodarza
     ustawienia: U.domyslne(),   // ustawienia następnej partii (lobby, gospodarz)
     ustawieniaGry: U.domyslne(),// ustawienia bieżącej partii (z 'nowa')
@@ -94,9 +94,11 @@ export function zloz(zdarzenia) {
       case 'dolacz': {
         p.wyrzuceni.delete(z.id);
         const byl = wLobby(z.id);
-        if (byl) { byl.name = z.name; byl.color = z.color; byl.v = z.v | 0; }
+        // akc — akcesorium robala (od 4.7, sama grafika): leci dalej w 'nowa.gracze'
+        const akc = typeof z.akc === 'string' ? z.akc : null;
+        if (byl) { byl.name = z.name; byl.color = z.color; byl.akc = akc; byl.v = z.v | 0; }
         else if (typeof z.id === 'string') {
-          p.wLobby.push({ id: z.id, name: String(z.name || '?'), color: z.color, v: z.v | 0, druzyna: null, druzynaNr: 0, gotowy: false });
+          p.wLobby.push({ id: z.id, name: String(z.name || '?'), color: z.color, akc, v: z.v | 0, druzyna: null, druzynaNr: 0, gotowy: false });
           p.odliczanieDo = null;      // nowy gracz jeszcze nie jest gotowy
         }
         break;
@@ -219,7 +221,7 @@ export function zloz(zdarzenia) {
         // partii w tej samej kolejności (gospodarz zostaje ten sam), w tych samych drużynach.
         p.wLobby = z.gracze.filter((g) => g && typeof g.id === 'string')
           .map((g, k) => ({
-            id: g.id, name: String(g.name || '?'), color: g.color, v: z.v | 0,
+            id: g.id, name: String(g.name || '?'), color: g.color, akc: typeof g.akc === 'string' ? g.akc : null, v: z.v | 0,
             druzyna: p.druzyny && Number.isInteger(g.druzyna) ? g.druzyna : null, druzynaNr: -100 + k, gotowy: false
           }));
         p.odliczanieDo = null;

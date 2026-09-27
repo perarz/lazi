@@ -24,7 +24,7 @@
      POST /api/konto/logowanie        { nick, haslo } → { token, konto }
      POST /api/konto/ja               { token } → { konto }
      POST /api/konto/wyloguj          { token }
-     POST /api/konto/kolor            { token, kolor }
+     POST /api/konto/wyglad           { token, kolor?, akcesorium? }  (dawniej /kolor — zostaje jako alias)
      POST /api/konto/wynik            { token, partia, kille, obrazenia, wygrana, rekordTury, osiagniecia }
      GET  /api/ranking                — top 50 po killach
      GET  /api/pokoje                 — lista pokoi (nazwa, hasło tak/nie, gracze, czy trwa partia)
@@ -50,7 +50,7 @@ const crypto = require('crypto');
 const { WebSocketServer } = require('ws');
 const { Pokoj, MAX_ZDARZENIE } = require('./pokoj');
 const { Zrzutka, SEZON } = require('./zrzutka');
-const { Konta } = require('./konta');
+const { Konta, AKCESORIA } = require('./konta');
 const { czystyTekst } = require('./gracze');
 
 const PORT = Number(process.env.ARENA_PORT) || 8787;
@@ -113,14 +113,18 @@ function przypnijKonto(z, konto) {
   if (!z || typeof z !== 'object' || Array.isArray(z) || !konto) return z;
   const wynik = { ...z };
   if ('id' in wynik) wynik.id = konto.id;
-  if (wynik.t === 'dolacz') wynik.name = konto.nick.slice(0, 14);
+  if (wynik.t === 'dolacz') {
+    wynik.name = konto.nick.slice(0, 14);
+    if (wynik.akc != null && !AKCESORIA.includes(wynik.akc)) delete wynik.akc;
+  }
   return wynik;
 }
 
-const NAZWA_GLOWNEGO = 'Arena główna';
+/* Od 4.7 nie ma domyślnej areny: grać można tylko w pokoju, który ktoś założył
+   (pokój bez opisu — np. z testów — pojawia się na liście tylko, gdy ktoś w nim jest). */
 function listaPokoi(teraz = Date.now()) {
   const wynik = [];
-  const nazwy = new Set(['glowny', ...opisy.keys(), ...polaczenia.keys()]);
+  const nazwy = new Set([...opisy.keys(), ...polaczenia.keys()]);
   for (const id of nazwy) {
     const o = opisy.get(id);
     const p = pokoje.get(id);
@@ -136,7 +140,7 @@ function listaPokoi(teraz = Date.now()) {
     }
     wynik.push({
       id,
-      nazwa: o ? o.nazwa : id === 'glowny' ? NAZWA_GLOWNEGO : id,
+      nazwa: o ? o.nazwa : id,
       haslo: !!(o && o.hasloHash),
       zalozyl: o ? o.zalozyl : null,
       gracze: [...nicki].slice(0, 12),
@@ -144,8 +148,8 @@ function listaPokoi(teraz = Date.now()) {
       partia
     });
   }
-  // główny zawsze pierwszy, potem najpełniejsze
-  wynik.sort((a, b) => (b.id === 'glowny') - (a.id === 'glowny') || b.ile - a.ile || a.nazwa.localeCompare(b.nazwa));
+  // najpełniejsze na górze, potem po nazwie
+  wynik.sort((a, b) => b.ile - a.ile || a.nazwa.localeCompare(b.nazwa));
   return { pokoje: wynik.slice(0, 60) };
 }
 
@@ -327,7 +331,7 @@ const serwer = http.createServer((req, res) => {
           const k = konta.zTokenu(dane.token);
           if (!k) return json(res, 401, { blad: 'zaloguj-sie' });
           if (u.pathname === '/api/konto/ja') w = { status: 200, dane: { konto: konta.widok(k) } };
-          else if (u.pathname === '/api/konto/kolor') w = konta.ustawKolor(k, dane.kolor);
+          else if (u.pathname === '/api/konto/wyglad' || u.pathname === '/api/konto/kolor') w = konta.ustawWyglad(k, dane);
           else if (u.pathname === '/api/konto/wynik') w = konta.wynik(k, dane);
           else if (u.pathname === '/api/pokoje') w = nowyPokoj(k, dane);
           else if (u.pathname === '/api/pokoje/wejdz') w = wejdzDoPokoju(dane);
