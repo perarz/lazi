@@ -47,7 +47,7 @@ export const ODWROT_KROKI = Math.round(ODWROT_S / DT);
 const ODWROT_LEWO = 1, ODWROT_PRAWO = 2, ODWROT_SKOK = 4;
 
 /* Nagła śmierć: po tylu pełnych rundach lawa zaczyna wzbierać,
-   żeby partia nie ciągnęła się w nieskończoność. Domyślnie — w partii state.ust.lawa. */
+   żeby partia nie ciągnęła się w nieskończoność. Domyślnie — w partii state.ust.lawaOd (od której rundy). */
 export const LAWA_PO_RUNDACH = 6;
 const LAWA_ZA_TURE = 12;
 const LAWA_MIN = 40;                // od 4.3.1 mapy są wysokie — lawa dochodzi prawie pod sufit
@@ -95,7 +95,11 @@ export function kolejnoscTur(seed, ids) {
    życie, bronie, zrzuty, wiatr, nagła śmierć. Brak = standardowe. */
 export function createGame(seed, players, opcje = {}) {
   const ust = normalizuj(opcje.ustawienia);
-  const terrain = T.createTerrain(seed);
+  // rozmiar i styl „ekstremalna” (4.5) idą z ustawień — teren niesie je w t.opcje dla rebuild()
+  const terrain = T.createTerrain(seed, {
+    szer: T.SZEROKOSCI[ust.rozmiar] || T.WORLD_W,
+    styl: ust.mapa === 'ekstremalna' ? 'ekstremalna' : null
+  });
   const spawns = T.spawnPoints(terrain, players.length, seed);
 
   const worms = players.map((p, i) => ({
@@ -108,8 +112,8 @@ export function createGame(seed, players, opcje = {}) {
     vx: 0,
     vy: 0,
     hp: ust.hp,
-    facing: spawns[i].x < T.WORLD_W / 2 ? 1 : -1,
-    angle: spawns[i].x < T.WORLD_W / 2 ? -0.6 : Math.PI + 0.6,
+    facing: spawns[i].x < terrain.w / 2 ? 1 : -1,
+    angle: spawns[i].x < terrain.w / 2 ? -0.6 : Math.PI + 0.6,
     alive: true,
     onGround: true,
     amunicja: startowaAmunicja(ust.bronie),
@@ -145,6 +149,7 @@ export function createGame(seed, players, opcje = {}) {
     odwrotNagranie: null,
     skokWKolejce: false,
     cel: null,                 // punkt nalotu wskazany przez strzelca
+    mostObrot: 0,              // obrót mostu (0–7, co 22,5°) — tylko u strzelca, leci w akcji jako cel.k
     sieciowa: !!opcje.sieciowa,
     akcjeDoWyslania: [],       // strzały oddane lokalnie, do opublikowania
     events: [],
@@ -196,7 +201,7 @@ export function linaPrzelacz(state) {
   const x0 = w.x, y0 = w.y - WORM_H * 0.5;
   for (let d = 26; d <= WEAPONS.lina.zasieg; d += 3) {   // od 26 px — nie łapie ściany, o którą robal się opiera
     const x = x0 + c * d, y = y0 + s * d;
-    if (x < 0 || x >= T.WORLD_W || y < 0) break;
+    if (x < 0 || x >= state.terrain.w || y < 0) break;
     if (T.solidAt(state.terrain, x, y)) {
       w.lina = { x: Math.round(x), y: Math.round(y), dl: d };
       if (zapas !== undefined) w.amunicja.lina = zapas - 1;
@@ -246,7 +251,7 @@ function krokLiny(state, w, ster, inp) {
     w.x = nx;
     w.y = ny;
   }
-  w.x = Math.max(2, Math.min(T.WORLD_W - 2, w.x));
+  w.x = Math.max(2, Math.min(state.terrain.w - 2, w.x));
   if (w.y > state.lava) { odczep(w); killWorm(state, w, 'lawa'); }
 }
 
@@ -290,7 +295,7 @@ export function ustawCelownik(state, kat) {
 export function ustawCel(state, x, y) {
   if (state.phase !== 'aim' || state.firedThisTurn) return;
   state.cel = {
-    x: Math.max(0, Math.min(T.WORLD_W, Math.round(x))),
+    x: Math.max(0, Math.min(state.terrain.w, Math.round(x))),
     y: Math.max(0, Math.min(T.WORLD_H, Math.round(y)))
   };
 }
@@ -309,16 +314,24 @@ export function mozeStrzelic(state, weaponId) {
 
 /* Czy w tym miejscu da się postawić most — null znaczy, że tak.
    Sprawdza tylko strzelec (odbiorca stawia most z kanonicznej akcji). */
-export function powodBrakuMostu(state, w, cel) {
+export function powodBrakuMostu(state, w, cel, k = state.mostObrot | 0) {
   if (!cel) return 'brak celu';
   const weapon = WEAPONS.most;
   const dx = cel.x - w.x, dy = cel.y - (w.y - WORM_H * 0.5);
   if (dx * dx + dy * dy > weapon.zasiegBudowy * weapon.zasiegBudowy) return 'za daleko';
   if (cel.y > state.lava - 12 || cel.y < 20) return 'nie tutaj';
-  const kolizja = state.worms.some((r) => r.alive &&
-    Math.abs(r.x - cel.x) < T.MOST_DL / 2 + 6 && cel.y + T.MOST_GR > r.y - WORM_H - 2 && cel.y < r.y + 1);
+  const kolizja = k
+    ? state.worms.some((r) => r.alive && [2, WORM_H * 0.5, WORM_H].some((h) => T.wMoscie(cel.x, cel.y, k, r.x, r.y - h, 6)))
+    : state.worms.some((r) => r.alive &&
+      Math.abs(r.x - cel.x) < T.MOST_DL / 2 + 6 && cel.y + T.MOST_GR > r.y - WORM_H - 2 && cel.y < r.y + 1);
   if (kolizja) return 'robal na drodze';
   return null;
+}
+
+/* Klawisz R / przycisk ⟳: następne ustawienie mostu (co 22,5°). */
+export function obrocMost(state) {
+  state.mostObrot = ((state.mostObrot | 0) + 1) % T.MOST_KIERUNKI.length;
+  return state.mostObrot;
 }
 
 export function startCharging(state) {
@@ -368,7 +381,9 @@ export function przygotujStrzal(state) {
     kratery: plaskieKratery(state),
     skrzynki: stanSkrzynek(state),
     start: obliczStart(w, weapon, w.angle, power),
-    cel: weapon.celowany && state.cel ? { x: state.cel.x, y: state.cel.y } : null
+    cel: weapon.celowany && state.cel
+      ? (weapon.kind === 'most' && state.mostObrot ? { x: state.cel.x, y: state.cel.y, k: state.mostObrot } : { x: state.cel.x, y: state.cel.y })
+      : null
   };
 }
 
@@ -443,7 +458,8 @@ export function applyFire(state, action) {
   } else if (weapon.kind === 'most') {
     const cel = action.cel;
     if (cel) {
-      const r = T.carve(state.terrain, cel.x, cel.y, -1);
+      const k = Number.isInteger(cel.k) && cel.k > 0 && cel.k < T.MOST_KIERUNKI.length ? cel.k : 0;
+      const r = T.carve(state.terrain, cel.x, cel.y, -1 - k);
       state.events.push({ type: 'most', x: Math.round(cel.x), y: Math.round(cel.y), x0: r.x0, x1: r.x1 });
     }
   } else if (weapon.kind === 'salwa') {
@@ -511,7 +527,7 @@ function ciosKijem(state, w, start, weapon) {
 function teleportuj(state, w, cel) {
   if (!cel) return;
   const t = state.terrain;
-  const x = Math.round(Math.max(12, Math.min(T.WORLD_W - 12, cel.x)));
+  const x = Math.round(Math.max(12, Math.min(state.terrain.w - 12, cel.x)));
   let y = Math.round(cel.y);
   const wolne = (yy) => !T.solidAt(t, x, yy - 1) && !T.solidAt(t, x, yy - WORM_H * 0.5) && !T.solidAt(t, x, yy - WORM_H + 1);
   let n = 0;
@@ -536,7 +552,7 @@ function strzalNatychmiastowy(state, w, start, weapon) {
   for (let i = 0; i < kroki; i++) {
     x += dx;
     y += dy;
-    if (x < 0 || x >= T.WORLD_W || y >= state.lava || y < -200) break;
+    if (x < 0 || x >= state.terrain.w || y >= state.lava || y < -200) break;
     if (T.solidAt(t, x, y)) { wSkale = true; break; }
     trafiony = state.worms.find(
       (o) => o.alive && o.id !== w.id && !swoj(state, o, w.id) && Math.abs(o.x - x) < 9 && y > o.y - WORM_H && y < o.y
@@ -843,7 +859,7 @@ function stepProjectiles(state) {
 
     if (done) continue;
 
-    if (p.y > state.lava || p.x < -80 || p.x > T.WORLD_W + 80) {
+    if (p.y > state.lava || p.x < -80 || p.x > state.terrain.w + 80) {
       state.projectiles.splice(i, 1);
       state.events.push({ type: 'plusk', x: p.x, y: Math.min(p.y, state.lava) });
     }
@@ -897,7 +913,7 @@ function krokOwcy(state, p, weapon, i) {
     (w) => w.alive && w.id !== p.ownerId && !swoj(state, w, p.ownerId) && Math.abs(w.x - p.x) < 11 && p.y > w.y - WORM_H - 4 && p.y < w.y + 4
   );
   if (trafiony) { detonate(state, p, i); return; }
-  if (p.y > state.lava || p.x < -80 || p.x > T.WORLD_W + 80) {
+  if (p.y > state.lava || p.x < -80 || p.x > state.terrain.w + 80) {
     state.projectiles.splice(i, 1);
     state.events.push({ type: 'plusk', x: p.x, y: Math.min(p.y, state.lava) });
   }
@@ -917,7 +933,7 @@ function krokWiertla(state, p, weapon, i) {
     (w) => w.alive && w.id !== p.ownerId && !swoj(state, w, p.ownerId) && Math.abs(w.x - p.x) < 10 && p.y > w.y - WORM_H - 2 && p.y < w.y + 2
   );
   if (trafiony) { detonate(state, p, i); return; }
-  if (p.y > state.lava || p.y < -200 || p.x < -80 || p.x > T.WORLD_W + 80) {
+  if (p.y > state.lava || p.y < -200 || p.x < -80 || p.x > state.terrain.w + 80) {
     state.projectiles.splice(i, 1);
     if (p.y > state.lava) state.events.push({ type: 'plusk', x: p.x, y: state.lava });
   }
@@ -1070,10 +1086,9 @@ function nextTurn(state) {
   }
 
   state.turnNumber++;
-  // ustawienie 'lawa': ujemne = po tylu rundach, dodatnie = od tej tury, 0 = nigdy
-  const lawa = state.ust.lawa;
-  const od = lawa < 0 ? state.order.length * -lawa : lawa;
-  if (lawa && state.turnNumber >= od) {
+  // ustawienie 'lawaOd': od której rundy (pełnego kółka graczy) lawa rośnie, 0 = nigdy
+  const lawaOd = state.ust.lawaOd;
+  if (lawaOd && state.turnNumber >= state.order.length * lawaOd) {
     const nowa = Math.max(LAWA_MIN, state.lava - (state.ust.lawaTempo || LAWA_ZA_TURE));
     if (nowa !== state.lava) {
       state.lava = nowa;
@@ -1095,7 +1110,7 @@ function zrzutZaopatrzenia(state) {
   let typ = rng() < 0.6 ? 'apteczka' : 'zapas';
   if (!zapasyDla(state.ust.bronie).length) typ = 'apteczka';   // „Szał”: zapas nie ma czego dać
   for (let proba = 0; proba < 12; proba++) {
-    const x = Math.round(T.WORLD_W * (0.1 + rng() * 0.8));
+    const x = Math.round(state.terrain.w * (0.1 + rng() * 0.8));
     const y = T.findGround(state.terrain, x, 0, 0, state.lava - 12);
     if (y === null || y > state.lava - 16) continue;
     if (state.worms.some((w) => w.alive && Math.abs(w.x - x) < 40)) continue;
@@ -1277,7 +1292,7 @@ export function ustawKratery(state, plaska) {
   for (let i = 0; i + 2 < plaska.length; i += 3) {
     lista.push({ x: plaska[i], y: plaska[i + 1], r: plaska[i + 2] });
   }
-  state.terrain = T.rebuild(state.seed, lista);
+  state.terrain = T.rebuild(state.seed, lista, state.terrain.opcje);
   return true;
 }
 

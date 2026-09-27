@@ -69,6 +69,7 @@ export function attachInput(opts) {
     if (e.code === 'Escape') { opts.zamknijEkwipunek?.(); return; }
     if (e.code === 'KeyQ') { e.preventDefault(); if (!e.repeat) opts.onEkwipunek?.(); return; }
     if (e.code === 'KeyE') { e.preventDefault(); if (!e.repeat) opts.onEmotki?.(); return; }
+    if (e.code === 'KeyR') { e.preventDefault(); if (!e.repeat) opts.onObrot?.(); return; }
     const wPanelu = !!(e.target && e.target.closest && e.target.closest('.ekwipunek'));
     if (wPanelu && (e.code === 'Enter' || e.code === 'NumpadEnter' || e.code === 'Space')) return;
 

@@ -5,6 +5,17 @@
 (function () {
   var historia = [
     {
+      wersja: '4.5', data: '2026-09-27', tytul: 'Mapy na zamówienie i obracane mosty',
+      zmiany: [
+        'Nowa mapa „Ekstremalna”: jedna wielka góra-mrowisko od brzegu do brzegu — piętra, kominy i ukośne tunele połączone w jedną sieć. Lina ninja obowiązkowa.',
+        'Rozmiar mapy w ustawieniach partii: mała, normalna, duża albo ogromna (dwa razy szersza). Na większych mapach jest odpowiednio więcej jaskiń, pięter i skał.',
+        'Życie na start, czas tury i rundę, od której rośnie lawa, gospodarz wpisuje teraz sam (np. 237 HP, 75 s, lawa od 3. rundy, 0 = bez lawy) zamiast wybierać z listy.',
+        'Most da się obracać: klawisz R albo przycisk ⟳ przy broni obraca belkę co 22,5° — skosy i pionowe ściany. Podgląd pokazuje, jak stanie.',
+        'Granaty, kasetówki i Święty GOAT lecą jeszcze dalej (ok. 1,4 raza).',
+        'Chmurka z emotkami 💬 przeniesiona na dół, obok broni — pod kciukiem.'
+      ]
+    },
+    {
       wersja: '4.4', data: '2026-09-27', tytul: 'Lina ninja, Święty GOAT, emotki i tańce',
       zmiany: [
         'Nowość: Lina ninja (klawisz ], ekwipunek → Sprzęt, 5 sztuk). Celuj w skałę i stuknij OGNIA — hak się zaczepia. ◀ ▶ bujanie, ▲▼ skracanie i wydłużanie liny, OGNIA albo SKOK puszcza. Nie kończy tury, więc można przebujać się między piętrami jaskiń i dopiero strzelić. Inni widzą linę na żywo.',

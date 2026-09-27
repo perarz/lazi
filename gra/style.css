@@ -134,7 +134,8 @@ html, body {
 .obserwatorzy[hidden] { display: none; }
 .obserwatorzy b { font-weight: 700; font-variant-numeric: tabular-nums; color: var(--zar-jasny); }
 .emotki-panel {
-  position: absolute; top: calc(64px + var(--bezp-g)); right: calc(12px + var(--bezp-p)); z-index: 30;
+  /* nad przyciskiem 💬 przy broni — dokładną wysokość ustawia main.js */
+  position: fixed; bottom: calc(120px + var(--bezp-d)); left: 0; right: 0; margin-inline: auto; width: fit-content; z-index: 30;
   display: grid; grid-template-columns: repeat(5, 48px); gap: 6px; padding: 10px;
   pointer-events: auto;
 }
@@ -191,6 +192,21 @@ html, body {
   display: flex; flex-direction: column; align-items: center; gap: 6px;
   max-width: 100%;
 }
+.rzad-broni { display: flex; align-items: stretch; gap: 6px; max-width: 100%; }
+.przycisk-obok {
+  pointer-events: auto;
+  min-width: 46px; min-height: 46px; padding: 0 10px;
+  font-size: 20px; line-height: 1;
+  background: var(--panel);
+  border: 1px solid var(--obwodka);
+  border-radius: 12px;
+  color: var(--tekst);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+}
+.przycisk-obok[hidden] { display: none; }
+.przycisk-obok[aria-expanded="true"] { border-color: var(--zar-jasny); }
 
 /* aktualna broń — stuknięcie otwiera ekwipunek */
 .bron-wybrana {
@@ -630,22 +646,22 @@ button:disabled { opacity: 0.35; cursor: not-allowed; }
 }
 .ustawienie { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
 .ustawienie span { font-size: 11px; opacity: 0.7; letter-spacing: 0.04em; }
-.ustawienie select {
+.ustawienie select, .ustawienie input {
   width: 100%; min-height: 40px; padding: 8px 10px;
   background: rgba(255, 106, 0, 0.12); color: var(--tekst);
   border: 1px solid var(--obwodka); border-radius: 8px;
   font-family: inherit; font-size: 13px;
   text-overflow: ellipsis;
 }
-.ustawienie select:focus-visible { outline: 2px solid var(--zar-jasny); outline-offset: 1px; }
+.ustawienie select:focus-visible, .ustawienie input:focus-visible { outline: 2px solid var(--zar-jasny); outline-offset: 1px; }
 .ustawienie select option { background: #1a1210; color: #fff; }
-.ustawienie.zmienione select { border-color: var(--zar-jasny); }
+.ustawienie.zmienione select, .ustawienie.zmienione input { border-color: var(--zar-jasny); }
 /* reszta graczy widzi wartości jak zwykły tekst */
-.ustawienie select:disabled {
+.ustawienie select:disabled, .ustawienie input:disabled {
   opacity: 1; cursor: default; appearance: none; -webkit-appearance: none;
   background: rgba(255, 255, 255, 0.04); border-color: rgba(255, 255, 255, 0.1);
 }
-.ustawienie.zmienione select:disabled { border-color: rgba(255, 217, 59, 0.55); }
+.ustawienie.zmienione select:disabled, .ustawienie.zmienione input:disabled { border-color: rgba(255, 217, 59, 0.55); }
 .ustawienia-reset { display: block; margin: 0 12px 12px auto; padding: 8px 12px; font-size: 12px; }
 .ustawienia-reset[hidden] { display: none; }
 

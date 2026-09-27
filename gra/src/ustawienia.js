@@ -1,23 +1,32 @@
 /* Ustawienia partii wybierane przez gospodarza lobby (od 4.3).
 
    Czysta tabela i walidacja, bez DOM-u — czyta ją lobby (main.js),
-   protokół (czas tury) i symulacja (życie, lawa, zrzuty, wiatr, bronie).
+   protokół (czas tury) i symulacja (życie, lawa, zrzuty, wiatr, bronie, mapa).
    Ustawienia lecą w zdarzeniu 'nowa', więc każdy klient tworzy partię
    z tymi samymi liczbami. Dopisując nowe: pozycja tutaj, obsługa w sim.js
-   i — jeśli zmienia coś, czego nie ma w snapshocie — nic więcej. */
+   i — jeśli zmienia coś, czego nie ma w snapshocie — nic więcej.
+
+   Pozycja ma albo `opcje` (lista do wyboru), albo `liczba` (od 4.5 gospodarz
+   wpisuje wartość sam): { min, max, jednostka?, zero? } — `zero` to napis
+   dla wartości 0 (np. „nigdy”). */
 
 export const USTAWIENIA = [
   {
-    klucz: 'czas', nazwa: 'Czas tury', dom: 30,
-    opcje: [[15, '15 s'], [20, '20 s'], [30, '30 s'], [45, '45 s'], [60, '60 s']]
+    klucz: 'czas', nazwa: 'Czas tury (s)', dom: 30,
+    liczba: { min: 10, max: 120, jednostka: 's' }
   },
   {
     klucz: 'hp', nazwa: 'Życie na start', dom: 100,
-    opcje: [[50, '50 HP'], [100, '100 HP'], [150, '150 HP'], [200, '200 HP']]
+    liczba: { min: 10, max: 500, jednostka: 'HP' }
   },
   {
     klucz: 'mapa', nazwa: 'Mapa', dom: 'losowa',
-    opcje: [['losowa', 'Losowa'], ['gory', 'Góry'], ['archipelag', 'Archipelag'], ['kaniony', 'Kaniony'], ['jaskinie', 'Jaskinie']]
+    opcje: [['losowa', 'Losowa'], ['gory', 'Góry'], ['archipelag', 'Archipelag'], ['kaniony', 'Kaniony'],
+      ['jaskinie', 'Jaskinie'], ['ekstremalna', 'Ekstremalna']]
+  },
+  {
+    klucz: 'rozmiar', nazwa: 'Rozmiar mapy', dom: 'normalna',
+    opcje: [['mala', 'Mała'], ['normalna', 'Normalna'], ['duza', 'Duża'], ['ogromna', 'Ogromna']]
   },
   {
     klucz: 'bronie', nazwa: 'Bronie', dom: 'pelny',
@@ -32,9 +41,9 @@ export const USTAWIENIA = [
     opcje: [[0, 'Bez wiatru'], [1, 'Normalny'], [2, 'Huragan']]
   },
   {
-    // ujemne = po tylu pełnych rundach (dawny standard), dodatnie = od tej tury, 0 = nigdy
-    klucz: 'lawa', nazwa: 'Lawa rośnie od', dom: -6,
-    opcje: [[-6, '6. rundy'], [10, '10. tury'], [20, '20. tury'], [30, '30. tury'], [45, '45. tury'], [0, 'Nigdy']]
+    // od której rundy (pełnego kółka graczy) lawa rośnie; 0 = nigdy
+    klucz: 'lawaOd', nazwa: 'Lawa od rundy (0=nie)', dom: 6,
+    liczba: { min: 0, max: 99, zero: 'nigdy' }
   },
   {
     klucz: 'lawaTempo', nazwa: 'Tempo lawy', dom: 12,
@@ -53,7 +62,18 @@ export function domyslne() {
 
 export function poprawna(klucz, w) {
   const o = USTAWIENIA.find((x) => x.klucz === klucz);
-  return !!o && o.opcje.some(([v]) => v === w);
+  if (!o) return false;
+  if (o.liczba) return Number.isInteger(w) && w >= o.liczba.min && w <= o.liczba.max;
+  return o.opcje.some(([v]) => v === w);
+}
+
+/* Wpisana liczba → poprawna wartość (przycięta do zakresu) albo null. */
+export function zLiczby(klucz, tekst) {
+  const o = USTAWIENIA.find((x) => x.klucz === klucz);
+  if (!o || !o.liczba) return null;
+  const n = Math.round(Number(String(tekst).replace(',', '.')));
+  if (!Number.isFinite(n)) return null;
+  return Math.max(o.liczba.min, Math.min(o.liczba.max, n));
 }
 
 /* Z dowolnego obiektu (np. z sieci) — pełne, poprawne ustawienia.
@@ -67,6 +87,7 @@ export function normalizuj(u) {
 
 export function etykieta(klucz, w) {
   const o = USTAWIENIA.find((x) => x.klucz === klucz);
+  if (o && o.liczba) return w === 0 && o.liczba.zero ? o.liczba.zero : w + (o.liczba.jednostka ? ' ' + o.liczba.jednostka : '');
   const op = o && o.opcje.find(([v]) => v === w);
   return op ? op[1] : String(w);
 }
@@ -77,9 +98,10 @@ export function opisZmian(u) {
   return USTAWIENIA.filter((o) => u[o.klucz] !== d[o.klucz]).map((o) => {
     const e = etykieta(o.klucz, u[o.klucz]);
     if (o.klucz === 'zrzuty') return 'zrzuty: ' + e.toLowerCase();
-    if (o.klucz === 'lawa') return u.lawa === 0 ? 'bez lawy' : 'lawa od ' + e.toLowerCase();
+    if (o.klucz === 'lawaOd') return u.lawaOd === 0 ? 'bez lawy' : 'lawa od ' + u.lawaOd + '. rundy';
     if (o.klucz === 'lawaTempo') return 'lawa: ' + e.toLowerCase();
     if (o.klucz === 'mapa') return 'mapa: ' + e;
+    if (o.klucz === 'rozmiar') return 'rozmiar: ' + e.toLowerCase();
     return e;
   });
 }
