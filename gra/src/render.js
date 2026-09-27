@@ -432,30 +432,61 @@ function drawProjectile(ctx, p) {
   ctx.translate(p.x, p.y);
 
   if (weapon.kind === 'owca') {
-    // owca: wełna z kilku kółek, czarny łepek w stronę biegu, przebierające nóżki
+    // koza (GOAT): smukłe ciało, rogi zagięte do tyłu, bródka, przebierające nóżki
     const kier = p.vx >= 0 ? 1 : -1;
     const t = performance.now() / 1000;
-    ctx.strokeStyle = '#222';
+    ctx.scale(kier, 1);                              // rysujemy w prawo, lustro dla biegu w lewo
+    ctx.strokeStyle = '#3b2a1c';
     ctx.lineWidth = 2;
-    for (const [lx, faza] of [[-5, 0], [-1, 1.6], [3, 3.1], [6, 4.7]]) {
-      const kr = Math.sin(t * 16 + faza) * 2;
+    ctx.lineCap = 'round';
+    for (const [lx, faza] of [[-6, 0], [-2, 1.6], [3, 3.1], [6.5, 4.7]]) {
+      const kr = Math.sin(t * 18 + faza) * 2.2;
       ctx.beginPath();
-      ctx.moveTo(lx * kier, -5);
-      ctx.lineTo(lx * kier + kr, 0);
+      ctx.moveTo(lx, -5);
+      ctx.lineTo(lx + kr, 0);
       ctx.stroke();
     }
-    ctx.fillStyle = '#f4f1ea';
-    for (const [bx, by, br] of [[-6, -9, 5], [-1, -11, 5.5], [4, -9, 5], [-3, -6, 5], [3, -6, 4.5]]) {
-      ctx.beginPath();
-      ctx.arc(bx * kier, by, br, 0, 6.283);
-      ctx.fill();
-    }
-    ctx.fillStyle = '#222';
+    // ogonek do góry
+    ctx.fillStyle = '#e9e1d2';
     ctx.beginPath();
-    ctx.ellipse(10 * kier, -10, 4.2, 3.4, 0, 0, 6.283);
+    ctx.ellipse(-9.5, -11, 1.6, 3, -0.5, 0, 6.283);
     ctx.fill();
-    ctx.fillStyle = '#fff';
-    ctx.fillRect(10 * kier + kier * 1.2 - 0.8, -11.5, 1.6, 1.6);
+    // tułów z łatą
+    ctx.fillStyle = '#efe7d8';
+    ctx.beginPath();
+    ctx.ellipse(0, -8.5, 9.5, 5, 0, 0, 6.283);
+    ctx.fill();
+    ctx.fillStyle = '#b89a78';
+    ctx.beginPath();
+    ctx.ellipse(-3, -10, 3.4, 2.4, 0.3, 0, 6.283);
+    ctx.fill();
+    // szyja i łeb
+    ctx.fillStyle = '#efe7d8';
+    ctx.beginPath();
+    ctx.moveTo(5, -11); ctx.lineTo(9, -17); ctx.lineTo(12, -15); ctx.lineTo(9, -8);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(12, -16, 3.8, 2.8, 0.35, 0, 6.283);
+    ctx.fill();
+    // rogi zagięte do tyłu
+    ctx.strokeStyle = '#6b5a45';
+    ctx.lineWidth = 1.8;
+    ctx.beginPath();
+    ctx.moveTo(10.5, -18.5); ctx.quadraticCurveTo(8, -23.5, 4.5, -22);
+    ctx.moveTo(12, -18.8); ctx.quadraticCurveTo(10.5, -24.5, 7, -24);
+    ctx.stroke();
+    // ucho, oko, bródka
+    ctx.fillStyle = '#d8ccb6';
+    ctx.beginPath();
+    ctx.ellipse(9, -16, 2.6, 1.1, -0.4, 0, 6.283);
+    ctx.fill();
+    ctx.fillStyle = '#1a1210';
+    ctx.fillRect(12.4, -17.4, 1.5, 1.5);
+    ctx.fillStyle = '#d8ccb6';
+    ctx.beginPath();
+    ctx.moveTo(13.5, -14); ctx.lineTo(15.2, -9.5); ctx.lineTo(12.6, -12.8);
+    ctx.fill();
+    ctx.scale(kier, 1);                              // napis lontu bez lustra
     if (p.fuse !== null) {
       ctx.font = 'bold 12px system-ui, sans-serif';
       ctx.textAlign = 'center';
@@ -463,8 +494,8 @@ function drawProjectile(ctx, p) {
       ctx.strokeStyle = 'rgba(0,0,0,0.7)';
       ctx.lineWidth = 3;
       const napis = Math.ceil(p.fuse).toString();
-      ctx.strokeText(napis, 0, -22);
-      ctx.fillText(napis, 0, -22);
+      ctx.strokeText(napis, 0, -30);                 // nad rogami
+      ctx.fillText(napis, 0, -30);
     }
     ctx.restore();
     return;

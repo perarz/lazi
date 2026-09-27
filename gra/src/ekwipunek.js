@@ -65,13 +65,16 @@ const IKONY = {
     '<rect x="15.5" y="16.4" width="7.5" height="2.8" rx="1" fill="#5d3e22" stroke="#2e1d0e" stroke-width=".9"/>' +
     '<path d="M12.6 19.4q.4 2.6 2.6 2.6" fill="none" stroke="#2f353a" stroke-width="1.2"/>' +
     '<g fill="#ffd23b" opacity=".9"><circle cx="31" cy="11.6" r="1"/><circle cx="31.2" cy="15" r="1.1"/><circle cx="30.8" cy="18.4" r="1"/></g>',
-  owca:
-    '<g stroke="#222" stroke-width="1.6" stroke-linecap="round"><path d="M9 22v5M13 23v5M19 23v5M23 22v5"/></g>' +
-    '<g fill="#f4f1ea" stroke="#9c958a" stroke-width=".9">' +
-    '<circle cx="9" cy="17" r="5"/><circle cx="14" cy="13.6" r="5.4"/><circle cx="20" cy="14.4" r="5.2"/><circle cx="13" cy="20" r="4.8"/><circle cx="19.5" cy="20" r="4.6"/></g>' +
-    '<ellipse cx="25.6" cy="15" rx="4.2" ry="3.4" fill="#222"/>' +
-    '<circle cx="26.8" cy="14" r="1" fill="#fff"/><path d="M23.4 12l-1.4-2" stroke="#222" stroke-width="1.6" stroke-linecap="round"/>' +
-    '<circle cx="16" cy="4.6" r="2" fill="#ff3b23"/><path d="M16 6.6v2.4" stroke="#3a2a1a" stroke-width="1.2"/>',
+  owca:   // od 4.3.1 koza (GOAT) — id broni zostaje
+    '<g stroke="#3b2a1c" stroke-width="1.7" stroke-linecap="round"><path d="M7 21v7M11 22v6M17 22v6M21 21v7"/></g>' +
+    '<ellipse cx="3.6" cy="15" rx="1.4" ry="2.6" fill="#e9e1d2" transform="rotate(-25 3.6 15)"/>' +
+    '<ellipse cx="14" cy="18" rx="10" ry="5.4" fill="#efe7d8" stroke="#9c8f7a" stroke-width=".9"/>' +
+    '<ellipse cx="10.5" cy="16.6" rx="3.4" ry="2.3" fill="#b89a78"/>' +
+    '<path d="M20 15l4-7 4 2-3.4 7z" fill="#efe7d8"/>' +
+    '<ellipse cx="27" cy="10" rx="3.8" ry="2.8" fill="#efe7d8" stroke="#9c8f7a" stroke-width=".8" transform="rotate(20 27 10)"/>' +
+    '<path d="M25.6 7.6q-2.6-5-6-3.4M27.2 7.4q-1.4-5.8-5-5.4" fill="none" stroke="#6b5a45" stroke-width="1.7" stroke-linecap="round"/>' +
+    '<rect x="27.4" y="8.6" width="1.4" height="1.4" fill="#1a1210"/>' +
+    '<path d="M28.4 12.2l1.6 4.6-2.6-3.4z" fill="#d8ccb6"/>',
   kij:
     '<g transform="rotate(40 16 16)">' +
     '<path d="M13.4 1.8c2.2-.7 5-.7 6.6.2l-1 20.5h-4.6z" fill="#d9a466" stroke="#6b4423" stroke-width="1.3" stroke-linejoin="round"/>' +

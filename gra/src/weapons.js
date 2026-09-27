@@ -101,7 +101,7 @@ export const WEAPONS = {
 
   owca: {
     id: 'owca',
-    name: 'Owca',
+    name: 'Koza',          // od 4.3.1 koza (to Arena GOATów); id 'owca' zostaje — leci w strzałach i osiągnięciach
     key: '7',
     kind: 'owca',          // biegnie po terenie przed siebie, zawraca na ścianach
     speed: 0,
@@ -113,7 +113,7 @@ export const WEAPONS = {
     fuse: 4.5,             // wybucha po czasie albo przy pierwszym wrogu
     bezMocy: true,
     amunicja: 1,
-    opis: 'Biegnie przed siebie i wybucha'
+    opis: 'Szarżuje przed siebie i wybucha'
   },
   kij: {
     id: 'kij',

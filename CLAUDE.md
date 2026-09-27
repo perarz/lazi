@@ -516,6 +516,7 @@ Lekcje z kalibracji:
   - Na telefonie: przyciski dotykowe, celowanie palcem, szczypanie = zoom. Lewa grupa to ◀ ▶, prawa to
     celownik ▲▼ i **SKOK nad OGNIA**. W czasie ucieczki (`body.ucieczka`) znika celownik i OGNIA, skok zostaje.
 - W powietrzu da się skręcać (`POWIETRZE_*` w `sim.js`), ale nie da się przebić odrzutu.
+- Skok: `JUMP_VY` = −195 (od 4.3.1, dawniej −235 — ok. 70% wysokości), `JUMP_VX` = 118.
 - **Drużyny** (`createGame(…, { druzyny: true })`, robal ma `druzyna`; bez trybu drużyna = numer gracza):
   - `swoj(state, w, ownerId)`: kolega z drużyny działającego (albo właściciela pocisku) — wybuch, kij
     i strzelba go nie ranią i nie odrzucają, pociski/owca/wiertło przez niego przelatują. Siebie ranisz.
@@ -535,7 +536,7 @@ Lekcje z kalibracji:
 | 4 | Kasetówka | odbijany | 2 | rozpada się na odłamki |
 | 5 | Dynamit | podkładany | 2 | lont 6 s, ucieczka |
 | 6 | Nalot | celowany | 1 | rakiety z nieba |
-| 7 | Owca | owca | 1 | biega, przeskakuje przeszkody, wybucha przy wrogu |
+| 7 | Koza (id `owca`) | owca | 1 | biega, przeskakuje przeszkody, wybucha przy wrogu; od 4.3.1 rysowana jako koza (render + ikona), id zostaje |
 | 8 | Kij | kij | **0** | tylko ze skrzynek (co 3. „zapas”), dmg 15, odrzut 360 |
 | 9 | Teleport | celowany | 1 | |
 | 0 | Blitzkrieg | salwa | 2 | 3 rakietki wachlarzem |
@@ -670,7 +671,7 @@ w drużynie (2 czy 3); czy robimy czapki i bronie z postaci ekipy; czy robimy ws
   - **4.1.1** Arena i zrzutka na własnym serwerze (VPS, WebSocket), koniec Redisa i `api/`
   - **4.2** ucieczka po strzale na żywo, lobby do 8 graczy, drużyny (tryb, GOTOWY, przenoszenie, zamiana)
   - **4.3** ustawienia partii u gospodarza, wyrzucanie, oddawanie korony, losowanie drużyn, szalone mapy, podgląd na żywo
-  - **4.3.1** emotki i tańce, licznik obserwatorów, lawa od tury i jej tempo, dwa zestawy broni
+  - **4.3.1** emotki i tańce, licznik obserwatorów, lawa od tury i jej tempo, dwa zestawy broni, koza zamiast owcy, niższy skok
 
 ---
 

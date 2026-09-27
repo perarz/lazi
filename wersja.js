@@ -10,6 +10,8 @@
         'Emotki w Arenie: stuknij chmurkę 💬 w rogu (albo klawisz E) — w swojej turze i w cudzej — i wybierz GG, 😄, EZ, 😂 albo 😱. Nad robalem wyskakuje dymek. Do tego dwa tańce: taniec szczęścia (podskoki) i taniec robaczka (wężyk).',
         'Oczko 👁 z liczbą w rogu ekranu pokazuje, ile osób ogląda partię z boku.',
         'Bronie w ustawieniach partii: już tylko dwa zestawy — normalne limity (kij tylko ze skrzynek) albo Szał, gdzie wszystko jest bez limitu.',
+        'Owca przeszła na kozę — w końcu to Arena GOATów. Szarżuje tak samo, tylko z rogami i bródką. Osiągnięcie za nią nazywa się teraz „Kozi róg”.',
+        'Robale skaczą niżej (ok. 70% dawnej wysokości) — skok to teraz przeskok, a nie lot na szczyt.',
         'Lawa w ustawieniach: od kiedy rośnie (od 6. rundy jak dotąd, od 10., 20., 30. albo 45. tury, albo wcale) i jak szybko (wolno, normalnie, szybko, błyskawicznie). Na wysokich mapach lawa sięga teraz aż pod szczyty.'
       ]
     },
