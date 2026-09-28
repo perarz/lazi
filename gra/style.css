@@ -138,7 +138,7 @@ html, body {
 .emotki-panel {
   /* nad przyciskiem 💬 przy broni — dokładną wysokość ustawia main.js */
   position: fixed; bottom: calc(120px + var(--bezp-d)); left: 0; right: 0; margin-inline: auto; width: fit-content; z-index: 30;
-  display: grid; grid-template-columns: repeat(5, 48px); gap: 6px; padding: 10px;
+  display: grid; grid-template-columns: repeat(6, 48px); gap: 6px; padding: 10px;
   pointer-events: auto;
 }
 .emotki-panel[hidden] { display: none; }
@@ -209,6 +209,8 @@ html, body {
 }
 .przycisk-obok[hidden] { display: none; }
 .przycisk-obok[aria-expanded="true"] { border-color: var(--zar-jasny); }
+.przycisk-obok[aria-pressed="true"] { border-color: var(--zar-jasny); background: rgba(255, 170, 30, 0.3); }
+body.tryb-ping #plotno { cursor: crosshair; }
 
 /* aktualna broń — stuknięcie otwiera ekwipunek */
 .bron-wybrana {
@@ -614,6 +616,15 @@ button:disabled { opacity: 0.35; cursor: not-allowed; }
   background: linear-gradient(180deg, rgba(80, 210, 110, 0.5), rgba(30, 150, 70, 0.45));
   border-color: #6ee07a;
 }
+
+/* 4.9: gospodarz rusza bez czekania na GOTOWY */
+.btn-start-teraz {
+  display: block; width: 100%; margin-top: 8px; min-height: 44px;
+  font-weight: 700; letter-spacing: 0.04em;
+  background: linear-gradient(180deg, rgba(255, 170, 40, 0.28), rgba(200, 90, 10, 0.25));
+  border: 1px dashed var(--zar-jasny); border-radius: 12px; color: var(--tekst);
+}
+.btn-start-teraz[hidden] { display: none; }
 
 /* gospodarz: akcje na stukniętym graczu i losowanie drużyn */
 .lobby-akcje {
@@ -1147,3 +1158,4 @@ button.maly { padding: 7px 12px; font-size: 12px; min-height: 36px; }
 @media (max-width: 760px), (max-height: 500px) {
   .minimapa { width: 128px; top: calc(62px + var(--bezp-g)); right: calc(8px + var(--bezp-p)); }
 }
+#btn-muzyka.wyl { opacity: 0.45; text-decoration: line-through; }

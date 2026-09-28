@@ -58,6 +58,14 @@ const ODLAMKI = [[-160, -220], [-80, -290], [0, -330], [80, -290], [160, -220]];
 /* Zrzuty zaopatrzenia: od drugiej rundy, najwyżej tyle skrzynek naraz;
    szansa na zrzut (%) — state.ust.zrzuty. */
 const SKRZYNKI_MAX = 3;
+/* Miny i beczki (4.9): leżą od startu, rozstawione z seeda. Mina odpala się, gdy podejdzie
+   robal (lont MINA_LONT kroków), beczka i mina — gdy zahaczy je wybuch albo railgun.
+   Wybuch ustawia im tylko lont, więc reakcja łańcuchowa idzie krok po kroku, bez rekurencji. */
+const MINA_LONT = 132;             // 1,1 s
+const BECZKA_LONT = 14;            // chwila — ładnie widać łańcuch
+const WYBUCH_MINY = { id: 'mina', radius: 44, damage: 42, knockback: 300 };
+const WYBUCH_BECZKI = { id: 'beczka', radius: 62, damage: 38, knockback: 280 };
+const PULAPKI_ILE = [[0, 0], [3, 3], [7, 6]];   // [miny, beczki] na mapę 2048 px wg ustawienia
 export const APTECZKA_HP = 35;
 const HP_MAX = 150;
 const INNE_ZAPASY = WEAPON_ORDER.filter((id) => WEAPONS[id].amunicja !== undefined && id !== 'kij');
@@ -172,6 +180,7 @@ export function createGame(seed, players, opcje = {}) {
     projectiles: [],
     nextProjectileId: 1,
     skrzynki: [],              // zrzuty: { id, typ: 'apteczka' | 'zapas', x, y }
+    pulapki: [],               // miny i beczki (4.9): { id, typ: 'mina' | 'beczka', x, y, lont (-1 = spokój) }
     weapon: 'bazooka',
     power: 0,
     charging: false,
@@ -192,7 +201,30 @@ export function createGame(seed, players, opcje = {}) {
   };
 
   state.wind = windFor(state, 0);
+  rozstawPulapki(state);
   return state;
+}
+
+/* Miny i beczki na start — z seeda, na powierzchni i w jaskiniach, z dala od robali. */
+function rozstawPulapki(state) {
+  const [miny, beczki] = PULAPKI_ILE[state.ust.pulapki] || PULAPKI_ILE[0];
+  const t = state.terrain;
+  const skala = t.w / T.WORLD_W;
+  const rng = mulberry32((state.seed ^ 0x6d696e79) >>> 0);
+  let id = 1;
+  for (const [typ, ile] of [['mina', Math.round(miny * skala)], ['beczka', Math.round(beczki * skala)]]) {
+    for (let n = 0; n < ile; n++) {
+      for (let proba = 0; proba < 40; proba++) {
+        const x = Math.floor(t.w * (0.04 + rng() * 0.92));
+        const y = T.findGround(t, x, Math.floor(rng() * t.lava0 * 0.8), 0, t.lava0);
+        if (y === null || y > t.lava0 - 30 || T.solidAt(t, x, y - 12)) continue;
+        if (state.worms.some((w) => Math.abs(w.x - x) < 80 && Math.abs(w.y - y) < 80)) continue;
+        if (state.pulapki.some((p) => Math.abs(p.x - x) < 30 && Math.abs(p.y - y) < 30)) continue;
+        state.pulapki.push({ id: id++, typ, x, y, lont: -1 });
+        break;
+      }
+    }
+  }
 }
 
 function windFor(state, turnNumber) {
@@ -216,6 +248,7 @@ export function jump(state) {
   if (w && w.lina && state.phase === 'aim') { odczep(w); return; }   // skok puszcza linę
   if (!w || !w.alive || !w.onGround || state.phase !== 'aim') return;
   skocz(w);
+  state.events.push({ type: 'skok', x: w.x, y: w.y });   // tylko dźwięk (4.9)
 }
 
 /* ---------- lina ninja (4.4) ----------
@@ -413,6 +446,7 @@ export function przygotujStrzal(state) {
     robale: stanRobali(state),
     kratery: plaskieKratery(state),
     skrzynki: stanSkrzynek(state),
+    pulapki: stanPulapek(state),
     start: obliczStart(w, weapon, w.angle, power),
     cel: weapon.celowany && state.cel
       ? (weapon.kind === 'most' && state.mostObrot ? { x: state.cel.x, y: state.cel.y, k: state.mostObrot } : { x: state.cel.x, y: state.cel.y })
@@ -428,7 +462,7 @@ function obliczStart(w, weapon, angle, power) {
   const c = Math.cos(angle), s = Math.sin(angle);
   const mx = w.x + c * 18;
   const my = w.y - WORM_H * 0.55 + s * 18;
-  if (weapon.kind === 'hitscan') return { x: mx, y: my, vx: c, vy: s };
+  if (weapon.kind === 'hitscan' || weapon.kind === 'railgun') return { x: mx, y: my, vx: c, vy: s };
   if (weapon.kind === 'wiertlo') {
     return { x: w.x + c * 8, y: w.y - WORM_H * 0.5 + s * 8, vx: c * weapon.speed, vy: s * weapon.speed };
   }
@@ -453,6 +487,7 @@ export function zastosujStrzal(state, action) {
   const przebudowa = ustawKratery(state, action.kratery);
   if (action.robale) ustawRobale(state, action.robale);
   if (action.skrzynki) ustawSkrzynki(state, action.skrzynki);
+  if (action.pulapki) ustawPulapki(state, action.pulapki);
   state.weapon = action.weapon;
   applyFire(state, action);
   return przebudowa;
@@ -485,6 +520,8 @@ export function applyFire(state, action) {
 
   if (weapon.kind === 'hitscan') {
     strzalNatychmiastowy(state, w, start, weapon);
+  } else if (weapon.kind === 'railgun') {
+    strzalRailgun(state, w, start, weapon);
   } else if (weapon.kind === 'kij') {
     ciosKijem(state, w, start, weapon);
   } else if (weapon.kind === 'teleport') {
@@ -510,7 +547,8 @@ export function applyFire(state, action) {
     const rak = WEAPONS.rakieta;
     const a = GRAVITY * rak.gravityFactor, aw = state.wind * rak.windFactor;
     for (let i = 0; i < n; i++) {
-      const y0 = -40 - i * 22;
+      // od 4.9 rakiety startują z wysokości 1,5× mapy (pół mapy nad jej górną krawędzią)
+      const y0 = -Math.round(state.terrain.h * 0.5) - 40 - i * 22;
       const dy = Math.max(0, cel.y - y0);
       const t = (-110 + Math.sqrt(110 * 110 + 2 * a * dy)) / a;
       const dryf = kier * 55 * t + aw * t * t / 2;
@@ -615,6 +653,37 @@ function strzalNatychmiastowy(state, w, start, weapon) {
   }
 }
 
+/* Railgun (4.9): laser leci po prostej aż za mapę — przez skały (terenu nie rusza)
+   i przez robale; każdy trafiony dostaje raz pełne obrażenia. Kierunek (vx, vy)
+   policzył strzelający (obliczStart), tu tylko dodawanie i porównania. */
+function strzalRailgun(state, w, start, weapon) {
+  const t = state.terrain;
+  let x = start.x, y = start.y;
+  const dx = start.vx * 2, dy = start.vy * 2;
+  const trafieni = [];
+  for (let i = 0; i < 6000; i++) {
+    x += dx;
+    y += dy;
+    if (x < -40 || x >= t.w + 40 || y < -400 || y > t.h + 40) break;
+    for (const p of state.pulapki) {
+      if (p.lont < 0 && Math.abs(p.x - x) < 9 && y > p.y - 16 && y < p.y + 2) p.lont = p.typ === 'beczka' ? BECZKA_LONT : 6;
+    }
+    for (const o of state.worms) {
+      if (!o.alive || o === w || trafieni.includes(o) || swoj(state, o, w.id)) continue;
+      if (Math.abs(o.x - x) < 9 && y > o.y - WORM_H - 2 && y < o.y + 2) trafieni.push(o);
+    }
+  }
+  state.events.push({ type: 'railgun', x0: start.x, y0: start.y, x1: x, y1: y, trafieni: trafieni.length });
+  for (const o of trafieni) {
+    damageWorm(state, o, weapon.damage, 'railgun');
+    if (o.alive) {
+      o.vx += start.vx * weapon.knockback + 0;
+      o.vy += start.vy * weapon.knockback - 80 + 0;
+      o.onGround = false;
+    }
+  }
+}
+
 /* ---------- krok symulacji ---------- */
 
 export function step(state) {
@@ -667,6 +736,7 @@ export function step(state) {
   for (const w of state.worms) stepWorm(state, w, w === act && steruje, ster);
   stepProjectiles(state);
   stepSkrzynki(state);
+  stepPulapki(state);
 
   // Nagranie zostaje do końca tury — protokół wysyła z niego ostatnią paczkę.
   if (state.phase === 'odwrot' && state.odwrotKrok >= ODWROT_KROKI) state.phase = 'flight';
@@ -678,7 +748,8 @@ export function step(state) {
 
   if (state.phase === 'settle') {
     state.settleTime += DT;
-    const moving = state.worms.some((w) => w.alive && (!w.onGround || Math.abs(w.vy) > 8));
+    const moving = state.worms.some((w) => w.alive && (!w.onGround || Math.abs(w.vy) > 8)) ||
+      state.pulapki.some((p) => p.lont >= 0);
     if (!moving || state.settleTime > SETTLE_MAX) {
       if (state.sieciowa) {
         state.phase = 'koniec';
@@ -1035,6 +1106,14 @@ export function explode(state, x, y, weapon) {
     }
   }
 
+  // wybuch odpala beczki i miny w zasięgu (4.9) — łańcuch idzie przez lont w stepPulapki
+  for (const p of state.pulapki) {
+    if (p.lont >= 0) continue;
+    const dx = p.x - x, dy = p.y - 6 - y;
+    const r = weapon.radius + 10;
+    if (dx * dx + dy * dy <= r * r) p.lont = p.typ === 'beczka' ? BECZKA_LONT : 6;
+  }
+
   const reach = weapon.radius * 1.7;
   for (const w of state.worms) {
     if (!w.alive || swoj(state, w)) continue;
@@ -1253,6 +1332,45 @@ export function ustawRobale(state, robale) {
   }
 }
 
+/* Miny i beczki: spadają, gdy wybuch wytnie grunt, toną w lawie, mina łapie robala,
+   a po lontcie — wybuch. */
+function stepPulapki(state) {
+  const t = state.terrain;
+  for (let i = state.pulapki.length - 1; i >= 0; i--) {
+    const p = state.pulapki[i];
+    if (!T.solidAt(t, p.x, p.y + 1)) {
+      p.y += 2;
+      if (p.y > state.lava) {
+        state.pulapki.splice(i, 1);
+        state.events.push({ type: 'plusk', x: p.x, y: state.lava });
+        continue;
+      }
+    }
+    if (p.typ === 'mina' && p.lont < 0 &&
+        state.worms.some((w) => w.alive && Math.abs(w.x - p.x) < 20 && w.y > p.y - 26 && w.y < p.y + 14)) {
+      p.lont = MINA_LONT;
+      state.events.push({ type: 'mina', x: p.x, y: p.y });
+    }
+    if (p.lont > 0) { p.lont--; continue; }
+    if (p.lont === 0) {
+      state.pulapki.splice(i, 1);
+      state.events.push({ type: p.typ === 'beczka' ? 'beczka' : 'minaWybuch', x: p.x, y: p.y });
+      explode(state, p.x, p.y - 6, p.typ === 'beczka' ? WYBUCH_BECZKI : WYBUCH_MINY);
+    }
+  }
+}
+
+export function stanPulapek(state) {
+  return state.pulapki.map((p) => ({ id: p.id, typ: p.typ, x: p.x, y: p.y, l: p.lont }));
+}
+
+export function ustawPulapki(state, lista) {
+  if (!Array.isArray(lista)) return;
+  state.pulapki = lista
+    .filter((p) => p && (p.typ === 'mina' || p.typ === 'beczka'))
+    .map((p) => ({ id: p.id | 0, typ: p.typ, x: p.x | 0, y: p.y | 0, lont: Number.isInteger(p.l) ? p.l : -1 }));
+}
+
 export function stanSkrzynek(state) {
   return state.skrzynki.map((c) => ({ id: c.id, typ: c.typ, x: c.x, y: c.y }));
 }
@@ -1286,6 +1404,7 @@ export function snapshot(state) {
     over,
     lava: state.lava,
     skrzynki: stanSkrzynek(state),
+    pulapki: stanPulapek(state),
     aktywny: akt ? wlasciciel(akt) : null     // gracz z turą (protokół); robala wskazuje turnPtr
   };
 }
@@ -1307,6 +1426,7 @@ export function stanPoTurze(state, usun = []) {
     winner: state.winner,
     lava: state.lava,
     skrzynki: stanSkrzynek(state),
+    pulapki: state.pulapki.map((p) => ({ ...p })),
     phase: 'koniec',
     events: [],
     projectiles: [],
@@ -1351,6 +1471,8 @@ export function zastosujSnapshot(state, snap) {
   state.lava = typeof snap.lava === 'number' ? snap.lava : state.terrain.lava0;
   state.skrzynki = [];
   ustawSkrzynki(state, snap.skrzynki);
+  state.pulapki = [];
+  ustawPulapki(state, snap.pulapki);
   state.projectiles = [];
   state.akcjeDoWyslania.length = 0;
   if (snap.over) {

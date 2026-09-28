@@ -14,12 +14,20 @@ const NS = 'http://www.w3.org/2000/svg';
 const GRUPY = [
   { nazwa: 'Rakiety', bronie: ['bazooka', 'salwa', 'nalot'] },
   { nazwa: 'Granaty', bronie: ['granat', 'kasetowa', 'dynamit', 'swiety'] },
-  { nazwa: 'Na wroga', bronie: ['strzelba', 'owca', 'kij'] },
+  { nazwa: 'Na wroga', bronie: ['strzelba', 'railgun', 'owca', 'kij'] },
   { nazwa: 'Sprzęt', bronie: ['teleport', 'wiertlo', 'most', 'lina'] }
 ];
 
 /* Ikony broni (viewBox 32×32) — stałe rysunki z kodu, nigdy tekst od graczy. */
 const IKONY = {
+  railgun:   // railgun (4.9): szyny i błękitny promień
+    '<g transform="rotate(-20 16 16)">' +
+    '<rect x="2" y="13" width="9" height="7" rx="1.6" fill="#39414d" stroke="#161a20" stroke-width="1"/>' +
+    '<rect x="9" y="12" width="17" height="2.4" rx=".8" fill="#9aa7b6" stroke="#2f353a" stroke-width=".7"/>' +
+    '<rect x="9" y="18.6" width="17" height="2.4" rx=".8" fill="#9aa7b6" stroke="#2f353a" stroke-width=".7"/>' +
+    '<rect x="10" y="14.8" width="16" height="3.4" fill="#6fe0ff"/>' +
+    '<path d="M26 16.5h6" stroke="#dff8ff" stroke-width="2.4" stroke-linecap="round"/>' +
+    '<circle cx="26.5" cy="16.5" r="2.6" fill="#ffffff" opacity=".9"/></g>',
   bazooka:
     '<g transform="rotate(-28 16 17)">' +
     '<rect x="2.5" y="13" width="21" height="7.5" rx="2.2" fill="#71804f" stroke="#262c19" stroke-width="1.3"/>' +

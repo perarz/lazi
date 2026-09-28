@@ -7,7 +7,7 @@
 import * as S from './sim.js';
 import * as P from './protokol.js';
 import * as R from './render.js';
-import { createFx, stepFx, emitExplosion, emitTrail, emitSpark, emitTekst, emitSmuga } from './fx.js';
+import { createFx, stepFx, emitExplosion, emitTrail, emitSpark, emitTekst, emitSmuga, emitLaser } from './fx.js';
 import { attachInput } from './input.js';
 import { WEAPONS, startowaAmunicja } from './weapons.js';
 import { createNet, RUCH_CO } from './net.js';
@@ -16,6 +16,7 @@ import { createEkwipunek, ikonaBroni } from './ekwipunek.js';
 import { DRUZYNY, TRYBY, nazwaTrybu } from './druzyny.js';
 import * as U from './ustawienia.js';
 import { EMOTKI, EMOTKA_S, TANIEC_S, EMOTKA_CO, emotka } from './emotki.js';
+import * as D from './dzwieki.js';
 import { stylMapy } from './terrain.js';
 import * as K from './konto.js';
 import { PODSTAWOWE, AKCESORIA_ID, akcesorium, odblokowane } from './akcesoria.js';
@@ -228,6 +229,17 @@ function przelaczPodgladMapy() {
 }
 el('btn-mapa').addEventListener('click', przelaczPodgladMapy);
 
+/* Dźwięk i muzyka (4.9): dwa przełączniki w HUD, zapamiętane w localStorage. */
+function odswiezPrzyciskiDzwieku() {
+  el('btn-dzwiek').textContent = D.dzwiekWlaczony() ? '🔊' : '🔇';
+  el('btn-dzwiek').setAttribute('aria-pressed', D.dzwiekWlaczony() ? 'true' : 'false');
+  el('btn-muzyka').setAttribute('aria-pressed', D.muzykaWlaczona() ? 'true' : 'false');
+  el('btn-muzyka').classList.toggle('wyl', !D.muzykaWlaczona());
+}
+el('btn-dzwiek').addEventListener('click', (e) => { D.ustawDzwiek(!D.dzwiekWlaczony()); odswiezPrzyciskiDzwieku(); e.currentTarget.blur(); });
+el('btn-muzyka').addEventListener('click', (e) => { D.ustawMuzyke(!D.muzykaWlaczona()); odswiezPrzyciskiDzwieku(); e.currentTarget.blur(); });
+odswiezPrzyciskiDzwieku();
+
 /* Minimapa: stuknięcie albo przeciąganie przenosi kamerę w to miejsce (na 5 s). */
 {
   const mini = el('minimapa');
@@ -243,6 +255,12 @@ el('btn-mapa').addEventListener('click', przelaczPodgladMapy);
   };
   mini.addEventListener('pointerdown', (e) => {
     e.preventDefault();
+    if (trybPingu && rg) {
+      const r = mini.getBoundingClientRect();
+      const { w, h } = R.rozmiarSwiata();
+      wyslijPing((e.clientX - r.left) / r.width * w, (e.clientY - r.top) / r.height * h);
+      return;
+    }
     ciagne = true;
     try { mini.setPointerCapture(e.pointerId); } catch { /* nic */ }
     doSwiata(e);
@@ -266,7 +284,7 @@ function rysujMinimape(st) {
     const pion = window.matchMedia('(max-width: 560px)').matches;
     mini.style.top = pion && gora ? (gora.offsetTop + gora.offsetHeight + 6) + 'px' : '';
   }
-  if (minimapaKlatka++ % 2 === 0) R.rysujMinimape(mini, renderer, st, kamera);
+  if (minimapaKlatka++ % 2 === 0) R.rysujMinimape(mini, renderer, st, kamera, pingi);
 }
 
 /* Pasy ekranu zasłonięte przez HUD: u góry panele, u dołu bronie, moc
@@ -504,7 +522,7 @@ function petlaPodgladu(t) {
 const TEKSTY_LADOWANIA = [
   'Ostrzę rogi…', 'Podgrzewam lawę…', 'Liczę kozy…', 'Kopię jaskinie…', 'Smaruję linę ninja…',
   'Święcę Świętego GOATa…', 'Ustawiam wiatr pod bazookę…', 'Rozkładam mosty…', 'Polerujemy koronę Victory Royale…',
-  'Spartanie ustawiają falangę…', 'Lama z łupami się wypakowuje…', 'Wkładam kilof do plecaka…'
+  'Spartanie ustawiają falangę…', 'Przecieram okulary przeciwsłoneczne…', 'Stroję muzyczkę…'
 ];
 const PORADY = [
   'R obraca most co 22,5° — skosy i pionowe ściany.',
@@ -1086,7 +1104,10 @@ function odswiezLobby() {
   // gospodarz, gdy wszyscy są gotowi; każda zmiana składu go kasuje.
   let termin = pokoj.odliczanieDo;
   if (termin !== null && net.czas() - termin > 60000) termin = null;   // termin z dawnej sesji
-  const gotowi = P.gotowiDoStartu(roz);
+  // start gospodarza bez GOTOWY (4.9) liczy się jak „wszyscy gotowi”, póki skład na to pozwala
+  const gotowi = P.gotowiDoStartu(roz) || (termin !== null && pokoj.odliczanieWymus && P.moznaWymusic(roz));
+  const bw = el('btn-start-teraz');
+  bw.hidden = !(gospodarz && !wToku && !gotowi && P.moznaWymusic(roz));
   if (gospodarz && !startWToku && !wToku && teraz - ostatnieOdliczanie > 1500) {
     if (gotowi && termin === null) {
       ostatnieOdliczanie = teraz;
@@ -1122,6 +1143,12 @@ function odswiezLobby() {
               : roz.n && new Set(roz.gracze.map((g) => g.druzyna)).size < 2 ? 'Wszyscy są w jednej drużynie — ktoś musi przejść do innej.'
                 : gotowi ? '' : 'Partia ruszy, gdy wszyscy dadzą GOTOWY.';
 }
+
+el('btn-start-teraz').addEventListener('click', () => {
+  if (!pokoj || !net || !rozstawienie || !P.moznaWymusic(rozstawienie)) return;
+  ostatnieOdliczanie = Date.now();
+  wyslijLobby({ t: 'odliczanie', do: net.czas() + P.ODLICZANIE_S * 1000, v: P.WERSJA, wymus: 1 });
+});
 
 /* Rysowanie lobby tylko wtedy, gdy coś się zmieniło — odswiezLobby() chodzi
    co pół sekundy, a przebudowa listy pod palcem gubiłaby stuknięcia. */
@@ -1438,6 +1465,9 @@ function zbudujGre() {
 
   rg = P.nowaRozgrywka(pokoj, mojeId);
   rg.ui.length = 0;       // teren i tak malujemy niżej w całości
+  D.muzykaStart();
+  pingi = [];
+  ustawTrybPingu(false);
 
   if (!renderer) renderer = R.createRenderer(plotno);
   dopasujPlotno();
@@ -1462,6 +1492,8 @@ function zbudujGre() {
       onEmotki: () => przelaczEmotki(),
       onObrot: () => obrocMost(),
       onMapa: () => przelaczPodgladMapy(),
+      onPing: (x, y) => wyslijPing(x, y),
+      trybPingu: () => trybPingu,
       onLina: () => {
         const wynik = S.linaPrzelacz(rg.state);
         if (wynik === 'pudlo') pokazInfo('Lina nie sięga — celuj w skałę bliżej (do ok. 400 px).');
@@ -1518,6 +1550,7 @@ function zbudujGre() {
 }
 
 function zakonczGre() {
+  D.muzykaStop();
   rg = null;
   sterowanie?.zwolnij();
   ekwipunek.zamknij();
@@ -1627,6 +1660,7 @@ function petla(teraz) {
     rozlaczeni: rozlaczeni(),
     celNalotu: celNalotu(moge),
     emotki: aktywneEmotki(),
+    pingi: aktywnePingi(),
     akcesoria: akcesoriaPartii(),
     zebraneSkrzynki: podglad.nr === st.turnNumber ? podglad.skrzynki : null
   });
@@ -1649,12 +1683,52 @@ function czytajEmotki() {
   if (emotkiIndeks > zd.length) emotkiIndeks = 0;     // nowa epoka — log od zera
   for (; emotkiIndeks < zd.length; emotkiIndeks++) {
     const z = zd[emotkiIndeks];
+    if (z && z.t === 'ping' && typeof z.id === 'string') { dodajPing(z); continue; }
     if (!z || z.t !== 'emotka' || typeof z.id !== 'string') continue;
     const def = emotka(z.e);
     if (!def || net.czas() - (z.st || 0) > 6000) continue;
     emotkiGraczy.set(z.id, { def, od: performance.now() });
+    D.graj('emotka');
   }
 }
+
+/* Pingi (4.9): { t: 'ping', id, x, y } w logu pokoju — znacznik na mapie widoczny dla
+   wszystkich przez PING_S sekund. Jak emotki: protokół partii go nie zna, symulacja też nie. */
+const PING_S = 5, PING_CO = 900;
+let pingi = [];                        // { id, x, y, od, kolor, nick }
+let ostatniPing = -Infinity, trybPingu = false;
+function dodajPing(z) {
+  if (typeof z.x !== 'number' || typeof z.y !== 'number' || net.czas() - (z.st || 0) > PING_S * 1000) return;
+  const g = pokoj && (pokoj.gracze.find((x) => x.id === z.id) || pokoj.wLobby.find((x) => x.id === z.id));
+  pingi = pingi.filter((p) => p.id !== z.id);       // jeden znacznik na gracza — nowy zastępuje stary
+  pingi.push({ id: z.id, x: z.x, y: z.y, od: performance.now(), kolor: (g && g.color) || '#ffe9c8', nick: g ? g.name : '?' });
+  if (pingi.length > 12) pingi.shift();
+  D.graj('ping');
+}
+function aktywnePingi() {
+  const teraz = performance.now();
+  pingi = pingi.filter((p) => teraz - p.od < PING_S * 1000);
+  return pingi.map((p) => ({ ...p, t: (teraz - p.od) / 1000, dl: PING_S }));
+}
+function wyslijPing(x, y) {
+  ustawTrybPingu(false);
+  if (!rg || !net) return;
+  const teraz = performance.now();
+  if (teraz - ostatniPing < PING_CO) return;
+  ostatniPing = teraz;
+  const { w, h } = R.rozmiarSwiata();
+  net.wyslij({ t: 'ping', id: mojeId, x: Math.round(Math.max(0, Math.min(w, x))), y: Math.round(Math.max(-300, Math.min(h, y))) });
+}
+function ustawTrybPingu(tak) {
+  trybPingu = !!tak;
+  el('btn-ping').setAttribute('aria-pressed', trybPingu ? 'true' : 'false');
+  document.body.classList.toggle('tryb-ping', trybPingu);
+  if (trybPingu) pokazInfo('Stuknij miejsce na mapie (albo na minimapie) — zobaczą je wszyscy.');
+}
+el('btn-ping').addEventListener('click', (e) => {
+  ustawTrybPingu(!trybPingu);
+  if (e.detail > 0) e.currentTarget.blur();
+});
 
 /* Akcesoria robali w partii (z 'nowa.gracze') — mapa id → akcesorium dla render.js. */
 let akcPodpis = null, akcMapa = new Map();
@@ -1877,6 +1951,7 @@ function pokazTure() {
   if (!akt) return;
   const moja = mojRobal(akt) && !rg.obserwator;
   napis(moja ? 'TWOJA TURA' : 'Tura: ' + akt.name, !moja);
+  D.graj(moja ? 'mojaTura' : 'tura');
   if (tura.kto && tura.nr !== st.turnNumber) {
     const moja = mojRobal(tura.kto) && !rg.obserwator;
     if (tura.suma >= 50) {
@@ -1981,15 +2056,28 @@ function pociskDoKamery(teraz) {
   return sledzony;
 }
 
+/* Kamera za pociskiem (4.9): cel przed pociskiem (wyprzedzenie ~0,3 s lotu), przy dużej
+   prędkości lekko się oddala i szybciej dojeżdża; po wybuchu chwilę zostaje na miejscu wybuchu. */
+let kameraWybuch = null;          // { x, y, do (ms), oddal? }
 function ustawKamere(teraz) {
   const st = rg.state;
   const z = bazowyZoom() * zoomGracza;
   kamera.tzoom = z;
+  kamera.tempo = 4.2;
   const p = pociskDoKamery(teraz);
   if (p) {
     // Lecący pocisk zawsze wygrywa z ręcznym przesunięciem.
-    R.focusCamera(kamera, p.x, p.y, z * 0.92);
+    const v = Math.sqrt(p.vx * p.vx + p.vy * p.vy);
+    const wyprzedz = Math.min(0.32, 160 / Math.max(1, v));
+    const oddal = Math.max(0.72, 0.92 - v / 4000);
+    R.focusCamera(kamera, p.x + p.vx * wyprzedz, p.y + p.vy * wyprzedz, z * oddal);
+    kamera.tempo = 7.5;
     recznaKameraDo = 0;
+    return;
+  }
+  if (kameraWybuch && performance.now() < kameraWybuch.do && st.phase !== 'aim') {
+    R.focusCamera(kamera, kameraWybuch.x, kameraWybuch.y, z * (kameraWybuch.oddal || 0.95));
+    kamera.tempo = 6;
     return;
   }
   if (teraz < recznaKameraDo) return;
@@ -2009,7 +2097,7 @@ function ustawKamere(teraz) {
    płynny dojazd nie nadąża, więc dociągamy kamerę od razu. */
 function trzymajWKadrze() {
   const st = rg.state;
-  if (performance.now() < recznaKameraDo || sledzony) return;
+  if (performance.now() < recznaKameraDo || sledzony || (kameraWybuch && performance.now() < kameraWybuch.do && rg.state.phase !== 'aim')) return;
   const w = S.activeWorm(st);
   if (!w || !w.alive) return;
   const v = w.widok || w;
@@ -2038,45 +2126,68 @@ function obsluzZdarzenia() {
     }
     switch (e.type) {
       case 'wybuch':
+        D.graj(e.r >= 100 ? 'alleluja' : 'wybuch', { r: e.r });
+        if (e.r >= 100) D.graj('wybuch', { r: e.r });
         emitExplosion(fx, e.x, e.y, e.r);
+        kameraWybuch = { x: e.x, y: e.y, do: performance.now() + 900 };
         if (e.r >= 100) emitTekst(fx, e.x, e.y - e.r * 0.6, 'ALLELUJA! 🐐', '#ffe27a', 22);   // Święty GOAT
         wstrzas = Math.min(14, wstrzas + e.r * 0.16);
         R.repaintRect(renderer, st.terrain, { x0: e.x - e.r - 3, x1: e.x + e.r + 3 });
         break;
-      case 'strzal': emitSpark(fx, e.x, e.y, 14); break;
-      case 'odbicie': emitSpark(fx, e.x, e.y, 5); break;
+      case 'strzal': emitSpark(fx, e.x, e.y, 14); D.graj(e.weapon === 'strzelba' ? 'strzelba' : e.weapon === 'railgun' ? 'railgun' : 'strzal'); break;
+      case 'skok': D.graj('skok'); break;
+      case 'mina':
+        emitTekst(fx, e.x, e.y - 24, 'MINA!', '#ff5a3a', 16);
+        D.graj('mina');
+        break;
+      case 'beczka': emitTekst(fx, e.x, e.y - 30, 'BUM!', '#ffd23b', 18); break;
+      case 'odbicie': emitSpark(fx, e.x, e.y, 5); D.graj('odbicie'); break;
       case 'uderzenie':
         emitSpark(fx, e.x, e.y, 12);
         emitTekst(fx, e.x, e.y - 20, 'BONK!', '#fff1c2', 16);
+        D.graj('bonk');
         wstrzas = Math.min(14, wstrzas + 5);
         break;
       case 'teleport':
+        D.graj('teleport');
         emitSpark(fx, e.x0, e.y0 - 10, 24);
         emitSpark(fx, e.x1, e.y1 - 10, 24);
         break;
-      case 'plusk': emitSpark(fx, e.x, e.y, 18); break;
-      case 'lina': emitSpark(fx, e.x, e.y, 8); break;
+      case 'plusk': emitSpark(fx, e.x, e.y, 18); D.graj('plusk'); break;
+      case 'lina': emitSpark(fx, e.x, e.y, 8); D.graj('lina'); break;
       case 'wiercenie':
         emitSpark(fx, e.x, e.y, 3);
+        D.graj('wiercenie');
         R.repaintRect(renderer, st.terrain, { x0: e.x - e.r - 3, x1: e.x + e.r + 3 });
         break;
       case 'zrzut':
         R.zrzutAnimacja(renderer, e.id);
+        D.graj('zrzut');
         pokazInfo(e.typ === 'apteczka' ? 'Zrzut: apteczka! 🩹' : 'Zrzut: zaopatrzenie! 📦');
         break;
       case 'skrzynka':
         emitSpark(fx, e.x, e.y - 8, 16);
+        D.graj(e.typ === 'apteczka' ? 'apteczka' : 'skrzynka');
         emitTekst(fx, e.x, e.y - 30, e.typ === 'apteczka' ? '+' + e.hp + ' HP' : '+1 ' + WEAPONS[e.bron].name,
           e.typ === 'apteczka' ? '#7dff9a' : '#ffd23b', 16);
         break;
       case 'most':
         emitSpark(fx, e.x, e.y, 10);
+        D.graj('most');
         R.repaintRect(renderer, st.terrain, { x0: e.x0 - 2, x1: e.x1 + 2 });
         break;
       case 'skrzynkaRozbita': emitSpark(fx, e.x, e.y - 8, 10); break;
       case 'smuga': emitSmuga(fx, e.x0, e.y0, e.x1, e.y1); break;
+      case 'railgun':
+        emitLaser(fx, e.x0, e.y0, e.x1, e.y1);
+        // kamera pokazuje promień: środek linii (w granicach mapy) przez chwilę
+        kameraWybuch = { x: (e.x0 + Math.max(0, Math.min(R.rozmiarSwiata().w, e.x1))) / 2, y: (e.y0 + e.y1) / 2, do: performance.now() + 1100, oddal: 0.6 };
+        wstrzas = Math.min(14, wstrzas + 8);
+        if (e.trafieni >= 2) emitTekst(fx, e.x0, e.y0 - 30, e.trafieni + '× PRZESTRZELONY!', '#7fe3ff', 18);
+        break;
       case 'obrazenia': {
         emitTekst(fx, e.x, e.y - 34, '-' + e.amount, '#ff7a55');
+        D.graj('ala');
         const akt = S.activeWorm(st);
         if (akt && e.wormId !== akt.id) {
           turaDla(st, akt).suma += e.amount;
@@ -2086,13 +2197,14 @@ function obsluzZdarzenia() {
       }
       case 'smierc': {
         emitTekst(fx, e.x, e.y - 50, e.cause === 'lawa' ? 'do lawy!' : 'RIP', '#ffd93b', 17);
+        D.graj('smierc');
         break;
       }
       case 'odszedl':
         emitSpark(fx, e.x, e.y - 10, 20);
         emitTekst(fx, e.x, e.y - 40, 'wyszedł', '#ffe9c8', 14);
         break;
-      case 'lawa': pokazInfo('Nagła śmierć — lawa wzbiera!'); break;
+      case 'lawa': pokazInfo('Nagła śmierć — lawa wzbiera!'); D.graj('lawa'); break;
     }
   }
   st.events.length = 0;
@@ -2105,6 +2217,8 @@ function pokazKoniec(winnerId) {
   // w drużynach wygrywa cała drużyna zwycięzcy
   const druzyna = st.druzynowa && w ? DRUZYNY[w.druzyna] : null;
   const wygralem = !!w && (w.id === mojeId || (!!druzyna && !!ja0 && ja0.druzyna === w.druzyna));
+  D.muzykaStop();
+  D.graj(wygralem ? 'wygrana' : 'smierc');
   let opis;
   if (druzyna) {
     el('koniec-tytul').textContent = wygralem ? 'WYGRYWACIE!' : 'WYGRYWAJĄ ' + druzyna.nazwa.toUpperCase();
@@ -2327,6 +2441,7 @@ function odswiezHud(moge, teraz) {
   el('btn-obrot').hidden = !(moge && st.weapon === 'most');
   const moznaEmotki = mogeEmotki();
   el('btn-emotki').hidden = !moznaEmotki;
+  el('btn-ping').hidden = st.phase === 'over';
   if (!moznaEmotki && !panelEmotek.hidden) zamknijEmotki();
   const obs = liczObserwatorow();
   el('obserwatorzy').hidden = obs === 0;
@@ -2346,6 +2461,7 @@ window.__arena = () => ({
   turaLokalna: rg && rg.state.turnNumber,
   fazaLokalna: rg && rg.state.phase,
   aktywny: pokoj && pokoj.aktywny,
+  pingi: pingi.map((p) => p.nick + '@' + p.x + ',' + p.y),
   robal: rg && (() => { const w = S.activeWorm(rg.state); return w ? w.id : null; })(),   // robal z turą (4.8: gracz może mieć kilka)
   odeszli: pokoj ? [...pokoj.odeszli.keys()] : null,
   gracze: pokoj ? pokoj.gracze.map((g) => g.name) : null,

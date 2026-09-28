@@ -222,6 +222,21 @@ export const WEAPONS = {
     opis: 'Kliknij miejsce na mapie, potem strzał'
   },
 
+  railgun: {
+    id: 'railgun',
+    name: 'Railgun',
+    key: '\\',
+    kind: 'railgun',       // jeden laser po prostej przez całą mapę: przebija skały i każdego robala
+    przebija: true,
+    damage: 75,
+    knockback: 150,
+    radius: 0,
+    fuse: null,
+    bezMocy: true,
+    amunicja: 1,
+    opis: 'Laser przez wszystko — 75 obrażeń każdemu na linii'
+  },
+
   /* --- pociski pomocnicze --- */
   odlamek: {
     id: 'odlamek',
@@ -264,7 +279,7 @@ export const WEAPONS = {
   }
 };
 
-export const WEAPON_ORDER = ['bazooka', 'granat', 'strzelba', 'kasetowa', 'dynamit', 'nalot', 'owca', 'kij', 'teleport', 'salwa', 'wiertlo', 'most', 'swiety', 'lina'];
+export const WEAPON_ORDER = ['bazooka', 'granat', 'strzelba', 'kasetowa', 'dynamit', 'nalot', 'owca', 'kij', 'teleport', 'salwa', 'wiertlo', 'most', 'swiety', 'lina', 'railgun'];
 
 /* Startowy zapas dla broni z limitem — ta sama wartość u każdego klienta.
    zestaw (ustawienia partii): 'pelny' (domyślny: limity, kij tylko ze skrzynek)

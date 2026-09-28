@@ -36,7 +36,7 @@ export const ZASTEPCZY_STAN = 4;      // s czekania na stan od autora akcji
 export const START_ZWLOKA = 3;        // s na załadowanie planszy po starcie partii
 export const DOGON_PO = 2;            // s — starszego stanu nie animujemy, tylko do niego skaczemy
 export const ODLICZANIE_S = 5;        // s od chwili, gdy wszyscy dali GOTOWY, do startu partii
-export const WERSJA = 6;              // wersja protokołu lobby (4.2: drużyny i gotowość, 4.3: ustawienia partii, 4.4: lawa, emotki, 4.5: rozmiar mapy, obrót mostu, 4.8: kilka robali na gracza)
+export const WERSJA = 7;              // wersja protokołu lobby (4.2: drużyny i gotowość, 4.3: ustawienia partii, 4.4: lawa, emotki, 4.5: rozmiar mapy, obrót mostu, 4.8: kilka robali na gracza, 4.9: railgun, start gospodarza)
 export const MAX_GRACZY = 8;          // w partii; kolejni w lobby oglądają
 
 /* Ucieczka na żywo. */
@@ -64,6 +64,7 @@ export function zloz(zdarzenia) {
     czasTury: S.TURN_TIME, // s — czas tury bieżącej partii
     wyrzuceni: new Set(),  // id wyrzuconych z lobby przez gospodarza (do ich ponownego 'dolacz')
     odliczanieDo: null,    // termin startu w czasie SERWERA
+    odliczanieWymus: false, // 4.9: gospodarz ruszył bez gotowości wszystkich
     ostatniaAktywnosc: 0,  // czas serwera ostatniego zdarzenia partii
     zwyciezca: null,
     startSt: 0,
@@ -183,7 +184,7 @@ export function zloz(zdarzenia) {
         const g = wLobby(z.id);
         if (!g) break;
         g.gotowy = !!z.tak;
-        if (!g.gotowy) p.odliczanieDo = null;
+        if (!g.gotowy && !p.odliczanieWymus) p.odliczanieDo = null;
         break;
       }
 
@@ -200,9 +201,12 @@ export function zloz(zdarzenia) {
         // Wygrywa OSTATNI opublikowany termin. Od 4.2 odliczanie rusza dopiero,
         // gdy wszyscy są gotowi (v 2); wpisy starej wersji (samo 20 s) są pomijane,
         // tak samo termin „na zaraz” (dawny przycisk przyspieszenia).
-        if (z.anuluj) p.odliczanieDo = null;
+        if (z.anuluj) { p.odliczanieDo = null; p.odliczanieWymus = false; }
         else if (typeof z.do === 'number' && (z.v | 0) >= WERSJA &&
-                 !(z.st && z.do - z.st < (ODLICZANIE_S - 2) * 1000)) p.odliczanieDo = z.do;
+                 !(z.st && z.do - z.st < (ODLICZANIE_S - 2) * 1000)) {
+          p.odliczanieDo = z.do;
+          p.odliczanieWymus = !!z.wymus;   // 4.9: start gospodarza bez czekania na GOTOWY
+        }
         break;
 
       case 'nowa': {
@@ -395,6 +399,13 @@ export function rozstaw(p, jest = () => true) {
 export function gotowiDoStartu(rozstawienie) {
   const { n, gracze } = rozstawienie;
   if (gracze.length < 2 || !gracze.every((g) => g.gotowy && (g.v | 0) >= WERSJA)) return false;
+  return !n || new Set(gracze.map((g) => g.druzyna)).size >= 2;
+}
+
+/* Czy gospodarz może ruszyć bez czekania na GOTOWY (4.9): to samo, tylko bez gotowości. */
+export function moznaWymusic(rozstawienie) {
+  const { n, gracze } = rozstawienie;
+  if (gracze.length < 2 || !gracze.every((g) => (g.v | 0) >= WERSJA)) return false;
   return !n || new Set(gracze.map((g) => g.druzyna)).size >= 2;
 }
 
@@ -679,6 +690,7 @@ function zastosujAkcje(r, a) {
     przebudowa = S.ustawKratery(st, a.kratery);
     if (Array.isArray(a.robale)) S.ustawRobale(st, a.robale);
     if (Array.isArray(a.skrzynki)) S.ustawSkrzynki(st, a.skrzynki);
+    if (Array.isArray(a.pulapki)) S.ustawPulapki(st, a.pulapki);
     if (st.phase === 'koniec') st.phase = 'settle';
     S.applyPas(st);
   }
@@ -756,7 +768,7 @@ function wejdzWStan(r, stan) {
    krater z wybuchu zwłok). Potem gram go dokładnie tak jak odbiorcy. */
 function mojPas(r, powod) {
   const st = r.state;
-  const z = { t: 'pas', nr: st.turnNumber, id: r.mojeId, powod, robale: S.stanRobali(st), kratery: S.plaskieKratery(st), skrzynki: S.stanSkrzynek(st) };
+  const z = { t: 'pas', nr: st.turnNumber, id: r.mojeId, powod, robale: S.stanRobali(st), kratery: S.plaskieKratery(st), skrzynki: S.stanSkrzynek(st), pulapki: S.stanPulapek(st) };
   r.mojaAkcja = z;
   zastosujAkcje(r, z);
 }

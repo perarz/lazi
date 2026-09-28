@@ -37,7 +37,7 @@ const CZAPKI = { krol: '*', irokez: 'masakra', wulkan: 'lawa', rogi: 'owca' };
 const WSZYSTKIE_OSIAGNIECIA = ['pierwsza-krew', 'piec-fragow', 'rzeznik', 'lawa', 'nalot', 'saper', 'snajper',
   'kasetowka', 'owca', 'home-run', 'dublet', 'masakra', 'ucieczka', 'zwyciestwo', 'na-wlosku', 'nietykalny',
   'weteran', 'samoboja'];
-const AKCESORIA = ['korona', 'lama', 'kilof', 'helm', 'wieniec', ...Object.keys(CZAPKI)];
+const AKCESORIA = ['korona', 'okulary', 'buzka', 'helm', 'wieniec', ...Object.keys(CZAPKI)];   // 4.9: lama i kilof → okulary i buźka
 /* Czy konto może nosić to akcesorium (czapka wymaga zdobytego osiągnięcia). */
 function wolnoNosic(k, id) {
   if (!AKCESORIA.includes(id)) return false;
@@ -85,7 +85,7 @@ class Konta {
 
   /* Publiczny widok konta (bez hasła i soli). */
   widok(k) {
-    return { nick: k.nick, id: k.id, kolor: k.kolor || null, akcesorium: k.akcesorium || null, staty: { ...k.staty }, osiagniecia: { ...k.osiagniecia } };
+    return { nick: k.nick, id: k.id, kolor: k.kolor || null, akcesorium: AKCESORIA.includes(k.akcesorium) ? k.akcesorium : null, staty: { ...k.staty }, osiagniecia: { ...k.osiagniecia } };
   }
 
   nowaSesja(k, teraz) {
@@ -214,7 +214,7 @@ class Konta {
       .filter((k) => k.staty.partie > 0)
       .sort((a, b) => b.staty.kille - a.staty.kille || b.staty.wygrane - a.staty.wygrane || a.utworzono - b.utworzono)
       .slice(0, RANKING_ILE)
-      .map((k) => ({ nick: k.nick, kolor: k.kolor, akcesorium: k.akcesorium || null, kille: k.staty.kille, wygrane: k.staty.wygrane, partie: k.staty.partie }));
+      .map((k) => ({ nick: k.nick, kolor: k.kolor, akcesorium: AKCESORIA.includes(k.akcesorium) ? k.akcesorium : null, kille: k.staty.kille, wygrane: k.staty.wygrane, partie: k.staty.partie }));
     return { ranking: lista };
   }
 

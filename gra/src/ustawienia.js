@@ -42,6 +42,11 @@ export const USTAWIENIA = [
     opcje: [[0, 'Wyłączone'], [20, 'Rzadko'], [40, 'Normalnie'], [70, 'Często']]
   },
   {
+    // 4.9: miny i beczki rozstawione od startu
+    klucz: 'pulapki', nazwa: 'Miny i beczki', dom: 1,
+    opcje: [[0, 'Wyłączone'], [1, 'Trochę'], [2, 'Dużo']]
+  },
+  {
     klucz: 'wiatr', nazwa: 'Wiatr', dom: 1,
     opcje: [[0, 'Bez wiatru'], [1, 'Normalny'], [2, 'Huragan']]
   },
@@ -103,6 +108,7 @@ export function opisZmian(u) {
   return USTAWIENIA.filter((o) => u[o.klucz] !== d[o.klucz]).map((o) => {
     const e = etykieta(o.klucz, u[o.klucz]);
     if (o.klucz === 'robale') return u.robale + ' robale na gracza';
+    if (o.klucz === 'pulapki') return u.pulapki ? 'dużo min i beczek' : 'bez min i beczek';
     if (o.klucz === 'zrzuty') return 'zrzuty: ' + e.toLowerCase();
     if (o.klucz === 'lawaOd') return u.lawaOd === 0 ? 'bez lawy' : 'lawa od ' + u.lawaOd + '. rundy';
     if (o.klucz === 'lawaTempo') return 'lawa: ' + e.toLowerCase();
