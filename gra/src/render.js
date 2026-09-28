@@ -31,6 +31,7 @@ export function createRenderer(canvas) {
     viewH: 0,
     time: 0,
     zrzuty: new Map(),         // id skrzynki → chwila zrzutu (animacja spadochronu)
+    stanRobali: new Map(),     // tylko wygląd (4.11): id → { trafiony, ladowanie, … } — błysk, grymas, rozpłaszczenie
     sadza: [],                 // okopcone miejsca po ogniu (4.10): { x, y, r } — tylko wygląd
     sadzaDla: null             // dla której mapy (seed:szerokość) — nowa partia czyści sadzę
   };
@@ -145,6 +146,22 @@ export function repaintRect(r, terrain, rect) {
   r.tctx.clearRect(x0, 0, x1 - x0 + 1, swiatH);
   paintColumns(r, terrain, x0, x1);
   malujSadze(r, x0, x1);
+}
+
+/* Kolory skały wokół punktu (przed wycięciem krateru) — na odłamki z wybuchu (4.11). */
+export function kolorySkaly(r, x, y, rad) {
+  const kolory = [];
+  try {
+    const x0 = Math.max(0, Math.round(x - rad)), y0 = Math.max(0, Math.round(y - rad));
+    const w = Math.min(r.terrainCanvas.width - x0, Math.round(rad * 2)), h = Math.min(r.terrainCanvas.height - y0, Math.round(rad * 2));
+    if (w <= 0 || h <= 0) return kolory;
+    const d = r.tctx.getImageData(x0, y0, w, h).data;
+    for (let i = 0; i < 24; i++) {
+      const o = ((Math.random() * h | 0) * w + (Math.random() * w | 0)) * 4;
+      if (d[o + 3] > 200) kolory.push('rgb(' + d[o] + ',' + d[o + 1] + ',' + d[o + 2] + ')');
+    }
+  } catch { /* płótno niedostępne — bez odłamków */ }
+  return kolory;
 }
 
 /* Ogień wypalił dołek (4.10): skała wokół zostaje okopcona. Sadza leży na osobnej liście
@@ -302,6 +319,24 @@ export function ekranNaSwiat(r, cam, sx, sy) {
   };
 }
 
+/* ---------- żywe robale (4.11, tylko wygląd) ---------- */
+
+function stanRobala(r, id) {
+  let s = r.stanRobali.get(id);
+  if (!s) {
+    s = { trafiony: -9, sila: 0, ladowanie: -9, silaL: 0, naZiemi: true, vy: 0, px: null, idzie: -9 };
+    r.stanRobali.set(id, s);
+  }
+  return s;
+}
+
+/* Robal oberwał: biały błysk, drgnięcie i zaciśnięte oczy (main.js przy zdarzeniu „obrazenia”). */
+export function robalTrafiony(r, id, ile) {
+  const s = stanRobala(r, id);
+  s.trafiony = r.time;
+  s.sila = Math.min(1, 0.35 + ile / 50);
+}
+
 /* ---------- rysowanie ---------- */
 
 /* opcje: { mojeId, rozlaczeni: Set, celNalotu: {x,y}|null } */
@@ -359,9 +394,23 @@ export function draw(r, state, cam, fx, dt, opcje = {}) {
     ctx.arc(hak.x, hak.y, 3, 0, 6.283);
     ctx.fill();
   }
+  // lądowanie po locie: krótkie rozpłaszczenie (z prędkości w symulacji; podgląd cudzej tury jej nie ma)
+  for (const w of state.worms) {
+    if (!w.alive) continue;
+    const s = stanRobala(r, w.id);
+    // chód: robal przesunął się w poziomie po ziemi (także cudzy, z podglądu na żywo)
+    const v = w.widok || w;
+    if (s.px !== null && Math.abs(v.x - s.px) > 0.05 && Math.abs(v.x - s.px) < 6 && (w.widok || w.onGround)) s.idzie = r.time;
+    s.px = v.x;
+    if (w.widok) continue;
+    if (w.onGround && !s.naZiemi && s.vy > 110) { s.ladowanie = r.time; s.silaL = Math.min(1, s.vy / 380); }
+    s.naZiemi = !!w.onGround;
+    s.vy = w.vy;
+  }
   for (const w of state.worms) {
     if (!w.alive) continue;
     drawWorm(ctx, w, w === akt && state.phase === 'aim', r.time, {
+      stan: stanRobala(r, w.id),
       ja: (w.gracz ?? w.id) === opcje.mojeId,
       // w drużynach nick jest w kolorze drużyny (robal zostaje w swoim)
       kolorNicku: state.druzynowa && DRUZYNY[w.druzyna] ? DRUZYNY[w.druzyna].kolor : w.color,
@@ -1287,6 +1336,27 @@ function rysujRobala(ctx, w, isActive, time, o) {
   ctx.fill();
   // oddech: lekkie rozciąganie w pionie
   const oddech = 1 + Math.sin(time * 3 + cx * 0.1) * 0.04;
+  // 4.11: w locie wyciągnięty, po lądowaniu rozpłaszczony, po trafieniu drgnie (skala od stóp)
+  const st = o.stan;
+  const odTraf = st ? time - st.trafiony : 9;
+  let sx = 1, sy = 1, drgnij = 0;
+  if (st && !w.widok) {
+    if (!w.onGround) { const k = Math.min(0.16, Math.abs(w.vy) / 1600); sy += k; sx -= k * 0.6; }
+    const odL = time - st.ladowanie;
+    if (odL < 0.2) { const k = Math.sin(odL / 0.2 * Math.PI) * 0.24 * st.silaL; sy -= k; sx += k; }
+  }
+  if (odTraf < 0.3) drgnij = Math.sin(odTraf * 70) * 2.2 * (1 - odTraf / 0.3) * st.sila;
+  // chód: podskakuje w rytm kroków i lekko się przechyla do przodu
+  let krok = 0, pochyl = 0;
+  if (st && time - st.idzie < 0.12) {
+    krok = -Math.abs(Math.sin(time * 16)) * 1.8;
+    pochyl = facing * 0.08;
+  }
+  ctx.save();
+  ctx.translate(cx + drgnij, v.y + krok);
+  if (pochyl) ctx.rotate(pochyl);
+  ctx.scale(sx, sy);
+  ctx.translate(-cx, -v.y);
   // akcesorium na plecach i tylne części czapek (wstęgi, pióropusz) są za ciałem
   if (o.akc && o.akc.tyl) o.akc.rysuj(ctx, cx, cy, facing, time);
   if (o.akc && o.akc.zaGlowa) o.akc.zaGlowa(ctx, cx, cy, facing, time);
@@ -1307,12 +1377,31 @@ function rysujRobala(ctx, w, isActive, time, o) {
   ctx.beginPath();
   ctx.ellipse(cx + facing * 2.5, cy + 3, 4, 5, 0, 0, 6.283);
   ctx.fill();
+  // trafiony: biały błysk na całym ciele
+  if (odTraf < 0.16) {
+    ctx.fillStyle = 'rgba(255,255,255,' + (0.85 * (1 - odTraf / 0.16)).toFixed(3) + ')';
+    ctx.beginPath();
+    ctx.ellipse(cx, cy + (1 - oddech) * 10, 8.6, 10.6 * oddech, 0, 0, 6.283);
+    ctx.fill();
+  }
 
   // oczy: aktywny patrzy tam, gdzie celuje
   const patrzX = isActive ? Math.cos(angle) : facing;
   const patrzY = isActive ? Math.sin(angle) : 0;
   const mruga = Math.sin(time * 1.3 + cx) > 0.985;
-  for (const ox of [facing * 1.2, facing * 5.6]) {
+  const hpTeraz = v.hp ?? w.hp;
+  const boi = hpTeraz > 0 && hpTeraz <= (o.hpMax || 100) * 0.25;
+  if (odTraf < 0.7) {
+    // zaciśnięte z bólu oczy („^ ^”) po trafieniu
+    ctx.strokeStyle = '#111';
+    ctx.lineWidth = 1.4;
+    ctx.lineCap = 'round';
+    for (const ox of [facing * 1.2, facing * 5.6]) {
+      ctx.beginPath();
+      ctx.arc(cx + ox, cy - 3, 1.9, Math.PI * 1.15, Math.PI * 1.85);
+      ctx.stroke();
+    }
+  } else for (const ox of [facing * 1.2, facing * 5.6]) {
     ctx.fillStyle = '#fff';
     ctx.beginPath();
     ctx.ellipse(cx + ox, cy - 4, 2.7, mruga ? 0.5 : 3.1, 0, 0, 6.283);
@@ -1323,6 +1412,34 @@ function rysujRobala(ctx, w, isActive, time, o) {
       ctx.arc(cx + ox + patrzX * 1.3, cy - 4 + patrzY * 1.5, 1.3, 0, 6.283);
       ctx.fill();
     }
+  }
+  // brwi: ładowanie strzału = groźna mina, mało życia = zmartwione
+  if (odTraf >= 0.7 && (o.moc > 0 || boi)) {
+    ctx.strokeStyle = '#1a1210';
+    ctx.lineWidth = 1.2;
+    ctx.lineCap = 'round';
+    for (const ox of [facing * 1.2, facing * 5.6]) {
+      const wew = (ox === facing * 1.2 ? -1 : 1) * facing;      // strona brwi bliżej środka twarzy
+      const x = cx + ox, y = cy - 8.2;
+      const opad = o.moc > 0 ? 1.4 : -1.2;                       // groźne: w dół do środka, zmartwione: w górę
+      ctx.beginPath();
+      ctx.moveTo(x - wew * 2.4, y - opad * 0.5);
+      ctx.lineTo(x + wew * 2.2, y + opad);
+      ctx.stroke();
+    }
+  }
+  // mało życia: kropla potu przy głowie
+  if (boi && odTraf >= 0.7) {
+    const f = (time * 0.9 + cx * 0.01) % 1;
+    ctx.globalAlpha = (o.rozlaczony ? 0.45 : 1) * (1 - f);
+    ctx.fillStyle = '#9fe0ff';
+    const kx = cx - facing * 6, ky = cy - 9 + f * 8;
+    ctx.beginPath();
+    ctx.moveTo(kx, ky - 3);
+    ctx.quadraticCurveTo(kx + 2.2, ky + 0.5, kx, ky + 1.8);
+    ctx.quadraticCurveTo(kx - 2.2, ky + 0.5, kx, ky - 3);
+    ctx.fill();
+    ctx.globalAlpha = o.rozlaczony ? 0.45 : 1;
   }
   // akcesorium na głowie (korona, czapka, hełm, wieniec)
   if (o.akc && !o.akc.tyl) o.akc.rysuj(ctx, cx, cy, facing, time);
@@ -1376,6 +1493,9 @@ function rysujRobala(ctx, w, isActive, time, o) {
       ctx.restore();
     }
   }
+
+  ctx.restore();                                   // koniec skali ciała (lot, lądowanie, drgnięcie)
+  ctx.globalAlpha = 1;
 
   if (isActive) {
     const ax = cx + Math.cos(angle) * 42;

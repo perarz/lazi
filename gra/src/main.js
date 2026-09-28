@@ -7,7 +7,7 @@
 import * as S from './sim.js';
 import * as P from './protokol.js';
 import * as R from './render.js';
-import { createFx, stepFx, emitExplosion, emitTrail, emitSpark, emitTekst, emitSmuga, emitLaser } from './fx.js';
+import { createFx, stepFx, emitExplosion, emitTrail, emitDymek, emitSpark, emitTekst, emitSmuga, emitLaser } from './fx.js';
 import { attachInput } from './input.js';
 import { WEAPONS, startowaAmunicja } from './weapons.js';
 import { createNet, RUCH_CO } from './net.js';
@@ -21,6 +21,7 @@ import { stylMapy } from './terrain.js';
 import * as K from './konto.js';
 import { PODSTAWOWE, AKCESORIA_ID, akcesorium, odblokowane } from './akcesoria.js';
 import { CZAPKI } from './czapki.js';
+import { nowaKronika, zdarzenieKroniki, podsumowanie } from './kronika.js';
 
 /* Kolory robali do wyboru przy wejściu. Kolejność ma znaczenie: przy
    kolizji dostaje się pierwszy wolny, więc najbardziej różne są na początku. */
@@ -98,6 +99,13 @@ const OPISY_MAP = {
    zero dodatkowych zapytań do serwera. */
 let tura = pustaTura();                           // co się dzieje w bieżącej turze
 let partia = pustaPartia();
+let kronika = null;                               // kronika partii (4.11): kille, obrażenia, podsumowanie
+
+/* Ikony w kronice eliminacji (4.11). */
+const IKONY_ZABOJSTW = {
+  bazooka: '🚀', granat: '💣', strzelba: '🔫', kasetowa: '🎆', dynamit: '🧨', nalot: '✈️', owca: '🐐',
+  kij: '⚾', teleport: '✨', salwa: '🚀', wiertlo: '🔩', most: '🌉', swiety: '😇', railgun: '⚡', lina: '🪢'
+};
 
 function pustaTura(nr = -1, kto = null) {
   return { nr, kto, suma: 0 };
@@ -1164,6 +1172,11 @@ function odswiezLobby() {
   }
   ostatnieUstawienia = podpisUst;
 
+  if (rewanzDo && Date.now() < rewanzDo && ja && !ja.gotowy && !wToku) {
+    rewanzDo = 0;
+    wyslijLobby({ t: 'gotowy', id: mojeId, tak: true });
+    pokazInfoLobby('Rewanż! Jesteś GOTOWY — czekamy na resztę.');
+  }
   const btn = el('btn-gotowy');
   btn.hidden = !(ja || wyrzucony) || wToku;
   const jestemGotowy = !!(ja && ja.gotowy);
@@ -1607,12 +1620,16 @@ function zbudujGre() {
   pasy.swieze = true;
   tura = pustaTura();
   partia = pustaPartia();
+  kronika = nowaKronika(rg.state.worms.map((w) => ({ id: S.wlasciciel(w), nick: w.nick || w.name, kolor: w.color, druzyna: w.druzyna })));
+  el('kronika').replaceChildren();
   const zasady = U.opisZmian(rg.state.ust).filter((z) => !z.startsWith('mapa'));
   const opisMapy = (OPISY_MAP[rg.state.terrain.styl] || '') + (zasady.length ? ' Zasady: ' + zasady.join(' · ') + '.' : '');
   if (dotykowy() && window.innerHeight > window.innerWidth * 1.2) {
     pokazInfo('Obróć telefon poziomo — zobaczysz więcej areny.');
   } else if (opisMapy) {
-    pokazInfo(opisMapy);
+    // po napisie „Tura: …” (1,9 s), żeby na niskim ekranie na siebie nie nachodziły
+    const seed = rg.seed;
+    setTimeout(() => { if (rg && rg.seed === seed) pokazInfo(opisMapy); }, 1900);
   }
 
   ostatniCzas = performance.now();
@@ -1656,6 +1673,14 @@ el('btn-opusc').addEventListener('click', async () => {
 el('btn-znowu').addEventListener('click', () => {
   opuszczonySeed = rg ? rg.seed : opuszczonySeed;
   zakonczGre();
+});
+// Rewanż (4.11): powrót do lobby i od razu GOTOWY — gdy wszyscy tak zrobią, startuje odliczanie
+let rewanzDo = 0;
+el('btn-rewanz').addEventListener('click', () => {
+  rewanzDo = Date.now() + 20000;
+  opuszczonySeed = rg ? rg.seed : opuszczonySeed;
+  zakonczGre();
+  odswiezLobby();
 });
 
 function odswiezPelnyEkran() {
@@ -1711,7 +1736,9 @@ function petla(teraz) {
   }
 
   for (const p of st.projectiles) {
-    if (WEAPONS[p.weapon].kind === 'pocisk') emitTrail(fx, p.x, p.y);
+    const rodzaj = WEAPONS[p.weapon].kind;
+    if (rodzaj === 'pocisk') emitTrail(fx, p.x, p.y);
+    else if (rodzaj === 'odbijany' && Math.random() < 0.5) emitDymek(fx, p.x, p.y);   // 4.11: smużka za granatem
   }
 
   pasyHud(teraz, dt);
@@ -2185,10 +2212,56 @@ function trzymajWKadrze() {
   }
 }
 
+/* Eliminacja (4.11): wpis w kronice nad planszą („Kozak 🚀 Lazi”), napis przy serii
+   w jednej turze i kamera na chwilę na miejscu zdarzenia. */
+const SERIE = ['', '', 'DUBLET!', 'TRIPLET!'];
+function pokazEliminacje(z) {
+  const g = (id) => (kronika && kronika.gracze.get(id)) || null;
+  const zab = g(z.zabojca), ofi = g(z.ofiara);
+  const robal = rg.state.worms.find((w) => w.id === z.robal);
+  const wpis = document.createElement('div');
+  wpis.className = 'kronika-wpis';
+  const nick = (gr, tekst) => {
+    const b = document.createElement('b');
+    b.textContent = tekst;
+    if (gr) b.style.color = rg.state.druzynowa && DRUZYNY[gr.druzyna] ? DRUZYNY[gr.druzyna].kolor : gr.kolor;
+    return b;
+  };
+  const ikona = document.createElement('span');
+  ikona.className = 'kronika-ikona';
+  ikona.textContent = z.przyczyna === 'lawa' ? '🌋' : z.przyczyna === 'ogien' ? '🔥' : IKONY_ZABOJSTW[z.bron] || '💥';
+  const nazwaOfiary = robal ? robal.name : ofi ? ofi.nick : '?';
+  if (zab) wpis.append(nick(zab, zab.nick), ikona, nick(ofi, nazwaOfiary));
+  else {
+    const sam = document.createElement('span');
+    sam.textContent = z.sam ? ' sam się załatwił' : ' poległ';
+    wpis.append(ikona, nick(ofi, nazwaOfiary), sam);
+  }
+  const lista = el('kronika');
+  lista.append(wpis);
+  while (lista.children.length > 4) lista.firstElementChild.remove();
+  setTimeout(() => wpis.classList.add('znika'), 6000);
+  setTimeout(() => wpis.remove(), 6600);
+  if (z.seria >= 2) {
+    napis(SERIE[z.seria] || 'MASAKRA ×' + z.seria + '!', false);
+    D.graj('wygrana');
+  }
+  // kamera na eliminacji (poza lawą — tam i tak wszystko widać z góry)
+  if (z.przyczyna !== 'lawa' && typeof z.x === 'number') {
+    kameraWybuch = { x: z.x, y: z.y - 20, do: performance.now() + 1200, oddal: 1.15 };
+  }
+}
+
 let ostatniTrzask = 0;
 function obsluzZdarzenia() {
   const st = rg.state;
   for (const e of st.events) {
+    if (kronika && (e.type === 'strzal' || e.type === 'obrazenia' || e.type === 'smierc')) {
+      const akt = S.activeWorm(st);
+      const z = zdarzenieKroniki(kronika, e, { nr: st.turnNumber, aktId: akt ? S.wlasciciel(akt) : null,
+        gracz: (id) => S.wlasciciel(st.worms.find((x) => x.id === id)) });
+      if (z) pokazEliminacje(z);
+    }
     if (!rg.obserwator && (e.type === 'strzal' || e.type === 'obrazenia' || e.type === 'smierc')) {
       const akt = S.activeWorm(st);
       const ctx = { nr: st.turnNumber, aktId: akt ? S.wlasciciel(akt) : null, mojeId, fragiWczesniej: wczytajStaty().fragi,
@@ -2199,11 +2272,13 @@ function obsluzZdarzenia() {
       case 'wybuch':
         D.graj(e.r >= 100 ? 'alleluja' : 'wybuch', { r: e.r });
         if (e.r >= 100) D.graj('wybuch', { r: e.r });
-        emitExplosion(fx, e.x, e.y, e.r);
+        // odłamki w kolorach skały sprzed wybuchu (teren na ekranie jeszcze jej nie stracił)
+        emitExplosion(fx, e.x, e.y, e.r, R.kolorySkaly(renderer, e.x, e.y, e.r * 0.8));
         kameraWybuch = { x: e.x, y: e.y, do: performance.now() + 900 };
         if (e.r >= 100) emitTekst(fx, e.x, e.y - e.r * 0.6, 'ALLELUJA! 🐐', '#ffe27a', 22);   // Święty GOAT
         wstrzas = Math.min(14, wstrzas + e.r * 0.16);
-        R.repaintRect(renderer, st.terrain, { x0: e.x - e.r - 3, x1: e.x + e.r + 3 });
+        // krater z okopconym brzegiem (sadza przemalowuje też same kolumny krateru)
+        R.dodajSadze(renderer, st.terrain, e.x, e.y, Math.max(e.r * 0.6, (e.r + 3) / 2.4));
         break;
       case 'strzal': emitSpark(fx, e.x, e.y, 14); D.graj(e.weapon === 'strzelba' ? 'strzelba' : e.weapon === 'railgun' ? 'railgun' : 'strzal'); break;
       case 'skok': D.graj('skok'); break;
@@ -2270,8 +2345,10 @@ function obsluzZdarzenia() {
         break;
       case 'obrazenia': {
         const ogien = e.cause === 'ogien';     // parzenie co ćwierć sekundy — mniejszy napis, inny dźwięk
-        emitTekst(fx, e.x, e.y - 34, '-' + e.amount, ogien ? '#ffb347' : '#ff7a55', ogien ? 12 : 15);
+        emitTekst(fx, e.x, e.y - 34, '-' + e.amount, ogien ? '#ffb347' : e.amount >= 40 ? '#ff4a2a' : '#ff7a55',
+          ogien ? 12 : e.amount >= 40 ? 21 : 15);
         D.graj(ogien ? 'parzy' : 'ala');
+        R.robalTrafiony(renderer, e.wormId, e.amount);
         const akt = S.activeWorm(st);
         if (akt && e.wormId !== akt.id) {
           turaDla(st, akt).suma += e.amount;
@@ -2350,11 +2427,78 @@ function pokazKoniec(winnerId) {
     nowe.append(li);
   }
   nowe.hidden = partia.nowe.length === 0;
+  rysujPodsumowanie();
   el('koniec-opis').textContent = opis;
   el('ekran-koniec').hidden = false;
   ekwipunek.zamknij();
   hud.hidden = true;
   document.body.classList.remove('moja-tura');
+}
+
+/* Podsumowanie partii na ekranie końca (4.11): wyróżnienia i tabela z kroniki partii. */
+function rysujPodsumowanie() {
+  const box = el('koniec-podsumowanie');
+  box.replaceChildren();
+  if (!kronika || !rg) { box.hidden = true; return; }
+  const st = rg.state;
+  const { lista, wyr } = podsumowanie(kronika);
+  const kolor = (g) => st.druzynowa && DRUZYNY[g.druzyna] ? DRUZYNY[g.druzyna].kolor : g.kolor;
+  if (wyr.length) {
+    const ul = document.createElement('ul');
+    ul.className = 'wyroznienia';
+    for (const w of wyr) {
+      const g = kronika.gracze.get(w.id);
+      const li = document.createElement('li');
+      if (w.typ === 'mvp') li.className = 'mvp';
+      const ik = document.createElement('span');
+      ik.className = 'wyr-ikona';
+      ik.textContent = w.ikona;
+      const tekst = document.createElement('span');
+      tekst.className = 'wyr-tekst';
+      const naz = document.createElement('small');
+      naz.textContent = w.nazwa;
+      const kto = document.createElement('b');
+      kto.textContent = g ? g.nick : '?';
+      if (g) kto.style.color = kolor(g);
+      const op = document.createElement('span');
+      op.textContent = w.opis + (w.bron && WEAPONS[w.bron] ? ' · ' + WEAPONS[w.bron].name : '');
+      tekst.append(naz, kto, op);
+      li.append(ik, tekst);
+      ul.append(li);
+    }
+    box.append(ul);
+  }
+  const tab = document.createElement('table');
+  tab.className = 'tabela-wynikow';
+  const glowa = document.createElement('tr');
+  for (const [t, opis] of [['#', ''], ['Gracz', ''], ['💀', 'eliminacje'], ['💥', 'obrażenia'], ['⚰️', 'zgony']]) {
+    const th = document.createElement('th');
+    th.textContent = t;
+    if (opis) th.title = opis;
+    glowa.append(th);
+  }
+  tab.append(glowa);
+  lista.forEach((g, i) => {
+    const tr = document.createElement('tr');
+    if (g.id === mojeId) tr.classList.add('ja');
+    if (i === 0) tr.classList.add('pierwszy');
+    const miejsce = document.createElement('td');
+    miejsce.textContent = (i + 1) + '.';
+    const nick = document.createElement('td');
+    const kropka = document.createElement('span');
+    kropka.className = 'kropka-gracza';
+    kropka.style.background = kolor(g);
+    nick.append(kropka, document.createTextNode(g.nick));
+    tr.append(miejsce, nick);
+    for (const v of [g.kille, g.obrazenia, g.zgony]) {
+      const td = document.createElement('td');
+      td.textContent = v;
+      tr.append(td);
+    }
+    tab.append(tr);
+  });
+  box.append(tab);
+  box.hidden = false;
 }
 
 /* ---------- HUD ---------- */
@@ -2415,6 +2559,7 @@ function hpNaZywo(w) {
   return w.widok && typeof w.widok.hp === 'number' ? w.widok.hp : w.hp;
 }
 
+let ostatnieTykniecie = -1;
 function odswiezHud(moge, teraz) {
   const st = rg.state;
   const akt = S.activeWorm(st);
@@ -2510,6 +2655,9 @@ function odswiezHud(moge, teraz) {
   zegar.textContent = synchronizacja ? 'SYNC…' : ucieczka !== null ? ucieczka.toFixed(1) : st.phase !== 'aim' ? '–' : sek;
   zegar.classList.toggle('ucieczka', ucieczka !== null);
   zegar.classList.toggle('malo', !synchronizacja && st.phase === 'aim' && sek <= 5);
+  // 4.11: ostatnie 5 s mojej tury tyka zegar
+  if (moge && st.phase === 'aim' && sek <= 5 && sek > 0 && sek !== ostatnieTykniecie) D.graj('tik', { ostatnie: sek <= 2 });
+  ostatnieTykniecie = st.phase === 'aim' ? sek : -1;
 
   const slup = el('wiatr-slup');
   const proc = Math.min(50, (Math.abs(st.wind) / 130) * 50);

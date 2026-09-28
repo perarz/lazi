@@ -18,7 +18,7 @@ Stos technologiczny:
 - Bez bundlera, bez `package.json` i bez zależności npm. Zwykłe pliki HTML/CSS/JS, gra jako moduły ES,
   zrzutka jako klasyczne skrypty.
 
-Obecna wersja: **4.10 „Płonąca ropa, railgun przez ściany, 7 utworów i areny, które nie zarastają”** (`wersja.js`).
+Obecna wersja: **4.11 „Arena 5× lepsza”** (`wersja.js`).
 
 ---
 
@@ -218,7 +218,7 @@ PL, IP 96.62.223.169). Katalog `serwer/` to serwer: Node + WebSocket (`ws`).
 - Opcjonalnie ładniejszy adres serwera `arena.kacperlazarz.pl`: rekord DNS A → 96.62.223.169, ponowne
   `instaluj.sh` z nowym adresem, potem adres w czterech miejscach (wyżej) i wdrożenie.
 - Ostatnie wdrożenia: 4.8 = PR #28 (bez zmian serwera), 4.9 = PR #29 + `arena-aktualizuj` 2026-09-28 (konsola dostawcy).
-  **4.10 zmienia serwer** (pusta arena znika od razu) — po merge'u potrzebne `arena-aktualizuj`.
+  4.10 = PR #31 (zmienia serwer — `arena-aktualizuj`, komendy dostał użytkownik). 4.11 bez zmian serwera.
 
 ---
 
@@ -470,8 +470,9 @@ Lekcje z kalibracji:
 | `src/ekwipunek.js` | Ekwipunek broni jak w Worms Armageddon: rzędy (`GRUPY`), ikony SVG broni, otwieranie/zamykanie |
 | `src/input.js` | Klawiatura, przyciski dotykowe, przeciąganie/szczypanie (dwa palce = zoom + przesuwanie), PPM/Q = ekwipunek, E emotki, R obrót mostu, M cała mapa, P / środkowy przycisk = ping |
 | `src/render.js`, `src/fx.js` | Grafika (tu wolno trygonometrię i `Math.random`); w `render.js` też kamera, minimapa, pingi, nagrobki, miny i beczki, skrzynki, podgląd robala (`rysujPodgladRobala`, `mini` = kafelek akcesorium) i scena ekranu ładowania (`rysujSceneLadowania`) |
-| `src/osiagniecia-reguly.js` | Reguły osiągnięć — czyste funkcje |
-| `test/sim.test.mjs`, `test/protokol.test.mjs` | Testy w Node (96 i 23) |
+| `src/osiagniecia-reguly.js` | Reguły osiągnięć — czyste funkcje. **Zdarzenie `strzal` sim wysyła PRZED skutkami broni** (od 4.11): strzelba, railgun i kij zabijają od razu, a reguły biorą broń tury z `strzal` — gdy szło po `smierc`, „Śrut w plecy” nigdy nie wpadał |
+| `src/kronika.js` | Kronika partii (4.11), czyste funkcje: `nowaKronika(gracze)`, `zdarzenieKroniki(k, e, ctx)` (kille, obrażenia, zgony — raz na robala, własne obrażenia, najlepsza tura; zasługa należy do gracza z turą) zwraca opis eliminacji do kroniki na ekranie, `podsumowanie(k)` = tabela + wyróżnienia (MVP, Strzał partii ≥ 30, Kamikaze ≥ 20, Pływak, Pacyfista) |
+| `test/sim.test.mjs`, `test/protokol.test.mjs` | Testy w Node (98 i 23) |
 
 ### Determinizm (święta zasada)
 - Symulacja (`sim.js`, `terrain.js`) używa tylko:
@@ -767,6 +768,18 @@ Lekcje z kalibracji:
 - **Nowy utwór**: wpis w `UTWORY` (`muzyka.js`) — styl z `STYLE`, akordy części, `forma`; nowy instrument = wpis w
   `BRZMIENIA` albo `PERKUSJA` (`dzwieki.js`), test sprawdza, że każdy użyty instrument ma brzmienie. Poziom głośności
   porównuj `_renderujOffline` (Playwright, `--autoplay-policy=no-user-gesture-required`): utwory mają RMS ok. 0,012–0,026.
+- **Arena 5× lepsza (4.11, sama grafika i UI — symulacja bez zmian, `WERSJA` dalej 8)**:
+  - Robale: `r.stanRobali` (id → trafiony, lądowanie, chód) w `render.js`; `R.robalTrafiony` przy `obrazenia` → biały
+    błysk, drgnięcie, oczy „^ ^”; w locie wyciągnięty, po lądowaniu (spadek `vy` > 110) rozpłaszczony, przy chodzie
+    podskok i przechył; brwi przy ładowaniu (`o.moc`) i przy życiu ≤ 25% (plus kropla potu). Skala ciała liczona od stóp.
+  - Wybuch: `emitExplosion(fx, x, y, r, kolory)` — błysk (`fx.blyski`), odłamki (`fx.gruz`, zwykłe kolory, nie „lighter”)
+    w kolorach skały z `R.kolorySkaly` (próbka płótna terenu PRZED przemalowaniem krateru), wiszący dym; krater dostaje
+    sadzę (`dodajSadze` zamiast gołego `repaintRect`). Napisy z `emitTekst` wyskakują sprężyście.
+  - Kronika (`kronika.js`) liczona u każdego w `obsluzZdarzenia`; wpisy w `#kronika` (w `.banery`, na niskim ekranie
+    dwa ostatnie), seria w turze → `napis('DUBLET!')`, eliminacja poza lawą → `kameraWybuch` z `oddal: 1.15` (przybliżenie).
+  - Ekran końca: `#koniec-podsumowanie` (`rysujPodsumowanie`) i `#btn-rewanz` → `rewanzDo`, `odswiezLobby` wysyła
+    `gotowy` sam, gdy jestem w lobby i nie jestem gotowy. Opis mapy na starcie partii pokazuje się po napisie tury (1,9 s).
+  - Smużka za `odbijany` (`emitDymek`), tykanie `D.graj('tik')` w ostatnich 5 s mojej tury.
 - **Rogi prawdziwego GOATa** (4.10): `rogKozy` (oś Béziera, obrys = oś ± grubość, prążki, połysk) i `uchoKozy` w `czapki.js`;
   dwa rogi z czubka głowy zagięte do tyłu (dalszy ciemniejszy), `wys: 9`. Id `rogi` i osiągnięcie `owca` bez zmian.
 
@@ -778,10 +791,7 @@ lina ninja, Święty GOAT, railgun, płonąca ropa z beczek (4.10). Użytkownik 
 Każda większa rzecz to osobna wersja z testami i zrzutami; nowe dane „online” doklejaj do istniejących zdarzeń.
 
 **Małe i efektowne (bez zmian zasad gry)**
-- **Podsumowanie partii** na ekranie końca: najlepszy strzał, MVP, „Kamikaze”, „Pacyfista”, ile kto wpadł do lawy —
-  liczone lokalnie ze zdarzeń (`obsluzZdarzenia` już zbiera obrażenia na turę).
 - **Teksty robali** w dymkach przy trafieniu, śmierci i lawie (`emitTekst` w `fx.js`); z czapką postaci — teksty z `dane.js`.
-- **Rewanż jednym przyciskiem** po partii (te same drużyny i ustawienia).
 - **Powtórka najlepszego strzału** w zwolnionym tempie: `poczatekSnap` + kanoniczna akcja, przeliczone lokalnie.
 - **Szybki czat** z gotowymi tekstami (jak emotki: zdarzenie w logu, `zloz` go nie zna). Slow-mo przy zabiciu.
 - Podgląd wybuchu miny u widzów w czasie cudzej tury (dziś widać go dopiero przy strzale albo pasie) — np. nowy typ w `ruch.e`.
@@ -852,13 +862,14 @@ więcej akcesoriów (np. czapki postaci ze zrzutki), ewentualnie konto także w 
   - **4.8** 1–3 robale na gracza, wyższa mapa ekstremalna, celny nalot, minimapa i podgląd całej mapy
   - **4.9** railgun, miny i beczki, nagrobki, kamera za pociskiem, pingi, dźwięki i muzyczka, 5 nowych tańców, okulary i buźka zamiast lamy i kilofa, bez ogonków, nowe skrzynki i tło, start gospodarza bez GOTOWY
   - **4.10** płonąca ropa z beczek (parzy i wypala ziemię), railgun wypala tunel w skale, 7 utworów muzyki zamiast jednej pętli, pusta arena znika od razu, nowe rogi GOATa
+  - **4.11** „Arena 5× lepsza”: mocniejsze wybuchy, żywe robale, kronika eliminacji, podsumowanie partii z wyróżnieniami, rewanż jednym przyciskiem; naprawa „Śrut w plecy”
 
 ---
 
 ## 9. Testy i sprawdzanie
 
 ```
-node gra/test/sim.test.mjs        # symulacja, bronie, determinizm, drużyny, ustawienia, skrzynki, spawny, osiągnięcia, kamera, lina, most obracany, rozmiar mapy, kilka robali, railgun i tunel, miny i beczki, ogień, muzyka (96)
+node gra/test/sim.test.mjs        # symulacja, bronie, determinizm, drużyny, ustawienia, skrzynki, spawny, osiągnięcia, kamera, lina, most obracany, rozmiar mapy, kilka robali, railgun i tunel, miny i beczki, ogień, muzyka, kronika (98)
 node gra/test/protokol.test.mjs   # protokół: lag, rozłączenia, ucieczka na żywo, lobby, ustawienia, partie 2v2, z własnymi zasadami i z kilkoma robalami, start bez GOTOWY (23, ~35 s)
 cd serwer && npm install && node test.mjs   # serwer na VPS: Arena (10) + konta, pokoje, akcesoria, czapki, puste areny (11) + zrzutka (7)
 ```

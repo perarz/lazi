@@ -1161,3 +1161,55 @@ button.maly { padding: 7px 12px; font-size: 12px; min-height: 36px; }
   .minimapa { width: 128px; top: calc(62px + var(--bezp-g)); right: calc(8px + var(--bezp-p)); }
 }
 #btn-muzyka.wyl { opacity: 0.45; text-decoration: line-through; }
+
+/* ---------- 4.11: kronika eliminacji nad planszą ---------- */
+.kronika { display: flex; flex-direction: column; align-items: center; gap: 4px; pointer-events: none; }
+.kronika-wpis {
+  display: flex; align-items: center; gap: 6px;
+  background: rgba(10, 6, 6, 0.72); border: 1px solid rgba(255, 150, 60, 0.35); border-radius: 999px;
+  padding: 3px 12px; font-size: 13px; font-family: system-ui, sans-serif; color: var(--tekst);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+  animation: kronika-wejscie 0.28s ease-out;
+  transition: opacity 0.6s, transform 0.6s;
+}
+.kronika-wpis b { font-weight: 800; }
+.kronika-wpis .kronika-ikona { font-size: 15px; }
+.kronika-wpis.znika { opacity: 0; transform: translateY(-6px); }
+@keyframes kronika-wejscie { from { opacity: 0; transform: scale(0.7); } to { opacity: 1; transform: scale(1); } }
+@media (max-height: 500px) {
+  .kronika-wpis { font-size: 11px; padding: 2px 9px; }
+  .kronika-wpis:nth-last-child(n+3) { display: none; }   /* na niskim ekranie tylko dwa ostatnie */
+}
+
+/* ---------- 4.11: podsumowanie partii na ekranie końca ---------- */
+.karta-koniec { width: min(560px, 100%); }
+.koniec-podsumowanie { margin: -8px 0 14px; font-family: system-ui, sans-serif; }
+.koniec-podsumowanie[hidden] { display: none; }
+.wyroznienia { list-style: none; display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; margin-bottom: 12px; }
+.wyroznienia li {
+  display: flex; align-items: center; gap: 8px; text-align: left;
+  background: rgba(255, 170, 40, 0.1); border: 1px solid rgba(255, 170, 40, 0.35); border-radius: 12px;
+  padding: 6px 10px; min-width: 150px; flex: 1 1 150px; max-width: 250px;
+}
+.wyroznienia li.mvp { background: linear-gradient(90deg, rgba(255, 200, 40, 0.28), rgba(255, 110, 0, 0.18)); border-color: #ffd93b; }
+.wyroznienia .wyr-ikona { font-size: 22px; line-height: 1; }
+.wyroznienia .wyr-tekst { display: flex; flex-direction: column; min-width: 0; }
+.wyroznienia .wyr-tekst small { font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; opacity: 0.7; }
+.wyroznienia .wyr-tekst b { font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wyroznienia .wyr-tekst span { font-size: 11px; opacity: 0.8; }
+.tabela-wynikow { width: 100%; border-collapse: collapse; font-size: 13px; }
+.tabela-wynikow th { font-size: 12px; font-weight: 600; opacity: 0.7; padding: 3px 6px; }
+.tabela-wynikow td { padding: 5px 6px; border-top: 1px solid rgba(255, 255, 255, 0.07); font-variant-numeric: tabular-nums; }
+.tabela-wynikow td:nth-child(2) { text-align: left; max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tabela-wynikow tr.ja td { background: rgba(255, 210, 120, 0.08); }
+.tabela-wynikow .kropka-gracza { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 6px; vertical-align: middle; }
+.tabela-wynikow tr.pierwszy td:first-child { color: #ffd93b; font-weight: 800; }
+.koniec-przyciski { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+.koniec-przyciski button { flex: 1 1 160px; max-width: 240px; margin-top: 8px; }
+@media (max-height: 500px) {
+  .karta-koniec { padding: 16px 18px; }
+  .karta-koniec h1 { font-size: 22px; }
+  .karta-koniec .podtytul { margin-bottom: 12px; }
+  .wyroznienia li { padding: 4px 8px; min-width: 130px; }
+  .tabela-wynikow td { padding: 3px 6px; }
+}

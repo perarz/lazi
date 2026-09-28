@@ -51,6 +51,8 @@
       <div class="baner" id="baner-obserwator" hidden>Oglądasz tę partię. Zagrasz w następnej rundzie.</div>
       <div class="baner baner-blad" id="baner-blad" hidden></div>
       <div class="baner baner-info" id="baner-info" hidden></div>
+      <!-- kronika eliminacji (4.11): „Kozak 🚀 Lazi”, znika po kilku sekundach -->
+      <div class="kronika" id="kronika" aria-live="polite"></div>
     </div>
 
     <div class="napis-tury" id="napis-tury" hidden></div>
@@ -311,11 +313,16 @@
 
   <!-- Ekran końca -->
   <div class="ekran" id="ekran-koniec" hidden>
-    <div class="karta">
+    <div class="karta karta-koniec">
       <h1 id="koniec-tytul">KONIEC</h1>
       <p class="podtytul" id="koniec-opis"></p>
+      <!-- podsumowanie partii (4.11): wyróżnienia i tabela wyników -->
+      <div class="koniec-podsumowanie" id="koniec-podsumowanie" hidden></div>
       <ul class="koniec-osiagniecia" id="koniec-osiagniecia" hidden></ul>
-      <button id="btn-znowu" class="glowny">Wracam do lobby</button>
+      <div class="koniec-przyciski">
+        <button id="btn-rewanz" class="glowny" title="Wracasz do lobby od razu jako GOTOWY">⚔️ Rewanż</button>
+        <button id="btn-znowu">Wracam do lobby</button>
+      </div>
     </div>
   </div>
 

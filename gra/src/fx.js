@@ -41,7 +41,9 @@ export function createFx() {
     shocks: [],
     teksty: [],     // unoszące się napisy: obrażenia, komunikaty nad robalami
     smugi: [],      // ślad strzału ze strzelby
-    lasery: []      // promień railguna (4.9)
+    lasery: [],     // promień railguna (4.9)
+    gruz: [],       // odłamki skały z wybuchu (4.11): rysowane zwykle, nie „świecąco”
+    blyski: []      // błysk wybuchu (4.11)
   };
 }
 
@@ -87,8 +89,36 @@ function emit(fx, cfg) {
   p.dead = false;
 }
 
-export function emitExplosion(fx, x, y, r) {
+/* Wybuch (od 4.11 mocniejszy): błysk, fala, kula ognia, odłamki skały w jej kolorach
+   (`kolory` = próbki terenu sprzed wycięcia krateru) i dym, który chwilę wisi w powietrzu. */
+export function emitExplosion(fx, x, y, r, kolory = null) {
   fx.shocks.push({ x, y, r: r * 0.3, max: r * 2.1, life: 0.45, maxLife: 0.45 });
+  fx.blyski.push({ x, y, r: r * 2.6, life: 0.16, maxLife: 0.16 });
+  if (kolory && kolory.length) {
+    const n = Math.min(40, Math.round(8 + r * 0.45));
+    for (let i = 0; i < n; i++) {
+      const a = -Math.PI * (0.08 + Math.random() * 0.84);        // głównie w górę
+      const s = (0.35 + Math.random() * 0.8) * (150 + r * 3.5);
+      if (fx.gruz.length > 260) fx.gruz.shift();
+      fx.gruz.push({
+        x: x + (Math.random() - 0.5) * r * 0.6, y: y + (Math.random() - 0.5) * r * 0.4,
+        vx: Math.cos(a) * s, vy: Math.sin(a) * s,
+        rot: Math.random() * 6.283, vrot: (Math.random() - 0.5) * 18,
+        size: 1.5 + Math.random() * (2 + r * 0.05),
+        kolor: kolory[(Math.random() * kolory.length) | 0],
+        life: 0.9 + Math.random() * 0.9
+      });
+    }
+  }
+  // dym, który po dużym wybuchu wisi dłużej i powoli się rozwiewa
+  for (let i = 0; i < Math.round(r * 0.18); i++) {
+    emit(fx, {
+      x: x + (Math.random() - 0.5) * r, y: y - Math.random() * r * 0.5,
+      vx: (Math.random() - 0.5) * 20, vy: -12 - Math.random() * 18,
+      grav: -6, drag: 0.4, size: r * 0.7 + Math.random() * r * 0.6,
+      life: 2 + Math.random() * 1.6, tint: 1, cool: 2, alpha: 0.22, set: 'smoke'
+    });
+  }
 
   const n = Math.round(28 + r * 0.9);
   for (let i = 0; i < n; i++) {
@@ -126,6 +156,15 @@ export function emitPlomien(fx, x, y, naZiemi) {
       life: 0.9 + Math.random() * 1.1, tint: 0, cool: 3, alpha: 0.28, set: 'smoke'
     });
   }
+}
+
+/* Smużka dymu za granatem (4.11) — cienka, szara, bez ognia. */
+export function emitDymek(fx, x, y) {
+  emit(fx, {
+    x, y, vx: (Math.random() - 0.5) * 10, vy: -8 - Math.random() * 10,
+    grav: -10, drag: 1, size: 3 + Math.random() * 4,
+    life: 0.35 + Math.random() * 0.35, tint: 0, cool: 3, alpha: 0.35, set: 'smoke'
+  });
 }
 
 export function emitTrail(fx, x, y) {
@@ -180,10 +219,46 @@ export function stepFx(fx, dt) {
     s.life -= dt;
     if (s.life <= 0) fx.lasery.splice(i, 1);
   }
+  for (let i = fx.blyski.length - 1; i >= 0; i--) {
+    fx.blyski[i].life -= dt;
+    if (fx.blyski[i].life <= 0) fx.blyski.splice(i, 1);
+  }
+  for (let i = fx.gruz.length - 1; i >= 0; i--) {
+    const g = fx.gruz[i];
+    g.life -= dt;
+    if (g.life <= 0) { fx.gruz.splice(i, 1); continue; }
+    g.vy += 560 * dt;
+    g.vx *= 1 - 0.4 * dt;
+    g.x += g.vx * dt;
+    g.y += g.vy * dt;
+    g.rot += g.vrot * dt;
+  }
 }
 
 export function drawFx(fx, ctx) {
+  // odłamki skały: zwykłe kolory (nie świecą), z ciemną krawędzią
+  for (const g of fx.gruz) {
+    ctx.globalAlpha = Math.min(1, g.life * 2.5);
+    ctx.save();
+    ctx.translate(g.x, g.y);
+    ctx.rotate(g.rot);
+    ctx.fillStyle = 'rgba(0,0,0,0.5)';
+    ctx.fillRect(-g.size / 2 - 0.6, -g.size / 2 - 0.6, g.size + 1.2, g.size * 0.8 + 1.2);
+    ctx.fillStyle = g.kolor;
+    ctx.fillRect(-g.size / 2, -g.size / 2, g.size, g.size * 0.8);
+    ctx.restore();
+  }
+  ctx.globalAlpha = 1;
   ctx.globalCompositeOperation = 'lighter';
+  for (const b of fx.blyski) {
+    const t = b.life / b.maxLife;
+    const g = ctx.createRadialGradient(b.x, b.y, 0, b.x, b.y, b.r);
+    g.addColorStop(0, 'rgba(255, 250, 220, ' + (0.9 * t).toFixed(3) + ')');
+    g.addColorStop(0.35, 'rgba(255, 190, 90, ' + (0.45 * t).toFixed(3) + ')');
+    g.addColorStop(1, 'rgba(255, 120, 40, 0)');
+    ctx.fillStyle = g;
+    ctx.fillRect(b.x - b.r, b.y - b.r, b.r * 2, b.r * 2);
+  }
   for (const p of fx.parts) {
     if (p.dead) continue;
     const t = p.life / p.maxLife;
@@ -255,14 +330,21 @@ export function drawFx(fx, ctx) {
 
   for (const t of fx.teksty) {
     const a = Math.min(1, t.life / t.maxLife * 2.5);
+    // 4.11: napis wyskakuje (większy na starcie, sprężyście wraca do rozmiaru)
+    const wiek = t.maxLife - t.life;
+    const skok = wiek < 0.22 ? 1 + 0.55 * Math.sin((wiek / 0.22) * Math.PI) * (1 - wiek / 0.22) + (1 - wiek / 0.22) * 0.25 : 1;
     ctx.globalAlpha = a;
+    ctx.save();
+    ctx.translate(t.x, t.y);
+    ctx.scale(skok, skok);
     ctx.font = '700 ' + t.rozmiar + 'px "Russo One", system-ui, sans-serif';
     ctx.textAlign = 'center';
     ctx.lineWidth = 3;
     ctx.strokeStyle = 'rgba(0,0,0,0.75)';
-    ctx.strokeText(t.tekst, t.x, t.y);
+    ctx.strokeText(t.tekst, 0, 0);
     ctx.fillStyle = t.kolor;
-    ctx.fillText(t.tekst, t.x, t.y);
+    ctx.fillText(t.tekst, 0, 0);
+    ctx.restore();
   }
   ctx.globalAlpha = 1;
 }
