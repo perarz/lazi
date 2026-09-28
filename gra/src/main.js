@@ -2262,6 +2262,12 @@ function obsluzZdarzenia() {
         wstrzas = Math.min(14, wstrzas + 8);
         if (e.trafieni >= 2) emitTekst(fx, e.x0, e.y0 - 30, e.trafieni + '× PRZESTRZELONY!', '#7fe3ff', 18);
         break;
+      case 'tunel':
+        // railgun wypalił dziurę w skale (4.10): nowy teren, okopcone brzegi, iskry na wlocie i wylocie
+        R.dodajSadzeTunelu(renderer, st.terrain, e);
+        emitSpark(fx, e.ax, e.ay, 10);
+        emitSpark(fx, e.bx, e.by, 10);
+        break;
       case 'obrazenia': {
         const ogien = e.cause === 'ogien';     // parzenie co ćwierć sekundy — mniejszy napis, inny dźwięk
         emitTekst(fx, e.x, e.y - 34, '-' + e.amount, ogien ? '#ffb347' : '#ff7a55', ogien ? 12 : 15);

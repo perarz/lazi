@@ -155,6 +155,17 @@ export function dodajSadze(r, terrain, x, y, rad) {
   repaintRect(r, terrain, { x0: x - rad * 2.4, x1: x + rad * 2.4 });
 }
 
+/* Tunel railguna (4.10): okopcone brzegi wzdłuż całego odcinka i jedno przemalowanie kolumn. */
+export function dodajSadzeTunelu(r, terrain, e) {
+  const dl = Math.hypot(e.bx - e.ax, e.by - e.ay);
+  const n = Math.min(80, Math.max(1, Math.round(dl / 14)));
+  for (let i = 0; i <= n; i++) {
+    r.sadza.push({ x: e.ax + (e.bx - e.ax) * i / n, y: e.ay + (e.by - e.ay) * i / n, r: e.r * 0.8 });
+  }
+  while (r.sadza.length > 600) r.sadza.shift();
+  repaintRect(r, terrain, { x0: e.x0 - e.r * 2, x1: e.x1 + e.r * 2 });
+}
+
 function malujSadze(r, x0, x1) {
   if (!r.sadza || !r.sadza.length) return;
   const ctx = r.tctx;

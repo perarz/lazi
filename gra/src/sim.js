@@ -672,18 +672,30 @@ function strzalNatychmiastowy(state, w, start, weapon) {
   }
 }
 
-/* Railgun (4.9): laser leci po prostej aż za mapę — przez skały (terenu nie rusza)
-   i przez robale; każdy trafiony dostaje raz pełne obrażenia. Kierunek (vx, vy)
+/* Railgun (4.9): laser leci po prostej aż za mapę — przez skały i przez robale; każdy trafiony
+   dostaje raz pełne obrażenia. Od 4.10 wypala w każdej skale na drodze tunel (nad lawą). Kierunek (vx, vy)
    policzył strzelający (obliczStart), tu tylko dodawanie i porównania. */
 function strzalRailgun(state, w, start, weapon) {
   const t = state.terrain;
   let x = start.x, y = start.y;
   const dx = start.vx * 2, dy = start.vy * 2;
   const trafieni = [];
+  // skała na drodze lasera (nad lawą): odcinki od wejścia do wyjścia, szczeliny do 12 px się sklejają;
+  // wycinamy je dopiero po przejściu lasera, żeby wycinanie nie zmieniało tego, co laser „widzi”
+  const tunele = [];
+  let wejscie = null, ostatni = null, powietrze = 0;
   for (let i = 0; i < 6000; i++) {
     x += dx;
     y += dy;
     if (x < -40 || x >= t.w + 40 || y < -400 || y > t.h + 40) break;
+    if (y < state.lava && T.solidAt(t, x, y)) {
+      if (!wejscie) wejscie = [x, y];
+      ostatni = [x, y];
+      powietrze = 0;
+    } else if (wejscie && ++powietrze > 6) {
+      tunele.push([wejscie[0], wejscie[1], ostatni[0], ostatni[1]]);
+      wejscie = null;
+    }
     for (const p of state.pulapki) {
       if (p.lont < 0 && Math.abs(p.x - x) < 9 && y > p.y - 16 && y < p.y + 2) p.lont = p.typ === 'beczka' ? BECZKA_LONT : 6;
     }
@@ -692,7 +704,12 @@ function strzalRailgun(state, w, start, weapon) {
       if (Math.abs(o.x - x) < 9 && y > o.y - WORM_H - 2 && y < o.y + 2) trafieni.push(o);
     }
   }
+  if (wejscie) tunele.push([wejscie[0], wejscie[1], ostatni[0], ostatni[1]]);
   state.events.push({ type: 'railgun', x0: start.x, y0: start.y, x1: x, y1: y, trafieni: trafieni.length });
+  for (const [ax, ay, bx, by] of tunele) {
+    const pole = T.wytnijTunel(t, ax, ay, bx, by, weapon.tunel);
+    state.events.push({ type: 'tunel', x0: pole.x0, x1: pole.x1, ax, ay, bx, by, r: weapon.tunel });
+  }
   for (const o of trafieni) {
     damageWorm(state, o, weapon.damage, 'railgun');
     if (o.alive) {
@@ -1517,7 +1534,10 @@ export function ustawSkrzynki(state, lista) {
 
 export function plaskieKratery(state) {
   const kratery = [];
-  for (const c of state.terrain.craters) kratery.push(c.x, c.y, c.r);
+  for (const c of state.terrain.craters) {
+    kratery.push(c.x, c.y, c.r);
+    if (c.r <= T.TUNEL) kratery.push(c.x2, c.y2, T.TUNEL_DALEJ);     // tunel railguna: druga trójka
+  }
   return kratery;
 }
 
@@ -1572,12 +1592,17 @@ export function stanPoTurze(state, usun = []) {
 }
 
 function teSameKratery(lista, plaska) {
-  if (!Array.isArray(plaska) || lista.length * 3 !== plaska.length) return false;
-  for (let i = 0; i < lista.length; i++) {
-    const c = lista[i];
-    if (c.x !== plaska[i * 3] || c.y !== plaska[i * 3 + 1] || c.r !== plaska[i * 3 + 2]) return false;
+  if (!Array.isArray(plaska)) return false;
+  let i = 0;
+  for (const c of lista) {
+    if (c.x !== plaska[i] || c.y !== plaska[i + 1] || c.r !== plaska[i + 2]) return false;
+    i += 3;
+    if (c.r <= T.TUNEL) {
+      if (c.x2 !== plaska[i] || c.y2 !== plaska[i + 1] || plaska[i + 2] !== T.TUNEL_DALEJ) return false;
+      i += 3;
+    }
   }
-  return true;
+  return i === plaska.length;
 }
 
 /* Teren według listy kraterów — przebudowa tylko, gdy lista się różni.
@@ -1586,7 +1611,14 @@ export function ustawKratery(state, plaska) {
   if (!Array.isArray(plaska) || teSameKratery(state.terrain.craters, plaska)) return false;
   const lista = [];
   for (let i = 0; i + 2 < plaska.length; i += 3) {
-    lista.push({ x: plaska[i], y: plaska[i + 1], r: plaska[i + 2] });
+    const c = { x: plaska[i], y: plaska[i + 1], r: plaska[i + 2] };
+    if (c.r <= T.TUNEL) {
+      if (plaska[i + 5] !== T.TUNEL_DALEJ) break;       // urwany tunel — reszta listy to śmieci
+      c.x2 = plaska[i + 3];
+      c.y2 = plaska[i + 4];
+      i += 3;
+    } else if (c.r === T.TUNEL_DALEJ) continue;
+    lista.push(c);
   }
   state.terrain = T.rebuild(state.seed, lista, state.terrain.opcje);
   return true;

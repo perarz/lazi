@@ -18,7 +18,7 @@ Stos technologiczny:
 - Bez bundlera, bez `package.json` i bez zależności npm. Zwykłe pliki HTML/CSS/JS, gra jako moduły ES,
   zrzutka jako klasyczne skrypty.
 
-Obecna wersja: **4.10 „Płonąca ropa, 7 utworów w tle i areny, które nie zarastają”** (`wersja.js`).
+Obecna wersja: **4.10 „Płonąca ropa, railgun przez ściany, 7 utworów i areny, które nie zarastają”** (`wersja.js`).
 
 ---
 
@@ -471,7 +471,7 @@ Lekcje z kalibracji:
 | `src/input.js` | Klawiatura, przyciski dotykowe, przeciąganie/szczypanie (dwa palce = zoom + przesuwanie), PPM/Q = ekwipunek, E emotki, R obrót mostu, M cała mapa, P / środkowy przycisk = ping |
 | `src/render.js`, `src/fx.js` | Grafika (tu wolno trygonometrię i `Math.random`); w `render.js` też kamera, minimapa, pingi, nagrobki, miny i beczki, skrzynki, podgląd robala (`rysujPodgladRobala`, `mini` = kafelek akcesorium) i scena ekranu ładowania (`rysujSceneLadowania`) |
 | `src/osiagniecia-reguly.js` | Reguły osiągnięć — czyste funkcje |
-| `test/sim.test.mjs`, `test/protokol.test.mjs` | Testy w Node (95 i 23) |
+| `test/sim.test.mjs`, `test/protokol.test.mjs` | Testy w Node (96 i 23) |
 
 ### Determinizm (święta zasada)
 - Symulacja (`sim.js`, `terrain.js`) używa tylko:
@@ -667,7 +667,7 @@ Lekcje z kalibracji:
 | - | Wiertło | wiertło | 2 | jedzie prosto bez grawitacji, co 8 kroków `carve` → tunel (zdarzenie `wiercenie` przemalowuje teren), na końcu mały wybuch |
 | = | Most | celowany | 3 | belka 90×7 px, do 260 px od robala, nie na robalu (`powodBrakuMostu`) |
 | [ | Święty GOAT | odbijany | 1 | jak granat, lont 3,5 s, promień 118 (największy), dmg 90, odrzut 480; napis „ALLELUJA!” przy wybuchu r ≥ 100 |
-| \\ | Railgun | railgun | 1 | 4.9: `strzalRailgun` — laser po prostej od `start` (wektor od strzelca) aż za mapę, co 2 px; przebija skałę (terenu nie rusza) i każdego robala (poza swoimi w drużynie), 75 obrażeń każdemu raz, odrzut 150; zdarzenie `railgun` (x0,y0,x1,y1,trafieni) → `emitLaser` w `fx.js` |
+| \\ | Railgun | railgun | 1 | 4.9: `strzalRailgun` — laser po prostej od `start` (wektor od strzelca) aż za mapę, co 2 px; przebija skałę i każdego robala (poza swoimi w drużynie), 75 obrażeń każdemu raz, odrzut 150; zdarzenie `railgun` (x0,y0,x1,y1,trafieni) → `emitLaser` w `fx.js`. **Od 4.10 wypala tunel** (`tunel: 7` = promień) w każdej skale nad lawą: odcinki wejście→wyjście (szczeliny ≤ 12 px sklejone), wycinane po przejściu lasera przez `T.wytnijTunel`; zdarzenie `tunel` → `dodajSadzeTunelu` (przemalowanie + okopcone brzegi) |
 | ] | Lina ninja | lina (`narzedzie`) | 5 | nie strzał: `linaPrzelacz` (OGNIA/F zaczepia i puszcza, SKOK puszcza), `krokLiny` = wahadło (tylko sqrt) |
 
 - **Lina ninja (4.4)**: stan `w.lina = {x, y, dl}` tylko u gracza z turą, jak chodzenie — nie ma go w `stanRobali`,
@@ -682,7 +682,10 @@ Lekcje z kalibracji:
   `wMoscie` sprawdza punkt w belce (też kolizja z robalem w `powodBrakuMostu`). k = 0 to dawny poziomy most
   (górna krawędź w punkcie celu), obrócony ma środek w punkcie celu. Podgląd `ruch.o`.
 - **Most w terenie**: siedzi na liście kraterów jako `{x, y, r: -1}` (`carve` z ujemnym r uruchamia `zbudujMost`),
-  więc `rebuild()` odtwarza go w tej samej kolejności co wybuchy. W masce ma wartość **2** (`solidAt`
+  więc `rebuild()` odtwarza go w tej samej kolejności co wybuchy. **Tunel railguna** (4.10) to jeden wpis
+  `{x, y, r: TUNEL - promień, x2, y2}` (`T.TUNEL` = −100), w sieci **dwie trójki** `x, y, r, x2, y2, TUNEL_DALEJ` (−99) —
+  `plaskieKratery`, `ustawKratery`, `teSameKratery` i `rozjazd` w `protokol.js` to znają. Nie zakładaj, że lista płaska
+  ma jedną trójkę na krater. W masce ma wartość **2** (`solidAt`
   sprawdza `!== 0`, render maluje 2 jako stalowy dźwigar). **Nie zakładaj, że maska ma tylko 0/1.**
 - **Miny i beczki (4.9)** (`state.pulapki`: `{id, typ: 'mina'|'beczka', x, y, lont}`, `lont` = −1 spokój, inaczej kroki do wybuchu):
   - Rozstawia je `rozstawPulapki` w `createGame` z seeda (ustawienie `pulapki` 0/1/2 → `PULAPKI_ILE`, liczba rośnie z szerokością mapy),
@@ -848,14 +851,14 @@ więcej akcesoriów (np. czapki postaci ze zrzutki), ewentualnie konto także w 
   - **4.7.1** kurtyna przy przejściu zrzutka ↔ Arena, wejście na Arenę bez ekranu ładowania, Korona Króla GOATów za wszystkie osiągnięcia + 3 czapki
   - **4.8** 1–3 robale na gracza, wyższa mapa ekstremalna, celny nalot, minimapa i podgląd całej mapy
   - **4.9** railgun, miny i beczki, nagrobki, kamera za pociskiem, pingi, dźwięki i muzyczka, 5 nowych tańców, okulary i buźka zamiast lamy i kilofa, bez ogonków, nowe skrzynki i tło, start gospodarza bez GOTOWY
-  - **4.10** płonąca ropa z beczek (parzy i wypala ziemię), 7 utworów muzyki zamiast jednej pętli, pusta arena znika od razu, nowe rogi GOATa
+  - **4.10** płonąca ropa z beczek (parzy i wypala ziemię), railgun wypala tunel w skale, 7 utworów muzyki zamiast jednej pętli, pusta arena znika od razu, nowe rogi GOATa
 
 ---
 
 ## 9. Testy i sprawdzanie
 
 ```
-node gra/test/sim.test.mjs        # symulacja, bronie, determinizm, drużyny, ustawienia, skrzynki, spawny, osiągnięcia, kamera, lina, most obracany, rozmiar mapy, kilka robali, railgun, miny i beczki, ogień, muzyka (95)
+node gra/test/sim.test.mjs        # symulacja, bronie, determinizm, drużyny, ustawienia, skrzynki, spawny, osiągnięcia, kamera, lina, most obracany, rozmiar mapy, kilka robali, railgun i tunel, miny i beczki, ogień, muzyka (96)
 node gra/test/protokol.test.mjs   # protokół: lag, rozłączenia, ucieczka na żywo, lobby, ustawienia, partie 2v2, z własnymi zasadami i z kilkoma robalami, start bez GOTOWY (23, ~35 s)
 cd serwer && npm install && node test.mjs   # serwer na VPS: Arena (10) + konta, pokoje, akcesoria, czapki, puste areny (11) + zrzutka (7)
 ```

@@ -716,11 +716,9 @@ function przesymuluj(r, a) {
 /* Czy lokalna symulacja tury rozjechała się z kanonem (poza usunięciem
    graczy, które jest zamierzone). Tylko do statystyk i testów. */
 function rozjazd(st, snap) {
-  const kr = st.terrain.craters;
-  if (kr.length * 3 !== snap.kratery.length) return true;
-  for (let i = 0; i < kr.length; i++) {
-    if (kr[i].x !== snap.kratery[i * 3] || kr[i].y !== snap.kratery[i * 3 + 1] || kr[i].r !== snap.kratery[i * 3 + 2]) return true;
-  }
+  const kr = S.plaskieKratery(st);      // tunel railguna to dwie trójki, więc porównujemy płaskie listy
+  if (!Array.isArray(snap.kratery) || kr.length !== snap.kratery.length) return true;
+  for (let i = 0; i < kr.length; i++) if (kr[i] !== snap.kratery[i]) return true;
   for (const s of snap.robale) {
     const w = st.worms.find((x) => x.id === s.id);
     if (!w) return true;

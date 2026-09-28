@@ -245,7 +245,7 @@ test('strzelba trafia robala po prostej', () => {
   assert(b.hp < 100, 'strzelba nie trafila, hp=' + b.hp);
 });
 
-test('railgun przebija skale i trafia dwoch robali na linii (75), terenu nie rusza', () => {
+test('railgun przebija skale i trafia dwoch robali na linii (75), a w skale wypala tunel', () => {
   const st = S.createGame(21, players(3));
   const a = S.activeWorm(st);
   const [b, c] = st.worms.filter((w) => w !== a);
@@ -255,7 +255,8 @@ test('railgun przebija skale i trafia dwoch robali na linii (75), terenu nie rus
   c.x = a.x + 300 * kier; c.y = a.y;
   // gruba skała na linii strzału między robalami
   const yl = Math.round(a.y - 10);
-  for (let y = yl - 25; y < yl + 6; y++) for (let x = Math.round(a.x + 180 * kier) - 20; x < Math.round(a.x + 180 * kier) + 20; x++) st.terrain.mask[y * st.terrain.w + x] = 1;
+  const xs = Math.round(a.x + 180 * kier);
+  for (let y = yl - 25; y < yl + 20; y++) for (let x = xs - 20; x < xs + 20; x++) st.terrain.mask[y * st.terrain.w + x] = 1;
   const kraterow = st.terrain.craters.length;
   st.weapon = 'railgun';
   S.ustawCelownik(st, kier > 0 ? 0 : Math.PI);
@@ -263,8 +264,32 @@ test('railgun przebija skale i trafia dwoch robali na linii (75), terenu nie rus
   S.releaseFire(st);
   assert(b.hp === 25 && c.hp === 25, 'hp: ' + b.hp + ', ' + c.hp);
   assert(a.amunicja.railgun === 0, 'amunicja railguna: ' + a.amunicja.railgun);
-  assert(st.terrain.craters.length === kraterow, 'railgun zrobil krater');
   assert(st.events.some((e) => e.type === 'railgun' && e.trafieni === 2), 'brak zdarzenia railgun');
+  // tunel: dziura na wysokości lasera przez całą grubość skały, nad i pod nią skała zostaje
+  const ly = Math.round(a.y - S.WORM_H * 0.55);              // wysokość lufy = wysokość lasera
+  const tunele = st.terrain.craters.slice(kraterow).filter((k) => k.r <= T.TUNEL);
+  assert(tunele.length >= 1, 'brak tunelu na liscie kraterow');
+  for (let x = xs - 18; x < xs + 18; x += 6) assert(!T.solidAt(st.terrain, x, ly), 'skala w tunelu na x=' + x);
+  assert(T.solidAt(st.terrain, xs, ly - 12) && T.solidAt(st.terrain, xs, ly + 12), 'tunel za szeroki');
+  assert(st.events.some((e) => e.type === 'tunel'), 'brak zdarzenia tunel');
+});
+
+test('tunel railguna: jeden wpis na liscie, przez siec (dwie trojki) i rebuild daje ten sam teren', () => {
+  const a = S.createGame(77, players(2), { sieciowa: true });
+  T.wytnijTunel(a.terrain, 300.4, 200.6, 900.2, 520.9, 7);
+  T.carve(a.terrain, 500, 300, 30);
+  T.wytnijTunel(a.terrain, 1200, 700, 1200, 400, 7);              // pionowy
+  const plaska = przezSiec(S.plaskieKratery(a));
+  assert(plaska.length === 3 * 5, 'dlugosc listy: ' + plaska.length);
+  const b = S.createGame(77, players(2), { sieciowa: true });
+  assert(S.ustawKratery(b, plaska), 'brak przebudowy');
+  assert(T.countSolid(b.terrain) === T.countSolid(a.terrain), 'inny teren po rebuild');
+  assert(!S.ustawKratery(b, przezSiec(S.plaskieKratery(a))), 'zgodna lista przebudowala teren');
+  assert(!T.solidAt(b.terrain, 600, 360) && !T.solidAt(b.terrain, 1200, 550), 'brak dziury po rebuild');
+  // urwany tunel z sieci nie wywraca gry
+  const c = S.createGame(77, players(2), { sieciowa: true });
+  S.ustawKratery(c, [300, 200, T.TUNEL - 7, 900]);
+  assert(c.terrain.craters.length === 0, 'urwany tunel przyjety');
 });
 
 test('miny i beczki: rozstawione z seeda, na gruncie, z dala od robali; ustawienie 0 = brak', () => {
