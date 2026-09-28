@@ -322,8 +322,50 @@ function usunOkruchy(mask, W, min) {
 /* Odtworzenie terenu u klienta, który dołączył później albo się rozjechał. */
 export function rebuild(seed, craters, opcje = {}) {
   const t = createTerrain(seed, opcje);
-  for (const c of craters) carve(t, c.x, c.y, c.r);
+  for (const c of craters) {
+    if (c.r <= TUNEL) wytnijTunel(t, c.x, c.y, c.x2, c.y2, TUNEL - c.r);
+    else carve(t, c.x, c.y, c.r);
+  }
   return t;
+}
+
+/* Tunel railguna (4.10): pas o promieniu r wzdłuż odcinka (x0, y0)–(x1, y1) — jeden wpis na liście
+   kraterów { x, y, r: TUNEL - r, x2, y2 } zamiast setek kółek (lista leci w każdym strzale i stanie).
+   W sieci to dwie trójki: x, y, TUNEL - r, x2, y2, TUNEL_DALEJ. Tylko + - * / i porównania. */
+export const TUNEL = -100, TUNEL_DALEJ = -99;
+export function wytnijTunel(t, x0, y0, x1, y1, r) {
+  x0 = Math.round(x0); y0 = Math.round(y0); x1 = Math.round(x1); y1 = Math.round(y1); r = Math.round(r);
+  const dx = x1 - x0, dy = y1 - y0, dl2 = dx * dx + dy * dy, r2 = r * r;
+  const by0 = Math.max(0, Math.min(y0, y1) - r), by1 = Math.min(t.h - 1, Math.max(y0, y1) + r);
+  let bx0 = t.w, bx1 = -1;
+  for (let y = by0; y <= by1; y++) {
+    // zakres x w tym wierszu: odcinek przycięty do pasa y ± r, poszerzony o r (z zapasem)
+    let ua = 0, ub = 1;
+    if (dy !== 0) {
+      ua = (y - r - y0) / dy;
+      ub = (y + r - y0) / dy;
+      if (ua > ub) { const z = ua; ua = ub; ub = z; }
+      ua = ua < 0 ? 0 : ua > 1 ? 1 : ua;
+      ub = ub < 0 ? 0 : ub > 1 ? 1 : ub;
+    }
+    const xa = x0 + ua * dx, xb = x0 + ub * dx;
+    const od = Math.max(0, Math.floor(Math.min(xa, xb)) - r - 1);
+    const doX = Math.min(t.w - 1, Math.ceil(Math.max(xa, xb)) + r + 1);
+    const row = y * t.w;
+    for (let x = od; x <= doX; x++) {
+      const px = x - x0, py = y - y0;
+      let u = dl2 ? (px * dx + py * dy) / dl2 : 0;
+      if (u < 0) u = 0; else if (u > 1) u = 1;
+      const ex = px - u * dx, ey = py - u * dy;
+      if (ex * ex + ey * ey <= r2) {
+        t.mask[row + x] = 0;
+        if (x < bx0) bx0 = x;
+        if (x > bx1) bx1 = x;
+      }
+    }
+  }
+  t.craters.push({ x: x0, y: y0, r: TUNEL - r, x2: x1, y2: y1 });
+  return { x0: bx1 < 0 ? x0 : bx0, y0: by0, x1: bx1 < 0 ? x0 : bx1, y1: by1 };
 }
 
 /* Wybicie krateru. Zwraca dirty rect, żeby render przemalował tylko tyle,

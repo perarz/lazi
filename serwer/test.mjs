@@ -3,7 +3,7 @@
 
 import { createRequire } from 'module';
 const require = createRequire(import.meta.url);
-const { serwer, dozwolonyOrigin } = require('./serwer.js');
+const { serwer, dozwolonyOrigin, sprzatajPuste, PUSTY_POKOJ_MS } = require('./serwer.js');
 const { Zrzutka } = require('./zrzutka.js');
 const { Konta } = require('./konta.js');
 import fs from 'fs';
@@ -309,25 +309,61 @@ await test('pokój na hasło: lista, wejście bez klucza 403, złe hasło 403, d
   const otwarty = await (await post('/api/pokoje', { token: ALA.token, nazwa: 'Dla wszystkich' })).json();
   assert(otwarty.id && otwarty.klucz === null, 'pokój bez hasła');
   assert((await post('/api/pokoje', { token: 'x', nazwa: 'Bez konta' })).status === 401, 'pokój bez konta');
-  const lista = (await (await fetch(API('/api/pokoje'))).json()).pokoje;
-  assert(!lista.some((p) => p.id === 'glowny'), 'domyślna arena na liście (od 4.7 jej nie ma)');
-  const moj = lista.find((p) => p.id === d.id);
-  assert(moj && moj.haslo && moj.nazwa === 'Kozy tylko' && moj.zalozyl === 'Ala' && !('klucz' in moj), JSON.stringify(moj));
+  const lista0 = (await (await fetch(API('/api/pokoje'))).json()).pokoje;
+  assert(!lista0.some((p) => p.id === 'glowny'), 'domyślna arena na liście (od 4.7 jej nie ma)');
+  assert(!lista0.some((p) => p.id === d.id), 'arena bez nikogo na liście (od 4.10 pusta nie jest pokazywana)');
   let odrzucony = false;
   try { await klient(d.id, undefined, BOLEK.token).otwarty; } catch (e) { odrzucony = /403/.test(e.message); }
   assert(odrzucony, 'wpuszczony bez hasła');
-  assert((await post('/api/pokoje/wejdz', { token: BOLEK.token, id: d.id, haslo: 'muuu' })).status === 403, 'złe hasło');
+  const zle = await post('/api/pokoje/wejdz', { token: BOLEK.token, id: d.id, haslo: 'muuu' });
+  assert(zle.status === 403 && (await zle.json()).nazwa === 'Kozy tylko', 'złe hasło (z nazwą areny do pola hasła)');
   const wej = await (await post('/api/pokoje/wejdz', { token: BOLEK.token, id: d.id, haslo: 'beee' })).json();
-  assert(wej.klucz === d.klucz, 'klucz');
+  assert(wej.klucz === d.klucz && wej.nazwa === 'Kozy tylko', 'klucz i nazwa: ' + JSON.stringify(wej));
   const b = klient(d.id, undefined, BOLEK.token, wej.klucz);
   await b.otwarty;
   await new Promise((r) => setTimeout(r, 50));
-  const l2 = (await (await fetch(API('/api/pokoje'))).json()).pokoje.find((p) => p.id === d.id);
-  assert(l2.ile === 1 && l2.gracze[0] === 'Bolek', 'gracze w pokoju: ' + JSON.stringify(l2));
+  const moj = (await (await fetch(API('/api/pokoje'))).json()).pokoje.find((p) => p.id === d.id);
+  assert(moj && moj.haslo && moj.nazwa === 'Kozy tylko' && moj.zalozyl === 'Ala' && !('klucz' in moj), JSON.stringify(moj));
+  assert(moj.ile === 1 && moj.gracze[0] === 'Bolek', 'gracze w pokoju: ' + JSON.stringify(moj));
   b.ws.close();
-  // limit 3 pokoi na konto
-  await post('/api/pokoje', { token: ALA.token, nazwa: 'Trzeci' });
-  assert((await post('/api/pokoje', { token: ALA.token, nazwa: 'Czwarty' })).status === 429, 'limit pokoi na konto');
+  await new Promise((r) => setTimeout(r, 80));
+  // limit 3 aren na konto: liczą się zajęte i świeżo założone, opuszczona (pusta) już nie
+  assert((await post('/api/pokoje', { token: ALA.token, nazwa: 'Trzeci' })).status === 200, 'pusta arena liczy się do limitu');
+  assert((await post('/api/pokoje', { token: ALA.token, nazwa: 'Czwarty' })).status === 200, 'czwarta (jedna z nich pusta)');
+  assert((await post('/api/pokoje', { token: ALA.token, nazwa: 'Piaty' })).status === 429, 'limit pokoi na konto');
+});
+
+await test('pusta arena: od razu znika z listy, przez chwilę wraca z linku, potem kasuje się całkiem', async () => {
+  const pusta = await (await post('/api/pokoje', { token: BOLEK.token, nazwa: 'Na chwile' })).json();
+  const pelna = await (await post('/api/pokoje', { token: BOLEK.token, nazwa: 'Tu ktos jest' })).json();
+  const a = klient(pusta.id, undefined, BOLEK.token);
+  const b = klient(pelna.id, undefined, ALA.token);
+  await Promise.all([a.otwarty, b.otwarty]);
+  const lista = async () => (await (await fetch(API('/api/pokoje'))).json()).pokoje.map((p) => p.id);
+  await new Promise((r) => setTimeout(r, 30));
+  const przed = await lista();
+  assert(przed.includes(pusta.id) && przed.includes(pelna.id), 'areny z ludźmi powinny być na liście');
+  a.ws.close();
+  let znikla = false;
+  for (let i = 0; i < 40 && !znikla; i++) { await new Promise((r) => setTimeout(r, 25)); znikla = !(await lista()).includes(pusta.id); }
+  assert(znikla, 'pusta arena dalej na liście po wyjściu ostatniego');
+  assert((await lista()).includes(pelna.id), 'zniknęła arena, w której ktoś jest');
+  assert(PUSTY_POKOJ_MS <= 60000, 'puste areny wiszą za długo: ' + PUSTY_POKOJ_MS + ' ms');
+  // odświeżenie strony / link w ciągu pół minuty: arena wraca na listę
+  const c = klient(pusta.id, undefined, BOLEK.token);
+  await c.otwarty;
+  await new Promise((r) => setTimeout(r, 50));
+  assert((await lista()).includes(pusta.id), 'po powrocie z linku arena powinna wrócić na listę');
+  c.ws.close();
+  await new Promise((r) => setTimeout(r, 80));
+  sprzatajPuste(Date.now() + PUSTY_POKOJ_MS + 1000);
+  const po = await lista();
+  assert(!po.includes(pusta.id) && po.includes(pelna.id), 'po sprzątaniu: ' + JSON.stringify(po));
+  let odrzucony = false;
+  try { await klient(pusta.id, undefined, BOLEK.token).otwarty; } catch (e) { odrzucony = /404/.test(e.message); }
+  assert(odrzucony, 'do skasowanej areny dało się wejść (powstałby pokój bez nazwy)');
+  assert((await post('/api/pokoje/wejdz', { token: BOLEK.token, id: pusta.id })).status === 404, 'wejście do skasowanej areny');
+  b.ws.close();
 });
 
 await test('konta w pliku: przeżywają restart, hasło jako skrót, reset hasła wylogowuje', async () => {

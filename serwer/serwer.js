@@ -73,12 +73,17 @@ const konta = new Konta(process.env.KONTA_PLIK ||
   (process.env.ZRZUTKA_PLIK ? require('path').join(require('path').dirname(process.env.ZRZUTKA_PLIK), 'konta.json') : null));
 const MAX_KONTO_BAJTY = 4096;
 
-/* Pokoje założone w panelu (od 4.6): id → { nazwa, zalozyl, sol, hasloHash, klucz, pustyOd }.
+/* Pokoje założone w panelu (od 4.6): id → { nazwa, zalozyl, sol, hasloHash, klucz, pustyOd, byl }.
    Pokój bez wpisu (np. 'glowny' albo ?pokoj= z testów) jest publiczny. */
 const opisy = new Map();
 const MAX_WLASNYCH_POKOI = 40;
 const POKOI_NA_KONTO = 3;
-const PUSTY_POKOJ_MS = 10 * 60 * 1000;
+/* Arena, w której nie ma nikogo, od razu znika z listy i nie liczy się do limitu aren na konto
+   (od 4.10; do 4.9 wisiała pusta 10 minut). Skasowana jest po PUSTY_POKOJ_MS — do tego czasu
+   wraca do niej odświeżona strona, telefon po krótkiej utracie zasięgu albo znajomy z linku. */
+const PUSTY_POKOJ_MS = 30 * 1000;
+const SPRZATANIE_MS = 5000;
+const ID_Z_PANELU = /^p-[0-9a-f]{8}$/;
 const skrotHasla = (haslo, sol) => crypto.createHash('sha256').update(sol + ':' + haslo).digest('hex');
 
 const pokoje = new Map();            // nazwa → Pokoj
@@ -130,6 +135,7 @@ function listaPokoi(teraz = Date.now()) {
     const p = pokoje.get(id);
     const nicki = new Set();
     for (const ws of polaczenia.get(id) || []) if (ws.konto) nicki.add(ws.konto.nick);
+    if (!nicki.size) continue;          // pusta arena znika z listy od razu
     // partia trwa, jeśli log zaczyna się od 'nowa' i ktoś ostatnio strzelił albo spasował
     let partia = false;
     if (p && p.log.length && p.log[0].t === 'nowa') {
@@ -159,24 +165,27 @@ function nowyPokoj(konto, body) {
   if (nazwa.length < 3) return { status: 400, dane: { blad: 'zla-nazwa' } };
   if (haslo && haslo.length < 3) return { status: 400, dane: { blad: 'zle-haslo' } };
   if (opisy.size >= MAX_WLASNYCH_POKOI) return { status: 503, dane: { blad: 'za-duzo-pokoi' } };
-  if ([...opisy.values()].filter((o) => o.zalozyl === konto.nick).length >= POKOI_NA_KONTO) {
-    return { status: 429, dane: { blad: 'masz-za-duzo-pokoi' } };
-  }
+  // do limitu liczą się areny, w których ktoś jest, i świeżo założone (założyciel jeszcze do nich wchodzi)
+  const teraz = Date.now();
+  const moje = [...opisy].filter(([id, o]) => o.zalozyl === konto.nick &&
+    (polaczenia.has(id) || (!o.byl && teraz - o.pustyOd < PUSTY_POKOJ_MS)));
+  if (moje.length >= POKOI_NA_KONTO) return { status: 429, dane: { blad: 'masz-za-duzo-pokoi' } };
   let id;
   do { id = 'p-' + crypto.randomBytes(4).toString('hex'); } while (opisy.has(id) || pokoje.has(id));
   const sol = crypto.randomBytes(8).toString('hex');
   const klucz = crypto.randomBytes(12).toString('hex');
-  opisy.set(id, { nazwa, zalozyl: konto.nick, sol, hasloHash: haslo ? skrotHasla(haslo, sol) : null, klucz, pustyOd: Date.now() });
+  opisy.set(id, { nazwa, zalozyl: konto.nick, sol, hasloHash: haslo ? skrotHasla(haslo, sol) : null, klucz, pustyOd: teraz, byl: false });
   return { status: 200, dane: { id, klucz: haslo ? klucz : null } };
 }
 
+/* Wejście do areny (też z linku, gdy pusta nie jest na liście) — z nazwą, żeby było co pokazać. */
 function wejdzDoPokoju(body) {
   const o = opisy.get(body.id);
   if (!o) return { status: 404, dane: { blad: 'nie-ma-pokoju' } };
-  if (!o.hasloHash) return { status: 200, dane: { klucz: null } };
+  if (!o.hasloHash) return { status: 200, dane: { klucz: null, nazwa: o.nazwa } };
   const haslo = typeof body.haslo === 'string' ? body.haslo.slice(0, 40) : '';
-  if (skrotHasla(haslo, o.sol) !== o.hasloHash) return { status: 403, dane: { blad: 'zle-haslo' } };
-  return { status: 200, dane: { klucz: o.klucz } };
+  if (skrotHasla(haslo, o.sol) !== o.hasloHash) return { status: 403, dane: { blad: 'zle-haslo', nazwa: o.nazwa } };
+  return { status: 200, dane: { klucz: o.klucz, nazwa: o.nazwa } };
 }
 
 function dozwolonyOrigin(origin) {
@@ -369,6 +378,8 @@ serwer.on('upgrade', (req, socket, head) => {
   const konto = doZrzutki ? null : konta.zTokenu(u.searchParams.get('token'));
   if (!doZrzutki && !konto) return odmow('401 Unauthorized');
   if (!doZrzutki && !wstepDoPokoju(nazwa, u.searchParams.get('klucz'))) return odmow('403 Forbidden');
+  // arena z panelu, która już zniknęła (była pusta) — nie wskrzeszamy jej jako pokoju bez nazwy
+  if (!doZrzutki && ID_Z_PANELU.test(nazwa) && !opisy.has(nazwa)) return odmow('404 Not Found');
   wss.handleUpgrade(req, socket, head, (ws) => {
     ws.konto = konto;
     ws.pokoj = doZrzutki ? null : nazwa;
@@ -382,6 +393,8 @@ wss.on('connection', (ws) => {
   if (ws.zrzutka) return polaczZrzutke(ws);
   const nazwa = ws.pokoj;
   if (!pokoj(nazwa)) { ws.close(1013, 'za-duzo-pokoi'); return; }
+  const opis = opisy.get(nazwa);
+  if (opis) opis.byl = true;
   if (!polaczenia.has(nazwa)) polaczenia.set(nazwa, new Set());
   polaczenia.get(nazwa).add(ws);
   polaczeniaNaIp.set(ws.ip, (polaczeniaNaIp.get(ws.ip) || 0) + 1);
@@ -424,7 +437,11 @@ wss.on('connection', (ws) => {
     const zbior = polaczenia.get(nazwa);
     if (zbior) {
       zbior.delete(ws);
-      if (!zbior.size) polaczenia.delete(nazwa);
+      if (!zbior.size) {
+        polaczenia.delete(nazwa);
+        const o = opisy.get(nazwa);
+        if (o) o.pustyOd = Date.now();     // z listy znika od razu, skasowana po PUSTY_POKOJ_MS
+      }
     }
     const n = (polaczeniaNaIp.get(ws.ip) || 1) - 1;
     if (n > 0) polaczeniaNaIp.set(ws.ip, n); else polaczeniaNaIp.delete(ws.ip);
@@ -460,12 +477,16 @@ setInterval(() => {
   for (const [nazwa, p] of pokoje) {
     if (!polaczenia.has(nazwa) && teraz - p.ostatniaZmiana > POKOJ_PORZUCONY_MS) pokoje.delete(nazwa);
   }
-  // pokój z panelu znika po 10 minutach pustki
+}, PING_MS).unref();
+
+/* Arena z panelu, w której nikogo nie ma, jest kasowana po PUSTY_POKOJ_MS (z listy znika od razu). */
+function sprzatajPuste(teraz = Date.now()) {
   for (const [id, o] of opisy) {
     if (polaczenia.has(id)) { o.pustyOd = teraz; continue; }
     if (teraz - o.pustyOd > PUSTY_POKOJ_MS) { opisy.delete(id); pokoje.delete(id); }
   }
-}, PING_MS).unref();
+}
+setInterval(() => sprzatajPuste(), SPRZATANIE_MS).unref();
 
 process.on('uncaughtException', (e) => { console.error('nieobsłużony wyjątek:', e); });
 
@@ -478,4 +499,4 @@ if (require.main === module) {
   serwer.listen(PORT, '127.0.0.1', () => console.log('Arena nasłuchuje na 127.0.0.1:' + PORT));
 }
 
-module.exports = { serwer, pokoje, zrzutka, konta, opisy, dozwolonyOrigin };
+module.exports = { serwer, pokoje, zrzutka, konta, opisy, dozwolonyOrigin, sprzatajPuste, PUSTY_POKOJ_MS };

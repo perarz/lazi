@@ -8,7 +8,8 @@ import * as S from '../src/sim.js';
 import { WEAPONS, WEAPON_ORDER } from '../src/weapons.js';
 import { nowaPartiaOs, zdarzenieOs, koniecTuryOs, koniecPartiiOs } from '../src/osiagniecia-reguly.js';
 import * as R from '../src/render.js';
-import * as U from '../src/ustawienia.js';     // tylko kamera (czysta matematyka, bez DOM)
+import * as U from '../src/ustawienia.js';
+import * as M from '../src/muzyka.js';     // tylko kamera (czysta matematyka, bez DOM)
 
 let passed = 0, failed = 0;
 
@@ -244,7 +245,7 @@ test('strzelba trafia robala po prostej', () => {
   assert(b.hp < 100, 'strzelba nie trafila, hp=' + b.hp);
 });
 
-test('railgun przebija skale i trafia dwoch robali na linii (75), terenu nie rusza', () => {
+test('railgun przebija skale i trafia dwoch robali na linii (75), a w skale wypala tunel', () => {
   const st = S.createGame(21, players(3));
   const a = S.activeWorm(st);
   const [b, c] = st.worms.filter((w) => w !== a);
@@ -254,7 +255,8 @@ test('railgun przebija skale i trafia dwoch robali na linii (75), terenu nie rus
   c.x = a.x + 300 * kier; c.y = a.y;
   // gruba skała na linii strzału między robalami
   const yl = Math.round(a.y - 10);
-  for (let y = yl - 25; y < yl + 6; y++) for (let x = Math.round(a.x + 180 * kier) - 20; x < Math.round(a.x + 180 * kier) + 20; x++) st.terrain.mask[y * st.terrain.w + x] = 1;
+  const xs = Math.round(a.x + 180 * kier);
+  for (let y = yl - 25; y < yl + 20; y++) for (let x = xs - 20; x < xs + 20; x++) st.terrain.mask[y * st.terrain.w + x] = 1;
   const kraterow = st.terrain.craters.length;
   st.weapon = 'railgun';
   S.ustawCelownik(st, kier > 0 ? 0 : Math.PI);
@@ -262,8 +264,32 @@ test('railgun przebija skale i trafia dwoch robali na linii (75), terenu nie rus
   S.releaseFire(st);
   assert(b.hp === 25 && c.hp === 25, 'hp: ' + b.hp + ', ' + c.hp);
   assert(a.amunicja.railgun === 0, 'amunicja railguna: ' + a.amunicja.railgun);
-  assert(st.terrain.craters.length === kraterow, 'railgun zrobil krater');
   assert(st.events.some((e) => e.type === 'railgun' && e.trafieni === 2), 'brak zdarzenia railgun');
+  // tunel: dziura na wysokości lasera przez całą grubość skały, nad i pod nią skała zostaje
+  const ly = Math.round(a.y - S.WORM_H * 0.55);              // wysokość lufy = wysokość lasera
+  const tunele = st.terrain.craters.slice(kraterow).filter((k) => k.r <= T.TUNEL);
+  assert(tunele.length >= 1, 'brak tunelu na liscie kraterow');
+  for (let x = xs - 18; x < xs + 18; x += 6) assert(!T.solidAt(st.terrain, x, ly), 'skala w tunelu na x=' + x);
+  assert(T.solidAt(st.terrain, xs, ly - 12) && T.solidAt(st.terrain, xs, ly + 12), 'tunel za szeroki');
+  assert(st.events.some((e) => e.type === 'tunel'), 'brak zdarzenia tunel');
+});
+
+test('tunel railguna: jeden wpis na liscie, przez siec (dwie trojki) i rebuild daje ten sam teren', () => {
+  const a = S.createGame(77, players(2), { sieciowa: true });
+  T.wytnijTunel(a.terrain, 300.4, 200.6, 900.2, 520.9, 7);
+  T.carve(a.terrain, 500, 300, 30);
+  T.wytnijTunel(a.terrain, 1200, 700, 1200, 400, 7);              // pionowy
+  const plaska = przezSiec(S.plaskieKratery(a));
+  assert(plaska.length === 3 * 5, 'dlugosc listy: ' + plaska.length);
+  const b = S.createGame(77, players(2), { sieciowa: true });
+  assert(S.ustawKratery(b, plaska), 'brak przebudowy');
+  assert(T.countSolid(b.terrain) === T.countSolid(a.terrain), 'inny teren po rebuild');
+  assert(!S.ustawKratery(b, przezSiec(S.plaskieKratery(a))), 'zgodna lista przebudowala teren');
+  assert(!T.solidAt(b.terrain, 600, 360) && !T.solidAt(b.terrain, 1200, 550), 'brak dziury po rebuild');
+  // urwany tunel z sieci nie wywraca gry
+  const c = S.createGame(77, players(2), { sieciowa: true });
+  S.ustawKratery(c, [300, 200, T.TUNEL - 7, 900]);
+  assert(c.terrain.craters.length === 0, 'urwany tunel przyjety');
 });
 
 test('miny i beczki: rozstawione z seeda, na gruncie, z dala od robali; ustawienie 0 = brak', () => {
@@ -302,6 +328,111 @@ test('pulapki w snapshocie: odbiorca ma ten sam stan co autor (lont tez)', () =>
   S.zastosujSnapshot(b, snap);
   assert(JSON.stringify(S.stanPulapek(b)) === JSON.stringify(S.stanPulapek(st)), 'rozne pulapki');
   assert(S.stateHash(b) === S.stateHash(st), 'rozny hash');
+});
+
+test('beczka rozlewa plonaca rope: ogien leci, laduje na ziemi, wypala dolki i gasnie; tura czeka', () => {
+  const st = S.createGame(21, players(2), { sieciowa: true, ustawienia: { pulapki: 0 } });
+  const a = S.activeWorm(st);
+  const b = st.worms.find((w) => w !== a);
+  polka(st, a, 300);
+  a.y = Math.round(a.y); a.onGround = true;
+  b.x = a.x - 250; b.y = a.y; b.onGround = true;          // daleko, poza wybuchem i ogniem
+  st.wind = 0;
+  st.pulapki = [{ id: 7, typ: 'beczka', x: Math.round(a.x) + 150, y: Math.round(a.y), lont: 1 }];
+  st.phase = 'settle';                                      // osiadanie po strzale: tura czeka na ogień
+  st.settleTime = 0;
+  const kraterow = st.terrain.craters.length;
+  let bylOgien = 0, wypalen = 0, naZiemi = 0;
+  for (let i = 0; i < 20 * 120 && st.phase === 'settle'; i++) {
+    S.step(st);
+    bylOgien = Math.max(bylOgien, st.ogien.length);
+    naZiemi = Math.max(naZiemi, st.ogien.filter((f) => f.grunt).length);
+    wypalen += st.events.filter((e) => e.type === 'wypalenie').length;
+    st.events.length = 0;
+  }
+  assert(bylOgien >= 10, 'za malo ognia: ' + bylOgien);
+  assert(naZiemi >= 5, 'ogien nie lezal na ziemi: ' + naZiemi);
+  assert(wypalen >= 5 && st.terrain.craters.length >= kraterow + 1 + wypalen, 'ogien nie wypalil ziemi: ' + wypalen);
+  assert(st.terrain.craters.slice(kraterow + 1).every((c) => c.r === 6 && Number.isInteger(c.x) && Number.isInteger(c.y)), 'dziwne dolki');
+  assert(st.ogien.length === 0 && st.phase === 'koniec', 'ogien nie zgasl albo tura nie ruszyla: ' + st.phase);
+});
+
+test('ogien parzy robala raz na takt (nie za kazda krople), robal odskakuje; kolegi nie rusza', () => {
+  const st = S.createGame(21, players(3), { sieciowa: true, ustawienia: { pulapki: 0 } });
+  const a = S.activeWorm(st);
+  const [b] = st.worms.filter((w) => w !== a);
+  polka(st, b, 120);
+  b.y = Math.round(b.y); b.onGround = true;
+  const kropla = (dx) => ({ x: b.x + dx, y: b.y - 1, vx: 0, vy: 0, t: 0, zycie: 300, wyp: 3, grunt: 1 });
+  S.ustawOgien(st, S.stanOgnia({ ogien: [kropla(-4), kropla(2), kropla(5)] }));
+  const hp = b.hp;
+  for (let i = 0; i < 30; i++) S.step(st);
+  assert(b.hp === hp - 3, 'trzy krople = jedno parzenie, hp: ' + hp + ' -> ' + b.hp);
+  assert(!b.onGround && b.vy < 0, 'robal nie odskoczyl od ognia');
+  assert(st.events.some((e) => e.type === 'obrazenia' && e.cause === 'ogien'), 'brak obrazen od ognia');
+  // w druzynach ogień (jak wybuch) nie rusza kolegi gracza z turą
+  const d = S.createGame(21, [{ id: 'p0', name: 'A', color: '#f60', druzyna: 0 }, { id: 'p1', name: 'B', color: '#f60', druzyna: 1 },
+    { id: 'p2', name: 'C', color: '#f60', druzyna: 1 }], { sieciowa: true, druzyny: true, ustawienia: { pulapki: 0 } });
+  const akt = S.activeWorm(d);
+  const kol = d.worms.find((w) => w !== akt && w.druzyna === akt.druzyna);
+  assert(kol, 'gracz z tura bez kolegi (seed)');
+  polka(d, kol, 120);
+  kol.y = Math.round(kol.y); kol.onGround = true;
+  d.ogien = [{ x: kol.x, y: kol.y - 1, vx: 0, vy: 0, t: 0, zycie: 300, wyp: 3, grunt: 1 }];
+  const hk = kol.hp;
+  for (let i = 0; i < 31; i++) S.step(d);
+  assert(kol.hp === hk, 'ogien poparzyl kolege');
+});
+
+test('ogien podpala beczke obok', () => {
+  const st = S.createGame(21, players(2), { sieciowa: true, ustawienia: { pulapki: 0 } });
+  const a = S.activeWorm(st);
+  polka(st, a, 300);
+  const x = Math.round(a.x) + 200, y = Math.round(a.y);
+  st.pulapki = [{ id: 1, typ: 'beczka', x, y, lont: -1 }];
+  st.ogien = [{ x: x + 4, y: y - 1, vx: 0, vy: 0, t: 0, zycie: 300, wyp: 3, grunt: 1 }];
+  for (let i = 0; i < 31; i++) S.step(st);
+  assert(st.pulapki.length === 0 || st.pulapki[0].lont >= 0, 'beczka w ogniu sie nie zapalila');
+});
+
+test('ogien w strzale: beczka wybucha przed strzalem, odbiorca po locie ma ten sam stan', () => {
+  for (const seed of [5, 77]) {
+    const a = S.createGame(seed, players(3), { sieciowa: true });
+    const b = S.createGame(seed, players(3), { sieciowa: true });
+    const kto = S.activeWorm(a);
+    // u strzelca (tylko u niego) beczka obok wybucha, zanim strzeli — odbiorca dowie się ze strzału
+    a.pulapki.push({ id: 99, typ: 'beczka', x: Math.round(kto.x) + (kto.facing > 0 ? -90 : 90), y: Math.round(kto.y), lont: 1 });
+    run(a, 0.5);
+    assert(a.ogien.length > 0, 'brak ognia przed strzalem');
+    a.weapon = 'granat';
+    S.ustawCelownik(a, -1.1);
+    assert(S.startCharging(a), 'nie da sie strzelic');
+    run(a, 0.3);
+    S.releaseFire(a);
+    const akcja = przezSiec(a.akcjeDoWyslania[0]);
+    assert(Array.isArray(akcja.ogien) && akcja.ogien.length > 0, 'strzal bez ognia');
+    S.zastosujStrzal(b, akcja);
+    S.dopiszOdwrot(b, [], true);
+    doKonca(a);
+    doKonca(b);
+    assert(S.stateHash(a) === S.stateHash(b), 'rozjazd z ogniem (seed ' + seed + ')');
+    assert(a.ogien.length === 0, 'ogien zostal na koniec tury');
+  }
+});
+
+test('pas niesie ogien, stan tury juz nie (ogien gasnie na granicy tur)', () => {
+  const st = S.createGame(5, players(2), { sieciowa: true });
+  st.ogien = [{ x: 500.5, y: 300, vx: -0, vy: 12.25, t: 3, zycie: 300, wyp: 0, grunt: 0 }];
+  const kopia = przezSiec(S.stanOgnia(st));
+  const b = S.createGame(5, players(2), { sieciowa: true });
+  S.ustawOgien(b, kopia);
+  assert(JSON.stringify(S.stanOgnia(b)) === JSON.stringify(S.stanOgnia(st)), 'ogien przez siec inny');
+  const snap = przezSiec(S.stanPoTurze(st));
+  assert(snap.ogien === undefined, 'ogien w stanie tury');
+  S.zastosujSnapshot(b, snap);
+  assert(b.ogien.length === 0, 'ogien przetrwal granice tury');
+  S.ustawOgien(b, [[1, 2, 3], 'x', null]);
+  assert(b.ogien.length === 0, 'smieci z sieci przeszly');
 });
 
 test('kasetowka rozsypuje odlamki', () => {
@@ -1180,6 +1311,30 @@ test('kazde id z regul jest na liscie osiagniec', () => {
     assert(uzyte.has(id), 'regula nie uzywa: ' + id);
   }
   assert(naLiscie.size === 18, 'na liscie jest ' + naLiscie.size);
+});
+
+console.log('\nMUZYKA');
+
+test('muzyka: 7 utworow po 1,5-3 min, nuty w zakresie, kazdy instrument ma brzmienie, zawsze te same nuty', () => {
+  const zrodlo = readFileSync(new URL('../src/dzwieki.js', import.meta.url), 'utf8');
+  assert(M.UTWORY.length >= 7, 'utworow: ' + M.UTWORY.length);
+  assert(new Set(M.UTWORY.map((u) => u.nazwa)).size === M.UTWORY.length, 'powtorzone nazwy');
+  for (const def of M.UTWORY) {
+    const u = M.zbudujUtwor(def);
+    const sek = M.czasUtworu(u);
+    assert(sek >= 80 && sek <= 200, def.id + ': ' + Math.round(sek) + ' s');
+    const instr = new Set();
+    let melodia = 0;
+    for (const k of u.kroki) for (const [i, m, dl, gl] of k || []) {
+      instr.add(i);
+      assert(Number.isFinite(m) && dl > 0 && gl > 0 && gl <= 1, def.id + ': zla nuta ' + JSON.stringify([i, m, dl, gl]));
+      if (m) assert(m >= 28 && m <= 100, def.id + ': nuta poza zakresem ' + m);
+      if (i === def.brzmienie.melodia) melodia++;
+    }
+    assert(melodia >= 40, def.id + ': za malo melodii: ' + melodia);
+    for (const i of instr) assert(new RegExp('\\b' + i + '[:(]').test(zrodlo), def.id + ': brak brzmienia „' + i + '” w dzwieki.js');
+    assert(JSON.stringify(M.zbudujUtwor(def)) === JSON.stringify(u), def.id + ': rozne nuty przy drugim skladaniu');
+  }
 });
 
 console.log('\nKAMERA');

@@ -36,7 +36,7 @@ export const ZASTEPCZY_STAN = 4;      // s czekania na stan od autora akcji
 export const START_ZWLOKA = 3;        // s na załadowanie planszy po starcie partii
 export const DOGON_PO = 2;            // s — starszego stanu nie animujemy, tylko do niego skaczemy
 export const ODLICZANIE_S = 5;        // s od chwili, gdy wszyscy dali GOTOWY, do startu partii
-export const WERSJA = 7;              // wersja protokołu lobby (4.2: drużyny i gotowość, 4.3: ustawienia partii, 4.4: lawa, emotki, 4.5: rozmiar mapy, obrót mostu, 4.8: kilka robali na gracza, 4.9: railgun, start gospodarza)
+export const WERSJA = 8;              // wersja protokołu lobby (4.2: drużyny i gotowość, 4.3: ustawienia partii, 4.4: lawa, emotki, 4.5: rozmiar mapy, obrót mostu, 4.8: kilka robali na gracza, 4.9: railgun, start gospodarza, 4.10: ogień z beczek)
 export const MAX_GRACZY = 8;          // w partii; kolejni w lobby oglądają
 
 /* Ucieczka na żywo. */
@@ -691,6 +691,7 @@ function zastosujAkcje(r, a) {
     if (Array.isArray(a.robale)) S.ustawRobale(st, a.robale);
     if (Array.isArray(a.skrzynki)) S.ustawSkrzynki(st, a.skrzynki);
     if (Array.isArray(a.pulapki)) S.ustawPulapki(st, a.pulapki);
+    if (Array.isArray(a.robale)) S.ustawOgien(st, a.ogien);   // pas ze stanem świata niesie też ogień (4.10)
     if (st.phase === 'koniec') st.phase = 'settle';
     S.applyPas(st);
   }
@@ -715,11 +716,9 @@ function przesymuluj(r, a) {
 /* Czy lokalna symulacja tury rozjechała się z kanonem (poza usunięciem
    graczy, które jest zamierzone). Tylko do statystyk i testów. */
 function rozjazd(st, snap) {
-  const kr = st.terrain.craters;
-  if (kr.length * 3 !== snap.kratery.length) return true;
-  for (let i = 0; i < kr.length; i++) {
-    if (kr[i].x !== snap.kratery[i * 3] || kr[i].y !== snap.kratery[i * 3 + 1] || kr[i].r !== snap.kratery[i * 3 + 2]) return true;
-  }
+  const kr = S.plaskieKratery(st);      // tunel railguna to dwie trójki, więc porównujemy płaskie listy
+  if (!Array.isArray(snap.kratery) || kr.length !== snap.kratery.length) return true;
+  for (let i = 0; i < kr.length; i++) if (kr[i] !== snap.kratery[i]) return true;
   for (const s of snap.robale) {
     const w = st.worms.find((x) => x.id === s.id);
     if (!w) return true;
@@ -768,7 +767,7 @@ function wejdzWStan(r, stan) {
    krater z wybuchu zwłok). Potem gram go dokładnie tak jak odbiorcy. */
 function mojPas(r, powod) {
   const st = r.state;
-  const z = { t: 'pas', nr: st.turnNumber, id: r.mojeId, powod, robale: S.stanRobali(st), kratery: S.plaskieKratery(st), skrzynki: S.stanSkrzynek(st), pulapki: S.stanPulapek(st) };
+  const z = { t: 'pas', nr: st.turnNumber, id: r.mojeId, powod, robale: S.stanRobali(st), kratery: S.plaskieKratery(st), skrzynki: S.stanSkrzynek(st), pulapki: S.stanPulapek(st), ogien: S.stanOgnia(st) };
   r.mojaAkcja = z;
   zastosujAkcje(r, z);
 }

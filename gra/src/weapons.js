@@ -228,13 +228,14 @@ export const WEAPONS = {
     key: '\\',
     kind: 'railgun',       // jeden laser po prostej przez całą mapę: przebija skały i każdego robala
     przebija: true,
+    tunel: 7,              // promień dziury, którą wypala w skale po drodze (4.10)
     damage: 75,
     knockback: 150,
     radius: 0,
     fuse: null,
     bezMocy: true,
     amunicja: 1,
-    opis: 'Laser przez wszystko — 75 obrażeń każdemu na linii'
+    opis: 'Laser przez wszystko — 75 obrażeń każdemu na linii, dziura w każdej skale po drodze'
   },
 
   /* --- pociski pomocnicze --- */
