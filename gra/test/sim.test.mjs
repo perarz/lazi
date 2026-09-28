@@ -9,7 +9,8 @@ import { WEAPONS, WEAPON_ORDER } from '../src/weapons.js';
 import { nowaPartiaOs, zdarzenieOs, koniecTuryOs, koniecPartiiOs } from '../src/osiagniecia-reguly.js';
 import * as R from '../src/render.js';
 import * as U from '../src/ustawienia.js';
-import * as M from '../src/muzyka.js';     // tylko kamera (czysta matematyka, bez DOM)
+import * as M from '../src/muzyka.js';
+import { nowaKronika, zdarzenieKroniki, podsumowanie } from '../src/kronika.js';     // tylko kamera (czysta matematyka, bez DOM)
 
 let passed = 0, failed = 0;
 
@@ -1253,6 +1254,59 @@ test('zabicie nalotem daje „Nalot dywanowy” i „Pierwsza krew”', () => {
   assert(!wrog.alive, 'nalot nie zabil');
   assert(z.has('nalot') && z.has('pierwsza-krew'), 'brak osiagniec: ' + [...z].join(','));
   assert(os.fragi === 1, 'fragi=' + os.fragi);
+});
+
+test('zabicie ze strzelby daje „Śrut w plecy” (smierc przychodzi od razu, w tym samym kroku co strzal)', () => {
+  const st = S.createGame(21, players(2), { sieciowa: true });
+  const ja = S.activeWorm(st);
+  const wrog = st.worms.find((w) => w !== ja);
+  polka(st, ja, 200);
+  ja.y = Math.round(ja.y); ja.onGround = true;
+  const kier = ja.facing >= 0 ? 1 : -1;
+  wrog.x = ja.x + 60 * kier; wrog.y = ja.y; wrog.onGround = true;
+  wrog.hp = 5;
+  st.weapon = 'strzelba';
+  S.ustawCelownik(st, kier > 0 ? 0 : Math.PI);
+  assert(S.startCharging(st), 'strzelba nie wystrzelila');
+  S.releaseFire(st);
+  const os = nowaPartiaOs();
+  const z = grajZOsiagnieciami(st, os, ja.id, 20);
+  assert(!wrog.alive, 'strzelba nie zabila');
+  assert(z.has('snajper') && z.has('pierwsza-krew'), 'brak osiagniec: ' + [...z].join(','));
+});
+
+test('kronika partii: eliminacja ze strzelby, obrazenia, zgony raz, MVP, Kamikaze i Pacyfista', () => {
+  const st = S.createGame(21, players(3), { sieciowa: true });
+  const k = nowaKronika(st.worms.map((w) => ({ id: S.wlasciciel(w), nick: w.name, kolor: w.color, druzyna: w.druzyna })));
+  const ja = S.activeWorm(st);
+  const [wrog] = st.worms.filter((w) => w !== ja);
+  polka(st, ja, 200);
+  ja.y = Math.round(ja.y); ja.onGround = true;
+  const kier = ja.facing >= 0 ? 1 : -1;
+  wrog.x = ja.x + 60 * kier; wrog.y = ja.y; wrog.onGround = true; wrog.hp = 5;
+  st.weapon = 'strzelba';
+  S.ustawCelownik(st, kier > 0 ? 0 : Math.PI);
+  S.startCharging(st);
+  S.releaseFire(st);
+  const wpisy = [];
+  const ctx = () => ({ nr: st.turnNumber, aktId: S.wlasciciel(S.activeWorm(st)), gracz: (id) => S.wlasciciel(st.worms.find((x) => x.id === id)) });
+  for (let i = 0; i < 20 / S.DT && st.phase !== 'koniec'; i++) {
+    for (const e of st.events) { const z = zdarzenieKroniki(k, e, ctx()); if (z) wpisy.push(z); }
+    st.events.length = 0;
+    S.step(st);
+  }
+  const g = (w) => k.gracze.get(S.wlasciciel(w));
+  assert(g(ja).kille === 1 && g(ja).obrazenia >= 5, 'strzelec: ' + JSON.stringify(g(ja)));
+  assert(g(wrog).zgony === 1, 'ofiara: ' + JSON.stringify(g(wrog)));
+  assert(wpisy.length === 1 && wpisy[0].zabojca === ja.id && wpisy[0].bron === 'strzelba', 'wpis: ' + JSON.stringify(wpisy));
+  // ta sama śmierć drugi raz (przesymulowana tura) się nie liczy
+  assert(zdarzenieKroniki(k, { type: 'smierc', wormId: wrog.id, cause: 'wybuch' }, ctx()) === null && g(wrog).zgony === 1, 'podwojna smierc');
+  zdarzenieKroniki(k, { type: 'obrazenia', wormId: ja.id, amount: 30 }, ctx());
+  assert(g(ja).wlasne === 30, 'obrazenia sobie');
+  const { lista, wyr } = podsumowanie(k);
+  assert(lista[0].id === S.wlasciciel(ja), 'kolejnosc: ' + lista.map((x) => x.id).join(','));
+  const typy = wyr.map((w) => w.typ);
+  assert(typy.includes('mvp') && typy.includes('kamikaze') && typy.includes('pacyfista'), 'wyroznienia: ' + typy.join(','));
 });
 
 test('wrzucenie do lawy daje „Kąpiel w lawie”', () => {

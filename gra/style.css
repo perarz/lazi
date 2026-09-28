@@ -951,21 +951,29 @@ button.maly { padding: 7px 12px; font-size: 12px; min-height: 36px; }
   padding: 7px 14px; border-radius: 16px; background: rgba(0, 0, 0, 0.55); border: 1px solid rgba(255, 200, 60, 0.35); color: #ffe4a8;
 }
 
-/* ---------- ekran Areny: panel gracza (~65%) i areny/lobby (~35%) ---------- */
+/* ---------- ekran Areny (4.12): hangar u góry, niżej zakładki i areny/lobby ---------- */
 
-.arena-uklad {
-  max-width: 1500px; margin: 0 auto;
-  padding: 18px clamp(12px, 2.5vw, 28px) calc(40px + var(--bezp-d));
-  display: grid; grid-template-columns: minmax(0, 65fr) minmax(330px, 35fr); gap: 18px; align-items: start;
+.ekran-arena {
+  background:
+    radial-gradient(ellipse 70% 45% at 85% 0%, rgba(255, 90, 0, 0.16), transparent 70%),
+    radial-gradient(ellipse 60% 50% at 0% 100%, rgba(200, 30, 0, 0.18), transparent 70%),
+    #0a0605;
 }
-.kolumna-lewa { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; align-content: start; }
-.karta-profil, .karta-wyglad { grid-column: 1 / -1; }
+.arena-uklad {
+  max-width: 1400px; margin: 0 auto;
+  padding: 18px clamp(12px, 2.5vw, 28px) calc(40px + var(--bezp-d));
+  display: grid; grid-template-columns: minmax(0, 60fr) minmax(340px, 40fr); gap: 18px; align-items: start;
+  grid-template-areas: "hangar hangar" "zakladki areny";
+}
+.hangar { grid-area: hangar; }
+.karta-zakladki { grid-area: zakladki; }
+.karta-prawa { grid-area: areny; }
 
 .karta-a {
-  background: linear-gradient(180deg, rgba(34, 16, 10, 0.92), rgba(16, 9, 6, 0.92));
-  border: 1px solid var(--obwodka); border-radius: 16px;
+  background: linear-gradient(180deg, rgba(30, 15, 10, 0.9), rgba(14, 8, 6, 0.94));
+  border: 1px solid rgba(255, 120, 40, 0.28); border-radius: 18px;
   padding: 16px 18px;
-  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 200, 120, 0.08);
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 200, 120, 0.07);
   min-width: 0;
 }
 .karta-a h2 {
@@ -974,33 +982,83 @@ button.maly { padding: 7px 12px; font-size: 12px; min-height: 36px; }
 }
 .karta-a h2 b { font-weight: 400; color: var(--tekst); opacity: 0.8; }
 .etykieta-sekcji { font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase; opacity: 0.6; margin: 4px 0 8px; }
-.karta-a .wersja { display: block; text-align: center; }
+.karta-a .wersja { display: block; text-align: center; margin-top: 12px; }
 
-/* profil */
-.karta-profil {
-  display: flex; gap: 18px; align-items: center;
-  background: radial-gradient(ellipse 80% 120% at 0% 0%, rgba(255, 110, 0, 0.22), transparent 60%),
-    linear-gradient(180deg, rgba(34, 16, 10, 0.92), rgba(16, 9, 6, 0.92));
+/* hangar: scena na całą szerokość, treść po lewej na przyciemnieniu, statystyki paskiem na dole */
+.hangar {
+  position: relative; overflow: hidden; isolation: isolate;
+  min-height: 340px; border-radius: 22px;
+  border: 1px solid rgba(255, 150, 50, 0.5);
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.6), 0 0 60px rgba(255, 90, 0, 0.15);
+  display: flex; flex-direction: column; justify-content: space-between;
 }
-.profil-robal { width: 230px; height: 170px; flex: none; }
-.profil-dane { flex: 1; min-width: 0; }
-.profil-witaj { font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase; opacity: 0.6; }
+.hangar-scena { position: absolute; inset: 0; width: 100%; height: 100%; z-index: -2; display: block; }
+.hangar::before {
+  content: ''; position: absolute; inset: 0; z-index: -1;
+  background: linear-gradient(90deg, rgba(8, 4, 3, 0.9) 0%, rgba(8, 4, 3, 0.62) 38%, rgba(8, 4, 3, 0) 64%),
+    linear-gradient(0deg, rgba(8, 4, 3, 0.85) 0%, rgba(8, 4, 3, 0) 34%);
+}
+.hangar-tresc { padding: 26px 30px 12px; max-width: 560px; }
+.profil-witaj { font-size: 11px; letter-spacing: 0.2em; text-transform: uppercase; opacity: 0.7; }
 .profil-nick {
-  font-size: clamp(26px, 3vw, 40px); line-height: 1.1; letter-spacing: 0.03em; color: var(--zar-jasny);
+  font-family: 'Creepster', 'Russo One', cursive;
+  font-size: clamp(38px, 5.2vw, 68px); line-height: 1; letter-spacing: 0.04em; margin: 4px 0 10px;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-  text-shadow: 0 0 22px rgba(255, 140, 0, 0.5);
+  background-image: linear-gradient(180deg, #fff6cf 0%, #ffd93b 30%, #ff7a00 70%, #d01800 100%);
+  -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; color: transparent;
+  filter: drop-shadow(0 0 16px rgba(255, 110, 0, 0.6));
 }
+.ranga { display: grid; grid-template-columns: auto minmax(90px, 220px); align-items: center; gap: 4px 12px; }
 .profil-ranga {
-  display: inline-block; margin-top: 4px; padding: 3px 10px; border-radius: 999px; font-size: 11px; letter-spacing: 0.08em;
-  background: rgba(255, 170, 30, 0.14); border: 1px solid rgba(255, 200, 60, 0.45); color: #ffe4a8;
+  justify-self: start; display: inline-block; padding: 4px 12px; border-radius: 999px; font-size: 12px; letter-spacing: 0.08em;
+  background: rgba(255, 170, 30, 0.16); border: 1px solid rgba(255, 200, 60, 0.55); color: #ffe4a8;
 }
-.profil-staty { list-style: none; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 7px; margin-top: 12px; }
+.ranga-pasek { height: 8px; border-radius: 999px; background: rgba(0, 0, 0, 0.55); border: 1px solid rgba(255, 200, 60, 0.25); overflow: hidden; }
+.ranga-pasek i { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #ff6a00, #ffd93b); box-shadow: 0 0 10px rgba(255, 170, 30, 0.8); transition: width 0.6s ease-out; }
+.ranga-dalej { grid-column: 1 / -1; font-size: 11px; opacity: 0.72; font-family: system-ui, sans-serif; }
+.hangar-akcje { display: flex; align-items: center; gap: 14px; margin-top: 18px; flex-wrap: wrap; }
+.btn-graj {
+  font-family: 'Russo One', system-ui, sans-serif; font-size: 22px; letter-spacing: 0.12em;
+  padding: 14px 34px; min-height: 56px; border-radius: 14px; color: #1a0800;
+  background: linear-gradient(180deg, #ffe27a 0%, #ffb020 45%, #ff6a00 100%);
+  border: 1px solid #ffe9a8;
+  box-shadow: 0 8px 26px rgba(255, 110, 0, 0.55), inset 0 2px 0 rgba(255, 255, 255, 0.55);
+  animation: graj-puls 2.4s ease-in-out infinite;
+}
+.btn-graj:hover:not(:disabled) { filter: brightness(1.08); transform: translateY(-1px); background: linear-gradient(180deg, #ffe27a 0%, #ffb020 45%, #ff6a00 100%); color: #1a0800; }
+.btn-graj:disabled { opacity: 0.7; animation: none; }
+@keyframes graj-puls {
+  0%, 100% { box-shadow: 0 8px 26px rgba(255, 110, 0, 0.55), inset 0 2px 0 rgba(255, 255, 255, 0.55); }
+  50% { box-shadow: 0 8px 40px rgba(255, 140, 0, 0.95), inset 0 2px 0 rgba(255, 255, 255, 0.55); }
+}
+.graj-opis { font-size: 11.5px; opacity: 0.75; max-width: 230px; font-family: system-ui, sans-serif; line-height: 1.35; }
+.profil-staty {
+  list-style: none; display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px;
+  padding: 12px 18px 16px;
+}
 .profil-staty li {
-  display: flex; flex-direction: column; align-items: center; padding: 7px 4px; border-radius: 10px;
-  background: rgba(0, 0, 0, 0.32); border: 1px solid rgba(255, 255, 255, 0.07);
+  display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 8px 4px; border-radius: 12px;
+  background: rgba(10, 5, 3, 0.62); border: 1px solid rgba(255, 170, 60, 0.22);
+  backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px);
 }
-.profil-staty b { font-size: 15px; font-weight: 400; white-space: nowrap; font-variant-numeric: tabular-nums; }
-.profil-staty small { font-size: 10.5px; opacity: 0.62; font-family: system-ui, sans-serif; }
+.profil-staty b { font-size: 17px; font-weight: 400; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.profil-staty small { font-size: 10.5px; opacity: 0.65; font-family: system-ui, sans-serif; text-align: center; }
+
+/* zakładki: Szafa, Ranking, Osiągnięcia */
+.karta-zakladki .zakladki { display: flex; gap: 6px; padding: 4px; margin-bottom: 14px; border-radius: 14px; background: rgba(0, 0, 0, 0.35); border: 1px solid rgba(255, 255, 255, 0.06); }
+.karta-zakladki .zakladki [role="tab"] {
+  flex: 1; min-height: 44px; padding: 8px 10px; border-radius: 10px; border: 1px solid transparent;
+  background: transparent; color: var(--tekst); font-size: 13px; letter-spacing: 0.04em; opacity: 0.72;
+}
+.karta-zakladki .zakladki [role="tab"]:hover:not(:disabled) { background: rgba(255, 150, 40, 0.08); opacity: 1; border-color: transparent; }
+.karta-zakladki .zakladki [role="tab"][aria-selected="true"] {
+  opacity: 1; color: #1a0800; border-color: #ffe9a8;
+  background: linear-gradient(180deg, #ffd24a, #ff8a1a);
+  box-shadow: 0 4px 16px rgba(255, 120, 0, 0.4);
+}
+.karta-zakladki .zakladki [role="tab"] b { font-weight: 400; font-size: 11px; opacity: 0.8; }
+.panel-zakladki { animation: panel-wejscie 0.25s ease-out; }
+@keyframes panel-wejscie { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 
 /* wygląd: kolory i akcesoria zawsze na wierzchu */
 .karta-wyglad .kolory { grid-template-columns: repeat(12, minmax(0, 1fr)); max-width: 620px; margin-bottom: 10px; }
@@ -1105,32 +1163,37 @@ button.maly { padding: 7px 12px; font-size: 12px; min-height: 36px; }
 .nowy-pokoj input { width: 100%; }
 .nowy-pokoj .glowny { margin-top: 2px; }
 
-/* węższy ekran: prawa kolumna węższa, niżej — jedna kolumna (telefon) */
+/* węższy ekran: zakładki nad arenami; poniżej 900 px jedna kolumna (hangar, areny, zakładki) */
 @media (max-width: 1180px) {
-  .kolumna-lewa { grid-template-columns: minmax(0, 1fr); }
   .karta-wyglad .kolory { grid-template-columns: repeat(6, minmax(0, 1fr)); max-width: 320px; }
   .akcesoria { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .profil-staty { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
 @media (max-width: 900px) {
-  .arena-uklad { display: flex; flex-direction: column; align-items: stretch; gap: 14px; }
-  .kolumna-lewa { display: contents; }
-  .karta-profil { order: 1; }
-  .karta-prawa { order: 2; position: static; max-height: none; overflow: visible; }
-  .karta-wyglad { order: 3; }
-  .karta-ranking { order: 4; }
-  .karta-osiagniecia { order: 5; }
+  .arena-uklad { grid-template-columns: minmax(0, 1fr); grid-template-areas: "hangar" "areny" "zakladki"; gap: 14px; }
+  .karta-prawa { position: static; max-height: none; overflow: visible; }
   .akcesoria { grid-template-columns: repeat(6, minmax(0, 1fr)); }
   .karta-wyglad .kolory { grid-template-columns: repeat(12, minmax(0, 1fr)); max-width: none; }
 }
 @media (max-width: 560px) {
-  .arena-uklad { padding: 12px 10px calc(30px + var(--bezp-d)); }
-  .karta-a { padding: 14px 13px; border-radius: 14px; }
-  .karta-profil { gap: 12px; align-items: flex-start; }
-  .profil-robal { width: 108px; height: 96px; }
-  .profil-nick { font-size: 24px; }
-  .profil-staty { gap: 5px; }
+  .arena-uklad { padding: 10px 10px calc(30px + var(--bezp-d)); }
+  .karta-a { padding: 14px 12px; border-radius: 16px; }
+  .hangar { min-height: 0; border-radius: 18px; }
+  .hangar::before {
+    background: linear-gradient(180deg, rgba(8, 4, 3, 0.82) 0%, rgba(8, 4, 3, 0.35) 45%, rgba(8, 4, 3, 0.1) 60%, rgba(8, 4, 3, 0.9) 100%);
+  }
+  .hangar-tresc { padding: 16px 16px 175px; text-align: center; max-width: none; }
+  .profil-nick { font-size: 44px; margin-bottom: 8px; }
+  .ranga { grid-template-columns: minmax(0, 1fr); justify-items: center; }
+  .profil-ranga { justify-self: center; }
+  .ranga-pasek { width: 70%; }
+  .hangar-akcje { justify-content: center; margin-top: 12px; }
+  .btn-graj { width: 100%; }
+  .graj-opis { max-width: none; text-align: center; }
+  .profil-staty { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 5px; padding: 0 10px 12px; }
   .profil-staty li { padding: 5px 2px; }
-  .profil-staty b { font-size: 13px; }
+  .profil-staty b { font-size: 14px; }
+  .karta-zakladki .zakladki [role="tab"] { font-size: 12px; padding: 6px 4px; }
   .akcesoria { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .akcesoria.czapki { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .karta-wyglad .kolory { grid-template-columns: repeat(6, minmax(0, 1fr)); }
@@ -1141,6 +1204,9 @@ button.maly { padding: 7px 12px; font-size: 12px; min-height: 36px; }
 }
 @media (max-width: 360px) {
   .profil-staty { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .btn-graj, .panel-zakladki { animation: none; }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -1161,3 +1227,55 @@ button.maly { padding: 7px 12px; font-size: 12px; min-height: 36px; }
   .minimapa { width: 128px; top: calc(62px + var(--bezp-g)); right: calc(8px + var(--bezp-p)); }
 }
 #btn-muzyka.wyl { opacity: 0.45; text-decoration: line-through; }
+
+/* ---------- 4.11: kronika eliminacji nad planszą ---------- */
+.kronika { display: flex; flex-direction: column; align-items: center; gap: 4px; pointer-events: none; }
+.kronika-wpis {
+  display: flex; align-items: center; gap: 6px;
+  background: rgba(10, 6, 6, 0.72); border: 1px solid rgba(255, 150, 60, 0.35); border-radius: 999px;
+  padding: 3px 12px; font-size: 13px; font-family: system-ui, sans-serif; color: var(--tekst);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+  animation: kronika-wejscie 0.28s ease-out;
+  transition: opacity 0.6s, transform 0.6s;
+}
+.kronika-wpis b { font-weight: 800; }
+.kronika-wpis .kronika-ikona { font-size: 15px; }
+.kronika-wpis.znika { opacity: 0; transform: translateY(-6px); }
+@keyframes kronika-wejscie { from { opacity: 0; transform: scale(0.7); } to { opacity: 1; transform: scale(1); } }
+@media (max-height: 500px) {
+  .kronika-wpis { font-size: 11px; padding: 2px 9px; }
+  .kronika-wpis:nth-last-child(n+3) { display: none; }   /* na niskim ekranie tylko dwa ostatnie */
+}
+
+/* ---------- 4.11: podsumowanie partii na ekranie końca ---------- */
+.karta-koniec { width: min(560px, 100%); }
+.koniec-podsumowanie { margin: -8px 0 14px; font-family: system-ui, sans-serif; }
+.koniec-podsumowanie[hidden] { display: none; }
+.wyroznienia { list-style: none; display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; margin-bottom: 12px; }
+.wyroznienia li {
+  display: flex; align-items: center; gap: 8px; text-align: left;
+  background: rgba(255, 170, 40, 0.1); border: 1px solid rgba(255, 170, 40, 0.35); border-radius: 12px;
+  padding: 6px 10px; min-width: 150px; flex: 1 1 150px; max-width: 250px;
+}
+.wyroznienia li.mvp { background: linear-gradient(90deg, rgba(255, 200, 40, 0.28), rgba(255, 110, 0, 0.18)); border-color: #ffd93b; }
+.wyroznienia .wyr-ikona { font-size: 22px; line-height: 1; }
+.wyroznienia .wyr-tekst { display: flex; flex-direction: column; min-width: 0; }
+.wyroznienia .wyr-tekst small { font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; opacity: 0.7; }
+.wyroznienia .wyr-tekst b { font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wyroznienia .wyr-tekst span { font-size: 11px; opacity: 0.8; }
+.tabela-wynikow { width: 100%; border-collapse: collapse; font-size: 13px; }
+.tabela-wynikow th { font-size: 12px; font-weight: 600; opacity: 0.7; padding: 3px 6px; }
+.tabela-wynikow td { padding: 5px 6px; border-top: 1px solid rgba(255, 255, 255, 0.07); font-variant-numeric: tabular-nums; }
+.tabela-wynikow td:nth-child(2) { text-align: left; max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tabela-wynikow tr.ja td { background: rgba(255, 210, 120, 0.08); }
+.tabela-wynikow .kropka-gracza { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 6px; vertical-align: middle; }
+.tabela-wynikow tr.pierwszy td:first-child { color: #ffd93b; font-weight: 800; }
+.koniec-przyciski { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+.koniec-przyciski button { flex: 1 1 160px; max-width: 240px; margin-top: 8px; }
+@media (max-height: 500px) {
+  .karta-koniec { padding: 16px 18px; }
+  .karta-koniec h1 { font-size: 22px; }
+  .karta-koniec .podtytul { margin-bottom: 12px; }
+  .wyroznienia li { padding: 4px 8px; min-width: 130px; }
+  .tabela-wynikow td { padding: 3px 6px; }
+}

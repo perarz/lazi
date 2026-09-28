@@ -147,7 +147,9 @@ const EFEKTY = {
     for (let i = 0; i < 6; i++) szumik(0.04, 0.2, 5000, 2500, { typ: 'highpass', opoz: 0.35 + i * 0.17 + Math.random() * 0.1 });
   },
   parzy() { szumik(0.25, 0.22, 6000, 2500, { typ: 'highpass' }); ton('square', 520, 300, 0.12, 0.05, { filtr: ['lowpass', 1400] }); },
-  trzask() { szumik(0.05, 0.14, 4000, 1800, { typ: 'bandpass', q: 2 }); }
+  trzask() { szumik(0.05, 0.14, 4000, 1800, { typ: 'bandpass', q: 2 }); },
+  // ostatnie sekundy tury (4.11): tyknięcie, dwie ostatnie wyżej i głośniej
+  tik({ ostatnie = false } = {}) { ton('square', ostatnie ? 1500 : 1000, ostatnie ? 1500 : 1000, 0.05, ostatnie ? 0.14 : 0.08, { filtr: ['lowpass', 3000] }); }
 };
 
 export function graj(nazwa, opcje) {

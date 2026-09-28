@@ -536,6 +536,9 @@ export function applyFire(state, action) {
   }
 
   const start = action.start || obliczStart(w, weapon, action.angle, action.power);
+  // Zdarzenie strzału PRZED skutkami: strzelba, railgun i kij zabijają od razu, a osiągnięcia
+  // („Śrut w plecy”) muszą wiedzieć, z czego padł strzał, zanim przyjdzie śmierć (do 4.10 szło po nich).
+  state.events.push({ type: 'strzal', weapon: weapon.id, wormId: w.id, x: w.x, y: w.y - WORM_H * 0.5 });
 
   if (weapon.kind === 'hitscan') {
     strzalNatychmiastowy(state, w, start, weapon);
@@ -588,7 +591,6 @@ export function applyFire(state, action) {
   state.odwrotPelny = Array.isArray(action.odwrot) || !state.sieciowa;
   state.odwrotNagranie = null;
   state.skokWKolejce = false;
-  state.events.push({ type: 'strzal', weapon: weapon.id, wormId: w.id, x: w.x, y: w.y - WORM_H * 0.5 });
   return true;
 }
 

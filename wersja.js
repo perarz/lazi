@@ -5,6 +5,28 @@
 (function () {
   var historia = [
     {
+      wersja: '4.12', data: '2026-09-28', tytul: 'Nowy panel Areny',
+      zmiany: [
+        'Panel Areny w nowej odsłonie: na górze wielki „hangar” — Twój robal na żywej scenie nad lawą strzela z bazooki, nick płonie, obok ranga z paskiem, ile killi zostało do następnej, i statystyki.',
+        'Wielki przycisk GRAJ: szybka gra jednym stuknięciem — wskakujesz do najpełniejszej otwartej areny, a jak żadnej nie ma, od razu powstaje Twoja.',
+        'Szafa (kolor, akcesoria, czapki), Ranking i Osiągnięcia są w zakładkach, więc na telefonie jest dużo mniej przewijania. Gra pamięta, którą zakładkę miałeś otwartą.',
+        'Na telefonie zaraz pod hangarem są areny, a na komputerze stoją obok zakładek.'
+      ]
+    },
+    {
+      wersja: '4.11', data: '2026-09-28', tytul: 'Arena 5× lepsza',
+      zmiany: [
+        'Naprawione osiągnięcie „Śrut w plecy”: eliminacja ze strzelby wreszcie się liczy (gra nie wiedziała, z czego padł strzał, bo robal ginął od razu).',
+        'Wybuchy z przytupem: błysk, fala, odłamki skały w jej kolorach, dym, który chwilę wisi w powietrzu, i okopcony brzeg krateru.',
+        'Żywsze robale: po trafieniu błyskają na biało, drgają i zaciskają oczy z bólu. W locie się wyciągają, po lądowaniu rozpłaszczają, przy chodzeniu podskakują. Przy ładowaniu strzału robią groźną minę, a przy małym życiu pocą się i martwią.',
+        'Liczby obrażeń wyskakują sprężyście, mocne trafienia (40+) są większe i czerwone.',
+        'Kronika eliminacji nad planszą: „Kozak 🚀 Lazi”, z ikoną broni (albo 🌋 lawy, 🔥 ognia), a przy samobójstwie „sam się załatwił”. Dwie eliminacje w jednej turze to DUBLET!, trzy TRIPLET!, a kamera na chwilę pokazuje miejsce eliminacji.',
+        'Podsumowanie partii na ekranie końca: tabela (eliminacje, obrażenia, zgony) i wyróżnienia — MVP, Strzał partii, Kamikaze, Pływak (do lawy) i Pacyfista.',
+        'Rewanż jednym przyciskiem: wracasz do lobby od razu jako GOTOWY. Gdy wszyscy klikną Rewanż, partia rusza sama.',
+        'Granaty ciągną za sobą smużkę dymu, a w ostatnich 5 sekundach Twojej tury tyka zegar.'
+      ]
+    },
+    {
       wersja: '4.10', data: '2026-09-28', tytul: 'Płonąca ropa, railgun przez ściany, 7 utworów i areny, które nie zarastają',
       zmiany: [
         'Beczka po wybuchu rozlewa płonącą ropę jak w Wormsach: krople ognia rozlatują się, spadają, rozpływają po ziemi i palą się kilka sekund. Robal w ogniu traci po 3 HP co ćwierć sekundy i podskakuje z bólu, a ogień wypala w ziemi dołki i okopca skałę. Beczka stojąca w ogniu też wybucha — łańcuchy beczek robią się naprawdę gorące. Tura czeka, aż ogień zgaśnie.',
