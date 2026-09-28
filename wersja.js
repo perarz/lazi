@@ -9,7 +9,7 @@
       zmiany: [
         'Beczka po wybuchu rozlewa płonącą ropę jak w Wormsach: krople ognia rozlatują się, spadają, rozpływają po ziemi i palą się kilka sekund. Robal w ogniu traci po 3 HP co ćwierć sekundy i podskakuje z bólu, a ogień wypala w ziemi dołki i okopca skałę. Beczka stojąca w ogniu też wybucha — łańcuchy beczek robią się naprawdę gorące. Tura czeka, aż ogień zgaśnie.',
         'Muzyka: zamiast jednej krótkiej pętli jest 7 utworów po 1,5–3 minuty, każdy w innym stylu: Marsz GOATów, Blues z lawy, 8-bitowa rzeźnia, Pojedynek w kraterze (western), Polka nad lawą, Cisza przed nalotem i Neonowa lawa. Mają wstęp, zwrotki, refren i zakończenie, a lecą po kolei w losowej kolejności. Każda partia zaczyna od kolejnego utworu, a wyłączenie i ponowne włączenie muzyki 🎵 przeskakuje do następnego.',
-        'Pusta arena znika z listy po pół minucie (dawniej wisiała 10 minut, więc lista zarastała pustymi pokojami, a każda liczyła się do limitu 3 aren na konto). Kto wejdzie starym linkiem do zniknętej areny, dostaje komunikat i listę aren.',
+        'Pusta arena znika od razu: gdy wyjdzie z niej ostatnia osoba, nie ma jej już na liście i nie liczy się do limitu 3 aren na konto (dawniej wisiała pusta 10 minut). Przez pół minuty da się do niej jeszcze wrócić tym samym linkiem (np. po odświeżeniu strony albo zaniku zasięgu), potem kasuje się całkiem. Kto wejdzie starym linkiem do skasowanej areny, dostaje komunikat i listę aren.',
         'Nowe rogi prawdziwego GOATa: dwa kozie rogi z prążkami wyrastają z czubka głowy i zaginają się do tyłu, do tego kozie ucho (dawniej wyglądały jak dwa haczyki na karku).'
       ]
     },

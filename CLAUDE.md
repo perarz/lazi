@@ -187,10 +187,14 @@ PL, IP 96.62.223.169). Katalog `serwer/` to serwer: Node + WebSocket (`ws`).
   tury, nowe osiągnięcia); jedna partia (seed) liczy się raz, serwer pamięta 40 ostatnich. Wyjście w trakcie =
   `tylkoOsiagniecia`. Da się oszukać konsolą — przy żartobliwej stronie akceptujemy (jak minigierki).
 - **Pokoje z panelu** (`opisy` w `serwer.js`) są w pamięci jak partie: nazwa, kto założył, skrót hasła, klucz.
-  **Pusty znika po 30 s** (`PUSTY_POKOJ_MS`, `sprzatajPuste` co 5 s; od 4.10, dawniej 10 minut — lista zarastała, a puste
-  liczyły się do limitu 3 aren na konto). Zniknięte id z panelu (`p-` + 8 hex) nie wraca jako pokój bez nazwy: WebSocket
-  i `/api/pokoje/wejdz` dają 404. Klient przy błędzie sieci (`naBladSieci` → `sprawdzCzyArenaJest`) sprawdza arenę
-  i przy 404 wraca do listy z komunikatem `#info-zniknela` (np. stary link, telefon wybudzony po dłuższej przerwie).
+  **Pusta arena (0 połączeń) znika od razu** (od 4.10, na prośbę użytkownika; dawniej wisiała 10 minut): `listaPokoi`
+  jej nie pokazuje, a limit 3 aren na konto liczy tylko zajęte i świeżo założone (`!o.byl`, < `PUSTY_POKOJ_MS`).
+  Skasowana jest po 30 s (`PUSTY_POKOJ_MS`, `sprzatajPuste` co 5 s) — do tego czasu wraca do niej odświeżona strona,
+  telefon po zaniku zasięgu albo znajomy z linku (wtedy znów jest na liście). Skasowane id z panelu (`p-` + 8 hex)
+  nie wraca jako pokój bez nazwy: WebSocket i `/api/pokoje/wejdz` dają 404. `/api/pokoje/wejdz` oddaje też `nazwa`
+  (przy 200 i 403). Klient: wejście z linku do areny spoza listy pyta `wejdz` (200 → lobby, 403 → `pokojZLinku` na
+  górze listy z polem hasła, 404 → komunikat `#info-zniknela`); po własnym wyjściu `opuszczonyPokoj` chowa arenę
+  od razu (lista u innych odświeża się co 5 s); przy błędzie sieci `sprawdzCzyArenaJest` przy 404 wraca do listy.
   Restart serwera kasuje wszystkie. **Od 4.7 nie ma domyślnej areny** (`glowny` nie
   jest już na liście) — gra się tylko w arenie, którą ktoś założył. Pokój bez opisu (`?pokoj=` z testów) jest
   publiczny i pojawia się na liście tylko, gdy ktoś w nim jest.
@@ -214,7 +218,7 @@ PL, IP 96.62.223.169). Katalog `serwer/` to serwer: Node + WebSocket (`ws`).
 - Opcjonalnie ładniejszy adres serwera `arena.kacperlazarz.pl`: rekord DNS A → 96.62.223.169, ponowne
   `instaluj.sh` z nowym adresem, potem adres w czterech miejscach (wyżej) i wdrożenie.
 - Ostatnie wdrożenia: 4.8 = PR #28 (bez zmian serwera), 4.9 = PR #29 + `arena-aktualizuj` 2026-09-28 (konsola dostawcy).
-  **4.10 zmienia serwer** (puste areny po 30 s) — po merge'u potrzebne `arena-aktualizuj`.
+  **4.10 zmienia serwer** (pusta arena znika od razu) — po merge'u potrzebne `arena-aktualizuj`.
 
 ---
 
@@ -844,7 +848,7 @@ więcej akcesoriów (np. czapki postaci ze zrzutki), ewentualnie konto także w 
   - **4.7.1** kurtyna przy przejściu zrzutka ↔ Arena, wejście na Arenę bez ekranu ładowania, Korona Króla GOATów za wszystkie osiągnięcia + 3 czapki
   - **4.8** 1–3 robale na gracza, wyższa mapa ekstremalna, celny nalot, minimapa i podgląd całej mapy
   - **4.9** railgun, miny i beczki, nagrobki, kamera za pociskiem, pingi, dźwięki i muzyczka, 5 nowych tańców, okulary i buźka zamiast lamy i kilofa, bez ogonków, nowe skrzynki i tło, start gospodarza bez GOTOWY
-  - **4.10** płonąca ropa z beczek (parzy i wypala ziemię), 7 utworów muzyki zamiast jednej pętli, pusta arena znika po 30 s, nowe rogi GOATa
+  - **4.10** płonąca ropa z beczek (parzy i wypala ziemię), 7 utworów muzyki zamiast jednej pętli, pusta arena znika od razu, nowe rogi GOATa
 
 ---
 

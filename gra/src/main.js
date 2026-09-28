@@ -688,7 +688,16 @@ async function poZalogowaniu(k) {
   otworzArene();
   if (!zAdresu) return;
   const p = pokojeLista.find((x) => x.id === zAdresu);
-  if (!p || !p.haslo) return polaczZPokojem(zAdresu, null, p ? p.nazwa : zAdresu);
+  if (p && !p.haslo) return polaczZPokojem(zAdresu, null, p.nazwa);
+  if (!p) {
+    // pustej areny nie ma na liście (od 4.10) — serwer powie, czy jeszcze jest i czy ma hasło
+    if (!/^p-[0-9a-f]{8}$/.test(zAdresu)) return polaczZPokojem(zAdresu, null, zAdresu);   // pokój spoza panelu (testy)
+    const w = await K.wejdzDoPokoju(zAdresu);
+    if (w.status === 200) return polaczZPokojem(zAdresu, w.dane.klucz, w.dane.nazwa || zAdresu);
+    if (w.status === 404) return pokazZniknieta(null);
+    if (w.status !== 403) return polaczZPokojem(zAdresu, null, zAdresu);     // brak sieci: dalej jak dawniej
+    pokojZLinku = { id: zAdresu, nazwa: w.dane.nazwa || 'Arena z linku', haslo: true, gracze: [], ile: 0, partia: false, zalozyl: null };
+  }
   rozwinietyPokoj = zAdresu;            // arena na hasło: pole hasła od razu otwarte
   rysujPokoje(true);
 }
@@ -752,6 +761,19 @@ let pokojeLista = [];
 let pokojeBlad = '';
 let podpisPokoi = '';
 let rozwinietyPokoj = null;           // arena na hasło z otwartym polem hasła
+// Pustej areny serwer nie pokazuje (od 4.10). Arena z linku, której przez to nie ma na liście,
+// a ma hasło, stoi na górze listy z polem hasła; ta, z której właśnie wyszedłem sam, nie mignie.
+let pokojZLinku = null;
+let opuszczonyPokoj = null;           // { id, do }
+
+function pokojeWidoczne() {
+  let l = pokojeLista;
+  if (opuszczonyPokoj && Date.now() < opuszczonyPokoj.do) {
+    l = l.filter((p) => p.id !== opuszczonyPokoj.id || p.gracze.some((n) => n !== mojaNazwa));
+  }
+  if (pokojZLinku && !l.some((p) => p.id === pokojZLinku.id)) l = [pokojZLinku, ...l];
+  return l;
+}
 
 async function odswiezPokoje() {
   const w = await K.pokoje();
@@ -763,14 +785,16 @@ function rysujPokoje(wymus = false) {
   const lista = el('lista-pokoi');
   // nie przebudowujemy listy pod palcem piszącym hasło
   if (!wymus && lista.contains(document.activeElement) && document.activeElement.tagName === 'INPUT') return;
-  const podpis = JSON.stringify([pokojeLista, rozwinietyPokoj]);
+  const widoczne = pokojeWidoczne();
+  const podpis = JSON.stringify([widoczne, rozwinietyPokoj]);
   if (!wymus && podpis === podpisPokoi) return;
   podpisPokoi = podpis;
   lista.replaceChildren();
-  el('pusto-pokoje').hidden = pokojeLista.length > 0;
-  const graczy = pokojeLista.reduce((s, p) => s + p.ile, 0);
-  el('licznik-pokoi').textContent = pokojeLista.length ? pokojeLista.length + ' · ' + graczy + ' graczy' : '';
-  for (const p of pokojeLista) {
+  el('pusto-pokoje').hidden = widoczne.length > 0;
+  const zLudzmi = widoczne.filter((p) => p.ile > 0);      // bez areny z linku, w której nikogo nie ma
+  const graczy = zLudzmi.reduce((s, p) => s + p.ile, 0);
+  el('licznik-pokoi').textContent = zLudzmi.length ? zLudzmi.length + ' · ' + graczy + ' graczy' : '';
+  for (const p of widoczne) {
     const li = document.createElement('li');
     li.className = 'pokoj' + (p.partia ? ' w-grze' : '') + (p.haslo ? ' zamkniety' : '');
     const opis = document.createElement('div');
@@ -778,7 +802,7 @@ function rysujPokoje(wymus = false) {
     const nazwa = document.createElement('b');
     nazwa.textContent = (p.haslo ? '🔒 ' : '') + p.nazwa;
     const kto = document.createElement('small');
-    kto.textContent = p.ile ? p.gracze.join(', ') : 'pusto — wejdź pierwszy';
+    kto.textContent = p.ile ? p.gracze.join(', ') : 'arena z linku — nikogo w niej teraz nie ma';
     const znaczki = document.createElement('div');
     znaczki.className = 'pokoj-znaczki';
     const ile = document.createElement('span');
@@ -827,6 +851,12 @@ function rysujPokoje(wymus = false) {
         const w = await K.wejdzDoPokoju(p.id, input.value);
         ok.disabled = false;
         if (w.status === 200) return polaczZPokojem(p.id, w.dane.klucz, p.nazwa);
+        if (w.status === 404) {                    // pusta arena z linku zdążyła zniknąć
+          if (pokojZLinku && pokojZLinku.id === p.id) pokojZLinku = null;
+          rozwinietyPokoj = null;
+          rysujPokoje(true);
+          return pokazZniknieta(p.nazwa);
+        }
         el('info-pokoje').textContent = w.status === 403 ? 'Złe hasło do areny „' + p.nazwa + '”.' : K.opisBledu(w.dane);
         input.select();
       });
@@ -899,7 +929,9 @@ function zglosSie() {
 async function polaczZPokojem(id, klucz, nazwa, haslo) {
   if (net) opuscPokoj();
   el('info-zniknela').hidden = true;
-  const p = pokojeLista.find((x) => x.id === id);
+  const p = pokojeWidoczne().find((x) => x.id === id);
+  pokojZLinku = null;
+  opuszczonyPokoj = null;
   aktualnyPokoj = { id, klucz, nazwa };
   rozwinietyPokoj = null;
   ustawAdres(id);
@@ -931,6 +963,8 @@ async function polaczZPokojem(id, klucz, nazwa, haslo) {
 /* Wyjście z areny do listy: pożegnanie w logu i koniec połączenia. */
 function opuscPokoj() {
   if (!net) return;
+  // wyszedłem sam: arena znika z listy od razu, zanim serwer zdąży zauważyć zamknięte połączenie
+  if (aktualnyPokoj) opuszczonyPokoj = { id: aktualnyPokoj.id, do: Date.now() + 4000 };
   net.opusc();
   net.stop();
   net = null;
@@ -987,8 +1021,8 @@ function naBladSieci(wiadomosc) {
   sprawdzCzyArenaJest();
 }
 
-/* Pusta arena znika z serwera po pół minuty (od 4.10). Kto wraca po dłuższej przerwie
-   (np. telefon w kieszeni), nie łączy się w kółko, tylko wraca do listy aren. */
+/* Pusta arena znika z listy od razu, a z serwera po pół minuty (od 4.10). Kto wraca po dłuższej
+   przerwie (np. telefon w kieszeni), nie łączy się w kółko, tylko wraca do listy aren. */
 let arenaSprawdzonaO = 0;
 async function sprawdzCzyArenaJest() {
   const a = aktualnyPokoj;
@@ -1003,10 +1037,13 @@ async function sprawdzCzyArenaJest() {
   pokazWidok(false);
   await odswiezPokoje();
   rysujPokoje(true);
-  const zNazwa = a.nazwa && a.nazwa !== a.id;
+  pokazZniknieta(a.nazwa && a.nazwa !== a.id ? a.nazwa : null);
+}
+
+function pokazZniknieta(nazwa) {
   const info = el('info-zniknela');
-  info.textContent = (zNazwa ? 'Arena „' + a.nazwa + '”' : 'Arena z tego linku') +
-    ' już nie istnieje — pusta arena znika po pół minucie. Załóż nową albo wejdź do innej.';
+  info.textContent = (nazwa ? 'Arena „' + nazwa + '”' : 'Arena z tego linku') +
+    ' już nie istnieje — arena znika, gdy wyjdzie z niej ostatnia osoba. Załóż nową albo wejdź do innej.';
   info.hidden = false;
 }
 

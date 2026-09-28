@@ -50,7 +50,7 @@ const OPISY_BLEDOW = {
   'zaloguj-sie': 'Sesja wygasła — zaloguj się jeszcze raz.',
   'zla-nazwa': 'Nazwa pokoju: co najmniej 3 znaki.',
   'za-duzo-pokoi': 'Serwer ma już komplet pokoi. Wejdź do któregoś z listy.',
-  'masz-za-duzo-pokoi': 'Masz już 3 pokoje — puste znikają same po pół minucie.',
+  'masz-za-duzo-pokoi': 'Masz już 3 areny, w których ktoś jest. Pusta arena znika od razu — wyjdź z którejś albo poczekaj.',
   'nie-ma-pokoju': 'Tego pokoju już nie ma.',
   siec: 'Brak połączenia z serwerem Areny.',
   'brak-serwera': 'Nie ustawiono adresu serwera Areny.',
