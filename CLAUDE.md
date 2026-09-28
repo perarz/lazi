@@ -18,7 +18,7 @@ Stos technologiczny:
 - Bez bundlera, bez `package.json` i bez zależności npm. Zwykłe pliki HTML/CSS/JS, gra jako moduły ES,
   zrzutka jako klasyczne skrypty.
 
-Obecna wersja: **4.9 „Railgun, pingi, dźwięki i muzyczka”** (`wersja.js`).
+Obecna wersja: **4.9 „Railgun, miny i beczki, pingi, dźwięki i muzyczka”** (`wersja.js`).
 
 ---
 
@@ -443,14 +443,14 @@ Lekcje z kalibracji:
 | `src/czapki.js` | Czapki za osiągnięcia (4.7.1): Korona Króla GOATów (`krol`, `osiagniecie: '*'` = wszystkie) i 3 czapki za pojedyncze (`irokez` ← masakra, `wulkan` ← lawa, `rogi` ← owca); pola `wys` (o ile podnieść pasek życia i nick) i opcjonalnie `zaGlowa` (część za ciałem, np. promienie korony) |
 | `src/main.js` | Logowanie, ekran ładowania, ekran Areny (profil, wygląd, ranking, osiągnięcia + areny/lobby), lobby (tryb, drużyny, GOTOWY), HUD, kamera, pętla gry, zdarzenia → efekty, statystyki, osiągnięcia (UI) |
 | `src/druzyny.js` | Nazwy i kolory drużyn (`DRUZYNY`), tryby lobby (`TRYBY`) |
-| `src/ustawienia.js` | Ustawienia partii z lobby (`USTAWIENIA`: czas, hp, mapa, rozmiar, bronie, zrzuty, wiatr, lawaOd, lawaTempo; pozycje z `opcje` = lista, z `liczba` = wpisywane), `normalizuj`, `zLiczby`, `opisZmian` |
+| `src/ustawienia.js` | Ustawienia partii z lobby (`USTAWIENIA`: czas, hp, robale, mapa, rozmiar, bronie, zrzuty, pulapki, wiatr, lawaOd, lawaTempo; pozycje z `opcje` = lista, z `liczba` = wpisywane), `normalizuj`, `zLiczby`, `opisZmian` |
 | `src/emotki.js` | Emotki i tańce (`EMOTKI`: 5 emotek + 7 tańców), czasy i limit wysyłania |
 | `src/dzwieki.js` | Dźwięki i muzyczka (4.9): Web Audio bez plików, `graj(nazwa, opcje)` pod zdarzenia w `obsluzZdarzenia`, `muzykaStart/Stop` (pętla 104 BPM planowana 0,3 s do przodu), wyciszanie `arena:dzwiek` / `arena:muzyka`; kontekst budzi pierwszy gest, karta w tle go usypia |
 | `src/ekwipunek.js` | Ekwipunek broni jak w Worms Armageddon: rzędy (`GRUPY`), ikony SVG broni, otwieranie/zamykanie |
 | `src/input.js` | Klawiatura, przyciski dotykowe, przeciąganie/szczypanie, PPM/Q = ekwipunek |
 | `src/render.js`, `src/fx.js` | Grafika (tu wolno trygonometrię i `Math.random`); w `render.js` też kamera, podgląd robala (`rysujPodgladRobala`, `mini` = kafelek akcesorium) i scena ekranu ładowania (`rysujSceneLadowania`) |
 | `src/osiagniecia-reguly.js` | Reguły osiągnięć — czyste funkcje |
-| `test/sim.test.mjs`, `test/protokol.test.mjs` | Testy w Node (86 i 23) |
+| `test/sim.test.mjs`, `test/protokol.test.mjs` | Testy w Node (89 i 23) |
 
 ### Determinizm (święta zasada)
 - Symulacja (`sim.js`, `terrain.js`) używa tylko:
@@ -662,6 +662,16 @@ Lekcje z kalibracji:
 - **Most w terenie**: siedzi na liście kraterów jako `{x, y, r: -1}` (`carve` z ujemnym r uruchamia `zbudujMost`),
   więc `rebuild()` odtwarza go w tej samej kolejności co wybuchy. W masce ma wartość **2** (`solidAt`
   sprawdza `!== 0`, render maluje 2 jako stalowy dźwigar). **Nie zakładaj, że maska ma tylko 0/1.**
+- **Miny i beczki (4.9)** (`state.pulapki`: `{id, typ: 'mina'|'beczka', x, y, lont}`, `lont` = −1 spokój, inaczej kroki do wybuchu):
+  - Rozstawia je `rozstawPulapki` w `createGame` z seeda (ustawienie `pulapki` 0/1/2 → `PULAPKI_ILE`, liczba rośnie z szerokością mapy),
+    na gruncie, ≥ 80 px od robali. Są w snapshocie, `stanPoTurze`, strzale i pasie (`stanPulapek`/`ustawPulapki`, pole `l` = lont),
+    bo gracz z turą może odpalić minę chodząc, a odbiorca nie symuluje jego chodzenia.
+  - `stepPulapki`: spadają jak skrzynki, toną w lawie; mina łapie żywego robala w pobliżu (`MINA_LONT` 1,1 s, zdarzenie `mina`),
+    `explode` i railgun ustawiają lont beczkom (`BECZKA_LONT`) i minom — **bez rekurencji**, więc łańcuch idzie krok po kroku.
+    Faza `settle` czeka, aż żaden lont się nie pali.
+  - Rysunek `drawPulapka` (dioda miny miga, beczka drży przed wybuchem).
+- **Nagrobki (4.9)**: `drawNagrobek` w `render.js` dla `!alive && !odszedl`, pozycja tylko graficzna (`nagrobkiY`, opada do gruntu),
+  bez nagrobka w lawie. Stan gry o nich nie wie.
 - **Zrzuty** (`state.skrzynki`):
   - Pojawiają się na starcie tury od 2. rundy, z szansą 40%, najwyżej 3 naraz.
   - Wszystko wynika z seeda i numeru tury w `nextTurn` (`zrzutZaopatrzenia`), więc nie ma dodatkowego ruchu w sieci.
@@ -681,6 +691,9 @@ Lekcje z kalibracji:
   - **Od 4.8**: minimapa `#minimapa` (`R.rysujMinimape`, co 2. klatkę; stuknięcie/przeciągnięcie = kamera tam na 5 s),
     przycisk 🗺️ `#btn-mapa` i klawisz **M** = cała mapa (`przelaczPodgladMapy`), minimalny zoom = cała mapa między
     pasami HUD-u (`minZoomGracza`), dwa palce przesuwają widok także w mojej turze (`onPrzesun` w `input.js`).
+  - **Od 4.9 kamera za pociskiem** (`ustawKamere`): cel = pozycja + prędkość × do 0,32 s (wyprzedzenie), zoom ×0,72–0,92
+    zależnie od prędkości, `kamera.tempo` 7,5 (`updateCamera` używa `cam.tempo`, domyślnie 4,2). Po wybuchu `kameraWybuch`
+    trzyma kadr 0,9 s (railgun: środek promienia, oddalenie 0,6), `trzymajWKadrze` wtedy nie ciągnie do robala.
   - `pasyHud` mierzy grupy przycisków dotykowych osobno: boczne (telefon poziomo) nie zabierają środka
     ekranu, tylko pilnują marginesu z boku (`pasy.bok`).
 - Statystyki i osiągnięcia (18) są tylko w `localStorage`, bez serwera.
@@ -720,7 +733,7 @@ nowych kanałów (dane doklejone do `dolacz`, `nowa`, strzału).
   (bez plików): wybuch, wystrzał, odbicie granatu, owca, lont, plusk lawy, zrzut, dżingiel tury, „ała”.
   Podpięte pod zdarzenia w `obsluzZdarzenia`; wyciszenie w `localStorage` (np. `arena:dzwiek`).
 - **Wygląd od 4.9**: robal bez ogonka, skrzynki (`drawSkrzynka`: wojskowa skrzynka z pasem i nabojami, apteczka z uchwytem i plusikami, poświata, spadochron w pasy), lawa z poświatą i bąblami, w tle (`drawTlo`) krwawy księżyc i łuna wulkanu. Tańce z obrotem (`obrot` w `drawWorm`) rysują nick i pasek osobno (`tylkoNapis`).
-- **Nagrobki**: tylko `render.js` — martwy robal (`!alive && !odszedl`) ma w stanie swoje x, y.
+- ~~**Nagrobki**~~ — zrobione w 4.9.
 - **Dymki z tekstami** przy trafieniu, eliminacji i wpadnięciu do lawy; lokalnie, jak `emitTekst` w `fx.js`.
 - **Czapki postaci ze zrzutki** wybierane przy wejściu obok koloru (rogi Kozaka, hełm Stozhinia, opaska
   PowPowa, karp, kapelusz Nolliego, okulary Froxy'ego, galea Qubera, wieniec Apolla, „?” Krayo). Lecą
@@ -738,7 +751,7 @@ brak obrażeń od swoich i tury na zmianę drużynami są już w 4.2*; zostaje t
   punktów w `spawnPoints`. Testy protokołu do przerobienia. Stan tury przy 6×4 robalach to ok. 5 KB (limit 24 KB).
 - ~~Ustawienia partii u gospodarza~~ — zrobione w 4.3 (`ustawienia.js`); nowe dopisuj do `USTAWIENIA`
   i obsłuż w `sim.js` przez `state.ust`. Brakuje tylko liczby robali (wyżej).
-- **Miny i beczki** od startu, rozmieszczone z seeda; stan jak skrzynki (przepis „Coś w stanie gry”).
+- ~~**Miny i beczki**~~ — zrobione w 4.9.
   Mina wybucha po zbliżeniu robala, beczka od wybuchu obok (reakcje łańcuchowe).
 - **Skrzynki**: pułapka (wybucha po otwarciu) i skrzynka z narzędziami.
 
@@ -805,14 +818,14 @@ więcej akcesoriów (np. czapki postaci ze zrzutki), ewentualnie konto także w 
   - **4.7** pasek Fortnite/0 A.D./Arena w grze, panel + lobby na jednym ekranie, bez domyślnej areny, 5 akcesoriów robala, nowy ekran ładowania
   - **4.7.1** kurtyna przy przejściu zrzutka ↔ Arena, wejście na Arenę bez ekranu ładowania, Korona Króla GOATów za wszystkie osiągnięcia + 3 czapki
   - **4.8** 1–3 robale na gracza, wyższa mapa ekstremalna, celny nalot, minimapa i podgląd całej mapy
-  - **4.9** railgun, pingi, dźwięki i muzyczka, 5 nowych tańców, okulary i buźka zamiast lamy i kilofa, bez ogonków, nowe skrzynki i tło, start gospodarza bez GOTOWY
+  - **4.9** railgun, miny i beczki, nagrobki, kamera za pociskiem, pingi, dźwięki i muzyczka, 5 nowych tańców, okulary i buźka zamiast lamy i kilofa, bez ogonków, nowe skrzynki i tło, start gospodarza bez GOTOWY
 
 ---
 
 ## 9. Testy i sprawdzanie
 
 ```
-node gra/test/sim.test.mjs        # symulacja, bronie, determinizm, drużyny, ustawienia, skrzynki, spawny, osiągnięcia, kamera, lina, most obracany, rozmiar mapy, kilka robali, railgun (86)
+node gra/test/sim.test.mjs        # symulacja, bronie, determinizm, drużyny, ustawienia, skrzynki, spawny, osiągnięcia, kamera, lina, most obracany, rozmiar mapy, kilka robali, railgun, miny i beczki (89)
 node gra/test/protokol.test.mjs   # protokół: lag, rozłączenia, ucieczka na żywo, lobby, ustawienia, partie 2v2, z własnymi zasadami i z kilkoma robalami, start bez GOTOWY (23, ~35 s)
 cd serwer && npm install && node test.mjs   # serwer na VPS: Arena (10) + konta, pokoje, akcesoria i czapki (10) + zrzutka (7)
 ```

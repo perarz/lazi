@@ -135,7 +135,8 @@ const EFEKTY = {
   lawa() { ton('sawtooth', 60, 45, 1.2, 0.2, { filtr: ['lowpass', 300] }); },
   alleluja() { [523, 659, 784].forEach((f) => ton('sine', f, f, 1.4, 0.12)); },
   wygrana() { [523, 659, 784, 1047, 784, 1047].forEach((f, i) => ton('triangle', f, f, 0.22, 0.2, { opoz: i * 0.13 })); },
-  emotka() { ton('sine', 880, 1100, 0.1, 0.1); }
+  emotka() { ton('sine', 880, 1100, 0.1, 0.1); },
+  mina() { [0, 0.18, 0.36, 0.54].forEach((o) => ton('square', 1500, 1500, 0.07, 0.12, { opoz: o, filtr: ['lowpass', 3000] })); }
 };
 
 export function graj(nazwa, opcje) {

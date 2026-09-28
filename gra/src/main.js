@@ -2056,15 +2056,28 @@ function pociskDoKamery(teraz) {
   return sledzony;
 }
 
+/* Kamera za pociskiem (4.9): cel przed pociskiem (wyprzedzenie ~0,3 s lotu), przy dużej
+   prędkości lekko się oddala i szybciej dojeżdża; po wybuchu chwilę zostaje na miejscu wybuchu. */
+let kameraWybuch = null;          // { x, y, do (ms), oddal? }
 function ustawKamere(teraz) {
   const st = rg.state;
   const z = bazowyZoom() * zoomGracza;
   kamera.tzoom = z;
+  kamera.tempo = 4.2;
   const p = pociskDoKamery(teraz);
   if (p) {
     // Lecący pocisk zawsze wygrywa z ręcznym przesunięciem.
-    R.focusCamera(kamera, p.x, p.y, z * 0.92);
+    const v = Math.sqrt(p.vx * p.vx + p.vy * p.vy);
+    const wyprzedz = Math.min(0.32, 160 / Math.max(1, v));
+    const oddal = Math.max(0.72, 0.92 - v / 4000);
+    R.focusCamera(kamera, p.x + p.vx * wyprzedz, p.y + p.vy * wyprzedz, z * oddal);
+    kamera.tempo = 7.5;
     recznaKameraDo = 0;
+    return;
+  }
+  if (kameraWybuch && performance.now() < kameraWybuch.do && st.phase !== 'aim') {
+    R.focusCamera(kamera, kameraWybuch.x, kameraWybuch.y, z * (kameraWybuch.oddal || 0.95));
+    kamera.tempo = 6;
     return;
   }
   if (teraz < recznaKameraDo) return;
@@ -2084,7 +2097,7 @@ function ustawKamere(teraz) {
    płynny dojazd nie nadąża, więc dociągamy kamerę od razu. */
 function trzymajWKadrze() {
   const st = rg.state;
-  if (performance.now() < recznaKameraDo || sledzony) return;
+  if (performance.now() < recznaKameraDo || sledzony || (kameraWybuch && performance.now() < kameraWybuch.do && rg.state.phase !== 'aim')) return;
   const w = S.activeWorm(st);
   if (!w || !w.alive) return;
   const v = w.widok || w;
@@ -2116,12 +2129,18 @@ function obsluzZdarzenia() {
         D.graj(e.r >= 100 ? 'alleluja' : 'wybuch', { r: e.r });
         if (e.r >= 100) D.graj('wybuch', { r: e.r });
         emitExplosion(fx, e.x, e.y, e.r);
+        kameraWybuch = { x: e.x, y: e.y, do: performance.now() + 900 };
         if (e.r >= 100) emitTekst(fx, e.x, e.y - e.r * 0.6, 'ALLELUJA! 🐐', '#ffe27a', 22);   // Święty GOAT
         wstrzas = Math.min(14, wstrzas + e.r * 0.16);
         R.repaintRect(renderer, st.terrain, { x0: e.x - e.r - 3, x1: e.x + e.r + 3 });
         break;
       case 'strzal': emitSpark(fx, e.x, e.y, 14); D.graj(e.weapon === 'strzelba' ? 'strzelba' : e.weapon === 'railgun' ? 'railgun' : 'strzal'); break;
       case 'skok': D.graj('skok'); break;
+      case 'mina':
+        emitTekst(fx, e.x, e.y - 24, 'MINA!', '#ff5a3a', 16);
+        D.graj('mina');
+        break;
+      case 'beczka': emitTekst(fx, e.x, e.y - 30, 'BUM!', '#ffd23b', 18); break;
       case 'odbicie': emitSpark(fx, e.x, e.y, 5); D.graj('odbicie'); break;
       case 'uderzenie':
         emitSpark(fx, e.x, e.y, 12);
@@ -2161,6 +2180,8 @@ function obsluzZdarzenia() {
       case 'smuga': emitSmuga(fx, e.x0, e.y0, e.x1, e.y1); break;
       case 'railgun':
         emitLaser(fx, e.x0, e.y0, e.x1, e.y1);
+        // kamera pokazuje promień: środek linii (w granicach mapy) przez chwilę
+        kameraWybuch = { x: (e.x0 + Math.max(0, Math.min(R.rozmiarSwiata().w, e.x1))) / 2, y: (e.y0 + e.y1) / 2, do: performance.now() + 1100, oddal: 0.6 };
         wstrzas = Math.min(14, wstrzas + 8);
         if (e.trafieni >= 2) emitTekst(fx, e.x0, e.y0 - 30, e.trafieni + '× PRZESTRZELONY!', '#7fe3ff', 18);
         break;

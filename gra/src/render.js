@@ -6,7 +6,7 @@
 
 import { akcesorium } from './akcesoria.js';
 import { DRUZYNY } from './druzyny.js';
-import { WORLD_W, WORLD_H, LAVA_Y as T_LAVA } from './terrain.js';
+import { WORLD_W, WORLD_H, LAVA_Y as T_LAVA, solidAt } from './terrain.js';
 import { WEAPONS } from './weapons.js';
 import { WORM_H } from './sim.js';
 import { drawFx } from './fx.js';
@@ -215,7 +215,7 @@ const ZAPAS_NIEBO = 420;
    Dno świata może podjechać ponad ten pas, a świat niższy od ekranu
    (telefon pionowo) stoi tuż nad nim zamiast wisieć na środku. */
 export function updateCamera(cam, dt, viewW, viewH, dol = 0) {
-  const k = Math.min(1, dt * 4.2);
+  const k = Math.min(1, dt * (cam.tempo || 4.2));   // 4.9: za pociskiem szybciej
   cam.x += (cam.tx - cam.x) * k;
   cam.y += (cam.ty - cam.y) * k;
   cam.zoom += (cam.tzoom - cam.zoom) * k;
@@ -283,6 +283,9 @@ export function draw(r, state, cam, fx, dt, opcje = {}) {
   if (opcje.celNalotu) drawCel(ctx, opcje.celNalotu, r.time);
 
   const akt = activeOf(state);
+  // nagrobki poległych (4.9) — tylko grafika: opadają na grunt, gdy wybuch wytnie go spod nich
+  for (const w of state.worms) if (!w.alive && !w.odszedl) drawNagrobek(ctx, r, state, w);
+  for (const p of state.pulapki || []) drawPulapka(ctx, r, p);
   for (const c of state.skrzynki || []) {
     // skrzynka zebrana przez gracza z turą — widz wie o tym z podglądu na żywo
     if (opcje.zebraneSkrzynki && opcje.zebraneSkrzynki.has(c.id)) continue;
@@ -739,6 +742,143 @@ function drawSkrzynka(ctx, r, c) {
       ctx.fillText('AMMO', 0, -26 - Math.abs(Math.sin(t * 2)) * 2);
     }
   }
+  ctx.restore();
+}
+
+/* Mina: płaski dysk z kolcami i diodą — miga spokojnie, a po uzbrojeniu szybko na czerwono.
+   Beczka: czerwona beczka z ostrzeżeniem, przed wybuchem drży i świeci. */
+function drawPulapka(ctx, r, p) {
+  const t = r.time + p.id * 0.7;
+  const lont = p.lont >= 0;
+  ctx.save();
+  ctx.translate(p.x, p.y);
+  if (p.typ === 'mina') {
+    ctx.fillStyle = 'rgba(0,0,0,0.4)';
+    ctx.beginPath(); ctx.ellipse(0, 0, 10, 2.4, 0, 0, 6.283); ctx.fill();
+    ctx.fillStyle = '#3a3f45';
+    ctx.strokeStyle = '#15181b';
+    ctx.lineWidth = 1;
+    for (const kx of [-7, -3.5, 0, 3.5, 7]) {
+      ctx.beginPath(); ctx.moveTo(kx - 1, -3); ctx.lineTo(kx, -7.5); ctx.lineTo(kx + 1, -3); ctx.fill();
+    }
+    const g = ctx.createLinearGradient(0, -6, 0, 0);
+    g.addColorStop(0, '#6b737c');
+    g.addColorStop(1, '#2c3136');
+    ctx.fillStyle = g;
+    ctx.beginPath(); ctx.ellipse(0, -2.5, 9, 3.6, 0, Math.PI, 0); ctx.lineTo(9, 0); ctx.lineTo(-9, 0); ctx.closePath();
+    ctx.fill(); ctx.stroke();
+    const miga = lont ? Math.sin(t * 30) > 0 : Math.sin(t * 3) > 0.6;
+    ctx.fillStyle = miga ? (lont ? '#ff2a1a' : '#ff6a3a') : '#5a1a14';
+    ctx.beginPath(); ctx.arc(0, -5.5, 1.8, 0, 6.283); ctx.fill();
+    if (miga) {
+      const gl = ctx.createRadialGradient(0, -5.5, 0, 0, -5.5, lont ? 16 : 9);
+      gl.addColorStop(0, lont ? 'rgba(255,40,20,0.7)' : 'rgba(255,90,40,0.4)');
+      gl.addColorStop(1, 'rgba(255,40,20,0)');
+      ctx.fillStyle = gl;
+      ctx.fillRect(-16, -22, 32, 32);
+    }
+    if (lont) {
+      ctx.font = '900 13px system-ui, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = 'rgba(0,0,0,0.8)';
+      ctx.strokeText('!', 0, -14);
+      ctx.fillStyle = '#ff3b23';
+      ctx.fillText('!', 0, -14);
+    }
+  } else {
+    if (lont) ctx.translate(Math.sin(t * 60) * 1.2, 0);
+    ctx.fillStyle = 'rgba(0,0,0,0.4)';
+    ctx.beginPath(); ctx.ellipse(0, 0, 10, 2.6, 0, 0, 6.283); ctx.fill();
+    const g = ctx.createLinearGradient(-8, 0, 8, 0);
+    g.addColorStop(0, '#7a1410');
+    g.addColorStop(0.45, '#e0402a');
+    g.addColorStop(1, '#6a100c');
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    if (ctx.roundRect) ctx.roundRect(-7.5, -21, 15, 21, 3); else ctx.rect(-7.5, -21, 15, 21);
+    ctx.fill();
+    ctx.strokeStyle = '#3a0806';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    ctx.fillStyle = '#9a2a1a';
+    ctx.fillRect(-7.5, -16, 15, 1.6);
+    ctx.fillRect(-7.5, -6, 15, 1.6);
+    ctx.fillStyle = '#c0341f';
+    ctx.beginPath(); ctx.ellipse(0, -21, 7.5, 2, 0, 0, 6.283); ctx.fill();
+    // żółty romb z płomieniem
+    ctx.fillStyle = '#ffd23b';
+    ctx.beginPath(); ctx.moveTo(0, -15); ctx.lineTo(4, -11); ctx.lineTo(0, -7); ctx.lineTo(-4, -11); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#1a1a1a';
+    ctx.beginPath(); ctx.moveTo(0, -13.5); ctx.quadraticCurveTo(1.8, -11, 0, -8.6); ctx.quadraticCurveTo(-1.8, -11, 0, -13.5); ctx.fill();
+    if (lont) {
+      ctx.globalAlpha = 0.5 + 0.5 * Math.sin(t * 40);
+      const gl = ctx.createRadialGradient(0, -10, 2, 0, -10, 24);
+      gl.addColorStop(0, 'rgba(255,200,60,0.8)');
+      gl.addColorStop(1, 'rgba(255,80,0,0)');
+      ctx.fillStyle = gl;
+      ctx.fillRect(-24, -34, 48, 48);
+      ctx.globalAlpha = 1;
+    }
+  }
+  ctx.restore();
+}
+
+/* Nagrobek (4.9): kamień z rogami kozła i imieniem. Pozycja tylko do rysowania —
+   opada do gruntu pod sobą (w stanie gry martwy robal nie istnieje). */
+const nagrobkiY = new Map();
+function drawNagrobek(ctx, r, state, w) {
+  const t = state.terrain;
+  if (w.y > state.lava - 4) return;           // w lawie nagrobka nie ma
+  const x = Math.round(w.x);
+  const klucz = state.seed + ':' + w.id;
+  let y = nagrobkiY.has(klucz) ? nagrobkiY.get(klucz) : w.y;
+  if (y > w.y + 2000 || y < w.y - 2000) y = w.y;
+  if (!solidAt(t, x, Math.round(y) + 1)) {
+    y = Math.min(y + 4, state.lava + 20);
+  } else {
+    while (solidAt(t, x, Math.round(y)) && y > w.y - 40) y -= 1;
+  }
+  nagrobkiY.set(klucz, y);
+  if (nagrobkiY.size > 200) nagrobkiY.clear();
+  if (y > state.lava) return;
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.fillStyle = 'rgba(0,0,0,0.35)';
+  ctx.beginPath(); ctx.ellipse(0, 0, 10, 2.4, 0, 0, 6.283); ctx.fill();
+  // rogi kozła
+  ctx.strokeStyle = '#8f8778';
+  ctx.lineWidth = 2.2;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(-4, -20); ctx.quadraticCurveTo(-10, -27, -12, -19);
+  ctx.moveTo(4, -20); ctx.quadraticCurveTo(10, -27, 12, -19);
+  ctx.stroke();
+  const g = ctx.createLinearGradient(-8, 0, 8, 0);
+  g.addColorStop(0, '#7d7a74');
+  g.addColorStop(0.5, '#b4afa6');
+  g.addColorStop(1, '#6a665f');
+  ctx.fillStyle = g;
+  ctx.strokeStyle = '#3a3834';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(-8, 0); ctx.lineTo(-8, -15); ctx.quadraticCurveTo(-8, -23, 0, -23); ctx.quadraticCurveTo(8, -23, 8, -15); ctx.lineTo(8, 0);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+  // krzyżyk i pasek w kolorze robala
+  ctx.fillStyle = '#4a4742';
+  ctx.fillRect(-0.9, -19, 1.8, 8);
+  ctx.fillRect(-3.2, -16.5, 6.4, 1.8);
+  ctx.fillStyle = w.color;
+  ctx.fillRect(-6, -6, 12, 2.4);
+  ctx.font = '700 9px system-ui, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.lineWidth = 2.5;
+  ctx.strokeStyle = 'rgba(0,0,0,0.7)';
+  ctx.strokeText('RIP ' + w.name, 0, -28);
+  ctx.fillStyle = 'rgba(255,240,220,0.85)';
+  ctx.fillText('RIP ' + w.name, 0, -28);
   ctx.restore();
 }
 

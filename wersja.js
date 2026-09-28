@@ -5,7 +5,7 @@
 (function () {
   var historia = [
     {
-      wersja: '4.9', data: '2026-09-27', tytul: 'Railgun, pingi, dźwięki i muzyczka',
+      wersja: '4.9', data: '2026-09-28', tytul: 'Railgun, miny i beczki, pingi, dźwięki i muzyczka',
       zmiany: [
         'Nowa broń: Railgun (klawisz \\ albo ekwipunek, 1 sztuka na partię) — jeden laser przez całą mapę, przebija skały i każdego robala na linii, 75 obrażeń każdemu.',
         'Pingi: przycisk 📍 (albo P, albo środkowy przycisk myszy), a potem stuknięcie w mapę albo minimapę — pinezka w Twoim kolorze i z nickiem, którą widzą wszyscy. Gdy jest poza ekranem, przy krawędzi pokazuje się strzałka.',
@@ -14,7 +14,10 @@
         '5 nowych tańców: Breakdance, Floss, Helikopter, Disco i Kozi taniec.',
         'Robale nie mają już ogonków z tyłu. Zamiast czapki lamy i kilofa są okulary przeciwsłoneczne i szeroki uśmiech.',
         'Ładniejsza arena: skrzynki z amunicją jak wojskowe (pas ostrzegawczy, naboje), apteczki z połyskiem i unoszącymi się plusikami, obie świecą z daleka, spadochrony w pasy. Na niebie krwawy księżyc i łuna wulkanu, lawa bąbluje i świeci.',
-        'Gospodarz może ruszyć partię bez czekania na GOTOWY wszystkich (przycisk „▶ START bez czekania”, start za 5 s).'
+        'Gospodarz może ruszyć partię bez czekania na GOTOWY wszystkich (przycisk „▶ START bez czekania”, start za 5 s).',
+        'Miny i beczki na mapie od startu (w ustawieniach: wyłączone, trochę albo dużo). Mina odpala się, gdy ktoś podejdzie — miga na czerwono i po sekundzie wybucha. Beczka wybucha od każdego wybuchu obok albo railguna, więc beczki potrafią pójść łańcuchem.',
+        'Kamera za pociskiem: wyprzedza go, przy szybkim locie lekko się oddala, a po wybuchu chwilę zostaje na miejscu wybuchu. Przy railgunie pokazuje cały promień.',
+        'Nagrobki: po poległym robalu zostaje kamień z kozimi rogami i „RIP nick” — spada, gdy wybuch wytnie spod niego grunt.'
       ]
     },
     {

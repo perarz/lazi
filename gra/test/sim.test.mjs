@@ -266,6 +266,44 @@ test('railgun przebija skale i trafia dwoch robali na linii (75), terenu nie rus
   assert(st.events.some((e) => e.type === 'railgun' && e.trafieni === 2), 'brak zdarzenia railgun');
 });
 
+test('miny i beczki: rozstawione z seeda, na gruncie, z dala od robali; ustawienie 0 = brak', () => {
+  const a = S.createGame(4242, players(4)), b = S.createGame(4242, players(4));
+  assert(a.pulapki.length >= 4, 'za malo pulapek: ' + a.pulapki.length);
+  assert(JSON.stringify(a.pulapki) === JSON.stringify(b.pulapki), 'rozne rozstawienie przy tym samym seedzie');
+  for (const p of a.pulapki) {
+    assert(T.solidAt(a.terrain, p.x, p.y + 1), 'pulapka w powietrzu: ' + JSON.stringify(p));
+    assert(a.worms.every((w) => Math.abs(w.x - p.x) >= 80 || Math.abs(w.y - p.y) >= 80), 'pulapka przy robalu');
+  }
+  assert(S.createGame(4242, players(4), { ustawienia: { pulapki: 0 } }).pulapki.length === 0, 'wylaczone, a sa');
+  assert(S.createGame(4242, players(4), { ustawienia: { pulapki: 2 } }).pulapki.length > a.pulapki.length, 'duzo nie wiecej');
+});
+
+test('mina: robal podchodzi, po lontcie wybuch rani; beczki wybuchaja lancuchem', () => {
+  const st = S.createGame(21, players(2), { sieciowa: true, ustawienia: { pulapki: 0 } });
+  const a = S.activeWorm(st);
+  polka(st, a, 220);
+  a.y = Math.round(a.y); a.onGround = true;
+  const y = Math.round(a.y);
+  st.pulapki = [{ id: 1, typ: 'mina', x: Math.round(a.x) + 12, y, lont: -1 },
+    { id: 2, typ: 'beczka', x: Math.round(a.x) + 55, y, lont: -1 }, { id: 3, typ: 'beczka', x: Math.round(a.x) + 115, y, lont: -1 }];
+  S.step(st);
+  assert(st.pulapki[0].lont > 0, 'mina nie zlapala robala');
+  const hp0 = a.hp;
+  for (let i = 0; i < 600 && st.pulapki.length; i++) S.step(st);
+  assert(st.pulapki.length === 0, 'zostaly pulapki: ' + JSON.stringify(st.pulapki));
+  assert(a.hp < hp0, 'mina nie zranila robala');
+});
+
+test('pulapki w snapshocie: odbiorca ma ten sam stan co autor (lont tez)', () => {
+  const st = S.createGame(99, players(3), { sieciowa: true });
+  st.pulapki[0].lont = 40;
+  const snap = przezSiec(S.snapshot(st));
+  const b = S.createGame(99, players(3), { sieciowa: true });
+  S.zastosujSnapshot(b, snap);
+  assert(JSON.stringify(S.stanPulapek(b)) === JSON.stringify(S.stanPulapek(st)), 'rozne pulapki');
+  assert(S.stateHash(b) === S.stateHash(st), 'rozny hash');
+});
+
 test('kasetowka rozsypuje odlamki', () => {
   const st = S.createGame(21, players(2));
   st.weapon = 'kasetowa';
