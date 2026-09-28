@@ -112,6 +112,22 @@ export function emitExplosion(fx, x, y, r) {
   }
 }
 
+/* Płonąca ropa (4.10): iskra lecąca w górę, a co jakiś czas kłąb dymu. */
+export function emitPlomien(fx, x, y, naZiemi) {
+  emit(fx, {
+    x: x + (Math.random() - 0.5) * 6, y, vx: (Math.random() - 0.5) * 20, vy: -30 - Math.random() * 40,
+    grav: -40, drag: 1.2, size: 3 + Math.random() * 5,
+    life: 0.25 + Math.random() * 0.35, tint: 1, cool: 4, alpha: 0.85, set: 'fire'
+  });
+  if (naZiemi && Math.random() < 0.35) {
+    emit(fx, {
+      x: x + (Math.random() - 0.5) * 4, y: y - 8, vx: (Math.random() - 0.5) * 10, vy: -18 - Math.random() * 20,
+      grav: -12, drag: 0.6, size: 7 + Math.random() * 9,
+      life: 0.9 + Math.random() * 1.1, tint: 0, cool: 3, alpha: 0.28, set: 'smoke'
+    });
+  }
+}
+
 export function emitTrail(fx, x, y) {
   emit(fx, {
     x, y, vx: (Math.random() - 0.5) * 24, vy: -12 - Math.random() * 26,

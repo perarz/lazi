@@ -18,15 +18,15 @@ Stos technologiczny:
 - Bez bundlera, bez `package.json` i bez zależności npm. Zwykłe pliki HTML/CSS/JS, gra jako moduły ES,
   zrzutka jako klasyczne skrypty.
 
-Obecna wersja: **4.9 „Railgun, miny i beczki, pingi, dźwięki i muzyczka”** (`wersja.js`).
+Obecna wersja: **4.10 „Płonąca ropa, 7 utworów w tle i areny, które nie zarastają”** (`wersja.js`).
 
 ---
 
 ## 0. Pierwsze 5 minut
 
 1. Przeczytaj sekcje 1–3. Zasady i działanie serwera są ważniejsze niż cokolwiek innego.
-2. Ustaw gałąź. **Nazwę gałęzi podaje sesja** (instrukcje środowiska; ostatnio `claude/fervent-babbage-dxyp1c`,
-   wcześniej `claude/epic-rubin-ejixox`). Niżej `GAŁĄŹ` = ta nazwa:
+2. Ustaw gałąź. **Nazwę gałęzi podaje sesja** (instrukcje środowiska; ostatnio `claude/epic-rubin-ejixox` (4.10),
+   wcześniej `claude/fervent-babbage-dxyp1c`). Niżej `GAŁĄŹ` = ta nazwa:
    `git fetch origin && git switch GAŁĄŹ && git merge --ff-only origin/master`.
    - Gdy ostatni PR z gałęzi jest scalony, master ją zawiera, więc to zwykłe przewinięcie. Jeśli PR jest
      jeszcze otwarty (przewinięcie się nie uda), pracuj dalej na gałęzi i dopisuj do tej samej wersji.
@@ -187,7 +187,11 @@ PL, IP 96.62.223.169). Katalog `serwer/` to serwer: Node + WebSocket (`ws`).
   tury, nowe osiągnięcia); jedna partia (seed) liczy się raz, serwer pamięta 40 ostatnich. Wyjście w trakcie =
   `tylkoOsiagniecia`. Da się oszukać konsolą — przy żartobliwej stronie akceptujemy (jak minigierki).
 - **Pokoje z panelu** (`opisy` w `serwer.js`) są w pamięci jak partie: nazwa, kto założył, skrót hasła, klucz.
-  Pusty znika po 10 minutach, restart serwera kasuje wszystkie. **Od 4.7 nie ma domyślnej areny** (`glowny` nie
+  **Pusty znika po 30 s** (`PUSTY_POKOJ_MS`, `sprzatajPuste` co 5 s; od 4.10, dawniej 10 minut — lista zarastała, a puste
+  liczyły się do limitu 3 aren na konto). Zniknięte id z panelu (`p-` + 8 hex) nie wraca jako pokój bez nazwy: WebSocket
+  i `/api/pokoje/wejdz` dają 404. Klient przy błędzie sieci (`naBladSieci` → `sprawdzCzyArenaJest`) sprawdza arenę
+  i przy 404 wraca do listy z komunikatem `#info-zniknela` (np. stary link, telefon wybudzony po dłuższej przerwie).
+  Restart serwera kasuje wszystkie. **Od 4.7 nie ma domyślnej areny** (`glowny` nie
   jest już na liście) — gra się tylko w arenie, którą ktoś założył. Pokój bez opisu (`?pokoj=` z testów) jest
   publiczny i pojawia się na liście tylko, gdy ktoś w nim jest.
 - **Akcesoria** (4.7; w 4.9 `lama` i `kilof` zastąpione przez `okulary` i `buzka` — nieznane id z konta serwer oddaje jako `null`): lista id w `AKCESORIA` w `serwer/konta.js` **i** w `gra/src/akcesoria.js` (test serwera
@@ -210,6 +214,7 @@ PL, IP 96.62.223.169). Katalog `serwer/` to serwer: Node + WebSocket (`ws`).
 - Opcjonalnie ładniejszy adres serwera `arena.kacperlazarz.pl`: rekord DNS A → 96.62.223.169, ponowne
   `instaluj.sh` z nowym adresem, potem adres w czterech miejscach (wyżej) i wdrożenie.
 - Ostatnie wdrożenia: 4.8 = PR #28 (bez zmian serwera), 4.9 = PR #29 + `arena-aktualizuj` 2026-09-28 (konsola dostawcy).
+  **4.10 zmienia serwer** (puste areny po 30 s) — po merge'u potrzebne `arena-aktualizuj`.
 
 ---
 
@@ -456,12 +461,13 @@ Lekcje z kalibracji:
 | `src/druzyny.js` | Nazwy i kolory drużyn (`DRUZYNY`), tryby lobby (`TRYBY`) |
 | `src/ustawienia.js` | Ustawienia partii z lobby (`USTAWIENIA`: czas, hp, robale, mapa, rozmiar, bronie, zrzuty, pulapki, wiatr, lawaOd, lawaTempo; pozycje z `opcje` = lista, z `liczba` = wpisywane), `normalizuj`, `zLiczby`, `opisZmian` |
 | `src/emotki.js` | Emotki i tańce (`EMOTKI`: 5 emotek + 7 tańców), czasy i limit wysyłania |
-| `src/dzwieki.js` | Dźwięki i muzyczka (4.9): Web Audio bez plików, `graj(nazwa, opcje)` pod zdarzenia w `obsluzZdarzenia`, `muzykaStart/Stop` (pętla 104 BPM planowana 0,3 s do przodu), wyciszanie `arena:dzwiek` / `arena:muzyka`; kontekst budzi pierwszy gest, karta w tle go usypia |
+| `src/dzwieki.js` | Dźwięki i muzyka (4.9, muzyka od 4.10): Web Audio bez plików, `graj(nazwa, opcje)` pod zdarzenia w `obsluzZdarzenia`; instrumenty muzyki `BRZMIENIA` (fale, filtr, obwiednia, vibrato) i `PERKUSJA`; `muzykaStart/Stop` gra utwory z `muzyka.js` po kolei (losowa kolejność bez powtórki pod rząd, 1,5 s ciszy między nimi, nuty planowane 0,3 s do przodu), `przyZmianieUtworu` (nazwa w banerze i w tytule 🎵), ponowne włączenie muzyki = następny utwór; wyciszanie `arena:dzwiek` / `arena:muzyka`; kontekst budzi pierwszy gest, karta w tle go usypia; `_renderujOffline(id, sek)` tylko do testów (szczyt i RMS) |
+| `src/muzyka.js` | Muzyka (4.10): 7 utworów „zapisanych nutami” w `UTWORY` (tonacja, tempo, styl, części z akordami co pół taktu, forma np. W A A* B A C B* K). `zbudujUtwor` składa z tego kroki szesnastkowe `[instrument, midi, długość, głośność]`: melodia z motywem, który wraca (m), odpowiedzią (o), kadencją (k) i wypełnieniem (p), wariant `X*` = nowe odpowiedzi + drugi głos tercję niżej; bas, akompaniament, arpeggio i bębny ze wzorów stylu (`STYLE`, `BASY`, `AKOMP`, `BEBNY`). Stały seed, bez Web Audio (testowalne w Node) |
 | `src/ekwipunek.js` | Ekwipunek broni jak w Worms Armageddon: rzędy (`GRUPY`), ikony SVG broni, otwieranie/zamykanie |
 | `src/input.js` | Klawiatura, przyciski dotykowe, przeciąganie/szczypanie (dwa palce = zoom + przesuwanie), PPM/Q = ekwipunek, E emotki, R obrót mostu, M cała mapa, P / środkowy przycisk = ping |
 | `src/render.js`, `src/fx.js` | Grafika (tu wolno trygonometrię i `Math.random`); w `render.js` też kamera, minimapa, pingi, nagrobki, miny i beczki, skrzynki, podgląd robala (`rysujPodgladRobala`, `mini` = kafelek akcesorium) i scena ekranu ładowania (`rysujSceneLadowania`) |
 | `src/osiagniecia-reguly.js` | Reguły osiągnięć — czyste funkcje |
-| `test/sim.test.mjs`, `test/protokol.test.mjs` | Testy w Node (89 i 23) |
+| `test/sim.test.mjs`, `test/protokol.test.mjs` | Testy w Node (95 i 23) |
 
 ### Determinizm (święta zasada)
 - Symulacja (`sim.js`, `terrain.js`) używa tylko:
@@ -682,6 +688,20 @@ Lekcje z kalibracji:
     `explode` i railgun ustawiają lont beczkom (`BECZKA_LONT`) i minom — **bez rekurencji**, więc łańcuch idzie krok po kroku.
     Faza `settle` czeka, aż żaden lont się nie pali.
   - Rysunek `drawPulapka` (dioda miny miga, beczka drży przed wybuchem).
+- **Płonąca ropa (4.10)** (`state.ogien`: `{x, y, vx, vy, t, zycie, wyp, grunt}`), jak napalm w Worms:
+  - Wybuch beczki (`stepPulapki` → `rozlejOgien`) wyrzuca 14 kropli: prędkości ze stałej tabeli `OGIEN_KROPLE`
+    + rozrzut z `Math.imul` id beczki (bez trygonometrii i `Math.random`), życie 2,5–3,25 s, najwyżej `OGIEN_MAX` = 56.
+  - `stepOgien`: kropla leci (grawitacja, ¼ wiatru), ląduje (`y = floor − 1`, zostaje połowa `vx`) i płynie po ziemi
+    (`findGround` 3 w górę / 6 w dół, tarcie 0,985, z krawędzi spada). Co `OGIEN_CO` (30 kroków) parzy robale obok
+    (3 HP raz na krok, nie za każdą kroplę; `swoj` jak przy wybuchu) z podskokiem od ognia, `cause: 'ogien'`,
+    i podpala beczkę obok. Co `OGIEN_WYPAL` (48 kroków) leżąca kropla wycina krater r = 6 (najwyżej 3 razy) —
+    zwykły krater na liście, więc `rebuild` i sieć go znają; zdarzenie `wypalenie` → sadza w `render.js`.
+  - Ogień żyje **tylko w bieżącej turze**: jest w strzale i w pasie (`stanOgnia` = tablice po 8 liczb, `ustawOgien`
+    filtruje śmieci), w `stateHash`, ale nie w `snapshot`/`stanPoTurze`; `rozpocznijTure` i `zastosujSnapshot` go
+    czyszczą. Faza `settle` czeka, aż zgaśnie (limit `SETTLE_MAX` zostaje). `WERSJA` = 8.
+  - Grafika: `drawPlomien` (dwa języki ognia z poświatą, w locie mniejszy płomyk), iskry i dym `emitPlomien` w `fx.js`,
+    okopcenie `dodajSadze`/`malujSadze` (osobna lista w rendererze, malowana `source-atop` po każdym przemalowaniu
+    kolumn, czyszczona przy nowej mapie). Dźwięki `ogien` (zapłon przy beczce), `parzy`, `trzask` (co ≥ 140 ms).
 - **Nagrobki (4.9)**: `drawNagrobek` w `render.js` dla `!alive && !odszedl`, pozycja tylko graficzna (`nagrobkiY`, opada do gruntu),
   bez nagrobka w lawie. Stan gry o nich nie wie.
 - **Zrzuty** (`state.skrzynki`):
@@ -730,14 +750,23 @@ Lekcje z kalibracji:
   3. W akcjach `strzal`/`pas`, jeśli gracz może to zmienić przed strzałem.
   4. Test „odbiorca = strzelec”.
 
-### Wygląd Areny (stan 4.9)
+### Wygląd Areny (stan 4.10)
 - **Wygląd od 4.9**: robal bez ogonka, skrzynki (`drawSkrzynka`: wojskowa skrzynka z pasem i nabojami, apteczka z uchwytem i plusikami, poświata, spadochron w pasy), lawa z poświatą i bąblami, w tle (`drawTlo`) krwawy księżyc i łuna wulkanu. Tańce z obrotem (`obrot` w `drawWorm`) rysują nick i pasek osobno (`tylkoNapis`).
-- Dźwięki i muzyka: `dzwieki.js` (tabela plików wyżej).
+- Dźwięki i muzyka: `dzwieki.js` i `muzyka.js` (tabela plików wyżej). **Plików z muzyką nie ma**: z chmurowej sesji
+  serwisy z darmową muzyką (freepd, opengameart, incompetech, archive.org, pixabay, FMA, bensound…) są zablokowane
+  przez politykę sieci środowiska (proxy 403 — nie obchodzić). Gdyby właściciel chciał prawdziwe nagrania: dozwolone
+  domeny w ustawieniach sieci środowiska albo pliki wrzucone przez niego do repo; potem odtwarzanie przez `<audio>`/
+  `decodeAudioData` i CSP `media-src 'self'` w `gra/index.html`.
+- **Nowy utwór**: wpis w `UTWORY` (`muzyka.js`) — styl z `STYLE`, akordy części, `forma`; nowy instrument = wpis w
+  `BRZMIENIA` albo `PERKUSJA` (`dzwieki.js`), test sprawdza, że każdy użyty instrument ma brzmienie. Poziom głośności
+  porównuj `_renderujOffline` (Playwright, `--autoplay-policy=no-user-gesture-required`): utwory mają RMS ok. 0,012–0,026.
+- **Rogi prawdziwego GOATa** (4.10): `rogKozy` (oś Béziera, obrys = oś ± grubość, prążki, połysk) i `uchoKozy` w `czapki.js`;
+  dwa rogi z czubka głowy zagięte do tyłu (dalszy ciemniejszy), `wys: 9`. Id `rogi` i osiągnięcie `owca` bez zmian.
 
 ### Plan rozwoju (stan na 2026-09-28)
 Pierwotny plan „bliżej Worms Armageddon” z 2026-09-25 jest w większości zrobiony: dźwięki i muzyka, nagrobki,
 drużyny, 1–3 robale na gracza, ustawienia partii, lista aren, ranking killi, emotki i tańce, miny i beczki,
-lina ninja, Święty GOAT, railgun. Użytkownik (2026-09-28) powiedział, że kończą mu się pomysły — przy prośbie
+lina ninja, Święty GOAT, railgun, płonąca ropa z beczek (4.10). Użytkownik (2026-09-28) powiedział, że kończą mu się pomysły — przy prośbie
 „co jeszcze” proponuj z listy niżej (pokazana mu 2026-09-28), z rekomendacją i numerami do wyboru.
 Każda większa rzecz to osobna wersja z testami i zrzutami; nowe dane „online” doklejaj do istniejących zdarzeń.
 
@@ -764,8 +793,11 @@ Każda większa rzecz to osobna wersja z testami i zrzutami; nowe dane „online
 - Przy kolejnych broniach: F1–F4 przełączają broń w rzędzie ekwipunku (`GRUPY`); klawisze cyfr już się kończą.
 
 **Większe**
-- **Trening z botem offline** (`createGame(…, { sieciowa: false })`, bot liczy kilka strzałów na kopii stanu;
-  „bot Krayo” pudłuje, „bot Kozak” trafia). Zero kosztu serwera.
+- **Boty** (użytkownik pytał 2026-09-28, czy się da i czy to ciężkie; dostał odpowiedź z dwoma wariantami, czeka na wybór):
+  - **trening offline** (`createGame(…, { sieciowa: false })`, bot liczy kilka strzałów na kopii stanu i wybiera
+    najlepszy; poziomy: „bot Krayo” pudłuje, „bot Kozak” trafia) — średnio trudne, zero kosztu serwera;
+  - **boty w lobby online** — trudniejsze: bot musi „mieszkać” u gospodarza (strzał bota publikuje gospodarz jako `za`,
+    jak zastępca), a przy zmianie gospodarza przejąć go ktoś inny; do tego miejsce w lobby, drużyny i wynik bez konta.
 - **Historia partii** w profilu (serwer, konto). Znajomi i zaproszenia.
 - **Zrzutka ↔ Arena**: wygrana w Arenie daje odznakę albo bonus w minigierce, ranking killi na stronie zrzutki.
 - **Nowe minigierki** (np. „Drop z Battle Busa”, „Oblężenie z taranem”) — kalibracja botem (5.4). Wydarzenie sezonu.
@@ -812,15 +844,16 @@ więcej akcesoriów (np. czapki postaci ze zrzutki), ewentualnie konto także w 
   - **4.7.1** kurtyna przy przejściu zrzutka ↔ Arena, wejście na Arenę bez ekranu ładowania, Korona Króla GOATów za wszystkie osiągnięcia + 3 czapki
   - **4.8** 1–3 robale na gracza, wyższa mapa ekstremalna, celny nalot, minimapa i podgląd całej mapy
   - **4.9** railgun, miny i beczki, nagrobki, kamera za pociskiem, pingi, dźwięki i muzyczka, 5 nowych tańców, okulary i buźka zamiast lamy i kilofa, bez ogonków, nowe skrzynki i tło, start gospodarza bez GOTOWY
+  - **4.10** płonąca ropa z beczek (parzy i wypala ziemię), 7 utworów muzyki zamiast jednej pętli, pusta arena znika po 30 s, nowe rogi GOATa
 
 ---
 
 ## 9. Testy i sprawdzanie
 
 ```
-node gra/test/sim.test.mjs        # symulacja, bronie, determinizm, drużyny, ustawienia, skrzynki, spawny, osiągnięcia, kamera, lina, most obracany, rozmiar mapy, kilka robali, railgun, miny i beczki (89)
+node gra/test/sim.test.mjs        # symulacja, bronie, determinizm, drużyny, ustawienia, skrzynki, spawny, osiągnięcia, kamera, lina, most obracany, rozmiar mapy, kilka robali, railgun, miny i beczki, ogień, muzyka (95)
 node gra/test/protokol.test.mjs   # protokół: lag, rozłączenia, ucieczka na żywo, lobby, ustawienia, partie 2v2, z własnymi zasadami i z kilkoma robalami, start bez GOTOWY (23, ~35 s)
-cd serwer && npm install && node test.mjs   # serwer na VPS: Arena (10) + konta, pokoje, akcesoria i czapki (10) + zrzutka (7)
+cd serwer && npm install && node test.mjs   # serwer na VPS: Arena (10) + konta, pokoje, akcesoria, czapki, puste areny (11) + zrzutka (7)
 ```
 Obie muszą przejść przed pushem. Dodatkowo `node --check` na zmienionych plikach JS.
 Test protokołu gra losowe partie. Zmiana listy broni zmienia ich przebieg — i każda zmiana symulacji też
@@ -926,6 +959,10 @@ skończyć się właśnie wtedy — inaczej „różny stan” to tylko nieprzyj
   gniazdo musi mieć obsługę `error`. Przy `systemctl stop/restart` serwer zapisuje zrzutkę (SIGTERM).
 - Z chmurowej sesji `curl` do VPS kończy się `CONNECT tunnel failed, 403` — to proxy środowiska, nie serwer.
   Stan VPS sprawdza użytkownik (np. `https://96-62-223-169.sslip.io/zdrowie` w przeglądarce) albo sesja SSH.
+- `applyPas` ustawia `settleTime = SETTLE_MAX`, więc po pasie tura kończy się w następnym kroku, bez czekania na
+  lonty i ogień. Test, który sprawdza osiadanie (np. ogień), ustawia `phase = 'settle'` i `settleTime = 0`.
+- Stary link do areny z panelu, która zniknęła: `polaczZPokojem` musi sprawdzać, czy `net` to wciąż to samo połączenie
+  po każdym `await` — błąd sieci (404) w międzyczasie woła `opuscPokoj()` i `net` jest już `null`.
 - `tap()` w Playwrightcie trafia w środek elementu. Tło ekwipunku (`#ekw-tlo`) w środku zasłania panel —
   stukaj w róg (`position: { x: 12, y: 12 }`).
 

@@ -66,6 +66,22 @@ const BECZKA_LONT = 14;            // chwila — ładnie widać łańcuch
 const WYBUCH_MINY = { id: 'mina', radius: 44, damage: 42, knockback: 300 };
 const WYBUCH_BECZKI = { id: 'beczka', radius: 62, damage: 38, knockback: 280 };
 const PULAPKI_ILE = [[0, 0], [3, 3], [7, 6]];   // [miny, beczki] na mapę 2048 px wg ustawienia
+/* Płonąca ropa z beczki (4.10), jak napalm w Worms: po wybuchu beczki krople ognia
+   rozlatują się (stała tabela prędkości + rozrzut z id beczki — bez trygonometrii
+   i Math.random), spadają, rozpływają się chwilę po ziemi, co OGIEN_CO kroków parzą
+   robale obok (z podskokiem), a co OGIEN_WYPAL kroków wypalają dołek w gruncie.
+   Beczkę obok podpalają.
+   Żyją tylko w bieżącej turze: tura czeka, aż zgasną, a stan tury ich nie zawiera. */
+const OGIEN_KROPLE = [[-170, -210], [-130, -290], [-85, -340], [-40, -300], [0, -360], [40, -300],
+  [85, -340], [130, -290], [170, -210], [-220, -140], [220, -140], [-15, -230], [15, -230], [0, -150]];
+const OGIEN_ZYCIE = 300;           // kroków (2,5 s) + rozrzut do 0,75 s
+const OGIEN_CO = 30;               // parzenie co 0,25 s
+const OGIEN_DMG = 3;
+const OGIEN_ZASIEG = 12;           // px w bok od płomienia do robala
+const OGIEN_WYPAL = 48;            // wypalanie gruntu co 0,4 s…
+const OGIEN_WYPAL_MAX = 3;         // …najwyżej tyle razy z jednej kropli
+const OGIEN_WYPAL_R = 6;
+const OGIEN_MAX = 56;
 export const APTECZKA_HP = 35;
 const HP_MAX = 150;
 const INNE_ZAPASY = WEAPON_ORDER.filter((id) => WEAPONS[id].amunicja !== undefined && id !== 'kij');
@@ -181,6 +197,7 @@ export function createGame(seed, players, opcje = {}) {
     nextProjectileId: 1,
     skrzynki: [],              // zrzuty: { id, typ: 'apteczka' | 'zapas', x, y }
     pulapki: [],               // miny i beczki (4.9): { id, typ: 'mina' | 'beczka', x, y, lont (-1 = spokój) }
+    ogien: [],                 // płonąca ropa (4.10): { x, y, vx, vy, t, zycie, wyp, grunt } — tylko w bieżącej turze
     weapon: 'bazooka',
     power: 0,
     charging: false,
@@ -447,6 +464,7 @@ export function przygotujStrzal(state) {
     kratery: plaskieKratery(state),
     skrzynki: stanSkrzynek(state),
     pulapki: stanPulapek(state),
+    ogien: stanOgnia(state),
     start: obliczStart(w, weapon, w.angle, power),
     cel: weapon.celowany && state.cel
       ? (weapon.kind === 'most' && state.mostObrot ? { x: state.cel.x, y: state.cel.y, k: state.mostObrot } : { x: state.cel.x, y: state.cel.y })
@@ -488,6 +506,7 @@ export function zastosujStrzal(state, action) {
   if (action.robale) ustawRobale(state, action.robale);
   if (action.skrzynki) ustawSkrzynki(state, action.skrzynki);
   if (action.pulapki) ustawPulapki(state, action.pulapki);
+  ustawOgien(state, action.ogien);     // ogień z chwili strzału (brak = nie płonie nic)
   state.weapon = action.weapon;
   applyFire(state, action);
   return przebudowa;
@@ -737,6 +756,7 @@ export function step(state) {
   stepProjectiles(state);
   stepSkrzynki(state);
   stepPulapki(state);
+  stepOgien(state);
 
   // Nagranie zostaje do końca tury — protokół wysyła z niego ostatnią paczkę.
   if (state.phase === 'odwrot' && state.odwrotKrok >= ODWROT_KROKI) state.phase = 'flight';
@@ -749,7 +769,7 @@ export function step(state) {
   if (state.phase === 'settle') {
     state.settleTime += DT;
     const moving = state.worms.some((w) => w.alive && (!w.onGround || Math.abs(w.vy) > 8)) ||
-      state.pulapki.some((p) => p.lont >= 0);
+      state.pulapki.some((p) => p.lont >= 0) || state.ogien.length > 0;
     if (!moving || state.settleTime > SETTLE_MAX) {
       if (state.sieciowa) {
         state.phase = 'koniec';
@@ -1289,6 +1309,7 @@ export function rozpocznijTure(state) {
   state.odwrotNagranie = null;
   state.skokWKolejce = false;
   state.projectiles = [];
+  state.ogien = [];
   state.wind = windFor(state, state.turnNumber);
   state.input = pusteWejscie();
   const w = activeWorm(state);
@@ -1356,8 +1377,120 @@ function stepPulapki(state) {
       state.pulapki.splice(i, 1);
       state.events.push({ type: p.typ === 'beczka' ? 'beczka' : 'minaWybuch', x: p.x, y: p.y });
       explode(state, p.x, p.y - 6, p.typ === 'beczka' ? WYBUCH_BECZKI : WYBUCH_MINY);
+      if (p.typ === 'beczka') rozlejOgien(state, p.x, p.y - 10, p.id);
     }
   }
+}
+
+/* Wybuch beczki rozrzuca krople płonącej ropy. */
+function rozlejOgien(state, x, y, id) {
+  for (let i = 0; i < OGIEN_KROPLE.length && state.ogien.length < OGIEN_MAX; i++) {
+    const los = Math.imul((id | 0) * 31 + i + 1, 0x9e3779b1) >>> 0;
+    const [vx, vy] = OGIEN_KROPLE[i];
+    state.ogien.push({
+      x, y,
+      vx: vx + (los % 61) - 30,
+      vy: vy + ((los >>> 8) % 61) - 30,
+      t: 0,
+      zycie: OGIEN_ZYCIE + (los >>> 16) % 90,
+      wyp: 0,               // ile dołków już wypaliła
+      grunt: 0              // 1 = leży na ziemi
+    });
+  }
+}
+
+/* Krople ognia: lecą (grawitacja, trochę wiatru), przyklejają się do gruntu i palą.
+   Robal obok płomienia dostaje OGIEN_DMG raz na takt (nie za każdą kroplę osobno)
+   i podskakuje, odrzucony od ognia. */
+function stepOgien(state) {
+  if (!state.ogien.length) return;
+  const t = state.terrain;
+  const parzeni = [];
+  for (let i = state.ogien.length - 1; i >= 0; i--) {
+    const f = state.ogien[i];
+    f.t++;
+    if (f.t >= f.zycie) { state.ogien.splice(i, 1); continue; }
+    if (f.grunt && !T.solidAt(t, f.x, f.y + 1)) f.grunt = 0;   // grunt wypalony albo wysadzony — spada
+    if (!f.grunt) {
+      f.vx += state.wind * 0.25 * DT;
+      f.vy += GRAVITY * DT;
+      const dx = f.vx * DT, dy = f.vy * DT;
+      const kroki = Math.max(1, Math.ceil(Math.sqrt(dx * dx + dy * dy)));
+      const ix = dx / kroki, iy = dy / kroki;
+      for (let k = 0; k < kroki; k++) {
+        const nx = f.x + ix, ny = f.y + iy;
+        if (T.solidAt(t, nx, ny)) {
+          if (iy > 0 && T.solidAt(t, f.x, ny)) {
+            // ląduje tuż nad gruntem i jeszcze chwilę płynie w bok (rozlewa się)
+            f.y = Math.floor(ny) - 1;
+            f.vx = f.vx * 0.5 + 0;
+            f.vy = 0;
+            f.grunt = 1;
+          } else if (T.solidAt(t, nx, f.y)) {
+            f.vx = 0;                                  // ściana z boku — spływa po niej w dół
+          } else {
+            f.vy = 0;                                  // strop — odbija się w dół
+          }
+          break;
+        }
+        f.x = nx;
+        f.y = ny;
+      }
+      if (f.y > state.lava || f.x < -40 || f.x > t.w + 40 || f.y > t.h + 40) {
+        state.ogien.splice(i, 1);
+        continue;
+      }
+    } else if (f.vx !== 0) {
+      // rozlana ropa płynie po ziemi: pod górkę do 3 px, w dół do 6 px, z krawędzi spada
+      const nx = f.x + f.vx * DT;
+      const g = T.findGround(t, nx, f.y, 3, 6);
+      if (g !== null) {
+        f.x = nx;
+        f.y = g;
+      } else if (T.solidAt(t, nx, f.y)) {
+        f.vx = 0;                                      // ściana — staje
+      } else {
+        f.x = nx;
+        f.grunt = 0;
+      }
+      f.vx = f.vx * 0.985 + 0;
+      if (f.vx > -5 && f.vx < 5) f.vx = 0;
+    }
+    if (f.t % OGIEN_CO === 0) {
+      for (const w of state.worms) {
+        if (!w.alive || swoj(state, w) || parzeni.some((p) => p[0] === w)) continue;
+        if (Math.abs(w.x - f.x) < OGIEN_ZASIEG && f.y > w.y - WORM_H - 4 && f.y < w.y + 6) parzeni.push([w, f]);
+      }
+      // ogień podpala beczkę, która w nim stoi
+      for (const p of state.pulapki) {
+        if (p.typ === 'beczka' && p.lont < 0 && Math.abs(p.x - f.x) < 11 && f.y > p.y - 24 && f.y < p.y + 6) p.lont = BECZKA_LONT;
+      }
+    }
+    if (f.grunt && f.wyp < OGIEN_WYPAL_MAX && f.t % OGIEN_WYPAL === 0) {
+      f.wyp++;
+      T.carve(t, f.x, f.y + 2, OGIEN_WYPAL_R);
+      state.events.push({ type: 'wypalenie', x: Math.round(f.x), y: Math.round(f.y + 2), r: OGIEN_WYPAL_R });
+    }
+  }
+  for (const [w, f] of parzeni) {
+    damageWorm(state, w, OGIEN_DMG, 'ogien');
+    if (!w.alive) continue;
+    const kier = w.x < f.x ? -1 : w.x > f.x ? 1 : w.facing;
+    w.vx = kier * 55;
+    w.vy = Math.min(w.vy, -110);
+    w.onGround = false;
+  }
+}
+
+export function stanOgnia(state) {
+  return state.ogien.map((f) => [f.x, f.y, f.vx, f.vy, f.t, f.zycie, f.wyp, f.grunt]);
+}
+
+export function ustawOgien(state, lista) {
+  state.ogien = !Array.isArray(lista) ? [] : lista
+    .filter((f) => Array.isArray(f) && f.length === 8 && f.every((v) => typeof v === 'number'))
+    .slice(0, OGIEN_MAX)
+    .map((f) => ({ x: f[0] + 0, y: f[1] + 0, vx: f[2] + 0, vy: f[3] + 0, t: f[4] | 0, zycie: f[5] | 0, wyp: f[6] | 0, grunt: f[7] ? 1 : 0 }));
 }
 
 export function stanPulapek(state) {
@@ -1427,6 +1560,7 @@ export function stanPoTurze(state, usun = []) {
     lava: state.lava,
     skrzynki: stanSkrzynek(state),
     pulapki: state.pulapki.map((p) => ({ ...p })),
+    ogien: [],
     phase: 'koniec',
     events: [],
     projectiles: [],
@@ -1474,6 +1608,7 @@ export function zastosujSnapshot(state, snap) {
   state.pulapki = [];
   ustawPulapki(state, snap.pulapki);
   state.projectiles = [];
+  state.ogien = [];
   state.akcjeDoWyslania.length = 0;
   if (snap.over) {
     state.phase = 'over';
@@ -1490,6 +1625,7 @@ export function stateHash(state) {
   const s = snapshot(state);
   s.phase = state.phase;
   s.pociski = state.projectiles.map((p) => [p.weapon, p.x, p.y, p.vx, p.vy, p.fuse]);
+  s.ogien = stanOgnia(state);
   return hashTekstu(JSON.stringify(s));
 }
 

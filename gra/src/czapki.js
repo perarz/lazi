@@ -48,6 +48,96 @@ function rogKrola(ctx, cx, y, s) {
   }
 }
 
+/* Róg kozła: gruby u nasady, wyrasta w górę i łukiem zagina się do tyłu (jak u koziorożca),
+   z poprzecznymi prążkami. Oś to krzywa Béziera; obrys = oś przesunięta o grubość w obie strony.
+   (x, y) = nasada na czubku głowy, f = zwrot robala (róg idzie do tyłu, czyli w stronę −f). */
+function rogKozy(ctx, x, y, f, sk, blizszy) {
+  const P = [[0, 0], [f * 3.2, -9], [-f * 3.5, -19.5], [-f * 12.5, -17.5]].map(([a, b]) => [x + a * sk, y + b * sk]);
+  const punkt = (u) => {
+    const v = 1 - u;
+    return [
+      v * v * v * P[0][0] + 3 * v * v * u * P[1][0] + 3 * v * u * u * P[2][0] + u * u * u * P[3][0],
+      v * v * v * P[0][1] + 3 * v * v * u * P[1][1] + 3 * v * u * u * P[2][1] + u * u * u * P[3][1]
+    ];
+  };
+  const N = 18, lewa = [], prawa = [], os = [];
+  for (let i = 0; i <= N; i++) {
+    const u = i / N;
+    const [px, py] = punkt(u);
+    const [qx, qy] = punkt(Math.min(1, u + 0.02));
+    const [rx, ry] = punkt(Math.max(0, u - 0.02));
+    let tx = qx - rx, ty = qy - ry;
+    const d = Math.hypot(tx, ty) || 1;
+    tx /= d; ty /= d;
+    const gr = (2.9 * (1 - u) + 0.35) * sk;        // grubość: od nasady do ostrego końca
+    lewa.push([px - ty * gr, py + tx * gr]);
+    prawa.push([px + ty * gr, py - tx * gr]);
+    os.push([px, py, tx, ty, gr]);
+  }
+  const g = ctx.createLinearGradient(P[0][0], P[0][1], P[3][0], P[3][1]);
+  if (blizszy) { g.addColorStop(0, '#7d6a4c'); g.addColorStop(0.45, '#c9b38c'); g.addColorStop(1, '#f4ead2'); }
+  else { g.addColorStop(0, '#5e4f38'); g.addColorStop(0.5, '#96805d'); g.addColorStop(1, '#c9b89a'); }
+  ctx.fillStyle = g;
+  ctx.strokeStyle = blizszy ? '#3d3020' : '#2e2418';
+  ctx.lineWidth = 0.75;
+  ctx.lineJoin = 'round';
+  ctx.beginPath();
+  ctx.moveTo(lewa[0][0], lewa[0][1]);
+  for (const [a, b] of lewa) ctx.lineTo(a, b);
+  for (let i = prawa.length - 1; i >= 0; i--) ctx.lineTo(prawa[i][0], prawa[i][1]);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+  // prążki w poprzek rogu (co trzeci punkt osi, do 3/4 długości)
+  ctx.strokeStyle = blizszy ? 'rgba(61, 48, 32, 0.6)' : 'rgba(40, 30, 20, 0.55)';
+  ctx.lineWidth = 0.6;
+  for (let i = 2; i < N * 0.78; i += 3) {
+    const [px, py, tx, ty, gr] = os[i];
+    ctx.beginPath();
+    ctx.moveTo(px - ty * gr * 0.9, py + tx * gr * 0.9);
+    ctx.quadraticCurveTo(px + tx * 1.2, py + ty * 1.2, px + ty * gr * 0.9, py - tx * gr * 0.9);
+    ctx.stroke();
+  }
+  // połysk wzdłuż zewnętrznej krawędzi
+  if (blizszy) {
+    ctx.strokeStyle = 'rgba(255, 250, 235, 0.55)';
+    ctx.lineWidth = 0.7;
+    ctx.beginPath();
+    for (let i = 1; i < N * 0.85; i++) {
+      const [px, py, tx, ty, gr] = os[i];
+      const a = px + ty * gr * 0.45, b = py - tx * gr * 0.45;
+      if (i === 1) ctx.moveTo(a, b); else ctx.lineTo(a, b);
+    }
+    ctx.stroke();
+  }
+}
+
+/* Kozie ucho: płaskie, odstające w bok i lekko opadające; kier = w którą stronę sterczy. */
+function uchoKozy(ctx, x, y, kier, sk, kolor) {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.scale(kier * sk, sk);
+  ctx.rotate(0.35);
+  ctx.fillStyle = kolor;
+  ctx.strokeStyle = '#3d3020';
+  ctx.lineWidth = 0.7;
+  ctx.beginPath();
+  ctx.moveTo(0, -1.8);
+  ctx.quadraticCurveTo(6, -3.2, 9.5, 0.4);
+  ctx.quadraticCurveTo(5.5, 2.8, 0, 1.8);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+  ctx.fillStyle = 'rgba(232, 150, 150, 0.85)';
+  ctx.beginPath();
+  ctx.moveTo(1.2, -0.7);
+  ctx.quadraticCurveTo(5.5, -1.5, 8, 0.3);
+  ctx.quadraticCurveTo(5, 1.2, 1.2, 0.8);
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
+}
+
 export const CZAPKI = [
   {
     id: 'krol', osiagniecie: '*', nazwa: 'Korona Króla GOATów', ikona: '👑', wys: 18,
@@ -207,34 +297,12 @@ export const CZAPKI = [
     }
   },
   {
-    id: 'rogi', osiagniecie: 'owca', nazwa: 'Rogi prawdziwego GOATa', ikona: '🐐', wys: 6,
+    id: 'rogi', osiagniecie: 'owca', nazwa: 'Rogi prawdziwego GOATa', ikona: '🐐', wys: 9,
     rysuj(ctx, cx, cy, f) {
-      const y = cy - 8;
-      // dwa skręcone rogi koziorożca: grube u nasady, z żeberkami, zawinięte do tyłu
-      for (const s of [0, 1]) {
-        const x0 = cx + f * (s ? 4 : -1.5);
-        ctx.fillStyle = pion(ctx, y - 14, y + 2, s ? '#fff3d6' : '#e8d6ae', s ? '#b8965e' : '#9a7c4c');
-        ctx.strokeStyle = '#4a3c22';
-        ctx.lineWidth = 0.8;
-        ctx.beginPath();
-        ctx.moveTo(x0 - f * 2.2, y + 1);
-        ctx.bezierCurveTo(x0 - f * 3, y - 10, x0 - f * 12, y - 15, x0 - f * 15, y - 6);
-        ctx.quadraticCurveTo(x0 - f * 15.5, y - 3, x0 - f * 13.5, y - 2.5);
-        ctx.bezierCurveTo(x0 - f * 12, y - 10, x0 - f * 4, y - 7, x0 + f * 2, y + 1);
-        ctx.closePath();
-        ctx.fill();
-        ctx.stroke();
-        ctx.strokeStyle = 'rgba(74,60,34,0.55)';
-        ctx.lineWidth = 0.7;
-        for (let k = 1; k <= 5; k++) {
-          const u = k / 6;
-          const px = x0 - f * (1 + u * 12.5), py = y - 1 - Math.sin(u * Math.PI) * 9.5;
-          ctx.beginPath();
-          ctx.moveTo(px - f * 1.4, py - 1.6);
-          ctx.lineTo(px + f * 1.2, py + 1.6);
-          ctx.stroke();
-        }
-      }
+      // dwa rogi kozła alpejskiego z czubka głowy: dalszy (ciemniejszy) i bliższy
+      rogKozy(ctx, cx + f * 4.2, cy - 8, f, 0.84, false);
+      uchoKozy(ctx, cx - f * 5.5, cy - 4.5, -f, 1, '#c8b08a');
+      rogKozy(ctx, cx - f * 0.6, cy - 9, f, 0.94, true);
     }
   }
 ];

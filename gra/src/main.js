@@ -238,6 +238,11 @@ function odswiezPrzyciskiDzwieku() {
 }
 el('btn-dzwiek').addEventListener('click', (e) => { D.ustawDzwiek(!D.dzwiekWlaczony()); odswiezPrzyciskiDzwieku(); e.currentTarget.blur(); });
 el('btn-muzyka').addEventListener('click', (e) => { D.ustawMuzyke(!D.muzykaWlaczona()); odswiezPrzyciskiDzwieku(); e.currentTarget.blur(); });
+// nazwa utworu, gdy się zaczyna (4.10) — w banerze tylko, gdy nie zasłoni ważniejszej wiadomości
+D.przyZmianieUtworu((nazwa) => {
+  el('btn-muzyka').title = 'Muzyka: ' + nazwa + ' (wł./wył. — ponowne włączenie = następny utwór)';
+  if (rg && el('baner-info').hidden) pokazInfo('♪ ' + nazwa);
+});
 odswiezPrzyciskiDzwieku();
 
 /* Minimapa: stuknięcie albo przeciąganie przenosi kamerę w to miejsce (na 5 s). */
@@ -893,6 +898,7 @@ function zglosSie() {
 
 async function polaczZPokojem(id, klucz, nazwa, haslo) {
   if (net) opuscPokoj();
+  el('info-zniknela').hidden = true;
   const p = pokojeLista.find((x) => x.id === id);
   aktualnyPokoj = { id, klucz, nazwa };
   rozwinietyPokoj = null;
@@ -912,9 +918,12 @@ async function polaczZPokojem(id, klucz, nazwa, haslo) {
     onBlad: naBladSieci
   });
   net.start();
+  const n = net;
 
   await zglosSie();
-  await net.pobierz();
+  if (net !== n) return;           // w międzyczasie arena zniknęła (404) albo weszliśmy do innej
+  await n.pobierz();
+  if (net !== n) return;
   // Jeśli właśnie dołączyliśmy do trwającej partii, plansza już jest.
   if (rg) el('ekran-arena').hidden = true;
 }
@@ -975,6 +984,30 @@ function naBladSieci(wiadomosc) {
     ? 'Nie ustawiono adresu serwera Areny. Gra online niedostępna.'
     : 'Problem z połączeniem: ' + wiadomosc;
   el('info-lobby').textContent = wiadomosc;
+  sprawdzCzyArenaJest();
+}
+
+/* Pusta arena znika z serwera po pół minuty (od 4.10). Kto wraca po dłuższej przerwie
+   (np. telefon w kieszeni), nie łączy się w kółko, tylko wraca do listy aren. */
+let arenaSprawdzonaO = 0;
+async function sprawdzCzyArenaJest() {
+  const a = aktualnyPokoj;
+  if (!a || !/^p-[0-9a-f]{8}$/.test(a.id) || Date.now() - arenaSprawdzonaO < 5000) return;
+  arenaSprawdzonaO = Date.now();
+  const w = await K.wejdzDoPokoju(a.id);
+  if (w.status !== 404 || aktualnyPokoj !== a) return;
+  if (rg) zakonczGre();
+  opuscPokoj();
+  ustawAdres(null);
+  if (el('ekran-arena').hidden) otworzArene();
+  pokazWidok(false);
+  await odswiezPokoje();
+  rysujPokoje(true);
+  const zNazwa = a.nazwa && a.nazwa !== a.id;
+  const info = el('info-zniknela');
+  info.textContent = (zNazwa ? 'Arena „' + a.nazwa + '”' : 'Arena z tego linku') +
+    ' już nie istnieje — pusta arena znika po pół minucie. Załóż nową albo wejdź do innej.';
+  info.hidden = false;
 }
 
 const polaczony = (id) => id === mojeId || net.zywi().has(id);
@@ -2115,6 +2148,7 @@ function trzymajWKadrze() {
   }
 }
 
+let ostatniTrzask = 0;
 function obsluzZdarzenia() {
   const st = rg.state;
   for (const e of st.events) {
@@ -2140,7 +2174,13 @@ function obsluzZdarzenia() {
         emitTekst(fx, e.x, e.y - 24, 'MINA!', '#ff5a3a', 16);
         D.graj('mina');
         break;
-      case 'beczka': emitTekst(fx, e.x, e.y - 30, 'BUM!', '#ffd23b', 18); break;
+      case 'beczka': emitTekst(fx, e.x, e.y - 30, 'BUM!', '#ffd23b', 18); D.graj('ogien'); break;
+      case 'wypalenie':
+        // ogień z beczki wypalił dołek (4.10): okopcona skała, iskry, trzask (nie za często)
+        R.dodajSadze(renderer, st.terrain, e.x, e.y, e.r);
+        emitSpark(fx, e.x, e.y - 3, 3);
+        if (performance.now() - ostatniTrzask > 140) { ostatniTrzask = performance.now(); D.graj('trzask'); }
+        break;
       case 'odbicie': emitSpark(fx, e.x, e.y, 5); D.graj('odbicie'); break;
       case 'uderzenie':
         emitSpark(fx, e.x, e.y, 12);
@@ -2186,8 +2226,9 @@ function obsluzZdarzenia() {
         if (e.trafieni >= 2) emitTekst(fx, e.x0, e.y0 - 30, e.trafieni + '× PRZESTRZELONY!', '#7fe3ff', 18);
         break;
       case 'obrazenia': {
-        emitTekst(fx, e.x, e.y - 34, '-' + e.amount, '#ff7a55');
-        D.graj('ala');
+        const ogien = e.cause === 'ogien';     // parzenie co ćwierć sekundy — mniejszy napis, inny dźwięk
+        emitTekst(fx, e.x, e.y - 34, '-' + e.amount, ogien ? '#ffb347' : '#ff7a55', ogien ? 12 : 15);
+        D.graj(ogien ? 'parzy' : 'ala');
         const akt = S.activeWorm(st);
         if (akt && e.wormId !== akt.id) {
           turaDla(st, akt).suma += e.amount;
@@ -2196,7 +2237,7 @@ function obsluzZdarzenia() {
         break;
       }
       case 'smierc': {
-        emitTekst(fx, e.x, e.y - 50, e.cause === 'lawa' ? 'do lawy!' : 'RIP', '#ffd93b', 17);
+        emitTekst(fx, e.x, e.y - 50, e.cause === 'lawa' ? 'do lawy!' : e.cause === 'ogien' ? 'upieczony!' : 'RIP', '#ffd93b', 17);
         D.graj('smierc');
         break;
       }

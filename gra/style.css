@@ -846,6 +846,8 @@ body.ucieczka .bron-wybrana { opacity: 0.35; pointer-events: none; }
 .podpowiedz-konta { margin-top: 0; text-align: left; line-height: 1.4; }
 .formularz-konta .glowny { margin-top: 6px; }
 .blad-konta { color: #ffb08a; opacity: 0.95; min-height: 1em; }
+.info-zniknela { margin: 0 0 12px; font-size: 13px; line-height: 1.4; }
+.info-zniknela[hidden] { display: none; }
 button.maly { padding: 7px 12px; font-size: 12px; min-height: 36px; }
 
 /* ---------- pasek Fortnite / 0 A.D. / Arena (od 4.7) ---------- */

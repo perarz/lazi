@@ -3,7 +3,7 @@
 
 import { createRequire } from 'module';
 const require = createRequire(import.meta.url);
-const { serwer, dozwolonyOrigin } = require('./serwer.js');
+const { serwer, dozwolonyOrigin, sprzatajPuste, PUSTY_POKOJ_MS } = require('./serwer.js');
 const { Zrzutka } = require('./zrzutka.js');
 const { Konta } = require('./konta.js');
 import fs from 'fs';
@@ -328,6 +328,28 @@ await test('pokój na hasło: lista, wejście bez klucza 403, złe hasło 403, d
   // limit 3 pokoi na konto
   await post('/api/pokoje', { token: ALA.token, nazwa: 'Trzeci' });
   assert((await post('/api/pokoje', { token: ALA.token, nazwa: 'Czwarty' })).status === 429, 'limit pokoi na konto');
+});
+
+await test('pusta arena znika po pół minucie, zajętej nic nie rusza, zniknięta nie wraca jako pokój bez nazwy', async () => {
+  const pusta = await (await post('/api/pokoje', { token: BOLEK.token, nazwa: 'Na chwile' })).json();
+  const pelna = await (await post('/api/pokoje', { token: BOLEK.token, nazwa: 'Tu ktos jest' })).json();
+  const a = klient(pusta.id, undefined, BOLEK.token);
+  const b = klient(pelna.id, undefined, ALA.token);
+  await Promise.all([a.otwarty, b.otwarty]);
+  a.ws.close();
+  await new Promise((r) => setTimeout(r, 80));
+  const lista = async () => (await (await fetch(API('/api/pokoje'))).json()).pokoje.map((p) => p.id);
+  assert((await lista()).includes(pusta.id), 'zaraz po wyjściu arena powinna jeszcze chwilę być (odświeżenie strony)');
+  assert(PUSTY_POKOJ_MS <= 60000, 'puste areny wiszą za długo: ' + PUSTY_POKOJ_MS + ' ms');
+  sprzatajPuste(Date.now() + PUSTY_POKOJ_MS + 1000);
+  const po = await lista();
+  assert(!po.includes(pusta.id), 'pusta arena nie zniknęła');
+  assert(po.includes(pelna.id), 'zniknęła arena, w której ktoś jest');
+  let odrzucony = false;
+  try { await klient(pusta.id, undefined, BOLEK.token).otwarty; } catch (e) { odrzucony = /404/.test(e.message); }
+  assert(odrzucony, 'do zniknętej areny dało się wejść (powstałby pokój bez nazwy)');
+  assert((await post('/api/pokoje/wejdz', { token: BOLEK.token, id: pusta.id })).status === 404, 'wejście do zniknętej areny');
+  b.ws.close();
 });
 
 await test('konta w pliku: przeżywają restart, hasło jako skrót, reset hasła wylogowuje', async () => {

@@ -78,7 +78,11 @@ const MAX_KONTO_BAJTY = 4096;
 const opisy = new Map();
 const MAX_WLASNYCH_POKOI = 40;
 const POKOI_NA_KONTO = 3;
-const PUSTY_POKOJ_MS = 10 * 60 * 1000;
+/* Pusta arena znika po pół minuty (do 4.9: po 10 minutach — lista zarastała pustymi).
+   Tyle wystarcza na odświeżenie strony albo krótką utratę zasięgu. */
+const PUSTY_POKOJ_MS = 30 * 1000;
+const SPRZATANIE_MS = 5000;
+const ID_Z_PANELU = /^p-[0-9a-f]{8}$/;
 const skrotHasla = (haslo, sol) => crypto.createHash('sha256').update(sol + ':' + haslo).digest('hex');
 
 const pokoje = new Map();            // nazwa → Pokoj
@@ -369,6 +373,8 @@ serwer.on('upgrade', (req, socket, head) => {
   const konto = doZrzutki ? null : konta.zTokenu(u.searchParams.get('token'));
   if (!doZrzutki && !konto) return odmow('401 Unauthorized');
   if (!doZrzutki && !wstepDoPokoju(nazwa, u.searchParams.get('klucz'))) return odmow('403 Forbidden');
+  // arena z panelu, która już zniknęła (była pusta) — nie wskrzeszamy jej jako pokoju bez nazwy
+  if (!doZrzutki && ID_Z_PANELU.test(nazwa) && !opisy.has(nazwa)) return odmow('404 Not Found');
   wss.handleUpgrade(req, socket, head, (ws) => {
     ws.konto = konto;
     ws.pokoj = doZrzutki ? null : nazwa;
@@ -424,7 +430,11 @@ wss.on('connection', (ws) => {
     const zbior = polaczenia.get(nazwa);
     if (zbior) {
       zbior.delete(ws);
-      if (!zbior.size) polaczenia.delete(nazwa);
+      if (!zbior.size) {
+        polaczenia.delete(nazwa);
+        const o = opisy.get(nazwa);
+        if (o) o.pustyOd = Date.now();     // odliczanie do sprzątnięcia od wyjścia ostatniego
+      }
     }
     const n = (polaczeniaNaIp.get(ws.ip) || 1) - 1;
     if (n > 0) polaczeniaNaIp.set(ws.ip, n); else polaczeniaNaIp.delete(ws.ip);
@@ -460,12 +470,16 @@ setInterval(() => {
   for (const [nazwa, p] of pokoje) {
     if (!polaczenia.has(nazwa) && teraz - p.ostatniaZmiana > POKOJ_PORZUCONY_MS) pokoje.delete(nazwa);
   }
-  // pokój z panelu znika po 10 minutach pustki
+}, PING_MS).unref();
+
+/* Arena z panelu, w której nikogo nie ma, znika po PUSTY_POKOJ_MS. */
+function sprzatajPuste(teraz = Date.now()) {
   for (const [id, o] of opisy) {
     if (polaczenia.has(id)) { o.pustyOd = teraz; continue; }
     if (teraz - o.pustyOd > PUSTY_POKOJ_MS) { opisy.delete(id); pokoje.delete(id); }
   }
-}, PING_MS).unref();
+}
+setInterval(() => sprzatajPuste(), SPRZATANIE_MS).unref();
 
 process.on('uncaughtException', (e) => { console.error('nieobsłużony wyjątek:', e); });
 
@@ -478,4 +492,4 @@ if (require.main === module) {
   serwer.listen(PORT, '127.0.0.1', () => console.log('Arena nasłuchuje na 127.0.0.1:' + PORT));
 }
 
-module.exports = { serwer, pokoje, zrzutka, konta, opisy, dozwolonyOrigin };
+module.exports = { serwer, pokoje, zrzutka, konta, opisy, dozwolonyOrigin, sprzatajPuste, PUSTY_POKOJ_MS };

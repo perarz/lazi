@@ -9,7 +9,7 @@ import { DRUZYNY } from './druzyny.js';
 import { WORLD_W, WORLD_H, LAVA_Y as T_LAVA, solidAt } from './terrain.js';
 import { WEAPONS } from './weapons.js';
 import { WORM_H } from './sim.js';
-import { drawFx } from './fx.js';
+import { drawFx, emitPlomien } from './fx.js';
 
 /* Szerokość bieżącego świata (od 4.5 zależy od rozmiaru mapy w ustawieniach).
    Ustawia ją buildTerrain; kamera i lawa czytają ją stąd. */
@@ -30,7 +30,9 @@ export function createRenderer(canvas) {
     viewW: 0,
     viewH: 0,
     time: 0,
-    zrzuty: new Map()          // id skrzynki → chwila zrzutu (animacja spadochronu)
+    zrzuty: new Map(),         // id skrzynki → chwila zrzutu (animacja spadochronu)
+    sadza: [],                 // okopcone miejsca po ogniu (4.10): { x, y, r } — tylko wygląd
+    sadzaDla: null             // dla której mapy (seed:szerokość) — nowa partia czyści sadzę
   };
 }
 
@@ -132,6 +134,9 @@ export function buildTerrain(r, terrain) {
   if (r.terrainCanvas.height !== swiatH) r.terrainCanvas.height = swiatH;
   r.tctx.clearRect(0, 0, terrain.w, swiatH);
   paintColumns(r, terrain, 0, terrain.w - 1);
+  const mapa = terrain.seed + ':' + terrain.w;
+  if (r.sadzaDla !== mapa) { r.sadza = []; r.sadzaDla = mapa; }
+  malujSadze(r, 0, terrain.w - 1);
 }
 
 export function repaintRect(r, terrain, rect) {
@@ -139,6 +144,36 @@ export function repaintRect(r, terrain, rect) {
   const x1 = Math.min(terrain.w - 1, Math.ceil(rect.x1) + 2);
   r.tctx.clearRect(x0, 0, x1 - x0 + 1, swiatH);
   paintColumns(r, terrain, x0, x1);
+  malujSadze(r, x0, x1);
+}
+
+/* Ogień wypalił dołek (4.10): skała wokół zostaje okopcona. Sadza leży na osobnej liście
+   i maluje się po każdym przemalowaniu kolumn, więc sąsiedni wybuch jej nie zmyje. */
+export function dodajSadze(r, terrain, x, y, rad) {
+  r.sadza.push({ x, y, r: rad });
+  if (r.sadza.length > 600) r.sadza.shift();
+  repaintRect(r, terrain, { x0: x - rad * 2.4, x1: x + rad * 2.4 });
+}
+
+function malujSadze(r, x0, x1) {
+  if (!r.sadza || !r.sadza.length) return;
+  const ctx = r.tctx;
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(x0, 0, x1 - x0 + 1, swiatH);      // tylko przemalowane kolumny — reszta ma już swoją sadzę
+  ctx.clip();
+  ctx.globalCompositeOperation = 'source-atop';   // tylko na skale, nie w powietrzu
+  for (const s of r.sadza) {
+    const z = s.r * 2.4;
+    if (s.x + z < x0 || s.x - z > x1) continue;
+    const g = ctx.createRadialGradient(s.x, s.y, 0, s.x, s.y, z);
+    g.addColorStop(0, 'rgba(14, 8, 6, 0.8)');
+    g.addColorStop(0.55, 'rgba(24, 12, 8, 0.5)');
+    g.addColorStop(1, 'rgba(24, 12, 8, 0)');
+    ctx.fillStyle = g;
+    ctx.fillRect(s.x - z, s.y - z, z * 2, z * 2);
+  }
+  ctx.restore();
 }
 
 /* Minimapa w rogu HUD-u (od 4.8): cały teren w skali, lawa, skrzynki, robale
@@ -292,6 +327,11 @@ export function draw(r, state, cam, fx, dt, opcje = {}) {
     drawSkrzynka(ctx, r, c);
   }
   for (const p of state.projectiles) drawProjectile(ctx, p);
+  // płonąca ropa z beczek (4.10): języki ognia, a do efektów iskry i dym
+  if (state.ogien && state.ogien.length) {
+    state.ogien.forEach((f, i) => drawPlomien(ctx, r, f, i));
+    if (fx) for (const f of state.ogien) if (Math.random() < dt * 9) emitPlomien(fx, f.x, f.y - 4, f.grunt);
+  }
   // lina ninja: od haka do robala (u gracza z turą ze stanu, u widzów z podglądu na żywo)
   for (const w of state.worms) {
     const v = w.widok || w;
@@ -742,6 +782,49 @@ function drawSkrzynka(ctx, r, c) {
       ctx.fillText('AMMO', 0, -26 - Math.abs(Math.sin(t * 2)) * 2);
     }
   }
+  ctx.restore();
+}
+
+/* Kropla płonącej ropy: na ziemi dwa chwiejące się języki ognia z poświatą, w locie mniejszy
+   płomyk odchylony od ruchu. Rośnie po zapłonie, pod koniec życia maleje i gaśnie. */
+function drawPlomien(ctx, r, f, i) {
+  const t = r.time * 9 + i * 1.7;
+  const zanik = Math.max(0, Math.min(1, (f.zycie - f.t) / 70));
+  const k = zanik * Math.min(1, 0.3 + f.t / 15);
+  if (k <= 0.02) return;
+  const x = f.x, y = f.y + (f.grunt ? 1.5 : 3);
+  const H = (f.grunt ? 21 : 12) * (0.35 + 0.65 * k);
+  const Wd = (f.grunt ? 7 : 4.5) * (0.45 + 0.55 * k);
+  ctx.save();
+  ctx.globalCompositeOperation = 'lighter';
+  const gl = ctx.createRadialGradient(x, y - H * 0.35, 0, x, y - H * 0.35, H * 1.6);
+  gl.addColorStop(0, 'rgba(255, 140, 30, ' + 0.3 * k + ')');
+  gl.addColorStop(1, 'rgba(255, 60, 0, 0)');
+  ctx.fillStyle = gl;
+  ctx.fillRect(x - H * 1.6, y - H * 1.95, H * 3.2, H * 3.2);
+  const jezyk = (dx, h, w, faza) => {
+    const kiw = f.grunt ? Math.sin(t * 1.3 + faza) * 2.6 : -f.vx * 0.025;
+    const g = ctx.createLinearGradient(x, y, x, y - h);
+    g.addColorStop(0, 'rgba(255, 55, 0, 0.9)');
+    g.addColorStop(0.45, 'rgba(255, 150, 25, 0.85)');
+    g.addColorStop(1, 'rgba(255, 235, 140, 0.1)');
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.moveTo(x + dx - w, y);
+    ctx.quadraticCurveTo(x + dx - w * 1.15, y - h * 0.55, x + dx + kiw, y - h);
+    ctx.quadraticCurveTo(x + dx + w * 1.15, y - h * 0.55, x + dx + w, y);
+    ctx.quadraticCurveTo(x + dx, y + w * 0.45, x + dx - w, y);
+    ctx.fill();
+  };
+  const m1 = 0.8 + Math.sin(t) * 0.14 + Math.sin(t * 2.3 + 1) * 0.08;
+  const m2 = 0.8 + Math.sin(t * 1.4 + 2) * 0.16;
+  if (f.grunt) jezyk(-Wd * 0.45, H * 0.7 * m2, Wd * 0.7, 1.7);
+  jezyk(f.grunt ? Wd * 0.25 : 0, H * m1, Wd, 0);
+  // jasne serce płomienia
+  ctx.fillStyle = 'rgba(255, 244, 190, ' + 0.7 * k + ')';
+  ctx.beginPath();
+  ctx.ellipse(x, y - H * 0.24, Wd * 0.45, H * 0.22, 0, 0, 6.283);
+  ctx.fill();
   ctx.restore();
 }
 
