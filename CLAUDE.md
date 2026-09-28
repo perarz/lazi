@@ -18,7 +18,7 @@ Stos technologiczny:
 - Bez bundlera, bez `package.json` i bez zależności npm. Zwykłe pliki HTML/CSS/JS, gra jako moduły ES,
   zrzutka jako klasyczne skrypty.
 
-Obecna wersja: **4.11 „Arena 5× lepsza”** (`wersja.js`).
+Obecna wersja: **4.12 „Nowy panel Areny”** (`wersja.js`).
 
 ---
 
@@ -218,7 +218,7 @@ PL, IP 96.62.223.169). Katalog `serwer/` to serwer: Node + WebSocket (`ws`).
 - Opcjonalnie ładniejszy adres serwera `arena.kacperlazarz.pl`: rekord DNS A → 96.62.223.169, ponowne
   `instaluj.sh` z nowym adresem, potem adres w czterech miejscach (wyżej) i wdrożenie.
 - Ostatnie wdrożenia: 4.8 = PR #28 (bez zmian serwera), 4.9 = PR #29 + `arena-aktualizuj` 2026-09-28 (konsola dostawcy).
-  4.10 = PR #31 (zmienia serwer — `arena-aktualizuj`, komendy dostał użytkownik). 4.11 bez zmian serwera.
+  4.10 = PR #31 (zmienia serwer — `arena-aktualizuj`, komendy dostał użytkownik). 4.11 i 4.12 bez zmian serwera.
 
 ---
 
@@ -253,6 +253,7 @@ PL, IP 96.62.223.169). Katalog `serwer/` to serwer: Node + WebSocket (`ws`).
 | `arena:token` | Token sesji konta Areny (od 4.6) |
 | `arena:akcesorium` | Akcesorium robala (4.7, kopia z konta; pusty napis = bez) |
 | `arena:dzwiek`, `arena:muzyka` | `'0'` = wyciszone efekty / muzyka w Arenie (4.9) |
+| `arena:zakladka` | Otwarta zakładka panelu Areny: `szafa` / `ranking` / `osiagniecia` (4.12) |
 | `arena:nazwa`, `arena:kolor`, `arena:bron`, `arena:staty`, `arena:osiagniecia` | Arena. Od 4.6 `staty` i `osiagniecia` to **kopia z konta** (nadpisywana po zalogowaniu i po każdym wyniku, czyszczona przy wylogowaniu) — czytają je reguły osiągnięć i profil na zrzutce |
 | `arena:stare-przeniesione` | `'1'` = dane sprzed kont już poszły do konta (tylko pierwsza rejestracja w przeglądarce je zabiera). `arena:id` z dawnych wersji nie jest już używane |
 
@@ -520,7 +521,14 @@ Lekcje z kalibracji:
 - **Ekran ładowania**: pełnoekranowe płótno `#ladowanie-scena` (`R.rysujSceneLadowania`: wyspy nad lawą, robal
   gracza z akcesorium strzela z bazooki, skrzynka na spadochronie), pasek z procentami, żarty (`TEKSTY_LADOWANIA`)
   i losowa porada (`PORADY`). `ladowanie(zadanie, nad)` trwa min. 1,8 s.
-- **Ekran Areny** (`.arena-uklad`): lewa kolumna `.kolumna-lewa` (~65%) = profil (robal, nick, ranga z `RANGI`,
+- **Ekran Areny od 4.12** (siatka `grid-template-areas`: `hangar` na całą szerokość, pod nim `zakladki` | `areny`;
+  poniżej 900 px: hangar, areny, zakładki): `.hangar` = płótno `#podglad-robala` z `R.rysujSceneLadowania(…, { baner: true })`
+  (na szerokim ekranie robal na 60% szerokości, bo po lewej tekst), nick, ranga z paskiem (`#ranga-postep`, `#ranga-dalej`,
+  progi `RANGI`), `#btn-graj` (szybka gra: najpełniejsza otwarta arena bez hasła i bez trwającej partii, inaczej nowa
+  „Arena nick”), `#profil-staty` paskiem na dole. Szafa/Ranking/Osiągnięcia w zakładkach `.karta-zakladki`
+  (`pokazZakladke`, `arena:zakladka` w `localStorage`; selektor zawężony do `.karta-zakladki`, bo logowanie też ma `.zakladki`).
+  Id elementów zostały te same co wcześniej. Dawny opis układu niżej jest historyczny.
+- **Ekran Areny** (`.arena-uklad`, do 4.11): lewa kolumna `.kolumna-lewa` (~65%) = profil (robal, nick, ranga z `RANGI`,
   6 statystyk), wygląd (paleta kolorów i 6 kafelków akcesoriów — zawsze widoczne, `zmienWyglad` zapisuje na koncie
   i ponawia `dolacz`, gdy jestem w lobby), ranking killi i osiągnięcia obok siebie; prawa `.karta-prawa` (~35%,
   sticky) = `#widok-pokoje` (lista aren, pusty stan, formularz nowej areny) albo `#widok-lobby` (dawne lobby,
@@ -862,6 +870,7 @@ więcej akcesoriów (np. czapki postaci ze zrzutki), ewentualnie konto także w 
   - **4.8** 1–3 robale na gracza, wyższa mapa ekstremalna, celny nalot, minimapa i podgląd całej mapy
   - **4.9** railgun, miny i beczki, nagrobki, kamera za pociskiem, pingi, dźwięki i muzyczka, 5 nowych tańców, okulary i buźka zamiast lamy i kilofa, bez ogonków, nowe skrzynki i tło, start gospodarza bez GOTOWY
   - **4.10** płonąca ropa z beczek (parzy i wypala ziemię), railgun wypala tunel w skale, 7 utworów muzyki zamiast jednej pętli, pusta arena znika od razu, nowe rogi GOATa
+  - **4.12** nowy panel Areny: hangar z żywą sceną, ranga z paskiem, GRAJ (szybka gra), zakładki
   - **4.11** „Arena 5× lepsza”: mocniejsze wybuchy, żywe robale, kronika eliminacji, podsumowanie partii z wyróżnieniami, rewanż jednym przyciskiem; naprawa „Śrut w plecy”
 
 ---

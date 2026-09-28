@@ -520,7 +520,8 @@ function petlaPodgladu(t) {
   const czas = t / 1000;
   const dane = { kolor: mojKolor, nazwa: konto ? konto.nick : 'Ty', czas, akc: mojeAkcesorium };
   if (arena) {
-    R.rysujPodgladRobala(el('podglad-robala'), dane);
+    // hangar (4.12): cała scena z wyspami i lawą, mój robal strzela z bazooki
+    R.rysujSceneLadowania(el('podglad-robala'), { ...dane, baner: true });
     // kafelki co trzecią klatkę — 24 małe płótna
     if (klatkaPodgladu++ % 3 === 0) {
       for (const k of kafelkiAkcesoriow) R.rysujPodgladRobala(k.plotno, { kolor: mojKolor, czas, akc: k.id, mini: true });
@@ -748,7 +749,14 @@ function rysujProfil() {
   if (!konto) return;
   el('profil-nick').textContent = konto.nick;
   const s = wczytajStaty();
-  el('profil-ranga').textContent = RANGI.filter(([od]) => s.fragi >= od).pop()[1];
+  // ranga i pasek do następnej (4.12)
+  const nr = RANGI.reduce((n, [od], i) => (s.fragi >= od ? i : n), 0);
+  el('profil-ranga').textContent = RANGI[nr][1];
+  const dalej = RANGI[nr + 1];
+  el('ranga-postep').style.width = (dalej ? Math.max(4, (s.fragi - RANGI[nr][0]) / (dalej[0] - RANGI[nr][0]) * 100) : 100) + '%';
+  el('ranga-dalej').textContent = dalej
+    ? (dalej[0] - s.fragi) + (dalej[0] - s.fragi === 1 ? ' kill' : ' killi') + ' do: ' + dalej[1]
+    : 'Najwyższa ranga. Szacun, GOAT.';
   const lista = el('profil-staty');
   lista.replaceChildren();
   const skutecznosc = s.partie ? Math.round(s.wygrane / s.partie * 100) + '%' : '—';
@@ -891,6 +899,48 @@ el('form-pokoj').addEventListener('submit', async (e) => {
   el('input-pokoj-haslo').value = '';
   polaczZPokojem(w.dane.id, w.dane.klucz, nazwa, !!haslo);
 });
+
+/* GRAJ (4.12): szybka gra — najpełniejsza otwarta arena bez hasła, w której nie trwa partia
+   i jest miejsce; a jak takiej nie ma, od razu nowa arena z moim nickiem. */
+el('btn-graj').addEventListener('click', async () => {
+  const btn = el('btn-graj');
+  btn.disabled = true;
+  try {
+    await odswiezPokoje();
+    const wolna = pokojeLista
+      .filter((p) => !p.haslo && !p.partia && p.ile > 0 && p.ile < P.MAX_GRACZY)
+      .sort((a, b) => b.ile - a.ile)[0];
+    if (wolna) return polaczZPokojem(wolna.id, null, wolna.nazwa);
+    const nazwa = ('Arena ' + (konto ? konto.nick : 'GOATów')).slice(0, 24);
+    const w = await K.nowyPokoj(nazwa);
+    if (w.status !== 200) { el('info-pokoje').textContent = K.opisBledu(w.dane); return; }
+    polaczZPokojem(w.dane.id, w.dane.klucz, nazwa, false);
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+/* Zakładki panelu (4.12): Szafa, Ranking, Osiągnięcia — wybrana zapamiętana w przeglądarce. */
+function pokazZakladke(nazwa) {
+  for (const b of document.querySelectorAll('.karta-zakladki [role="tab"]')) {
+    const tak = b.dataset.zakladka === nazwa;
+    b.setAttribute('aria-selected', tak ? 'true' : 'false');
+    b.tabIndex = tak ? 0 : -1;
+    el('panel-' + b.dataset.zakladka).hidden = !tak;
+  }
+  zapisz('arena:zakladka', nazwa);
+}
+for (const b of document.querySelectorAll('.karta-zakladki [role="tab"]')) {
+  b.addEventListener('click', () => pokazZakladke(b.dataset.zakladka));
+  b.addEventListener('keydown', (e) => {
+    if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+    const wszystkie = [...document.querySelectorAll('.karta-zakladki [role="tab"]')];
+    const i = (wszystkie.indexOf(b) + (e.key === 'ArrowRight' ? 1 : wszystkie.length - 1)) % wszystkie.length;
+    pokazZakladke(wszystkie[i].dataset.zakladka);
+    wszystkie[i].focus();
+  });
+}
+pokazZakladke(['szafa', 'ranking', 'osiagniecia'].includes(czytaj('arena:zakladka')) ? czytaj('arena:zakladka') : 'szafa');
 
 /* Ranking killi */
 let rankingLista = null;

@@ -1589,7 +1589,7 @@ export function rysujPodgladRobala(canvas, { kolor, nazwa, czas = 0, akc = null,
    i akcesorium) strzela z bazooki, na spadochronie leci skrzynka.
    Czysta grafika — nic z symulacji, więc wolno tu trygonometrię. */
 const gwiazdyLadowania = Array.from({ length: 70 }, () => [Math.random(), Math.random() * 0.6, 0.4 + Math.random() * 1.2, Math.random() * 6]);
-export function rysujSceneLadowania(canvas, { kolor, nazwa, czas = 0, akc = null }) {
+export function rysujSceneLadowania(canvas, { kolor, nazwa, czas = 0, akc = null, baner = false }) {
   const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
   const W = canvas.clientWidth || window.innerWidth, H = canvas.clientHeight || window.innerHeight;
   if (canvas.width !== Math.round(W * dpr) || canvas.height !== Math.round(H * dpr)) {
@@ -1639,9 +1639,11 @@ export function rysujSceneLadowania(canvas, { kolor, nazwa, czas = 0, akc = null
   ctx.fill();
   // wzgórze pod robalem i wyspa po prawej (cel strzału)
   // skala: na wąskim telefonie liczy się szerokość, na szerokim ekranie wysokość
-  const s = Math.max(0.7, Math.min(2.2, H / 420, W / 330));
-  const robX = W * 0.28, robY = H * 0.74;
-  const celX = W * 0.74, celY = H * 0.7;
+  // baner w hangarze (4.12): na szerokim ekranie robal po prawej stronie (po lewej jest tekst), trochę większy
+  const szeroki = baner && W >= 600;
+  const s = Math.max(0.7, Math.min(2.2, H / (baner ? 330 : 420), W / 330));
+  const robX = W * (szeroki ? 0.6 : 0.28), robY = H * (baner && !szeroki ? 0.8 : 0.74);
+  const celX = W * (szeroki ? 0.9 : 0.74), celY = H * (baner && !szeroki ? 0.76 : 0.7);
   const wyspa = (cx, cy, rx) => {
     const g = ctx.createLinearGradient(0, cy, 0, cy + rx * 0.9);
     g.addColorStop(0, '#7a5040');

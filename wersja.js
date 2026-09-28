@@ -5,6 +5,15 @@
 (function () {
   var historia = [
     {
+      wersja: '4.12', data: '2026-09-28', tytul: 'Nowy panel Areny',
+      zmiany: [
+        'Panel Areny w nowej odsłonie: na górze wielki „hangar” — Twój robal na żywej scenie nad lawą strzela z bazooki, nick płonie, obok ranga z paskiem, ile killi zostało do następnej, i statystyki.',
+        'Wielki przycisk GRAJ: szybka gra jednym stuknięciem — wskakujesz do najpełniejszej otwartej areny, a jak żadnej nie ma, od razu powstaje Twoja.',
+        'Szafa (kolor, akcesoria, czapki), Ranking i Osiągnięcia są w zakładkach, więc na telefonie jest dużo mniej przewijania. Gra pamięta, którą zakładkę miałeś otwartą.',
+        'Na telefonie zaraz pod hangarem są areny, a na komputerze stoją obok zakładek.'
+      ]
+    },
+    {
       wersja: '4.11', data: '2026-09-28', tytul: 'Arena 5× lepsza',
       zmiany: [
         'Naprawione osiągnięcie „Śrut w plecy”: eliminacja ze strzelby wreszcie się liczy (gra nie wiedziała, z czego padł strzał, bo robal ginął od razu).',
