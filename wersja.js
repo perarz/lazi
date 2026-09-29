@@ -5,6 +5,14 @@
 (function () {
   var historia = [
     {
+      wersja: '4.12.1', data: '2026-09-29', tytul: 'Lawa połyka skrzynki i widać cudze miny',
+      zmiany: [
+        'Rosnąca lawa zalewa apteczki, skrzynki z zapasem, miny i beczki — znikają z pluskiem, zamiast leżeć pod lawą.',
+        'Gdy oglądasz cudzą turę i ktoś wejdzie na minę, widzisz wszystko na żywo: miganie i „MINA!”, wybuch z hukiem, obrażenia. Wysadzona mina i beczka znikają od razu.',
+        'Gra z poprzednią wersją nie wystartuje (znaczek „STARA WERSJA” w lobby) — wystarczy odświeżyć stronę.'
+      ]
+    },
+    {
       wersja: '4.12', data: '2026-09-28', tytul: 'Nowy panel Areny',
       zmiany: [
         'Panel Areny w nowej odsłonie: na górze wielki „hangar” — Twój robal na żywej scenie nad lawą strzela z bazooki, nick płonie, obok ranga z paskiem, ile killi zostało do następnej, i statystyki.',

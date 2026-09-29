@@ -366,7 +366,11 @@ export function draw(r, state, cam, fx, dt, opcje = {}) {
   const akt = activeOf(state);
   // nagrobki poległych (4.9) — tylko grafika: opadają na grunt, gdy wybuch wytnie go spod nich
   for (const w of state.worms) if (!w.alive && !w.odszedl) drawNagrobek(ctx, r, state, w);
-  for (const p of state.pulapki || []) drawPulapka(ctx, r, p);
+  const pp = opcje.podgladPulapek;   // widz: miny uzbrojone i wysadzone przez gracza z turą (z podglądu)
+  for (const p of state.pulapki || []) {
+    if (pp && pp.pulapki.has(p.id)) continue;
+    drawPulapka(ctx, r, pp && p.lont < 0 && pp.uzbrojone.has(p.id) ? { ...p, lont: 1 } : p);
+  }
   for (const c of state.skrzynki || []) {
     // skrzynka zebrana przez gracza z turą — widz wie o tym z podglądu na żywo
     if (opcje.zebraneSkrzynki && opcje.zebraneSkrzynki.has(c.id)) continue;

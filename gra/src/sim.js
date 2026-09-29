@@ -1252,10 +1252,23 @@ function nextTurn(state) {
     if (nowa !== state.lava) {
       state.lava = nowa;
       state.events.push({ type: 'lawa', y: nowa });
+      zatopZalane(state);
     }
   }
   zrzutZaopatrzenia(state);
   rozpocznijTure(state);
+}
+
+/* Lawa podniosła się: skrzynki, miny i beczki pod jej powierzchnią toną od razu
+   (jak robale — zasięg „pod lawą” to y > state.lava), a nie leżą dalej na dnie. */
+function zatopZalane(state) {
+  for (const lista of [state.skrzynki, state.pulapki]) {
+    for (let i = lista.length - 1; i >= 0; i--) {
+      if (lista[i].y <= state.lava) continue;
+      state.events.push({ type: 'plusk', x: lista[i].x, y: state.lava });
+      lista.splice(i, 1);
+    }
+  }
 }
 
 /* Na początku tury czasem spada skrzynka. Wszystko z seeda i numeru tury,
@@ -1285,13 +1298,12 @@ function stepSkrzynki(state) {
   const t = state.terrain;
   for (let i = state.skrzynki.length - 1; i >= 0; i--) {
     const c = state.skrzynki[i];
-    if (!T.solidAt(t, c.x, c.y + 1)) {
-      c.y += 2;
-      if (c.y > state.lava) {
-        state.skrzynki.splice(i, 1);
-        state.events.push({ type: 'plusk', x: c.x, y: state.lava });
-        continue;
-      }
+    if (!T.solidAt(t, c.x, c.y + 1)) c.y += 2;
+    // tonie też skrzynka, którą zalała rosnąca lawa (a nie tylko ta, która do niej spadła)
+    if (c.y > state.lava) {
+      state.skrzynki.splice(i, 1);
+      state.events.push({ type: 'plusk', x: c.x, y: state.lava });
+      continue;
     }
     const w = state.worms.find((r) => r.alive && Math.abs(r.x - c.x) < 14 && c.y > r.y - WORM_H - 6 && c.y < r.y + 10);
     if (!w) continue;
@@ -1378,23 +1390,21 @@ function stepPulapki(state) {
   const t = state.terrain;
   for (let i = state.pulapki.length - 1; i >= 0; i--) {
     const p = state.pulapki[i];
-    if (!T.solidAt(t, p.x, p.y + 1)) {
-      p.y += 2;
-      if (p.y > state.lava) {
-        state.pulapki.splice(i, 1);
-        state.events.push({ type: 'plusk', x: p.x, y: state.lava });
-        continue;
-      }
+    if (!T.solidAt(t, p.x, p.y + 1)) p.y += 2;
+    if (p.y > state.lava) {             // spadła do lawy albo lawa ją zalała
+      state.pulapki.splice(i, 1);
+      state.events.push({ type: 'plusk', x: p.x, y: state.lava });
+      continue;
     }
     if (p.typ === 'mina' && p.lont < 0 &&
         state.worms.some((w) => w.alive && Math.abs(w.x - p.x) < 20 && w.y > p.y - 26 && w.y < p.y + 14)) {
       p.lont = MINA_LONT;
-      state.events.push({ type: 'mina', x: p.x, y: p.y });
+      state.events.push({ type: 'mina', id: p.id, x: p.x, y: p.y });
     }
     if (p.lont > 0) { p.lont--; continue; }
     if (p.lont === 0) {
       state.pulapki.splice(i, 1);
-      state.events.push({ type: p.typ === 'beczka' ? 'beczka' : 'minaWybuch', x: p.x, y: p.y });
+      state.events.push({ type: p.typ === 'beczka' ? 'beczka' : 'minaWybuch', id: p.id, x: p.x, y: p.y });
       explode(state, p.x, p.y - 6, p.typ === 'beczka' ? WYBUCH_BECZKI : WYBUCH_MINY);
       if (p.typ === 'beczka') rozlejOgien(state, p.x, p.y - 10, p.id);
     }

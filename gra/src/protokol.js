@@ -36,7 +36,7 @@ export const ZASTEPCZY_STAN = 4;      // s czekania na stan od autora akcji
 export const START_ZWLOKA = 3;        // s na załadowanie planszy po starcie partii
 export const DOGON_PO = 2;            // s — starszego stanu nie animujemy, tylko do niego skaczemy
 export const ODLICZANIE_S = 5;        // s od chwili, gdy wszyscy dali GOTOWY, do startu partii
-export const WERSJA = 8;              // wersja protokołu lobby (4.2: drużyny i gotowość, 4.3: ustawienia partii, 4.4: lawa, emotki, 4.5: rozmiar mapy, obrót mostu, 4.8: kilka robali na gracza, 4.9: railgun, start gospodarza, 4.10: ogień z beczek)
+export const WERSJA = 9;              // wersja protokołu lobby (4.2: drużyny i gotowość, 4.3: ustawienia partii, 4.4: lawa, emotki, 4.5: rozmiar mapy, obrót mostu, 4.8: kilka robali na gracza, 4.9: railgun, start gospodarza, 4.10: ogień z beczek, 4.13: pułapki i skrzynki toną w rosnącej lawie)
 export const MAX_GRACZY = 8;          // w partii; kolejni w lobby oglądają
 
 /* Ucieczka na żywo. */
@@ -635,7 +635,7 @@ export function klatka(r, pokoj, ctx) {
    nie policzą sami (chodzą po podglądzie). Kolejne numery w turze, w podglądzie
    leci kilka ostatnich — widz pokazuje te, których jeszcze nie widział,
    więc zgubiony podgląd nic nie gubi. Wydarzeń nie zjadamy (main.js je rysuje). */
-const EFEKTY_W_RUCHU = 4;
+const EFEKTY_W_RUCHU = 6;      // wybuch miny to naraz wybuch, obrażenia i śmierć
 function zbierzEfekty(r) {
   const st = r.state;
   for (const e of st.events) {
@@ -645,6 +645,10 @@ function zbierzEfekty(r) {
     if (e.type === 'obrazenia') ef = ['o', Math.round(e.x), Math.round(e.y), e.amount];
     else if (e.type === 'smierc') ef = ['d', Math.round(e.x), Math.round(e.y), e.cause === 'lawa' ? 1 : 0];
     else if (e.type === 'skrzynka') ef = ['s', e.x, e.y, e.id, e.typ === 'apteczka' ? e.hp : e.bron];
+    // 4.13: mina uzbrojona chodzeniem i wybuch pułapki — widz ma zobaczyć „MINA!” i BUM
+    else if (e.type === 'mina') ef = ['m', e.x, e.y, e.id];
+    else if (e.type === 'minaWybuch' || e.type === 'beczka') ef = ['x', e.x, e.y, e.id, e.type === 'beczka' ? 1 : 0];
+    else if (e.type === 'wybuch') ef = ['w', Math.round(e.x), Math.round(e.y), e.r];
     if (!ef) continue;
     r.efekty.push([++r.efektNr, ...ef]);
     if (r.efekty.length > EFEKTY_W_RUCHU) r.efekty.shift();

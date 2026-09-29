@@ -321,6 +321,41 @@ test('mina: robal podchodzi, po lontcie wybuch rani; beczki wybuchaja lancuchem'
   assert(a.hp < hp0, 'mina nie zranila robala');
 });
 
+test('rosnaca lawa zalewa skrzynki, miny i beczki — znikaja od razu z pluskiem', () => {
+  const st = S.createGame(4242, players(2), { sieciowa: true, ustawienia: { lawaOd: 1, lawaTempo: 40, zrzuty: 0 } });
+  const t = st.terrain;
+  // skrzynka i mina lezace na gruncie tuz nad lawa, beczka wyzej (ta zostaje)
+  const nisko = (x) => { for (let y = st.lava - 20; y > 0; y--) if (!T.solidAt(t, x, y) && T.solidAt(t, x, y + 1)) return y; return null; };
+  let x = 60, y = null;
+  for (; x < t.w - 60 && (y = nisko(x)) === null; x += 7);
+  assert(y !== null, 'brak gruntu nad lawa');
+  st.skrzynki = [{ id: 1, typ: 'apteczka', x, y }];
+  st.pulapki = [{ id: 1, typ: 'mina', x: x + 3, y, lont: -1 }, { id: 2, typ: 'beczka', x, y: 60, lont: -1 }];
+  const b = S.createGame(4242, players(2), { sieciowa: true, ustawienia: { lawaOd: 1, lawaTempo: 40, zrzuty: 0 } });
+  b.skrzynki = JSON.parse(JSON.stringify(st.skrzynki)); b.pulapki = JSON.parse(JSON.stringify(st.pulapki));
+  const lava0 = st.lava;
+  for (let i = 0; i < 8 && st.lava > y - 1; i++) { st.events.length = 0; nastepnaTura(st); nastepnaTura(b); }
+  assert(st.lava < lava0 && st.lava < y, 'lawa nie urosla ponad skrzynke');
+  assert(st.skrzynki.length === 0, 'skrzynka lezy pod lawa: ' + JSON.stringify(st.skrzynki));
+  assert(!st.pulapki.some((p) => p.id === 1), 'mina lezy pod lawa');
+  assert(st.pulapki.some((p) => p.id === 2 && p.y <= st.lava), 'beczka nad lawa zniknela');
+  assert(S.stateHash(st) === S.stateHash(b), 'rozny hash u dwoch klientow');
+});
+
+test('podglad na zywo niesie uzbrojenie i wybuch miny (widz widzi BUM w cudzej turze)', () => {
+  const st = S.createGame(21, players(2), { sieciowa: true, ustawienia: { pulapki: 0 } });
+  const a = S.activeWorm(st);
+  polka(st, a, 220);
+  a.y = Math.round(a.y); a.onGround = true;
+  st.pulapki = [{ id: 7, typ: 'mina', x: Math.round(a.x) + 12, y: Math.round(a.y), lont: -1 }];
+  const ev = [];
+  for (let i = 0; i < 400 && st.pulapki.length; i++) { st.events.length = 0; S.step(st); ev.push(...st.events); }
+  const mina = ev.find((e) => e.type === 'mina'), bum = ev.find((e) => e.type === 'minaWybuch');
+  assert(mina && mina.id === 7, 'zdarzenie mina bez id');
+  assert(bum && bum.id === 7, 'wybuch miny bez id');
+  assert(ev.some((e) => e.type === 'wybuch' && e.r > 0), 'brak zdarzenia wybuch');
+});
+
 test('pulapki w snapshocie: odbiorca ma ten sam stan co autor (lont tez)', () => {
   const st = S.createGame(99, players(3), { sieciowa: true });
   st.pulapki[0].lont = 40;
