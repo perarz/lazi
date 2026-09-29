@@ -1809,7 +1809,8 @@ function petla(teraz) {
     emotki: aktywneEmotki(),
     pingi: aktywnePingi(),
     akcesoria: akcesoriaPartii(),
-    zebraneSkrzynki: podglad.nr === st.turnNumber ? podglad.skrzynki : null
+    zebraneSkrzynki: podglad.nr === st.turnNumber ? podglad.skrzynki : null,
+    podgladPulapek: podglad.nr === st.turnNumber ? podglad : null
   });
   kamera.x -= tx; kamera.y -= ty;
   wstrzas *= Math.max(0, 1 - dt * 7);
@@ -2021,7 +2022,7 @@ function podgladNaZywo(dt, moge) {
   const ruch = net.ruch;
   for (const w of st.worms) if (w !== akt) w.widok = null;
   if (!akt) return;
-  if (podglad.nr !== st.turnNumber) podglad = { nr: st.turnNumber, efekt: 0, skrzynki: new Set() };
+  if (podglad.nr !== st.turnNumber) podglad = { nr: st.turnNumber, efekt: 0, skrzynki: new Set(), pulapki: new Set(), uzbrojone: new Set() };
   const gracz = S.wlasciciel(akt);
   if (ruch && ruch.nr === st.turnNumber && ruch.id === gracz && ruch.id !== mojeId) pokazEfekty(ruch, akt);
   if (moge || st.phase !== 'aim' || !ruch || ruch.nr !== st.turnNumber || ruch.id !== gracz || ruch.id === mojeId) {
@@ -2052,7 +2053,7 @@ function podgladNaZywo(dt, moge) {
 /* Cudza tura przed strzałem: widz nie liczy cudzego chodzenia, więc upadek,
    zebraną skrzynkę i śmierć zna tylko z podglądu (ruch.e: [nr, rodzaj, x, y, …]).
    Pokazujemy każde zdarzenie raz — w podglądzie lecą ostatnie, z numerami. */
-let podglad = { nr: -1, efekt: 0, skrzynki: new Set() };
+let podglad = { nr: -1, efekt: 0, skrzynki: new Set(), pulapki: new Set(), uzbrojone: new Set() };
 function pokazEfekty(ruch, akt) {
   if (!Array.isArray(ruch.e)) return;
   for (const e of ruch.e) {
@@ -2070,6 +2071,20 @@ function pokazEfekty(ruch, akt) {
       emitTekst(fx, x, y - 30, apteczka ? '+' + b + ' HP' : '+1 ' + (WEAPONS[b] ? WEAPONS[b].name : '?'),
         apteczka ? '#7dff9a' : '#ffd23b', 16);
       pokazInfo(akt.name + (apteczka ? ' zebrał apteczkę: +' + b + ' HP' : ' zebrał zaopatrzenie: +1 ' + (WEAPONS[b] ? WEAPONS[b].name : '?')));
+    } else if (rodzaj === 'm') {
+      // gracz z turą wlazł na minę (4.13): miga u widza tak samo jak u niego
+      podglad.uzbrojone.add(a);
+      emitTekst(fx, x, y - 24, 'MINA!', '#ff5a3a', 16);
+      D.graj('mina');
+    } else if (rodzaj === 'x') {
+      podglad.pulapki.add(a);
+      if (b) { emitTekst(fx, x, y - 30, 'BUM!', '#ffd23b', 18); D.graj('ogien'); }
+    } else if (rodzaj === 'w' && a > 0) {
+      // sam wybuch; krater w terenie widz dostanie ze strzałem albo pasem
+      D.graj('wybuch', { r: a });
+      emitExplosion(fx, x, y, a, R.kolorySkaly(renderer, x, y, a * 0.8));
+      kameraWybuch = { x, y, do: performance.now() + 900 };
+      wstrzas = Math.min(14, wstrzas + a * 0.16);
     }
   }
 }

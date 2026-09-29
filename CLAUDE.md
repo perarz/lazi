@@ -18,7 +18,7 @@ Stos technologiczny:
 - Bez bundlera, bez `package.json` i bez zależności npm. Zwykłe pliki HTML/CSS/JS, gra jako moduły ES,
   zrzutka jako klasyczne skrypty.
 
-Obecna wersja: **4.12 „Nowy panel Areny”** (`wersja.js`).
+Obecna wersja: **4.12.1 „Lawa połyka skrzynki i widać cudze miny”** (`wersja.js`).
 
 ---
 
@@ -218,7 +218,7 @@ PL, IP 96.62.223.169). Katalog `serwer/` to serwer: Node + WebSocket (`ws`).
 - Opcjonalnie ładniejszy adres serwera `arena.kacperlazarz.pl`: rekord DNS A → 96.62.223.169, ponowne
   `instaluj.sh` z nowym adresem, potem adres w czterech miejscach (wyżej) i wdrożenie.
 - Ostatnie wdrożenia: 4.8 = PR #28 (bez zmian serwera), 4.9 = PR #29 + `arena-aktualizuj` 2026-09-28 (konsola dostawcy).
-  4.10 = PR #31 (zmienia serwer — `arena-aktualizuj`, komendy dostał użytkownik). 4.11 i 4.12 bez zmian serwera.
+  4.10 = PR #31 (zmienia serwer — `arena-aktualizuj`, komendy dostał użytkownik). 4.11 i 4.12 = PR #32, bez zmian serwera. 4.12.1 bez zmian serwera.
 
 ---
 
@@ -473,7 +473,7 @@ Lekcje z kalibracji:
 | `src/render.js`, `src/fx.js` | Grafika (tu wolno trygonometrię i `Math.random`); w `render.js` też kamera, minimapa, pingi, nagrobki, miny i beczki, skrzynki, podgląd robala (`rysujPodgladRobala`, `mini` = kafelek akcesorium) i scena ekranu ładowania (`rysujSceneLadowania`) |
 | `src/osiagniecia-reguly.js` | Reguły osiągnięć — czyste funkcje. **Zdarzenie `strzal` sim wysyła PRZED skutkami broni** (od 4.11): strzelba, railgun i kij zabijają od razu, a reguły biorą broń tury z `strzal` — gdy szło po `smierc`, „Śrut w plecy” nigdy nie wpadał |
 | `src/kronika.js` | Kronika partii (4.11), czyste funkcje: `nowaKronika(gracze)`, `zdarzenieKroniki(k, e, ctx)` (kille, obrażenia, zgony — raz na robala, własne obrażenia, najlepsza tura; zasługa należy do gracza z turą) zwraca opis eliminacji do kroniki na ekranie, `podsumowanie(k)` = tabela + wyróżnienia (MVP, Strzał partii ≥ 30, Kamikaze ≥ 20, Pływak, Pacyfista) |
-| `test/sim.test.mjs`, `test/protokol.test.mjs` | Testy w Node (98 i 23) |
+| `test/sim.test.mjs`, `test/protokol.test.mjs` | Testy w Node (100 i 23) |
 
 ### Determinizm (święta zasada)
 - Symulacja (`sim.js`, `terrain.js`) używa tylko:
@@ -610,7 +610,7 @@ Lekcje z kalibracji:
   - W trakcie trwającej partii gospodarz niczego nie zmienia (`steruje` w `odswiezLobby`).
 - **Podgląd na żywo (`ruch`, co `RUCH_CO`)** niesie od 4.3 oprócz pozycji/celownika/mocy/broni (`b`) także
   życie `h`, zapas wybranej broni `z` i ostatnie ≤ 4 zdarzenia tury `e: [[nr, 'o'|'d'|'s', x, y, …]]`
-  (upadek, śmierć, skrzynka z `id`) — `zbierzEfekty` w `protokol.js`, tylko przed strzałem, bo ucieczkę widz
+  (upadek, śmierć, skrzynka z `id`; od 4.12.1 też `m` = mina uzbrojona, `x` = wybuch miny/beczki z `id`, `w` = wybuch — widz pokazuje BUM i chowa pułapkę przez `podgladPulapek` w `R.draw`; krater dostaje dopiero ze strzałem/pasem; `EFEKTY_W_RUCHU` = 6) — `zbierzEfekty` w `protokol.js`, tylko przed strzałem, bo ucieczkę widz
   symuluje sam. Świeże zdarzenie wysyła podgląd bez czekania na odstęp. Widz (`pokazEfekty` w `main.js`) pokazuje
   każde raz (po numerze), trzyma `widok.hp`/`widok.zapas`, chowa zebrane skrzynki (`zebraneSkrzynki` w `R.draw`),
   a przycisk broni na dole pokazuje broń gracza z turą i jego nick (`cudzaBron`). Limit `ruch` na serwerze: 600 B.
@@ -701,6 +701,7 @@ Lekcje z kalibracji:
     na gruncie, ≥ 80 px od robali. Są w snapshocie, `stanPoTurze`, strzale i pasie (`stanPulapek`/`ustawPulapki`, pole `l` = lont),
     bo gracz z turą może odpalić minę chodząc, a odbiorca nie symuluje jego chodzenia.
   - `stepPulapki`: spadają jak skrzynki, toną w lawie; mina łapie żywego robala w pobliżu (`MINA_LONT` 1,1 s, zdarzenie `mina`),
+    Pułapka i skrzynka pod lawą (`y > state.lava`) toną w każdym kroku, a przy wzroście lawy od razu (`zatopZalane` w `nextTurn`, 4.12.1, `WERSJA` = 9).
     `explode` i railgun ustawiają lont beczkom (`BECZKA_LONT`) i minom — **bez rekurencji**, więc łańcuch idzie krok po kroku.
     Faza `settle` czeka, aż żaden lont się nie pali.
   - Rysunek `drawPulapka` (dioda miny miga, beczka drży przed wybuchem).
@@ -871,6 +872,7 @@ więcej akcesoriów (np. czapki postaci ze zrzutki), ewentualnie konto także w 
   - **4.9** railgun, miny i beczki, nagrobki, kamera za pociskiem, pingi, dźwięki i muzyczka, 5 nowych tańców, okulary i buźka zamiast lamy i kilofa, bez ogonków, nowe skrzynki i tło, start gospodarza bez GOTOWY
   - **4.10** płonąca ropa z beczek (parzy i wypala ziemię), railgun wypala tunel w skale, 7 utworów muzyki zamiast jednej pętli, pusta arena znika od razu, nowe rogi GOATa
   - **4.12** nowy panel Areny: hangar z żywą sceną, ranga z paskiem, GRAJ (szybka gra), zakładki
+  - **4.12.1** lawa zalewa skrzynki i pułapki, widz widzi wybuch miny w cudzej turze
   - **4.11** „Arena 5× lepsza”: mocniejsze wybuchy, żywe robale, kronika eliminacji, podsumowanie partii z wyróżnieniami, rewanż jednym przyciskiem; naprawa „Śrut w plecy”
 
 ---
@@ -878,7 +880,7 @@ więcej akcesoriów (np. czapki postaci ze zrzutki), ewentualnie konto także w 
 ## 9. Testy i sprawdzanie
 
 ```
-node gra/test/sim.test.mjs        # symulacja, bronie, determinizm, drużyny, ustawienia, skrzynki, spawny, osiągnięcia, kamera, lina, most obracany, rozmiar mapy, kilka robali, railgun i tunel, miny i beczki, ogień, muzyka, kronika (98)
+node gra/test/sim.test.mjs        # symulacja, bronie, determinizm, drużyny, ustawienia, skrzynki, spawny, osiągnięcia, kamera, lina, most obracany, rozmiar mapy, kilka robali, railgun i tunel, miny i beczki, ogień, muzyka, kronika, zalewanie lawą (100)
 node gra/test/protokol.test.mjs   # protokół: lag, rozłączenia, ucieczka na żywo, lobby, ustawienia, partie 2v2, z własnymi zasadami i z kilkoma robalami, start bez GOTOWY (23, ~35 s)
 cd serwer && npm install && node test.mjs   # serwer na VPS: Arena (10) + konta, pokoje, akcesoria, czapki, puste areny (11) + zrzutka (7)
 ```
