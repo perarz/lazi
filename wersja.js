@@ -5,6 +5,18 @@
 (function () {
   var historia = [
     {
+      wersja: '4.13', data: '2026-09-29', tytul: 'Bananowa bomba, naturalne mapy ekstremalne i nowy panel',
+      zmiany: [
+        'Bananowa bomba zamiast kasetówki (klawisz 4, 1 sztuka na partię): skacze jak piłka, po 3 s wybucha i rozsypuje 5 bananów, które wybuchają przy pierwszym dotknięciu. Osiągnięcie „Deszcz odłamków” to teraz „Bananowy deszcz”.',
+        'Railgun słabszy: 45 obrażeń zamiast 75 (dalej przebija wszystko i wypala tunel).',
+        'Koniec z pingami: nie ma już przycisku 📍, klawisza P ani zaznaczania środkowym przyciskiem myszy.',
+        'Mapa ekstremalna jak w Wormsach: zamiast poszarpanego „mrowiska” są duże, obłe wyspy nad lawą z łagodnymi zboczami, wysokie góry, wielkie jaskinie, szerokie korytarze i wysepki na niebie.',
+        'Nowy panel Areny: na komputerze Szafa, Ranking i Osiągnięcia widać naraz obok siebie, bez klikania w zakładki (na telefonie zakładki zostały). Zamiast animowanej sceny jest portret Twojego robala, nie ma już paska obok rangi.',
+        'Nowe tło stron Areny zamiast pomarańczowej łuny z wersji 1.0: ciemne, z delikatną kratką. Karty, pola i przyciski mają spokojne, jasne obramowania zamiast pomarańczowych, a główne przyciski są pomarańczowe.',
+        'Gra z poprzednią wersją nie wystartuje (znaczek „STARA WERSJA” w lobby) — wystarczy odświeżyć stronę.'
+      ]
+    },
+    {
       wersja: '4.12.1', data: '2026-09-29', tytul: 'Lawa połyka skrzynki i widać cudze miny',
       zmiany: [
         'Rosnąca lawa zalewa apteczki, skrzynki z zapasem, miny i beczki — znikają z pluskiem, zamiast leżeć pod lawą.',

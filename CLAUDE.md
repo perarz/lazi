@@ -18,15 +18,15 @@ Stos technologiczny:
 - Bez bundlera, bez `package.json` i bez zależności npm. Zwykłe pliki HTML/CSS/JS, gra jako moduły ES,
   zrzutka jako klasyczne skrypty.
 
-Obecna wersja: **4.12.1 „Lawa połyka skrzynki i widać cudze miny”** (`wersja.js`).
+Obecna wersja: **4.13 „Bananowa bomba, naturalne mapy ekstremalne i nowy panel”** (`wersja.js`).
 
 ---
 
 ## 0. Pierwsze 5 minut
 
 1. Przeczytaj sekcje 1–3. Zasady i działanie serwera są ważniejsze niż cokolwiek innego.
-2. Ustaw gałąź. **Nazwę gałęzi podaje sesja** (instrukcje środowiska; ostatnio `claude/epic-rubin-ejixox` (4.10),
-   wcześniej `claude/fervent-babbage-dxyp1c`). Niżej `GAŁĄŹ` = ta nazwa:
+2. Ustaw gałąź. **Nazwę gałęzi podaje sesja** (instrukcje środowiska; ostatnio `claude/fervent-babbage-dxyp1c` (4.13),
+   wcześniej `claude/epic-rubin-ejixox` (4.10–4.12.1)). Niżej `GAŁĄŹ` = ta nazwa:
    `git fetch origin && git switch GAŁĄŹ && git merge --ff-only origin/master`.
    - Gdy ostatni PR z gałęzi jest scalony, master ją zawiera, więc to zwykłe przewinięcie. Jeśli PR jest
      jeszcze otwarty (przewinięcie się nie uda), pracuj dalej na gałęzi i dopisuj do tej samej wersji.
@@ -237,7 +237,8 @@ podgląd ruchu co 100 ms przez 15 s, strzał i stan po 6,5 KB, ucieczka co 120 m
 - Opcjonalnie ładniejszy adres serwera `arena.kacperlazarz.pl`: rekord DNS A → 96.62.223.169, ponowne
   `instaluj.sh` z nowym adresem, potem adres w czterech miejscach (wyżej) i wdrożenie.
 - Ostatnie wdrożenia: 4.8 = PR #28 (bez zmian serwera), 4.9 = PR #29 + `arena-aktualizuj` 2026-09-28 (konsola dostawcy).
-  4.10 = PR #31 (zmienia serwer — `arena-aktualizuj`, komendy dostał użytkownik). 4.11 i 4.12 = PR #32, bez zmian serwera. 4.12.1 bez zmian serwera.
+  4.10 = PR #31 (zmienia serwer — `arena-aktualizuj`, komendy dostał użytkownik). 4.11 i 4.12 = PR #32, bez zmian serwera. 4.12.1 = PR #33, bez zmian serwera.
+  4.13 bez zmian serwera (sama strona).
 
 ---
 
@@ -272,7 +273,7 @@ podgląd ruchu co 100 ms przez 15 s, strzał i stan po 6,5 KB, ucieczka co 120 m
 | `arena:token` | Token sesji konta Areny (od 4.6) |
 | `arena:akcesorium` | Akcesorium robala (4.7, kopia z konta; pusty napis = bez) |
 | `arena:dzwiek`, `arena:muzyka` | `'0'` = wyciszone efekty / muzyka w Arenie (4.9) |
-| `arena:zakladka` | Otwarta zakładka panelu Areny: `szafa` / `ranking` / `osiagniecia` (4.12) |
+| `arena:zakladka` | Otwarta zakładka panelu Areny: `szafa` / `ranking` / `osiagniecia` (4.12; od 4.13 zakładki są tylko poniżej 900 px) |
 | `arena:nazwa`, `arena:kolor`, `arena:bron`, `arena:staty`, `arena:osiagniecia` | Arena. Od 4.6 `staty` i `osiagniecia` to **kopia z konta** (nadpisywana po zalogowaniu i po każdym wyniku, czyszczona przy wylogowaniu) — czytają je reguły osiągnięć i profil na zrzutce |
 | `arena:stare-przeniesione` | `'1'` = dane sprzed kont już poszły do konta (tylko pierwsza rejestracja w przeglądarce je zabiera). `arena:id` z dawnych wersji nie jest już używane |
 
@@ -472,7 +473,7 @@ Lekcje z kalibracji:
 | Plik | Rola |
 |---|---|
 | `src/sim.js` | Symulacja (bez DOM): robale (1–3 na gracza), fizyka, bronie, tury, skrzynki, miny i beczki, snapshoty, hash stanu |
-| `src/terrain.js` | Generator mapy (seed → maska pikseli, szerokość 1536–4096, wysokość 1024 albo 1792 dla ekstremalnej, lawa od `h − 144`), kratery i mosty, punkty startu |
+| `src/terrain.js` | Generator mapy (seed → maska pikseli, szerokość 1536–4096, wysokość 1024 albo 1792 dla ekstremalnej, lawa od `h − 144`; ekstremalna od 4.13 osobną funkcją `mapaEkstremalna` + `wygladz`), kratery i mosty, punkty startu |
 | `src/weapons.js` | Tabela broni (liczby, bez logiki) i kolejność na pasku |
 | `src/rng.js` | `mulberry32`, szum, `hashNumbers`, `hashTekstu` |
 | `src/protokol.js` | Protokół sieciowy (bez DOM) — kto ma turę, co jest kanoniczne, kto wyrzuca nieobecnych |
@@ -485,11 +486,11 @@ Lekcje z kalibracji:
 | `src/druzyny.js` | Nazwy i kolory drużyn (`DRUZYNY`), tryby lobby (`TRYBY`) |
 | `src/ustawienia.js` | Ustawienia partii z lobby (`USTAWIENIA`: czas, hp, robale, mapa, rozmiar, bronie, zrzuty, pulapki, wiatr, lawaOd, lawaTempo; pozycje z `opcje` = lista, z `liczba` = wpisywane), `normalizuj`, `zLiczby`, `opisZmian` |
 | `src/emotki.js` | Emotki i tańce (`EMOTKI`: 5 emotek + 7 tańców), czasy i limit wysyłania |
-| `src/dzwieki.js` | Dźwięki i muzyka (4.9, muzyka od 4.10): Web Audio bez plików, `graj(nazwa, opcje)` pod zdarzenia w `obsluzZdarzenia`; instrumenty muzyki `BRZMIENIA` (fale, filtr, obwiednia, vibrato) i `PERKUSJA`; `muzykaStart/Stop` gra utwory z `muzyka.js` po kolei (losowa kolejność bez powtórki pod rząd, 1,5 s ciszy między nimi, nuty planowane 0,3 s do przodu), `przyZmianieUtworu` (nazwa w banerze i w tytule 🎵), ponowne włączenie muzyki = następny utwór; wyciszanie `arena:dzwiek` / `arena:muzyka`; kontekst budzi pierwszy gest, karta w tle go usypia; `_renderujOffline(id, sek)` tylko do testów (szczyt i RMS) |
+| `src/dzwieki.js` | Dźwięki i muzyka (4.9, muzyka od 4.10; dźwięk `ping` usunięty w 4.13): Web Audio bez plików, `graj(nazwa, opcje)` pod zdarzenia w `obsluzZdarzenia`; instrumenty muzyki `BRZMIENIA` (fale, filtr, obwiednia, vibrato) i `PERKUSJA`; `muzykaStart/Stop` gra utwory z `muzyka.js` po kolei (losowa kolejność bez powtórki pod rząd, 1,5 s ciszy między nimi, nuty planowane 0,3 s do przodu), `przyZmianieUtworu` (nazwa w banerze i w tytule 🎵), ponowne włączenie muzyki = następny utwór; wyciszanie `arena:dzwiek` / `arena:muzyka`; kontekst budzi pierwszy gest, karta w tle go usypia; `_renderujOffline(id, sek)` tylko do testów (szczyt i RMS) |
 | `src/muzyka.js` | Muzyka (4.10): 7 utworów „zapisanych nutami” w `UTWORY` (tonacja, tempo, styl, części z akordami co pół taktu, forma np. W A A* B A C B* K). `zbudujUtwor` składa z tego kroki szesnastkowe `[instrument, midi, długość, głośność]`: melodia z motywem, który wraca (m), odpowiedzią (o), kadencją (k) i wypełnieniem (p), wariant `X*` = nowe odpowiedzi + drugi głos tercję niżej; bas, akompaniament, arpeggio i bębny ze wzorów stylu (`STYLE`, `BASY`, `AKOMP`, `BEBNY`). Stały seed, bez Web Audio (testowalne w Node) |
 | `src/ekwipunek.js` | Ekwipunek broni jak w Worms Armageddon: rzędy (`GRUPY`), ikony SVG broni, otwieranie/zamykanie |
-| `src/input.js` | Klawiatura, przyciski dotykowe, przeciąganie/szczypanie (dwa palce = zoom + przesuwanie), PPM/Q = ekwipunek, E emotki, R obrót mostu, M cała mapa, P / środkowy przycisk = ping |
-| `src/render.js`, `src/fx.js` | Grafika (tu wolno trygonometrię i `Math.random`); w `render.js` też kamera, minimapa, pingi, nagrobki, miny i beczki, skrzynki, podgląd robala (`rysujPodgladRobala`, `mini` = kafelek akcesorium) i scena ekranu ładowania (`rysujSceneLadowania`) |
+| `src/input.js` | Klawiatura, przyciski dotykowe, przeciąganie/szczypanie (dwa palce = zoom + przesuwanie), PPM/Q = ekwipunek, E emotki, R obrót mostu, M cała mapa (środkowy przycisk myszy nic nie robi — pingi usunięte w 4.13) |
+| `src/render.js`, `src/fx.js` | Grafika (tu wolno trygonometrię i `Math.random`); w `render.js` też kamera, minimapa, nagrobki, miny i beczki, skrzynki, banany (`rysujBanana`), podgląd robala (`rysujPodgladRobala`, `mini` = kafelek akcesorium, `portret` = sam robal na przezroczystym tle do profilu) i scena ekranu ładowania (`rysujSceneLadowania`) |
 | `src/osiagniecia-reguly.js` | Reguły osiągnięć — czyste funkcje. **Zdarzenie `strzal` sim wysyła PRZED skutkami broni** (od 4.11): strzelba, railgun i kij zabijają od razu, a reguły biorą broń tury z `strzal` — gdy szło po `smierc`, „Śrut w plecy” nigdy nie wpadał |
 | `src/kronika.js` | Kronika partii (4.11), czyste funkcje: `nowaKronika(gracze)`, `zdarzenieKroniki(k, e, ctx)` (kille, obrażenia, zgony — raz na robala, własne obrażenia, najlepsza tura; zasługa należy do gracza z turą) zwraca opis eliminacji do kroniki na ekranie, `podsumowanie(k)` = tabela + wyróżnienia (MVP, Strzał partii ≥ 30, Kamikaze ≥ 20, Pływak, Pacyfista) |
 | `test/sim.test.mjs`, `test/protokol.test.mjs` | Testy w Node (100 i 23) |
@@ -516,11 +517,14 @@ Lekcje z kalibracji:
     render bierze szerokość z `buildTerrain` (`swiatW` dla kamery i lawy). Na szerszej mapie profil jest
     rozciągnięty, a liczba pięter/komór/skał rośnie proporcjonalnie (`ile`).
   - **Styl `ekstremalna`** (4.5) nie jest w losowaniu z seeda (`stylMapy` zwraca tylko 4 style) — przychodzi
-    z ustawień (`ust.mapa`) przez `createGame` → `createTerrain(…, { styl })`. Wysoka bryła od brzegu do brzegu,
-    9–12 wąskich pięter, 6–8 kominów i 7–10 ukośnych tuneli. Od 4.5.1 profil łączy wszystkie style: strefy
-    (`strefy`, szum 1D) mieszają góry i masyw, do tego `iglice` (prawie pod sufit, powierzchnia min. y=45),
-    `wawozy` do lawy i `przerwy` jak w archipelagu (z wiszącą skałą nad każdą); pas y < 36 jest zawsze pusty
-    (przerzut górą). Losowania tych elementów są tylko w gałęzi ekstremalnej — zwykłe mapy z seeda się nie zmieniły.
+    z ustawień (`ust.mapa`) przez `createGame` → `createTerrain(…, { styl })`. **Od 4.13 „jak w Wormsach”**
+    (użytkownikowi dawna wersja 4.5–4.12 z iglicami, 9–12 cienkimi piętrami i tunelami wydawała się za poszarpana):
+    osobna funkcja `mapaEkstremalna` — miękki profil z 3 oktaw (bez wysokich częstotliwości), 1–3 szerokie góry,
+    1–2 łagodne zatoki lawy między wyspami, brzegi schodzą do lawy; bryła tylko z szumu dużej skali (nawisy);
+    5–7 obłych jaskiń, 1–2 szerokie ukośne korytarze, 3–5 wysepek na niebie (`postrzep` 0,15); na koniec filtr
+    większościowy `wygladz` (r = 6, potem 3; sumy kroczące, liniowo) zaokrągla brzegi. Pas y < 36 zawsze pusty.
+    Test pilnuje „gładkości” (mało zmian skała/pustka w wierszu) i że szczyt jest wyżej niż 35% lawy.
+    Zwykłe mapy z seeda są bit w bit te same co przed 4.13 (sprawdzone porównaniem masek).
   - **Od 4.8 wysokość też jest zmienna**: ekstremalna ma `WYS_EKSTREMALNA` = 1792 (×1,75), zwykłe 1024. Teren niesie
     `t.h` i `t.lava0` (poziom lawy na start = `h − 144`); wszędzie `t.h` / `t.lava0` zamiast `WORLD_H` / `LAVA_Y`
     (w `render.js` `swiatH`, `swiatLawa`, `rozmiarSwiata()`). Liczba pięter, kominów i tuneli i wysokość reliefu rosną z `h`.
@@ -540,7 +544,18 @@ Lekcje z kalibracji:
 - **Ekran ładowania**: pełnoekranowe płótno `#ladowanie-scena` (`R.rysujSceneLadowania`: wyspy nad lawą, robal
   gracza z akcesorium strzela z bazooki, skrzynka na spadochronie), pasek z procentami, żarty (`TEKSTY_LADOWANIA`)
   i losowa porada (`PORADY`). `ladowanie(zadanie, nad)` trwa min. 1,8 s.
-- **Ekran Areny od 4.12** (siatka `grid-template-areas`: `hangar` na całą szerokość, pod nim `zakladki` | `areny`;
+- **Ekran Areny od 4.13** (użytkownik: „na PC zmieść wszystko na ekranie, bez zakładek”, bez animacji, inne tło i obramowania,
+  bez paska przy nicku): siatka `hangar hangar areny / szafa ranking areny / szafa osiagniecia areny / wersja wersja areny`
+  (`grid-template-rows: auto auto 1fr auto`), `.karta-zakladki { display: contents }` i każdy `.panel-zakladki` to osobna
+  karta z `h2.panel-tytul`. Poniżej 1320 px szafa na całą szerokość, ranking i osiągnięcia pod nią; poniżej 900 px jedna
+  kolumna i wracają zakładki (`pokazZakladke` przełącza klasę `.schowana`, nie atrybut `hidden` — globalnego
+  `[hidden] { display: none !important }` nie da się nadpisać na komputerze). Hangar = karta: okrągły portret
+  `#podglad-robala` (`R.rysujPodgladRobala(…, { portret: true })`, rysowany tylko po zmianie koloru/akcesorium/rozmiaru,
+  poświata w kolorze robala przez `--kolor-robala`), nick, ranga + „X killi do: …” (bez paska), GRAJ (bez pulsowania),
+  6 statystyk 3×2. Tło ekranów `--tlo-ekranu` (ciemny grafit z kratką z kropek i lekką łuną u góry — zamiast lawowej
+  łuny z 1.0, także logowanie i koniec), karty `--karta-tlo` + `--karta-krawedz` (jasna, cienka krawędź zamiast
+  pomarańczowych obwódek), pola i zwykłe przyciski z neutralną krawędzią, `.glowny` pełny pomarańczowy gradient.
+- **Ekran Areny w 4.12** (historycznie; siatka `grid-template-areas`: `hangar` na całą szerokość, pod nim `zakladki` | `areny`;
   poniżej 900 px: hangar, areny, zakładki): `.hangar` = płótno `#podglad-robala` z `R.rysujSceneLadowania(…, { baner: true })`
   (na szerokim ekranie robal na 60% szerokości, bo po lewej tekst), nick, ranga z paskiem (`#ranga-postep`, `#ranga-dalej`,
   progi `RANGI`), `#btn-graj` (szybka gra: najpełniejsza otwarta arena bez hasła i bez trwającej partii, inaczej nowa
@@ -641,7 +656,7 @@ Lekcje z kalibracji:
   świeże (≤ 6 s zegara serwera), `R.draw` dostaje `emotki` (dymek nad głową, taniec = przesunięcie i obrót
   rysunku w `drawWorm`). Panel `#emotki-panel` ma `pointer-events: auto` (HUD ma `none`). Od 4.5 przycisk 💬
   stoi obok broni na dole (`.rzad-broni` z `#btn-bron`, `#btn-obrot`, `#btn-emotki`), panel wisi tuż nad nim.
-- **Pingi (4.9)**: `{t:'ping', id, x, y}` w logu — jak emotka, `zloz` go nie zna. Wysyła każdy z partią na ekranie (także obserwator): przycisk 📍 `#btn-ping` włącza `trybPingu` (następne stuknięcie w planszę albo minimapę), klawisz **P** (pozycja myszy) i środkowy przycisk myszy (`onPing`/`trybPingu` w `input.js`), najwyżej co 0,9 s. `czytajEmotki` czyta też pingi (`dodajPing`, świeże ≤ 5 s, jeden na gracza), `R.draw` dostaje `pingi` (pinezka w kolorze gracza, rozmiar niezależny od zoomu, strzałka przy krawędzi, gdy poza kadrem), minimapa też.
+- **Pingi (4.9) usunięte w 4.13** na prośbę użytkownika (przycisk 📍, klawisz P, środkowy przycisk, rysowanie, minimapa). Stare zdarzenia `{t:'ping'}` w logu klient po prostu pomija.
 - **Obserwatorzy**: oczko 👁 z liczbą w HUD (`#obserwatorzy`) = obecni w pokoju spoza partii (albo po wyjściu).
 - **Kolory**: gracz wybiera kolor robala w panelu Areny (`PALETA`/`KOLORY` w `main.js`, 12 kolorów, zapis na koncie
   i w `arena:kolor`), kolor leci w `dolacz`. Przy kolizji `rozdzielKolory` zostawia go temu, kto dołączył wcześniej, reszta
@@ -653,7 +668,7 @@ Lekcje z kalibracji:
 - **Sterowanie**:
   - **A/D** ruch, **Spacja** skok, **W/S** lub mysz celowanie, **F/Enter** (przytrzymaj) strzał.
   - **1–0**, **-**, **=**, **[**, **]**, **\\** wybierają broń (kolejność `WEAPON_ORDER`).
-  - **E** emotki, **R** obrót mostu, **M** cała mapa, **P** albo środkowy przycisk myszy = ping.
+  - **E** emotki, **R** obrót mostu, **M** cała mapa.
   - **Ekwipunek** (`ekwipunek.js`): przycisk z aktualną bronią na dole HUD-u, **Q** albo **prawy przycisk
     myszy** otwiera siatkę broni w rzędach (Rakiety, Granaty, Na wroga, Sprzęt; nowa broń bez rzędu trafia
     do „Inne”). Wybór albo stuknięcie obok (`#ekw-tlo`) zamyka; Escape też. Widz może wybrać broń na swoją turę.
@@ -685,7 +700,7 @@ Lekcje z kalibracji:
 | 1 | Bazooka | pocisk | ∞ | wiatr, wybuch przy kontakcie (4.3: prędkość 882, zasięg ×1,5; wiatr ×1,35 u wszystkich) |
 | 2 | Granat | odbijany | ∞ | lont; 4.5: prędkość 820 (kasetówka 790, Święty GOAT 720) |
 | 3 | Strzelba | hitscan | ∞ | |
-| 4 | Kasetówka | odbijany | 2 | rozpada się na odłamki |
+| 4 | Bananowa bomba (id `banan`, od 4.13 zamiast kasetówki) | odbijany | 1 | sprężysta (`restitution` 0,62), lont 3 s, r 48 / dmg 40, potem 5 bananów (`bananek`, ukryta broń `pocisk`, r 38 / dmg 30) z tabeli `ODLAMKI_BANANA`; pole `odlamki` w broni = id pocisku z rozpadu. Osiągnięcie id `kasetowka` zostało (konta na serwerze), teraz „Bananowy deszcz” za `banan` |
 | 5 | Dynamit | podkładany | 2 | lont 6 s, ucieczka |
 | 6 | Nalot | celowany | 1 | rakiety z nieba; od 4.8 start rakiety przesunięty o dryf policzony z wysokości celu (lot ukośny + wiatr, tylko `sqrt`), więc trafia też wysoko; od 4.9 start z wysokości 1,5× mapy (`y0 = −h/2 − 40 − 22·i`) |
 | 7 | Koza (id `owca`) | owca | 1 | biega, przeskakuje przeszkody, wybucha przy wrogu; od 4.3.1 rysowana jako koza (render + ikona), id zostaje |
@@ -695,7 +710,7 @@ Lekcje z kalibracji:
 | - | Wiertło | wiertło | 2 | jedzie prosto bez grawitacji, co 8 kroków `carve` → tunel (zdarzenie `wiercenie` przemalowuje teren), na końcu mały wybuch |
 | = | Most | celowany | 3 | belka 90×7 px, do 260 px od robala, nie na robalu (`powodBrakuMostu`) |
 | [ | Święty GOAT | odbijany | 1 | jak granat, lont 3,5 s, promień 118 (największy), dmg 90, odrzut 480; napis „ALLELUJA!” przy wybuchu r ≥ 100 |
-| \\ | Railgun | railgun | 1 | 4.9: `strzalRailgun` — laser po prostej od `start` (wektor od strzelca) aż za mapę, co 2 px; przebija skałę i każdego robala (poza swoimi w drużynie), 75 obrażeń każdemu raz, odrzut 150; zdarzenie `railgun` (x0,y0,x1,y1,trafieni) → `emitLaser` w `fx.js`. **Od 4.10 wypala tunel** (`tunel: 7` = promień) w każdej skale nad lawą: odcinki wejście→wyjście (szczeliny ≤ 12 px sklejone), wycinane po przejściu lasera przez `T.wytnijTunel`; zdarzenie `tunel` → `dodajSadzeTunelu` (przemalowanie + okopcone brzegi) |
+| \\ | Railgun | railgun | 1 | 4.9: `strzalRailgun` — laser po prostej od `start` (wektor od strzelca) aż za mapę, co 2 px; przebija skałę i każdego robala (poza swoimi w drużynie), 45 obrażeń każdemu raz (do 4.12.1: 75), odrzut 150; zdarzenie `railgun` (x0,y0,x1,y1,trafieni) → `emitLaser` w `fx.js`. **Od 4.10 wypala tunel** (`tunel: 7` = promień) w każdej skale nad lawą: odcinki wejście→wyjście (szczeliny ≤ 12 px sklejone), wycinane po przejściu lasera przez `T.wytnijTunel`; zdarzenie `tunel` → `dodajSadzeTunelu` (przemalowanie + okopcone brzegi) |
 | ] | Lina ninja | lina (`narzedzie`) | 5 | nie strzał: `linaPrzelacz` (OGNIA/F zaczepia i puszcza, SKOK puszcza), `krokLiny` = wahadło (tylko sqrt) |
 
 - **Lina ninja (4.4)**: stan `w.lina = {x, y, dl}` tylko u gracza z turą, jak chodzenie — nie ma go w `stanRobali`,
@@ -720,7 +735,7 @@ Lekcje z kalibracji:
     na gruncie, ≥ 80 px od robali. Są w snapshocie, `stanPoTurze`, strzale i pasie (`stanPulapek`/`ustawPulapki`, pole `l` = lont),
     bo gracz z turą może odpalić minę chodząc, a odbiorca nie symuluje jego chodzenia.
   - `stepPulapki`: spadają jak skrzynki, toną w lawie; mina łapie żywego robala w pobliżu (`MINA_LONT` 1,1 s, zdarzenie `mina`),
-    Pułapka i skrzynka pod lawą (`y > state.lava`) toną w każdym kroku, a przy wzroście lawy od razu (`zatopZalane` w `nextTurn`, 4.12.1, `WERSJA` = 9).
+    Pułapka i skrzynka pod lawą (`y > state.lava`) toną w każdym kroku, a przy wzroście lawy od razu (`zatopZalane` w `nextTurn`, 4.12.1, `WERSJA` = 9; 4.13: `WERSJA` = 10 — banan, railgun 45, nowa ekstremalna).
     `explode` i railgun ustawiają lont beczkom (`BECZKA_LONT`) i minom — **bez rekurencji**, więc łańcuch idzie krok po kroku.
     Faza `settle` czeka, aż żaden lont się nie pali.
   - Rysunek `drawPulapka` (dioda miny miga, beczka drży przed wybuchem).
@@ -830,7 +845,7 @@ Każda większa rzecz to osobna wersja z testami i zrzutami; nowe dane „online
 - **Lont granatu 1–5 s** (wybór w ekwipunku, wartość w akcji `strzal`, `spawnProjectile` zamiast `weapon.fuse`).
 - **Bronie ekipy**: Babcia Nolliego (wolna „owca”), Spartańskie kopnięcie („THIS IS SPARTA”, wariant kija),
   Szarża słoni Kozaka (trzy duże kozy), Full box PowPowa (4 belki wokół robala — pionowy wariant `zbudujMost`).
-- **Klasyki WA**: bananowa bomba, rakieta samonaprowadzająca (skręt wektorem i `sqrt`, bez trygonometrii),
+- **Klasyki WA** (bananowa bomba jest od 4.13): rakieta samonaprowadzająca (skręt wektorem i `sqrt`, bez trygonometrii),
   moździerz, Uzi, trzęsienie ziemi, Armagedon (deszcz meteorów jak nalot).
 - **Plecak odrzutowy, spadochron** (ruch lokalny przed strzałem jak lina; w ucieczce nie, bo nagranie RLE tego nie umie).
 - **Skrzynka-pułapka** i skrzynka z losową super bronią. Broń „wybór robala” przy kilku robalach.
@@ -888,18 +903,19 @@ więcej akcesoriów (np. czapki postaci ze zrzutki), ewentualnie konto także w 
   - **4.7** pasek Fortnite/0 A.D./Arena w grze, panel + lobby na jednym ekranie, bez domyślnej areny, 5 akcesoriów robala, nowy ekran ładowania
   - **4.7.1** kurtyna przy przejściu zrzutka ↔ Arena, wejście na Arenę bez ekranu ładowania, Korona Króla GOATów za wszystkie osiągnięcia + 3 czapki
   - **4.8** 1–3 robale na gracza, wyższa mapa ekstremalna, celny nalot, minimapa i podgląd całej mapy
-  - **4.9** railgun, miny i beczki, nagrobki, kamera za pociskiem, pingi, dźwięki i muzyczka, 5 nowych tańców, okulary i buźka zamiast lamy i kilofa, bez ogonków, nowe skrzynki i tło, start gospodarza bez GOTOWY
+  - **4.9** railgun, miny i beczki, nagrobki, kamera za pociskiem, pingi (usunięte w 4.13), dźwięki i muzyczka, 5 nowych tańców, okulary i buźka zamiast lamy i kilofa, bez ogonków, nowe skrzynki i tło, start gospodarza bez GOTOWY
   - **4.10** płonąca ropa z beczek (parzy i wypala ziemię), railgun wypala tunel w skale, 7 utworów muzyki zamiast jednej pętli, pusta arena znika od razu, nowe rogi GOATa
   - **4.12** nowy panel Areny: hangar z żywą sceną, ranga z paskiem, GRAJ (szybka gra), zakładki
-  - **4.12.1** lawa zalewa skrzynki i pułapki, widz widzi wybuch miny w cudzej turze
   - **4.11** „Arena 5× lepsza”: mocniejsze wybuchy, żywe robale, kronika eliminacji, podsumowanie partii z wyróżnieniami, rewanż jednym przyciskiem; naprawa „Śrut w plecy”
+  - **4.12.1** lawa zalewa skrzynki i pułapki, widz widzi wybuch miny w cudzej turze
+  - **4.13** bananowa bomba zamiast kasetówki, railgun 45, bez pingów, mapa ekstremalna jak w Wormsach, panel Areny bez zakładek na PC, nowe tło i obramowania
 
 ---
 
 ## 9. Testy i sprawdzanie
 
 ```
-node gra/test/sim.test.mjs        # symulacja, bronie, determinizm, drużyny, ustawienia, skrzynki, spawny, osiągnięcia, kamera, lina, most obracany, rozmiar mapy, kilka robali, railgun i tunel, miny i beczki, ogień, muzyka, kronika, zalewanie lawą (100)
+node gra/test/sim.test.mjs        # symulacja, bronie, determinizm, drużyny, ustawienia, skrzynki, spawny, osiągnięcia, kamera, lina, most obracany, rozmiar mapy, kilka robali, railgun i tunel, miny i beczki, ogień, muzyka, kronika, zalewanie lawą, bananowa bomba, gładka ekstremalna (100)
 node gra/test/protokol.test.mjs   # protokół: lag, rozłączenia, ucieczka na żywo, lobby, ustawienia, partie 2v2, z własnymi zasadami i z kilkoma robalami, start bez GOTOWY (23, ~35 s)
 cd serwer && npm install && node test.mjs   # serwer na VPS: Arena (10) + konta, pokoje, akcesoria, czapki, puste areny (11) + zrzutka (7)
 ```
@@ -940,9 +956,12 @@ skończyć się właśnie wtedy — inaczej „różny stan” to tylko nieprzyj
   lokalny serwer (konta są w pamięci). Wejście przez `?pokoj=ID` z tokenem w `addInitScript` od razu otwiera lobby
   (do 4.8 adres się czyścił — naprawione w 4.8). Gospodarz może wystartować bez GOTOWY (`#btn-start-teraz`).
 - **Zrzuty samej grafiki bez serwera**: strona `gra/?serwer=`, w `evaluate` import `render.js`, `sim.js`, `fx.js`,
-  własne płótno, `S.createGame`, ręcznie ustawione robale/skrzynki/pułapki/emotki/pingi i `R.draw(…)` z kamerą
+  własne płótno, `S.createGame`, ręcznie ustawione robale/skrzynki/pułapki/emotki/pociski i `R.draw(…)` z kamerą
   o zadanym zoomie (tak robiono zrzuty skrzynek, akcesoriów i tańców w 4.9). Błąd „reading 'hidden'” z `main.js`
   po wyczyszczeniu `body` jest w tym trybie nieszkodliwy.
+  Własne płótno potrzebuje `r.viewW/viewH = innerWidth/innerHeight` i `ctx.setTransform(dpr…)` (inaczej `drawTlo` dostaje NaN).
+- **Podgląd samej mapy bez przeglądarki** (4.13): `createTerrain(seed, { szer, styl })` w Node i zapis maski do PNG
+  (`zlib` + ręczny nagłówek PNG, ~30 linii) — szybkie porównanie kształtów przed/po zmianie generatora.
 - **Scenariusz Areny**: 2 przeglądarki desktop + telefon („iPhone 13 landscape”), porównanie
   `window.__arena().hash` na granicy każdej tury.
   - Start: wszyscy zakładają konto (wyżej), gospodarz (pierwszy) klika tryb (`#lobby-tryb button:nth-child(2)` = 2 drużyny),
@@ -1016,7 +1035,7 @@ skończyć się właśnie wtedy — inaczej „różny stan” to tylko nieprzyj
 
 **Diagnostyka w przeglądarce**:
 - `window.__arena()`: hash stanu, tura (`turaLogu`, `turaLokalna`), faza, `aktywny` (gracz z turą), `robal` (id robala
-  z turą), `pingi`, kamera, statystyki sieci.
+  z turą), kamera, statystyki sieci.
 - `window.__minigra()`: stan ramki, trudność, `debug()` gry.
 
 ---

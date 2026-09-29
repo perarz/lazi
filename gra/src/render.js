@@ -206,7 +206,7 @@ function malujSadze(r, x0, x1) {
 
 /* Minimapa w rogu HUD-u (od 4.8): cały teren w skali, lawa, skrzynki, robale
    (aktywny z białą obwódką) i prostokąt tego, co widać na ekranie. */
-export function rysujMinimape(canvas, r, state, cam, pingi = null) {
+export function rysujMinimape(canvas, r, state, cam) {
   const dpr = Math.min(window.devicePixelRatio || 1, 2);
   const W = canvas.clientWidth, H = canvas.clientHeight;
   if (!W || !H) return;
@@ -233,17 +233,6 @@ export function rysujMinimape(canvas, r, state, cam, pingi = null) {
     ctx.arc(v.x * sx, (v.y - 8) * sy, w === akt ? 3.6 : 2.6, 0, 6.283);
     ctx.fill();
     if (w === akt) { ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.2; ctx.stroke(); }
-  }
-  // pingi (4.9): migające kółka w kolorze gracza
-  for (const p of pingi || []) {
-    const t = (performance.now() - p.od) / 1000;
-    ctx.strokeStyle = p.kolor;
-    ctx.lineWidth = 2;
-    ctx.globalAlpha = 0.5 + 0.5 * Math.sin(t * 10);
-    ctx.beginPath();
-    ctx.arc(p.x * sx, p.y * sy, 4 + (t * 6) % 5, 0, 6.283);
-    ctx.stroke();
-    ctx.globalAlpha = 1;
   }
   // kadr kamery
   const kw = r.viewW / cam.zoom, kh = r.viewH / cam.zoom;
@@ -428,78 +417,6 @@ export function draw(r, state, cam, fx, dt, opcje = {}) {
   }
 
   if (fx) drawFx(fx, ctx);
-  if (opcje.pingi) for (const p of opcje.pingi) drawPing(ctx, p, cam.zoom);
-  ctx.restore();
-  // pingi poza kadrem: strzałka przy krawędzi ekranu w kolorze gracza
-  if (opcje.pingi) for (const p of opcje.pingi) strzalkaPingu(ctx, r, cam, p);
-}
-
-/* Ping (4.9): pinezka z pulsującymi kręgami i nickiem — rozmiar niezależny od zoomu. */
-function drawPing(ctx, p, zoom) {
-  const s = 1 / Math.max(0.35, Math.min(1.6, zoom));
-  const znik = Math.min(1, (p.dl - p.t) / 0.6);
-  const wejscie = Math.min(1, p.t / 0.25);
-  ctx.save();
-  ctx.translate(p.x, p.y);
-  ctx.scale(s, s);
-  ctx.globalAlpha = znik;
-  for (let k = 0; k < 3; k++) {
-    const f = (p.t * 0.9 + k / 3) % 1;
-    ctx.globalAlpha = znik * (1 - f) * 0.8;
-    ctx.strokeStyle = p.kolor;
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.ellipse(0, 0, 8 + f * 34, (8 + f * 34) * 0.45, 0, 0, 6.283);
-    ctx.stroke();
-  }
-  ctx.globalAlpha = znik;
-  const skok = -Math.abs(Math.sin(p.t * 5)) * 6 * (1 - Math.min(1, p.t / 2)) - 30 * (1 - wejscie);
-  ctx.translate(0, skok);
-  // pinezka: kropla w kolorze gracza z białym środkiem
-  ctx.fillStyle = p.kolor;
-  ctx.strokeStyle = 'rgba(0,0,0,0.7)';
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.moveTo(0, 0);
-  ctx.bezierCurveTo(-4, -8, -12, -14, -12, -24);
-  ctx.arc(0, -24, 12, Math.PI, 0);
-  ctx.bezierCurveTo(12, -14, 4, -8, 0, 0);
-  ctx.fill();
-  ctx.stroke();
-  ctx.fillStyle = '#fff';
-  ctx.beginPath();
-  ctx.arc(0, -24, 4.5, 0, 6.283);
-  ctx.fill();
-  ctx.font = '800 13px system-ui, sans-serif';
-  ctx.textAlign = 'center';
-  ctx.lineJoin = 'round';
-  ctx.lineWidth = 3.5;
-  ctx.strokeStyle = 'rgba(0,0,0,0.8)';
-  ctx.strokeText(p.nick, 0, -42);
-  ctx.fillStyle = p.kolor;
-  ctx.fillText(p.nick, 0, -42);
-  ctx.restore();
-}
-
-function strzalkaPingu(ctx, r, cam, p) {
-  const sx = (p.x - cam.x) * cam.zoom + r.viewW / 2;
-  const sy = (p.y - cam.y) * cam.zoom + r.viewH / 2;
-  const m = 26;
-  if (sx >= m && sx <= r.viewW - m && sy >= m && sy <= r.viewH - m) return;
-  const x = Math.max(m, Math.min(r.viewW - m, sx)), y = Math.max(m, Math.min(r.viewH - m, sy));
-  const kat = Math.atan2(sy - y, sx - x);
-  ctx.save();
-  ctx.globalAlpha = Math.min(1, (p.dl - p.t) / 0.6) * (0.75 + 0.25 * Math.sin(p.t * 8));
-  ctx.translate(x, y);
-  ctx.rotate(kat);
-  ctx.fillStyle = p.kolor;
-  ctx.strokeStyle = 'rgba(0,0,0,0.75)';
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.moveTo(14, 0); ctx.lineTo(-8, -10); ctx.lineTo(-3, 0); ctx.lineTo(-8, 10);
-  ctx.closePath();
-  ctx.fill();
-  ctx.stroke();
   ctx.restore();
 }
 
@@ -1029,6 +946,31 @@ function drawNagrobek(ctx, r, state, w) {
   ctx.restore();
 }
 
+/* Banan (4.13): wygięty żółty sierp z brązowymi końcami, środek w (0, 0). */
+function rysujBanana(ctx, s) {
+  ctx.save();
+  ctx.scale(s, s);
+  ctx.fillStyle = '#ffd84a';
+  ctx.strokeStyle = '#6b4a10';
+  ctx.lineWidth = 1.1;
+  ctx.beginPath();
+  ctx.moveTo(-7, -3);
+  ctx.quadraticCurveTo(0, 7, 7, -3);
+  ctx.quadraticCurveTo(0, 2.5, -7, -3);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+  ctx.strokeStyle = 'rgba(255, 246, 180, 0.8)';
+  ctx.beginPath();
+  ctx.moveTo(-4, -0.5);
+  ctx.quadraticCurveTo(0, 3.6, 4, -0.5);
+  ctx.stroke();
+  ctx.fillStyle = '#5a3a10';
+  ctx.fillRect(-8, -4, 2, 2);
+  ctx.fillRect(6, -4, 2, 2);
+  ctx.restore();
+}
+
 function drawProjectile(ctx, p) {
   const weapon = WEAPONS[p.weapon];
   ctx.save();
@@ -1129,11 +1071,8 @@ function drawProjectile(ctx, p) {
 
   if (weapon.kind === 'pocisk') {
     ctx.rotate(Math.atan2(p.vy, p.vx));
-    if (weapon.id === 'odlamek') {
-      ctx.fillStyle = '#2d2a26';
-      ctx.beginPath();
-      ctx.arc(0, 0, 3.5, 0, 6.283);
-      ctx.fill();
+    if (weapon.id === 'bananek') {
+      rysujBanana(ctx, 1.15);
     } else {
       const dl = weapon.id === 'rakieta' ? 14 : weapon.id === 'rakietka' ? 12 : 18;
       ctx.fillStyle = weapon.id === 'rakieta' ? '#c9c2b6' : weapon.id === 'rakietka' ? '#d9c38a' : '#e8e2d8';
@@ -1142,6 +1081,22 @@ function drawProjectile(ctx, p) {
       ctx.beginPath();
       ctx.moveTo(dl / 2, 0); ctx.lineTo(dl / 2 - 6, -4); ctx.lineTo(dl / 2 - 6, 4);
       ctx.fill();
+    }
+  } else if (weapon.id === 'banan') {
+    // bananowa bomba (4.13): kręci się w locie, lont odlicza nad nią
+    ctx.save();
+    ctx.rotate(performance.now() / 1000 * 9 * (p.vx < 0 ? -1 : 1));
+    rysujBanana(ctx, 1.7);
+    ctx.restore();
+    if (p.fuse !== null) {
+      ctx.font = 'bold 13px system-ui, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillStyle = p.fuse < 1.5 ? '#ff3b23' : '#fff1c2';
+      ctx.strokeStyle = 'rgba(0,0,0,0.7)';
+      ctx.lineWidth = 3;
+      const napis = Math.ceil(p.fuse).toString();
+      ctx.strokeText(napis, 0, -18);
+      ctx.fillText(napis, 0, -18);
     }
   } else if (weapon.id === 'swiety') {
     // Święty GOAT: złota kula z rogami i aureolą, lont odlicza nad nią
@@ -1209,7 +1164,7 @@ function drawProjectile(ctx, p) {
     }
   } else {
     const dynamit = false;
-    ctx.fillStyle = weapon.id === 'kasetowa' ? '#5b4a8a' : '#3f4a35';
+    ctx.fillStyle = '#3f4a35';
     ctx.beginPath();
     ctx.arc(0, 0, 6, 0, 6.283);
     ctx.fill();
@@ -1217,13 +1172,6 @@ function drawProjectile(ctx, p) {
     ctx.beginPath();
     ctx.arc(-2, -2, 2, 0, 6.283);
     ctx.fill();
-    if (weapon.id === 'kasetowa') {
-      ctx.strokeStyle = '#ffd93b';
-      ctx.lineWidth = 1.5;
-      ctx.beginPath();
-      ctx.arc(0, 0, 3.5, 0, 6.283);
-      ctx.stroke();
-    }
     // lont miga tym szybciej, im bliżej wybuchu
     if (p.fuse !== null && !dynamit) {
       const blink = p.fuse < 1 ? (Math.floor(p.fuse * 10) % 2 === 0) : true;
@@ -1557,7 +1505,7 @@ function napisRobala(ctx, w, v, cx, cy, o) {
 
 /* Podgląd robala na ekranie wejścia (wybór koloru): ten sam rysunek co w grze,
    na kawałku gruntu, z bazooką w łapach i nickiem w wybranym kolorze. */
-export function rysujPodgladRobala(canvas, { kolor, nazwa, czas = 0, akc = null, mini = false }) {
+export function rysujPodgladRobala(canvas, { kolor, nazwa, czas = 0, akc = null, mini = false, portret = false }) {
   const dpr = Math.min(window.devicePixelRatio || 1, 2);
   const W = canvas.clientWidth || 150, H = canvas.clientHeight || 110;
   if (canvas.width !== Math.round(W * dpr) || canvas.height !== Math.round(H * dpr)) {
@@ -1566,6 +1514,22 @@ export function rysujPodgladRobala(canvas, { kolor, nazwa, czas = 0, akc = null,
   }
   const ctx = canvas.getContext('2d');
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  if (portret) {
+    // portret w profilu (4.13): sam robal na przezroczystym tle, z cieniem pod stopami — tło daje CSS
+    ctx.clearRect(0, 0, W, H);
+    const st = H * 0.88, sk = Math.max(0.5, Math.min(4.2, (st - 4) / 34, W / 34));
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.45)';
+    ctx.beginPath();
+    ctx.ellipse(W / 2, st + 2, 11 * sk, 2.6 * sk, 0, 0, 6.283);
+    ctx.fill();
+    ctx.save();
+    ctx.translate(W / 2, st);
+    ctx.scale(sk, sk);
+    drawWorm(ctx, { x: 0, y: 0, facing: 1, angle: -0.5, color: kolor, hp: 100, name: '', widok: null }, false, czas,
+      { ja: false, bron: null, moc: 0, akc: akcesorium(akc), bezNapisu: true });
+    ctx.restore();
+    return;
+  }
   const niebo = ctx.createLinearGradient(0, 0, 0, H);
   niebo.addColorStop(0, '#120806');
   niebo.addColorStop(1, '#4a1404');
@@ -1593,7 +1557,7 @@ export function rysujPodgladRobala(canvas, { kolor, nazwa, czas = 0, akc = null,
    i akcesorium) strzela z bazooki, na spadochronie leci skrzynka.
    Czysta grafika — nic z symulacji, więc wolno tu trygonometrię. */
 const gwiazdyLadowania = Array.from({ length: 70 }, () => [Math.random(), Math.random() * 0.6, 0.4 + Math.random() * 1.2, Math.random() * 6]);
-export function rysujSceneLadowania(canvas, { kolor, nazwa, czas = 0, akc = null, baner = false }) {
+export function rysujSceneLadowania(canvas, { kolor, nazwa, czas = 0, akc = null }) {
   const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
   const W = canvas.clientWidth || window.innerWidth, H = canvas.clientHeight || window.innerHeight;
   if (canvas.width !== Math.round(W * dpr) || canvas.height !== Math.round(H * dpr)) {
@@ -1643,11 +1607,9 @@ export function rysujSceneLadowania(canvas, { kolor, nazwa, czas = 0, akc = null
   ctx.fill();
   // wzgórze pod robalem i wyspa po prawej (cel strzału)
   // skala: na wąskim telefonie liczy się szerokość, na szerokim ekranie wysokość
-  // baner w hangarze (4.12): na szerokim ekranie robal po prawej stronie (po lewej jest tekst), trochę większy
-  const szeroki = baner && W >= 600;
-  const s = Math.max(0.7, Math.min(2.2, H / (baner ? 330 : 420), W / 330));
-  const robX = W * (szeroki ? 0.6 : 0.28), robY = H * (baner && !szeroki ? 0.8 : 0.74);
-  const celX = W * (szeroki ? 0.9 : 0.74), celY = H * (baner && !szeroki ? 0.76 : 0.7);
+  const s = Math.max(0.7, Math.min(2.2, H / 420, W / 330));
+  const robX = W * 0.28, robY = H * 0.74;
+  const celX = W * 0.74, celY = H * 0.7;
   const wyspa = (cx, cy, rx) => {
     const g = ctx.createLinearGradient(0, cy, 0, cy + rx * 0.9);
     g.addColorStop(0, '#7a5040');
