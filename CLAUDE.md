@@ -168,6 +168,25 @@ PL, IP 96.62.223.169). Katalog `serwer/` to serwer: Node + WebSocket (`ws`).
   albo sesja SSH.
 - `.vercelignore` wyklucza `serwer/` z publikacji na Vercelu.
 
+**Wydajność (pomiar 2026-09-29, lokalnie: Xeon 2,1 GHz, Node 22, bez TLS; boty grały tury jak klient 4.9 —
+podgląd ruchu co 100 ms przez 15 s, strzał i stan po 6,5 KB, ucieczka co 120 ms, pulsy, emotki, pingi)**
+| Obciążenie | CPU (1 rdzeń) | RAM serwera | Opóźnienie ruchu p50 / p99 | Wysyłka |
+|---|---|---|---|---|
+| pusto | 0% | ~60 MB | — | — |
+| 1 pokój × 8 | 0,7% | ~130 MB* | 1 / 5 ms | 49 KB/s |
+| 10 pokoi × 8 | 3,3% | ~138 MB* | 1 / 3 ms | 0,45 MB/s |
+| 39 pokoi × 8 (≈ limit aren z panelu) | 10% | ~167 MB* | 1 / 10 ms | 1,7 MB/s |
+| 99 pokoi × 8 | 21% | ~180 MB* | 1 / 15 ms | 4,5 MB/s (36 Mbit/s) |
+- \* RAM rośnie głównie od logowań (scrypt 16 MB na hasło; 40 logowań naraz: +65 MB, pamięć zostaje w procesie).
+- Długie granie: 39 pokoi × ~78 min gry → 168 → 233 MB, czyli ~1,7 MB na pokój na godzinę (log partii czyści dopiero `nowa`).
+- Wejście do trwającej partii (`hej` od 0) wysyła cały log: ~1 MB po 20 min, 3–6 MB i do 0,1 s pracy serwera po 2 h.
+- Rozmiary z symulacji (8 graczy): strzał/stan 3,5 KB (normalna), 6,5 KB (duża, 2 robale), 9,8 KB (ogromna ekstremalna, 3 robale).
+- Wniosek: przy limitach aplikacji (40 aren z panelu, 8 graczy + widzowie) serwer ma duży zapas; pierwsze skończy się
+  łącze (~46 KB/s na grający pokój, ~165 MB na godzinę), nie procesor ani RAM (`MemoryMax=1G`). Na VPS dochodzi Caddy (TLS).
+  Gdyby kiedyś trzeba było więcej: `rozeslij` robi `JSON.stringify` osobno dla każdego gracza — raz na pokój wystarczy.
+- Skrypty pomiaru (boty, próbkowanie `/proc/PID`) są w scratchpadzie sesji z 2026-09-29, nie w repo. Konta dla botów
+  przez `X-Forwarded-For` (lokalny serwer mu ufa), bo limit to 6 kont na IP na godzinę.
+
 ### 3.1 Konta Areny i pokoje (od 4.6)
 - **Arena jest tylko dla zalogowanych.** `serwer/konta.js`: nick (3–14 znaków, unikalny bez względu na wielkość
   liter) + hasło (min. 4), bez maila. Hasło tylko jako skrót `crypto.scrypt` z solą, token sesji = losowe 32 bajty,
