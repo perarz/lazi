@@ -242,11 +242,9 @@ export const WEAPONS = {
     id: 'napalm',
     name: 'Nalot ogniowy',
     key: ';',
-    kind: 'nalot',         // jak nalot, tylko z nieba lecą kanistry z płonącą benzyną (4.14)
-    rakiety: 5,
-    rozstaw: 34,
-    pocisk: 'kanister',
-    bezKorektyWiatru: true, // zwykły nalot poprawia start o wiatr — ten nie, więc wiatr znosi go daleko
+    kind: 'nalot',         // jak nalot, tylko z nieba leci gęsty deszcz płonącej benzyny (4.14.1)
+    deszczOgnia: true,     // sim.js: deszczOgnia — 72 krople, mocno znoszone przez wiatr, parzą za 5
+    rakiety: 0,
     radius: 0,
     damage: 0,
     knockback: 0,
@@ -254,24 +252,10 @@ export const WEAPONS = {
     bezMocy: true,
     celowany: true,
     amunicja: 1,
-    opis: 'Kanistry płonącej benzyny z nieba — uwaga, wiatr mocno je znosi!'
+    opis: 'Deszcz płonącej benzyny z nieba — parzy za 5, pali się długo, ale wiatr mocno go znosi!'
   },
 
   /* --- pociski pomocnicze --- */
-  kanister: {
-    id: 'kanister',
-    name: 'Kanister',
-    kind: 'pocisk',        // mały wybuch przy kontakcie i rozlana płonąca benzyna
-    speed: 0,
-    gravityFactor: 0.6,
-    windFactor: 1.1,       // ponad 2× mocniej niż rakieta nalotu
-    radius: 18,
-    damage: 10,
-    knockback: 110,
-    fuse: null,
-    ogien: 18,             // ile kropli płonącej benzyny rozlewa (beczka: 14)
-    ukryta: true
-  },
   bananek: {
     id: 'bananek',
     name: 'Banan',

@@ -1056,6 +1056,59 @@ button.maly { padding: 7px 12px; font-size: 12px; min-height: 36px; }
 .profil-staty b { font-size: 17px; font-weight: 400; white-space: nowrap; font-variant-numeric: tabular-nums; }
 .profil-staty small { font-size: 10.5px; opacity: 0.6; font-family: system-ui, sans-serif; text-align: center; }
 
+/* rangi za kille (4.15): klikalny pasek z kamieniami milowymi + rozwijana lista */
+.rangi, .rangi:hover:not(:disabled) {
+  grid-column: 1 / -1; display: block; width: 100%; text-align: left;
+  padding: 10px 14px 12px; border-radius: 14px; margin-top: 4px;
+  background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.07);
+}
+.rangi:hover:not(:disabled) { border-color: rgba(255, 200, 120, 0.3); background: rgba(255, 150, 40, 0.06); }
+.rangi-naglowek { display: flex; align-items: baseline; gap: 10px; }
+.rangi-naglowek b { font-weight: 400; font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; opacity: 0.75; }
+.rangi-naglowek small { font-size: 12px; color: #ffe4a8; font-variant-numeric: tabular-nums; font-family: system-ui, sans-serif; }
+.rangi-strzalka { margin-left: auto; opacity: 0.6; transition: transform 0.2s; }
+.rangi[aria-expanded="true"] .rangi-strzalka { transform: rotate(180deg); }
+.rangi-tor { display: block; padding: 22px 0 22px; }
+.rangi-wnetrze { position: relative; display: block; height: 8px; margin: 0 18px; border-radius: 999px; background: rgba(0, 0, 0, 0.45); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.07); }
+.rangi-wypelnienie {
+  position: absolute; left: 0; top: 0; bottom: 0; border-radius: inherit;
+  background: linear-gradient(90deg, #ff4a00, #ff8a14 55%, #ffd93b);
+  box-shadow: 0 0 12px rgba(255, 150, 30, 0.55);
+  transition: width 0.6s ease-out;
+}
+.rangi-kamienie { position: absolute; inset: 0; }
+.kamien { position: absolute; top: 50%; transform: translate(-50%, -50%); display: flex; flex-direction: column; align-items: center; }
+.kamien-ikona {
+  display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; font-size: 15px; line-height: 1;
+  background: #1c1a22; box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.14);
+}
+.kamien small { position: absolute; top: 34px; font-size: 10.5px; opacity: 0.6; font-variant-numeric: tabular-nums; font-family: system-ui, sans-serif; }
+.kamien.przed .kamien-ikona { filter: grayscale(1); opacity: 0.55; }
+.kamien.zdobyta .kamien-ikona { background: #3a1d08; box-shadow: inset 0 0 0 2px #ff8a14; }
+.kamien.obecna .kamien-ikona {
+  width: 38px; height: 38px; font-size: 19px; background: linear-gradient(180deg, #ffd24a, #ff7a14);
+  box-shadow: 0 0 0 3px rgba(255, 200, 60, 0.25), 0 0 18px rgba(255, 140, 20, 0.7);
+}
+.kamien.obecna small { top: 40px; opacity: 1; color: #ffe4a8; }
+.rangi-lista {
+  grid-column: 1 / -1; list-style: none; display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 6px;
+}
+.rangi-lista li {
+  display: grid; grid-template-columns: 30px minmax(0, 1fr) auto; align-items: center; gap: 10px;
+  padding: 8px 10px; border-radius: 10px; background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.06);
+}
+.rangi-lista-ikona { font-size: 20px; text-align: center; }
+.rangi-lista b { display: block; font-weight: 400; font-size: 13px; }
+.rangi-lista small { display: block; font-size: 11px; opacity: 0.6; font-family: system-ui, sans-serif; }
+.rangi-lista em { font-style: normal; font-size: 11px; font-family: system-ui, sans-serif; white-space: nowrap; opacity: 0.75; }
+.rangi-lista li.zdobyta em { color: #ffb347; opacity: 1; }
+.rangi-lista li.obecna { border-color: rgba(255, 200, 60, 0.55); background: rgba(255, 170, 30, 0.1); }
+.rangi-lista li.obecna em { color: #ffd93b; opacity: 1; }
+.rangi-lista li.przed .rangi-lista-ikona { filter: grayscale(1); opacity: 0.55; }
+@media (prefers-reduced-motion: reduce) {
+  .rangi-wypelnienie, .rangi-strzalka { transition: none; }
+}
+
 /* zakładki (tylko telefon/tablet) */
 .karta-zakladki .zakladki { gap: 6px; padding: 4px; margin-bottom: 14px; border-radius: 14px; background: rgba(0, 0, 0, 0.3); border: 1px solid rgba(255, 255, 255, 0.06); }
 .karta-zakladki .zakladki [role="tab"] {
