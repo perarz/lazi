@@ -67,7 +67,6 @@ export function attachInput(opts) {
     // Ekwipunek: Q otwiera i zamyka, Escape zamyka. W otwartym panelu Enter
     // i spacja „klikają” broń pod fokusem, a nie strzelają ani nie skaczą.
     if (e.code === 'Escape') { opts.zamknijEkwipunek?.(); return; }
-    if (e.code === 'KeyP') { e.preventDefault(); if (!e.repeat) pingTu(mysz || { x: plotno.clientWidth / 2, y: plotno.clientHeight / 2 }); return; }
     if (e.code === 'KeyQ') { e.preventDefault(); if (!e.repeat) opts.onEkwipunek?.(); return; }
     if (e.code === 'KeyE') { e.preventDefault(); if (!e.repeat) opts.onEmotki?.(); return; }
     if (e.code === 'KeyR') { e.preventDefault(); if (!e.repeat) opts.onObrot?.(); return; }
@@ -180,21 +179,13 @@ export function attachInput(opts) {
   }
   let srodekOd = null;
 
-  // ostatnia pozycja myszy nad planszą — klawisz P zaznacza tam punkt (4.9)
-  let mysz = null;
-  plotno.addEventListener('pointermove', (e) => { if (e.pointerType === 'mouse') mysz = punkt(e); });
-  plotno.addEventListener('pointerleave', () => { mysz = null; });
-  const pingTu = (p) => { const sw = opts.ekranNaSwiat(p.x, p.y); opts.onPing?.(sw.x, sw.y); };
-
   plotno.addEventListener('pointerdown', (e) => {
     // prawy przycisk myszy otwiera ekwipunek — jak w Worms Armageddon
     if (e.pointerType === 'mouse' && e.button === 2) { e.preventDefault(); opts.onEkwipunek?.(); return; }
-    // środkowy przycisk myszy zaznacza miejsce na mapie (ping, 4.9)
-    if (e.pointerType === 'mouse' && e.button === 1) { e.preventDefault(); pingTu(punkt(e)); return; }
+    // środkowy przycisk myszy: nic (bez przewijania strony)
+    if (e.pointerType === 'mouse' && e.button === 1) { e.preventDefault(); return; }
     if (e.pointerType === 'mouse' && e.button !== 0) return;
     e.preventDefault();
-    // tryb zaznaczania (📍): stuknięcie w planszę stawia znacznik zamiast celować
-    if (wskazniki.size === 0 && opts.trybPingu?.()) { pingTu(punkt(e)); return; }
     try { plotno.setPointerCapture(e.pointerId); } catch { /* nic */ }
     const p = punkt(e);
     wskazniki.set(e.pointerId, p);

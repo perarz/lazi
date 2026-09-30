@@ -2,7 +2,7 @@
    sim.js czyta stąd parametry, render.js kolory i nazwy.
 
    amunicja: ile sztuk ma każdy robal na całą partię (brak pola = bez limitu).
-   ukryta: pocisk pomocniczy (odłamek, rakieta nalotu) — nie da się go wybrać. */
+   ukryta: pocisk pomocniczy (banan z bananowej bomby, rakieta nalotu) — nie da się go wybrać. */
 
 export const WEAPONS = {
   bazooka: {
@@ -48,22 +48,22 @@ export const WEAPONS = {
     bezMocy: true,
     opis: 'Strzał po prostej, bez ładowania'
   },
-  kasetowa: {
-    id: 'kasetowa',
-    name: 'Kasetówka',
+  banan: {
+    id: 'banan',
+    name: 'Bananowa bomba',
     key: '4',
-    kind: 'odbijany',
+    kind: 'odbijany',      // jak w Worms: skacze jak piłka, po lontcie rozpada się na 5 bananów
     speed: 790,
     gravityFactor: 1,
     windFactor: 0.4,
-    restitution: 0.5,
-    radius: 30,
-    damage: 22,
-    knockback: 170,
-    fuse: 2.4,
-    odlamki: true,         // po wybuchu rozsypuje pięć odłamków
-    amunicja: 2,
-    opis: 'Granat, który rozsypuje odłamki'
+    restitution: 0.62,     // sprężysta — odbija się dużo mocniej niż granat
+    radius: 48,
+    damage: 40,
+    knockback: 240,
+    fuse: 3,
+    odlamki: 'bananek',    // po wybuchu rozsypuje pięć bananów (ODLAMKI_BANANA w sim.js)
+    amunicja: 1,
+    opis: 'Odbija się, po 3 s wybucha i sypie 5 bananów'
   },
   dynamit: {
     id: 'dynamit',
@@ -229,26 +229,26 @@ export const WEAPONS = {
     kind: 'railgun',       // jeden laser po prostej przez całą mapę: przebija skały i każdego robala
     przebija: true,
     tunel: 7,              // promień dziury, którą wypala w skale po drodze (4.10)
-    damage: 75,
+    damage: 45,            // 4.13: słabszy (dawniej 75)
     knockback: 150,
     radius: 0,
     fuse: null,
     bezMocy: true,
     amunicja: 1,
-    opis: 'Laser przez wszystko — 75 obrażeń każdemu na linii, dziura w każdej skale po drodze'
+    opis: 'Laser przez wszystko — 45 obrażeń każdemu na linii, dziura w każdej skale po drodze'
   },
 
   /* --- pociski pomocnicze --- */
-  odlamek: {
-    id: 'odlamek',
-    name: 'Odłamek',
-    kind: 'pocisk',
+  bananek: {
+    id: 'bananek',
+    name: 'Banan',
+    kind: 'pocisk',        // wybucha przy pierwszym kontakcie
     speed: 0,
     gravityFactor: 1,
-    windFactor: 0.54,
-    radius: 24,
-    damage: 20,
-    knockback: 150,
+    windFactor: 0.3,
+    radius: 38,
+    damage: 30,
+    knockback: 210,
     fuse: null,
     ukryta: true
   },
@@ -280,7 +280,7 @@ export const WEAPONS = {
   }
 };
 
-export const WEAPON_ORDER = ['bazooka', 'granat', 'strzelba', 'kasetowa', 'dynamit', 'nalot', 'owca', 'kij', 'teleport', 'salwa', 'wiertlo', 'most', 'swiety', 'lina', 'railgun'];
+export const WEAPON_ORDER = ['bazooka', 'granat', 'strzelba', 'banan', 'dynamit', 'nalot', 'owca', 'kij', 'teleport', 'salwa', 'wiertlo', 'most', 'swiety', 'lina', 'railgun'];
 
 /* Startowy zapas dla broni z limitem — ta sama wartość u każdego klienta.
    zestaw (ustawienia partii): 'pelny' (domyślny: limity, kij tylko ze skrzynek)

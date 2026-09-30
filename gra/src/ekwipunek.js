@@ -13,7 +13,7 @@ const NS = 'http://www.w3.org/2000/svg';
    sama trafia do rzędu „Inne”, więc nic nie zniknie z ekwipunku. */
 const GRUPY = [
   { nazwa: 'Rakiety', bronie: ['bazooka', 'salwa', 'nalot'] },
-  { nazwa: 'Granaty', bronie: ['granat', 'kasetowa', 'dynamit', 'swiety'] },
+  { nazwa: 'Granaty', bronie: ['granat', 'banan', 'dynamit', 'swiety'] },
   { nazwa: 'Na wroga', bronie: ['strzelba', 'railgun', 'owca', 'kij'] },
   { nazwa: 'Sprzęt', bronie: ['teleport', 'wiertlo', 'most', 'lina'] }
 ];
@@ -54,12 +54,13 @@ const IKONY = {
     '<rect x="11.5" y="7" width="7" height="4.6" rx="1.2" fill="#a7afb4" stroke="#3a4146" stroke-width="1"/>' +
     '<path d="M18 8.2l7.4-3.2 1 2-7.2 3.4z" fill="#cdd3d7" stroke="#3a4146" stroke-width=".9"/>' +
     '<circle cx="9.5" cy="7.8" r="2.6" fill="none" stroke="#ffd23b" stroke-width="1.5"/>',
-  kasetowa:
-    '<ellipse cx="14" cy="18.5" rx="8" ry="8.8" fill="#5b4a8a" stroke="#221a3a" stroke-width="1.4"/>' +
-    '<circle cx="14" cy="18.5" r="4" fill="none" stroke="#ffd93b" stroke-width="1.6"/>' +
-    '<ellipse cx="11" cy="14.6" rx="2.2" ry="2.8" fill="#a894e0" opacity=".45"/>' +
-    '<rect x="10.8" y="6.6" width="6.4" height="4.2" rx="1.1" fill="#a7afb4" stroke="#3a4146" stroke-width="1"/>' +
-    '<g fill="#2d2a26" stroke="#ffb347" stroke-width=".8"><circle cx="25" cy="10" r="2.2"/><circle cx="27" cy="18" r="2"/><circle cx="24.5" cy="26" r="2.2"/></g>',
+  banan:   // bananowa bomba (4.13): żółty banan z brązowymi końcami, lont i małe banany obok
+    '<path d="M5 12c1 9 8 15 17 13 3-.6 4.6-2 5.6-4-4 1.6-9 1.4-12.6-1.6C12 16.6 9.6 13 9 9.2z" fill="#ffd84a" stroke="#6b4a10" stroke-width="1.3" stroke-linejoin="round"/>' +
+    '<path d="M8 13.4c1.6 5.4 6.4 9.4 13 9.6" fill="none" stroke="#fff3a8" stroke-width="1.4" stroke-linecap="round" opacity=".8"/>' +
+    '<path d="M6.8 8.6l2.2-.8.6 1.6-2.2.8z" fill="#5a3a10"/><circle cx="27.6" cy="21" r="1.4" fill="#5a3a10"/>' +
+    '<path d="M8 8.4c-1-3 1-4.6 3.4-4.8" fill="none" stroke="#3a2a1a" stroke-width="1.4" stroke-linecap="round"/>' +
+    '<circle cx="11.6" cy="3.6" r="1.8" fill="#ffd23b"/>' +
+    '<g fill="#ffd84a" stroke="#6b4a10" stroke-width=".8"><path d="M22 6c.4 3 2.6 4.6 5.4 4.4-1.4 1.8-5.2 1.4-6.2-1.6z"/><path d="M25.4 13c.8 1.8 2.4 2.6 4.2 2.2-.8 1.4-3.6 1.2-4.6-.6z"/></g>',
   dynamit:
     '<g stroke="#5a0e08" stroke-width="1.1">' +
     '<rect x="6" y="11" width="6" height="17" rx="1.4" fill="#c62b1a"/><rect x="13" y="10" width="6" height="18" rx="1.4" fill="#d9361f"/><rect x="20" y="11" width="6" height="17" rx="1.4" fill="#c62b1a"/></g>' +

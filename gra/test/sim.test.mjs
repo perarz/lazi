@@ -246,7 +246,7 @@ test('strzelba trafia robala po prostej', () => {
   assert(b.hp < 100, 'strzelba nie trafila, hp=' + b.hp);
 });
 
-test('railgun przebija skale i trafia dwoch robali na linii (75), a w skale wypala tunel', () => {
+test('railgun przebija skale i trafia dwoch robali na linii (45), a w skale wypala tunel', () => {
   const st = S.createGame(21, players(3));
   const a = S.activeWorm(st);
   const [b, c] = st.worms.filter((w) => w !== a);
@@ -263,7 +263,7 @@ test('railgun przebija skale i trafia dwoch robali na linii (75), a w skale wypa
   S.ustawCelownik(st, kier > 0 ? 0 : Math.PI);
   assert(S.startCharging(st), 'nie da sie strzelic z railguna');
   S.releaseFire(st);
-  assert(b.hp === 25 && c.hp === 25, 'hp: ' + b.hp + ', ' + c.hp);
+  assert(b.hp === 100 - 45 && c.hp === 100 - 45, 'hp: ' + b.hp + ', ' + c.hp);
   assert(a.amunicja.railgun === 0, 'amunicja railguna: ' + a.amunicja.railgun);
   assert(st.events.some((e) => e.type === 'railgun' && e.trafieni === 2), 'brak zdarzenia railgun');
   // tunel: dziura na wysokości lasera przez całą grubość skały, nad i pod nią skała zostaje
@@ -471,9 +471,9 @@ test('pas niesie ogien, stan tury juz nie (ogien gasnie na granicy tur)', () => 
   assert(b.ogien.length === 0, 'smieci z sieci przeszly');
 });
 
-test('kasetowka rozsypuje odlamki', () => {
+test('bananowa bomba rozsypuje 5 bananow', () => {
   const st = S.createGame(21, players(2));
-  st.weapon = 'kasetowa';
+  st.weapon = 'banan';
   S.ustawCelownik(st, -Math.PI / 2 + 0.2 * S.activeWorm(st).facing);
   S.startCharging(st);
   st.power = 0.5;
@@ -802,7 +802,7 @@ test('rozmiar mapy: duza i mala maja inna szerokosc, spawny na gruncie, stan prz
   assert(zwykla.terrain.w === T.WORLD_W, 'standard nie ma 2048');
 });
 
-test('mapa ekstremalna: styl tylko z ustawien, gesta siec jaskin, spawny na gruncie', () => {
+test('mapa ekstremalna: styl tylko z ustawien, wyspy z jaskiniami, spawny na gruncie', () => {
   const st = S.createGame(12345, players(6), { sieciowa: true, ustawienia: { mapa: 'ekstremalna' } });
   assert(st.terrain.styl === 'ekstremalna', 'styl: ' + st.terrain.styl);
   // 4.8: ekstremalna jest wyższa (1,75×), lawa 144 px nad dnem, stan zna wysokość
@@ -818,14 +818,21 @@ test('mapa ekstremalna: styl tylko z ustawien, gesta siec jaskin, spawny na grun
   }
   assert(skala > pustka * 0.4 && pustka > skala * 0.15, 'ekstremalna nie wyglada na mrowisko: skala ' + skala + ', pustka ' + pustka);
   for (let seed = 1; seed < 200; seed += 23) assert(T.stylMapy(seed) !== 'ekstremalna', 'ekstremalna w losowaniu');
-  // 4.5.1: iglice prawie pod sufit, ale zostaje pas nieba na przerzut
+  // 4.13: wysokie góry i wysepki na niebie, ale zostaje pas nieba na przerzut
   let szczyt = st.terrain.h;
   for (let x = 100; x < st.terrain.w - 100; x += 2) {
     let y = 0;
     while (y < st.terrain.lava0 && !T.solidAt(st.terrain, x, y)) y++;
     szczyt = Math.min(szczyt, y);
   }
-  assert(szczyt < 120 && szczyt >= 36, 'szczyt ekstremalnej: ' + szczyt);
+  assert(szczyt < st.terrain.lava0 * 0.35 && szczyt >= 36, 'szczyt ekstremalnej: ' + szczyt);
+  // 4.13: gładko jak w Wormsach — mało „schodków” na brzegu skały (poszarpane mapy miały ich masę)
+  let zmian = 0, pikseli = 0;
+  for (let y = 40; y < st.terrain.lava0; y += 3) for (let x = 1; x < st.terrain.w; x++) {
+    pikseli++;
+    if (T.solidAt(st.terrain, x, y) !== T.solidAt(st.terrain, x - 1, y)) zmian++;
+  }
+  assert(zmian / pikseli < 0.004, 'ekstremalna za poszarpana: ' + (zmian / pikseli).toFixed(4));
 });
 
 test('wpisywane ustawienia: zycie, czas i runda lawy z zakresu, reszta odpada', () => {

@@ -52,8 +52,9 @@ export const LAWA_PO_RUNDACH = 6;
 const LAWA_ZA_TURE = 12;
 const LAWA_MIN = 40;                // od 4.3.1 mapy są wysokie — lawa dochodzi prawie pod sufit
 
-/* Pięć odłamków kasetówki — stała tabela, żadnej losowości. */
-const ODLAMKI = [[-160, -220], [-80, -290], [0, -330], [80, -290], [160, -220]];
+/* Pięć bananów z bananowej bomby — stała tabela, żadnej losowości.
+   Lecą szeroko i wysoko jak w Worms, każdy wybucha przy pierwszym kontakcie. */
+const ODLAMKI_BANANA = [[-230, -330], [-115, -420], [0, -470], [115, -420], [230, -330]];
 
 /* Zrzuty zaopatrzenia: od drugiej rundy, najwyżej tyle skrzynek naraz;
    szansa na zrzut (%) — state.ust.zrzuty. */
@@ -1119,8 +1120,8 @@ function detonate(state, p, index) {
   const weapon = WEAPONS[p.weapon];
   explode(state, p.x, p.y, weapon);
   if (weapon.odlamki) {
-    for (const [vx, vy] of ODLAMKI) {
-      spawnProjectile(state, WEAPONS.odlamek, p.x, p.y - 6, vx, vy, null);
+    for (const [vx, vy] of ODLAMKI_BANANA) {
+      spawnProjectile(state, WEAPONS[weapon.odlamki], p.x, p.y - 6, vx, vy, null);
     }
   }
 }

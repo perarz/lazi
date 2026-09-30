@@ -92,7 +92,7 @@ const OPISY_MAP = {
   archipelag: 'Mapa: Archipelag — między wyspami jest lawa. Skacz ostrożnie.',
   kaniony: 'Mapa: Kaniony — wąwozy do samej lawy i skalne łuki.',
   jaskinie: 'Mapa: Jaskinie — wielkie groty, nawisy i pływające skały. Granat się przyda.',
-  ekstremalna: 'Mapa: Ekstremalna — wszystkie mapy naraz: iglice pod niebo, wąwozy do lawy, wyspy, piętra jaskiń i tunele. Lina ninja w dłoń!'
+  ekstremalna: 'Mapa: Ekstremalna — wysokie wyspy nad lawą, wielkie jaskinie i wysepki na niebie. Lina ninja w dłoń!'
 };
 
 /* Statystyki gracza liczone wyłącznie w przeglądarce (localStorage) —
@@ -103,7 +103,7 @@ let kronika = null;                               // kronika partii (4.11): kill
 
 /* Ikony w kronice eliminacji (4.11). */
 const IKONY_ZABOJSTW = {
-  bazooka: '🚀', granat: '💣', strzelba: '🔫', kasetowa: '🎆', dynamit: '🧨', nalot: '✈️', owca: '🐐',
+  bazooka: '🚀', granat: '💣', strzelba: '🔫', banan: '🍌', dynamit: '🧨', nalot: '✈️', owca: '🐐',
   kij: '⚾', teleport: '✨', salwa: '🚀', wiertlo: '🔩', most: '🌉', swiety: '😇', railgun: '⚡', lina: '🪢'
 };
 
@@ -187,7 +187,7 @@ function rysujOsiagnieciaLobby() {
     li.append(ik, tekst);
     lista.append(li);
   }
-  el('osiagniecia-licznik').textContent = ile + '/' + OSIAGNIECIA.lista.length;
+  el('osiagniecia-licznik').textContent = el('osiagniecia-licznik2').textContent = ile + '/' + OSIAGNIECIA.lista.length;
 }
 
 function czytaj(k) { try { return localStorage.getItem(k); } catch { return null; } }
@@ -268,12 +268,6 @@ odswiezPrzyciskiDzwieku();
   };
   mini.addEventListener('pointerdown', (e) => {
     e.preventDefault();
-    if (trybPingu && rg) {
-      const r = mini.getBoundingClientRect();
-      const { w, h } = R.rozmiarSwiata();
-      wyslijPing((e.clientX - r.left) / r.width * w, (e.clientY - r.top) / r.height * h);
-      return;
-    }
     ciagne = true;
     try { mini.setPointerCapture(e.pointerId); } catch { /* nic */ }
     doSwiata(e);
@@ -297,7 +291,7 @@ function rysujMinimape(st) {
     const pion = window.matchMedia('(max-width: 560px)').matches;
     mini.style.top = pion && gora ? (gora.offsetTop + gora.offsetHeight + 6) + 'px' : '';
   }
-  if (minimapaKlatka++ % 2 === 0) R.rysujMinimape(mini, renderer, st, kamera, pingi);
+  if (minimapaKlatka++ % 2 === 0) R.rysujMinimape(mini, renderer, st, kamera);
 }
 
 /* Pasy ekranu zasłonięte przez HUD: u góry panele, u dołu bronie, moc
@@ -507,8 +501,9 @@ function zaznaczAkcesorium() {
 zaznaczKolor();
 zaznaczAkcesorium();
 
-/* Podgląd robala w profilu, kafelki akcesoriów i scena ładowania — tym samym kodem co w grze. */
-let podgladDziala = false, klatkaPodgladu = 0;
+/* Portret robala w profilu, kafelki akcesoriów i scena ładowania — tym samym kodem co w grze.
+   Od 4.13 portret stoi w miejscu: rysuje się od nowa tylko po zmianie koloru, akcesorium albo rozmiaru. */
+let podgladDziala = false, klatkaPodgladu = 0, podpisPortretu = '';
 function startPodgladu() {
   if (podgladDziala) return;
   podgladDziala = true;
@@ -520,8 +515,13 @@ function petlaPodgladu(t) {
   const czas = t / 1000;
   const dane = { kolor: mojKolor, nazwa: konto ? konto.nick : 'Ty', czas, akc: mojeAkcesorium };
   if (arena) {
-    // hangar (4.12): cała scena z wyspami i lawą, mój robal strzela z bazooki
-    R.rysujSceneLadowania(el('podglad-robala'), { ...dane, baner: true });
+    const portret = el('podglad-robala');
+    const podpis = mojKolor + '|' + mojeAkcesorium + '|' + portret.clientWidth + 'x' + portret.clientHeight;
+    if (podpis !== podpisPortretu) {
+      podpisPortretu = podpis;
+      portret.parentElement.style.setProperty('--kolor-robala', mojKolor);
+      R.rysujPodgladRobala(portret, { kolor: mojKolor, czas: 0, akc: mojeAkcesorium, mini: true, portret: true });
+    }
     // kafelki co trzecią klatkę — 24 małe płótna
     if (klatkaPodgladu++ % 3 === 0) {
       for (const k of kafelkiAkcesoriow) R.rysujPodgladRobala(k.plotno, { kolor: mojKolor, czas, akc: k.id, mini: true });
@@ -545,6 +545,7 @@ const PORADY = [
   'Po strzale masz 5 sekund na ucieczkę.',
   'Święty GOAT robi największy wybuch w grze. ALLELUJA!',
   'Kij jest tylko w skrzynkach z zapasami.',
+  'Bananowa bomba skacze jak piłka, a potem sypie 5 bananów.',
   'E otwiera emotki — GG działa też w cudzej turze.',
   'Wiatr pcha bazookę, granaty i naloty. Patrz na pasek u góry.',
   'Każdy kill ląduje na koncie i w rankingu.',
@@ -749,11 +750,10 @@ function rysujProfil() {
   if (!konto) return;
   el('profil-nick').textContent = konto.nick;
   const s = wczytajStaty();
-  // ranga i pasek do następnej (4.12)
+  // ranga i ile do następnej
   const nr = RANGI.reduce((n, [od], i) => (s.fragi >= od ? i : n), 0);
   el('profil-ranga').textContent = RANGI[nr][1];
   const dalej = RANGI[nr + 1];
-  el('ranga-postep').style.width = (dalej ? Math.max(4, (s.fragi - RANGI[nr][0]) / (dalej[0] - RANGI[nr][0]) * 100) : 100) + '%';
   el('ranga-dalej').textContent = dalej
     ? (dalej[0] - s.fragi) + (dalej[0] - s.fragi === 1 ? ' kill' : ' killi') + ' do: ' + dalej[1]
     : 'Najwyższa ranga. Szacun, GOAT.';
@@ -920,13 +920,14 @@ el('btn-graj').addEventListener('click', async () => {
   }
 });
 
-/* Zakładki panelu (4.12): Szafa, Ranking, Osiągnięcia — wybrana zapamiętana w przeglądarce. */
+/* Zakładki panelu (4.12): Szafa, Ranking, Osiągnięcia — wybrana zapamiętana w przeglądarce.
+   Od 4.13 tylko na telefonie; na komputerze trzy karty stoją obok siebie. */
 function pokazZakladke(nazwa) {
   for (const b of document.querySelectorAll('.karta-zakladki [role="tab"]')) {
     const tak = b.dataset.zakladka === nazwa;
     b.setAttribute('aria-selected', tak ? 'true' : 'false');
     b.tabIndex = tak ? 0 : -1;
-    el('panel-' + b.dataset.zakladka).hidden = !tak;
+    el('panel-' + b.dataset.zakladka).classList.toggle('schowana', !tak);   // chowa tylko na telefonie (CSS), na komputerze widać wszystkie
   }
   zapisz('arena:zakladka', nazwa);
 }
@@ -1599,8 +1600,6 @@ function zbudujGre() {
   rg = P.nowaRozgrywka(pokoj, mojeId);
   rg.ui.length = 0;       // teren i tak malujemy niżej w całości
   D.muzykaStart();
-  pingi = [];
-  ustawTrybPingu(false);
 
   if (!renderer) renderer = R.createRenderer(plotno);
   dopasujPlotno();
@@ -1625,8 +1624,6 @@ function zbudujGre() {
       onEmotki: () => przelaczEmotki(),
       onObrot: () => obrocMost(),
       onMapa: () => przelaczPodgladMapy(),
-      onPing: (x, y) => wyslijPing(x, y),
-      trybPingu: () => trybPingu,
       onLina: () => {
         const wynik = S.linaPrzelacz(rg.state);
         if (wynik === 'pudlo') pokazInfo('Lina nie sięga — celuj w skałę bliżej (do ok. 400 px).');
@@ -1807,7 +1804,6 @@ function petla(teraz) {
     rozlaczeni: rozlaczeni(),
     celNalotu: celNalotu(moge),
     emotki: aktywneEmotki(),
-    pingi: aktywnePingi(),
     akcesoria: akcesoriaPartii(),
     zebraneSkrzynki: podglad.nr === st.turnNumber ? podglad.skrzynki : null,
     podgladPulapek: podglad.nr === st.turnNumber ? podglad : null
@@ -1831,7 +1827,6 @@ function czytajEmotki() {
   if (emotkiIndeks > zd.length) emotkiIndeks = 0;     // nowa epoka — log od zera
   for (; emotkiIndeks < zd.length; emotkiIndeks++) {
     const z = zd[emotkiIndeks];
-    if (z && z.t === 'ping' && typeof z.id === 'string') { dodajPing(z); continue; }
     if (!z || z.t !== 'emotka' || typeof z.id !== 'string') continue;
     const def = emotka(z.e);
     if (!def || net.czas() - (z.st || 0) > 6000) continue;
@@ -1839,44 +1834,6 @@ function czytajEmotki() {
     D.graj('emotka');
   }
 }
-
-/* Pingi (4.9): { t: 'ping', id, x, y } w logu pokoju — znacznik na mapie widoczny dla
-   wszystkich przez PING_S sekund. Jak emotki: protokół partii go nie zna, symulacja też nie. */
-const PING_S = 5, PING_CO = 900;
-let pingi = [];                        // { id, x, y, od, kolor, nick }
-let ostatniPing = -Infinity, trybPingu = false;
-function dodajPing(z) {
-  if (typeof z.x !== 'number' || typeof z.y !== 'number' || net.czas() - (z.st || 0) > PING_S * 1000) return;
-  const g = pokoj && (pokoj.gracze.find((x) => x.id === z.id) || pokoj.wLobby.find((x) => x.id === z.id));
-  pingi = pingi.filter((p) => p.id !== z.id);       // jeden znacznik na gracza — nowy zastępuje stary
-  pingi.push({ id: z.id, x: z.x, y: z.y, od: performance.now(), kolor: (g && g.color) || '#ffe9c8', nick: g ? g.name : '?' });
-  if (pingi.length > 12) pingi.shift();
-  D.graj('ping');
-}
-function aktywnePingi() {
-  const teraz = performance.now();
-  pingi = pingi.filter((p) => teraz - p.od < PING_S * 1000);
-  return pingi.map((p) => ({ ...p, t: (teraz - p.od) / 1000, dl: PING_S }));
-}
-function wyslijPing(x, y) {
-  ustawTrybPingu(false);
-  if (!rg || !net) return;
-  const teraz = performance.now();
-  if (teraz - ostatniPing < PING_CO) return;
-  ostatniPing = teraz;
-  const { w, h } = R.rozmiarSwiata();
-  net.wyslij({ t: 'ping', id: mojeId, x: Math.round(Math.max(0, Math.min(w, x))), y: Math.round(Math.max(-300, Math.min(h, y))) });
-}
-function ustawTrybPingu(tak) {
-  trybPingu = !!tak;
-  el('btn-ping').setAttribute('aria-pressed', trybPingu ? 'true' : 'false');
-  document.body.classList.toggle('tryb-ping', trybPingu);
-  if (trybPingu) pokazInfo('Stuknij miejsce na mapie (albo na minimapie) — zobaczą je wszyscy.');
-}
-el('btn-ping').addEventListener('click', (e) => {
-  ustawTrybPingu(!trybPingu);
-  if (e.detail > 0) e.currentTarget.blur();
-});
 
 /* Akcesoria robali w partii (z 'nowa.gracze') — mapa id → akcesorium dla render.js. */
 let akcPodpis = null, akcMapa = new Map();
@@ -2738,7 +2695,6 @@ function odswiezHud(moge, teraz) {
   el('btn-obrot').hidden = !(moge && st.weapon === 'most');
   const moznaEmotki = mogeEmotki();
   el('btn-emotki').hidden = !moznaEmotki;
-  el('btn-ping').hidden = st.phase === 'over';
   if (!moznaEmotki && !panelEmotek.hidden) zamknijEmotki();
   const obs = liczObserwatorow();
   el('obserwatorzy').hidden = obs === 0;
@@ -2758,7 +2714,6 @@ window.__arena = () => ({
   turaLokalna: rg && rg.state.turnNumber,
   fazaLokalna: rg && rg.state.phase,
   aktywny: pokoj && pokoj.aktywny,
-  pingi: pingi.map((p) => p.nick + '@' + p.x + ',' + p.y),
   robal: rg && (() => { const w = S.activeWorm(rg.state); return w ? w.id : null; })(),   // robal z turą (4.8: gracz może mieć kilka)
   odeszli: pokoj ? [...pokoj.odeszli.keys()] : null,
   gracze: pokoj ? pokoj.gracze.map((g) => g.name) : null,

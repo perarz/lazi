@@ -66,20 +66,22 @@ export function createTerrain(seed, opcje = {}) {
   const W = opcje.szer || WORLD_W;
   const ekstremalna = opcje.styl === 'ekstremalna';
   const opc = { szer: W, styl: ekstremalna ? 'ekstremalna' : null };
-  // Od 4.8 ekstremalna jest wyższa (WYS_EKSTREMALNA): lawa zostaje 144 px nad dnem świata,
-  // a góry, piętra i kominy rosną razem z wysokością (hs).
+  // Od 4.8 ekstremalna jest wyższa (WYS_EKSTREMALNA): lawa zostaje 144 px nad dnem świata.
   const H = ekstremalna ? WYS_EKSTREMALNA : WORLD_H;
   const LV = H - (WORLD_H - LAVA_Y);
   const BR = Math.min(LV + 40, H);
-  const hs = H / WORLD_H;
   if (pamiec && pamiec.seed === seed && pamiec.w === W && pamiec.ekstremalna === ekstremalna) {
     return { mask: pamiec.mask.slice(), seed, craters: [], styl: pamiec.styl, w: W, h: H, lava0: LV, opcje: opc };
   }
   const rng = mulberry32(seed);
-  const styl = ekstremalna ? 'ekstremalna' : stylMapy(seed);
+  if (ekstremalna) {
+    const mask = mapaEkstremalna(rng, W, H, LV, BR);
+    pamiec = { seed, mask: mask.slice(), styl: 'ekstremalna', w: W, ekstremalna };
+    return { mask, seed, craters: [], styl: 'ekstremalna', w: W, h: H, lava0: LV, opcje: opc };
+  }
+  const styl = stylMapy(seed);
   const skala = W / WORLD_W;                    // na większej mapie więcej jaskiń, skał i pięter
   const ile = (n) => Math.max(1, Math.round(n * skala));
-  const ileH = (n) => Math.max(1, Math.round(n * skala * hs));   // pionowe elementy: też z wysokością
   const mask = new Uint8Array(W * H);
 
   // --- profil wyspy: kilka oktaw szumu 1D ---
@@ -98,24 +100,6 @@ export function createTerrain(seed, opcje = {}) {
   for (let i = 0, n = randInt(rng, 3, 5); i < n; i++) {
     ciecia.push({ u: randRange(rng, 0.18, 0.82), w: randRange(rng, 0.018, 0.04), g: randRange(rng, 0.3, 0.8) });
   }
-  // ekstremalna (4.5.1): wszystkie style naraz — strefy gór i masywów z jaskiniami,
-  // do tego iglice pod sufit, wąwozy do samej lawy i przerwy jak w archipelagu.
-  // Losowane tylko dla tego stylu, więc zwykłe mapy z seeda się nie zmieniają.
-  let strefy = null;
-  const iglice = [], wawozy = [], przerwy = [];
-  if (ekstremalna) {
-    strefy = valueNoise1D(rng, 5);
-    for (let i = 0, n = ile(randInt(rng, 4, 6)); i < n; i++) {
-      iglice.push({ u: randRange(rng, 0.08, 0.92), w: randRange(rng, 0.012, 0.03) / skala, h: randRange(rng, 0.35, 0.6) });
-    }
-    for (let i = 0, n = ile(randInt(rng, 2, 3)); i < n; i++) {
-      wawozy.push({ u: randRange(rng, 0.12, 0.88), w: randRange(rng, 0.012, 0.025) / skala, g: randRange(rng, 0.6, 1.0) });
-    }
-    for (let i = 0, n = ile(randInt(rng, 1, 2)); i < n; i++) {
-      przerwy.push({ u: randRange(rng, 0.2, 0.8), w: randRange(rng, 0.03, 0.05) / skala });
-    }
-  }
-
   const surface = new Float64Array(W);
   for (let x = 0; x < W; x++) {
     const u = x / W;
@@ -137,37 +121,17 @@ export function createTerrain(seed, opcje = {}) {
         const d = Math.abs(u - c.u) / c.w;
         if (d < 1) wys -= c.g * (1 - d * d) * (1 - d * d);
       }
-    } else if (styl === 'ekstremalna') {
-      // strefy: raz ostre góry, raz gruby masyw na jaskinie (płynne przejścia)
-      const r = 1 - Math.abs(2 * s - 1);
-      const gorska = 0.4 + r * r * 1.0;
-      const masyw = 0.72 + s * 0.3;
-      const m = smoothstep(0.35, 0.65, strefy(u * 3));
-      wys = masyw + (gorska - masyw) * m;
-      for (const c of iglice) {                  // iglice prawie pod sufit świata
-        const d = Math.abs(u - c.u) / c.w;
-        if (d < 1) wys += c.h * (1 - d * d) * (1 - d * d);
-      }
-      for (const c of wawozy) {                  // kaniony aż do lawy
-        const d = Math.abs(u - c.u) / c.w;
-        if (d < 1) wys -= c.g * (1 - d * d) * (1 - d * d);
-      }
-      for (const c of przerwy) {                 // archipelag: przerwa z lawą między wyspami
-        const d = Math.abs(u - c.u) / c.w;
-        if (d < 1) wys = wys * smoothstep(0.55, 1, d) - 0.15 * (1 - d);
-      }
     } else {
       wys = 0.3 + s * 0.75;
     }
 
     // Od 4.3 mapy sięgają prawie pod sufit świata (dawniej 430 px): wysokie
     // góry i miejsce na kilka pięter jaskiń jedna nad drugą.
-    const relief = wys * 660 * hs;
+    const relief = wys * 660;
     // Wygaszenie na brzegach (w pikselach, niezależnie od szerokości mapy): teren
     // schodzi pod lawę, więc powstaje wyspa, z której da się spaść.
-    const brzeg = ekstremalna ? 0.012 : 0.03, brzeg2 = ekstremalna ? 0.06 : 0.16;
-    const edge = smoothstep(brzeg, brzeg2, x / WORLD_W) * smoothstep(brzeg, brzeg2, (W - x) / WORLD_W);
-    surface[x] = Math.max(ekstremalna ? 45 : 110, LV - relief * edge);   // nad szczytem zostaje niebo na lot pocisków
+    const edge = smoothstep(0.03, 0.16, x / WORLD_W) * smoothstep(0.03, 0.16, (W - x) / WORLD_W);
+    surface[x] = Math.max(110, LV - relief * edge);   // nad szczytem zostaje niebo na lot pocisków
   }
 
   // --- bryła 2D: szum przesuwa powierzchnię w pionie i w poziomie,
@@ -176,7 +140,7 @@ export function createTerrain(seed, opcje = {}) {
   const n2 = szum2D(Math.floor(rng() * 2147483647));
   const n3 = szum2D(Math.floor(rng() * 2147483647));   // duża skala: wielkie nawisy i „szalone” bryły
   const nawisy = styl === 'jaskinie' ? 190 : styl === 'gory' ? 160 : 130;
-  const wielkie = styl === 'kaniony' ? 170 : ekstremalna ? 150 : 240;
+  const wielkie = styl === 'kaniony' ? 170 : 240;
   const PAS = 300;                              // do tej głębokości pod powierzchnią działa szum
 
   for (let x = 0; x < W; x++) {
@@ -201,39 +165,29 @@ export function createTerrain(seed, opcje = {}) {
 
   // --- piętra: długie, płaskie jaskinie jedna nad drugą — w grubym terenie
   //     powstaje kilka poziomów, po których da się chodzić (od 4.3) ---
-  const pietra = (ekstremalna ? ileH : ile)(ekstremalna ? randInt(rng, 9, 12) : randInt(rng, styl === 'jaskinie' ? 4 : 2, styl === 'jaskinie' ? 7 : 5));
+  const pietra = ile(randInt(rng, styl === 'jaskinie' ? 4 : 2, styl === 'jaskinie' ? 7 : 5));
   for (let i = 0; i < pietra; i++) {
     const cx = randRange(rng, W * 0.14, W * 0.86);
     const top = surface[Math.floor(cx)];
     const miejsca = LV - 70 - (top + 70);
     if (miejsca < 90) continue;
-    const ry = randRange(rng, ekstremalna ? 20 : 24, Math.min(ekstremalna ? 38 : 70, miejsca / 3));
+    const ry = randRange(rng, 24, Math.min(70, miejsca / 3));
     const cy = randRange(rng, top + 70 + ry, LV - 70 - ry);
     // pochylone i poszarpane mocniej niż zwykła komora — mają wyglądać dziko, nie jak pasy
     elipsa(cx, cy, randRange(rng, 150, 360), ry, 0, randRange(rng, -0.22, 0.22), 1.3);
   }
   // --- kominy: wąskie pionowe szyby, które łączą piętra ---
-  const kominy = (ekstremalna ? ileH : ile)(ekstremalna ? randInt(rng, 6, 8) : randInt(rng, 1, styl === 'jaskinie' ? 4 : 3));
+  const kominy = ile(randInt(rng, 1, styl === 'jaskinie' ? 4 : 3));
   for (let i = 0; i < kominy; i++) {
     const cx = randRange(rng, W * 0.18, W * 0.82);
     const top = surface[Math.floor(cx)];
     if (top > LV - 260) continue;
-    const ry = randRange(rng, 90, Math.min(ekstremalna ? 280 * hs : 190, (LV - top - 120) / 2));
+    const ry = randRange(rng, 90, Math.min(190, (LV - top - 120) / 2));
     const cy = randRange(rng, top + 40 + ry, LV - 80 - ry);
-    elipsa(cx, cy, randRange(rng, 20, ekstremalna ? 32 : 42), ry, 0, randRange(rng, -0.5, 0.5), 1);
-  }
-  // --- ekstremalna: ukośne tunele, które spinają piętra i kominy w jedną sieć ---
-  if (ekstremalna) {
-    const tunele = ileH(randInt(rng, 7, 10));
-    for (let i = 0; i < tunele; i++) {
-      const cx = randRange(rng, W * 0.08, W * 0.92);
-      const top = surface[Math.floor(cx)];
-      const cy = randRange(rng, top + 60, LV - 60);
-      elipsa(cx, cy, randRange(rng, 120, 260), randRange(rng, 13, 20), 0, randRange(rng, -0.9, 0.9), 1);
-    }
+    elipsa(cx, cy, randRange(rng, 20, 42), ry, 0, randRange(rng, -0.5, 0.5), 1);
   }
   // --- kilka komór i pływających skał ---
-  const komory = ile(ekstremalna ? randInt(rng, 2, 3) : randInt(rng, styl === 'jaskinie' ? 5 : 3, styl === 'jaskinie' ? 9 : 5));
+  const komory = ile(randInt(rng, styl === 'jaskinie' ? 5 : 3, styl === 'jaskinie' ? 9 : 5));
   for (let i = 0; i < komory; i++) {
     const cx = randRange(rng, W * 0.15, W * 0.85);
     const top = surface[Math.floor(cx)];
@@ -242,7 +196,7 @@ export function createTerrain(seed, opcje = {}) {
     elipsa(cx, cy, randRange(rng, 55, 170), randRange(rng, 30, 90), 0);
   }
   // --- wielkie jaskinie: wysokie hale z podłogą ---
-  const duze = ile(styl === 'jaskinie' || ekstremalna ? randInt(rng, 2, 3) : randInt(rng, 1, 2));
+  const duze = ile(styl === 'jaskinie' ? randInt(rng, 2, 3) : randInt(rng, 1, 2));
   for (let i = 0; i < duze; i++) {
     const cx = randRange(rng, W * 0.22, W * 0.78);
     const top = surface[Math.floor(cx)];
@@ -258,19 +212,122 @@ export function createTerrain(seed, opcje = {}) {
     const cy = Math.max(90, top - randRange(rng, 130, 300));
     elipsa(cx, cy, randRange(rng, 55, 130), randRange(rng, 16, 34), 1);
   }
-  // ekstremalna: wiszące skały nad przerwami — przejście „po kamieniach” nad lawą
-  for (const c of przerwy) {
-    const cx = c.u * W;
-    elipsa(cx, randRange(rng, 520 * hs, 700 * hs), randRange(rng, 40, 70), randRange(rng, 14, 22), 1);
-  }
-
-  // ekstremalna: pas nieba nad iglicami, żeby pocisk dało się przerzucić górą
-  if (ekstremalna) mask.fill(0, 0, 36 * W);
-
   usunOkruchy(mask, W, 450);
 
   pamiec = { seed, mask: mask.slice(), styl, w: W, ekstremalna };
   return { mask, seed, craters: [], styl, w: W, h: H, lava0: LV, opcje: opc };
+}
+
+/* Mapa ekstremalna od 4.13 — „jak w Wormsach”: 2–3 duże, obłe wyspy nad lawą z łagodnymi
+   zboczami, 1–3 wysokie góry, gładkie nawisy, kilka wielkich jaskiń, szerokie ukośne korytarze
+   i pływające wysepki na niebie. Bez drobnego szumu i cienkich pięter
+   (4.5–4.12 były poszarpane jak mrowisko); na koniec brzegi wygładza filtr większościowy,
+   więc skała ma okrągłe kształty. Tylko + - * /, sqrt, szum z haszy i mulberry32. */
+function mapaEkstremalna(rng, W, H, LV, BR) {
+  const skala = W / WORLD_W;
+  const ile = (n) => Math.max(1, Math.round(n * skala));
+  const mask = new Uint8Array(W * H);
+  const WYS = LV - 150;                         // największa wysokość gór nad lawą
+
+  // --- profil: miękkie wzgórza (tylko niskie częstotliwości) ---
+  const o1 = valueNoise1D(rng, 4), o2 = valueNoise1D(rng, 9), o3 = valueNoise1D(rng, 19);
+  const gory = [];                              // 1–3 wysokie, szerokie góry
+  for (let i = 0, n = ile(randInt(rng, 1, 3)); i < n; i++) {
+    gory.push({ u: randRange(rng, 0.12, 0.88), w: randRange(rng, 0.1, 0.17) / skala, h: randRange(rng, 0.2, 0.34) });
+  }
+  const zatoki = [];                            // łagodne doliny z lawą między wyspami
+  for (let i = 0, n = ile(randInt(rng, 1, 2)); i < n; i++) {
+    zatoki.push({ u: randRange(rng, 0.25, 0.75), w: randRange(rng, 0.13, 0.18) / skala });
+  }
+  const surface = new Float64Array(W);
+  for (let x = 0; x < W; x++) {
+    const u = x / W;
+    const s = o1(u * 4) * 0.55 + o2(u * 9) * 0.3 + o3(u * 19) * 0.15;
+    let wys = 0.36 + s * 0.4;
+    for (const g of gory) {
+      const d = Math.abs(u - g.u) / g.w;
+      if (d < 1) wys += g.h * (1 - d * d) * (1 - d * d);
+    }
+    for (const z of zatoki) {
+      const d = Math.abs(u - z.u) / z.w;
+      if (d < 1) wys *= smoothstep(0.15, 1, d);
+    }
+    // brzegi: wyspa łagodnie schodzi do lawy, a nie urywa się pionową ścianą
+    const edge = smoothstep(0.01, 0.2, x / WORLD_W) * smoothstep(0.01, 0.2, (W - x) / WORLD_W);
+    surface[x] = Math.max(170, LV + 40 - wys * WYS * edge);
+  }
+
+  // --- bryła: szum dużej skali przesuwa powierzchnię, więc są nawisy i półki, ale gładkie ---
+  const n1 = szum2D(Math.floor(rng() * 2147483647));
+  const n2 = szum2D(Math.floor(rng() * 2147483647));
+  const PAS = 280;
+  for (let x = 0; x < W; x++) {
+    const sx = surface[x];
+    for (let y = Math.max(0, Math.floor(sx - PAS)); y < BR; y++) {
+      const gl = y - sx;
+      if (gl > PAS) { mask[y * W + x] = 1; continue; }
+      const g = gl + (n1(x / 260, y / 220) - 0.5) * 260 + (n2(x / 110, y / 110) - 0.5) * 80;
+      mask[y * W + x] = g > 0 ? 1 : 0;
+    }
+  }
+  const gladka = (cx, cy, rx, ry, wartosc, nachyl) => ksztaltEllipsy(mask, W, BR, n2, cx, cy, rx, ry, wartosc, nachyl, 0.15);
+
+  // --- jaskinie: obłe hale w grubym terenie, jedna nad drugą, gdzie jest miejsce ---
+  for (let i = 0, n = ile(randInt(rng, 5, 7)); i < n; i++) {
+    const cx = randRange(rng, W * 0.12, W * 0.88);
+    const top = surface[Math.floor(cx)];
+    const miejsca = LV - 100 - (top + 120);
+    if (miejsca < 170) continue;
+    const ry = randRange(rng, 50, Math.min(115, miejsca / 2.4));
+    const cy = randRange(rng, top + 120 + ry, LV - 100 - ry);
+    gladka(cx, cy, randRange(rng, 140, 280), ry, 0, randRange(rng, -0.15, 0.15));
+  }
+  // --- ukośne korytarze: szerokie, łączą jaskinie ---
+  for (let i = 0, n = ile(randInt(rng, 1, 2)); i < n; i++) {
+    const cx = randRange(rng, W * 0.2, W * 0.8);
+    const top = surface[Math.floor(cx)];
+    if (top > LV - 420) continue;
+    const cy = randRange(rng, top + 180, LV - 180);
+    gladka(cx, cy, randRange(rng, 170, 260), randRange(rng, 30, 42), 0, (rng() < 0.5 ? -1 : 1) * randRange(rng, 0.35, 0.6));
+  }
+  // --- pływające wysepki na niebie: obłe, płaskie od spodu ---
+  for (let i = 0, n = ile(randInt(rng, 3, 5)); i < n; i++) {
+    const cx = randRange(rng, W * 0.1, W * 0.9);
+    const top = surface[Math.floor(cx)];
+    if (top < 380) continue;
+    const cy = randRange(rng, 170, top - 160);
+    gladka(cx, cy, randRange(rng, 80, 170), randRange(rng, 26, 46), 1, randRange(rng, -0.08, 0.08));
+  }
+
+  wygladz(mask, W, BR, 6);
+  wygladz(mask, W, BR, 3);
+  mask.fill(0, 0, 36 * W);                      // pas nieba na przerzut górą
+  usunOkruchy(mask, W, 900);
+  return mask;
+}
+
+/* Filtr większościowy: piksel jest skałą, gdy w kwadracie (2r+1)² wokół jest jej więcej niż pół.
+   Zaokrągla brzegi i zjada ostre kolce. Sumy kroczące, więc liniowo względem rozmiaru mapy. */
+function wygladz(mask, W, dno, r) {
+  const bok = 2 * r + 1, prog = (bok * bok) >> 1;
+  const wiersz = new Uint8Array(W * dno);       // sumy w poziomie (≤ 2r+1)
+  for (let y = 0; y < dno; y++) {
+    const o = y * W;
+    let suma = 0;
+    for (let x = -r; x <= r; x++) suma += mask[o + Math.min(W - 1, Math.max(0, x))];
+    for (let x = 0; x < W; x++) {
+      wiersz[o + x] = suma;
+      suma += mask[o + Math.min(W - 1, x + r + 1)] - mask[o + Math.max(0, x - r)];
+    }
+  }
+  for (let x = 0; x < W; x++) {
+    let suma = 0;
+    for (let y = -r; y <= r; y++) suma += wiersz[Math.min(dno - 1, Math.max(0, y)) * W + x];
+    for (let y = 0; y < dno; y++) {
+      mask[y * W + x] = suma > prog ? 1 : 0;
+      suma += wiersz[Math.min(dno - 1, y + r + 1) * W + x] - wiersz[Math.max(0, y - r) * W + x];
+    }
+  }
 }
 
 /* Elipsa z postrzępionym brzegiem: wartosc 0 wycina (komora), 1 dokłada (skała). */

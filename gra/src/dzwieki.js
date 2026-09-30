@@ -128,7 +128,6 @@ const EFEKTY = {
   apteczka() { [392, 523, 659].forEach((f, i) => ton('sine', f, f * 1.01, 0.18, 0.18, { opoz: i * 0.08 })); },
   mojaTura() { [392, 523, 659, 784].forEach((f, i) => ton('triangle', f, f, 0.16, 0.2, { opoz: i * 0.09 })); },
   tura() { ton('triangle', 440, 440, 0.12, 0.1); ton('triangle', 330, 330, 0.16, 0.1, { opoz: 0.1 }); },
-  ping() { ton('sine', 1320, 1320, 0.12, 0.2); ton('sine', 1760, 1760, 0.2, 0.18, { opoz: 0.1 }); },
   smierc() { ton('sawtooth', 500, 90, 0.6, 0.18, { filtr: ['lowpass', 1400] }); },
   ala() { ton('square', 700, 380, 0.14, 0.1, { filtr: ['lowpass', 1800] }); },
   teleport() { ton('sine', 300, 2400, 0.3, 0.2); ton('sine', 2400, 300, 0.3, 0.15, { opoz: 0.25 }); },

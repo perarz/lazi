@@ -16,7 +16,7 @@
     { id: 'nalot', ikona: '✈️', nazwa: 'Nalot dywanowy', opis: 'Wyeliminuj kogoś nalotem.' },
     { id: 'saper', ikona: '🧨', nazwa: 'Saper', opis: 'Wyeliminuj kogoś dynamitem.' },
     { id: 'snajper', ikona: '🎯', nazwa: 'Śrut w plecy', opis: 'Wyeliminuj kogoś ze strzelby.' },
-    { id: 'kasetowka', ikona: '🎆', nazwa: 'Deszcz odłamków', opis: 'Wyeliminuj kogoś kasetówką.' },
+    { id: 'kasetowka', ikona: '🍌', nazwa: 'Bananowy deszcz', opis: 'Wyeliminuj kogoś bananową bombą.' },
     { id: 'owca', ikona: '🐐', nazwa: 'Kozi róg', opis: 'Wyeliminuj kogoś kozą.' },
     { id: 'home-run', ikona: '⚾', nazwa: 'Home run', opis: 'Wybij kogoś kijem prosto do lawy.' },
     { id: 'dublet', ikona: '⚡', nazwa: 'Dublet', opis: 'Dwie eliminacje w jednej turze.' },
