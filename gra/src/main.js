@@ -743,19 +743,68 @@ function otworzArene() {
   }, 5000);
 }
 
-/* Ranga za kille — sam napis w profilu. */
-const RANGI = [[0, 'Świeżak areny'], [1, 'Pierwsza krew'], [5, 'Rekrut z bazooką'], [15, 'Weteran lawy'],
-  [30, 'Rzeźnik Areny'], [60, 'Postrach lobby'], [100, 'GOAT areny']];
+/* Rangi za kille: [od ilu killi, nazwa, ikona]. Od 4.15 w profilu jest pasek z kamieniami milowymi
+   (równo rozłożone rangi, wypełnienie do obecnej + ułamek drogi do następnej), a stuknięcie
+   rozwija listę wszystkich rang z tym, ile jeszcze brakuje. */
+const RANGI = [[0, 'Świeżak areny', '🐣'], [1, 'Pierwsza krew', '🩸'], [5, 'Rekrut z bazooką', '🚀'], [15, 'Weteran lawy', '🌋'],
+  [30, 'Rzeźnik Areny', '🔪'], [60, 'Postrach lobby', '😈'], [100, 'GOAT areny', '🐐']];
+const killi = (n) => n + (n === 1 ? ' kill' : n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 12 || n % 100 > 14) ? ' kille' : ' killi');
+function rysujRangi(fragi) {
+  const nr = RANGI.reduce((n, [od], i) => (fragi >= od ? i : n), 0);
+  const dalej = RANGI[nr + 1];
+  const ulamek = dalej ? (fragi - RANGI[nr][0]) / (dalej[0] - RANGI[nr][0]) : 0;
+  el('rangi-wypelnienie').style.width = ((nr + ulamek) / (RANGI.length - 1) * 100) + '%';
+  el('rangi-licznik').textContent = dalej ? fragi + ' / ' + dalej[0] + ' killi' : fragi + ' killi — komplet!';
+  const kamienie = el('rangi-kamienie');
+  kamienie.replaceChildren();
+  const lista = el('rangi-lista');
+  lista.replaceChildren();
+  RANGI.forEach(([od, nazwa, ikona], i) => {
+    const stan = i < nr ? 'zdobyta' : i === nr ? 'obecna' : 'przed';
+    const k = document.createElement('span');
+    k.className = 'kamien ' + stan;
+    k.style.left = (i / (RANGI.length - 1) * 100) + '%';
+    const ik = document.createElement('span');
+    ik.className = 'kamien-ikona';
+    ik.textContent = ikona;
+    const prog = document.createElement('small');
+    prog.textContent = od;
+    k.append(ik, prog);
+    kamienie.append(k);
+
+    const li = document.createElement('li');
+    li.className = stan;
+    const lik = document.createElement('span');
+    lik.className = 'rangi-lista-ikona';
+    lik.textContent = ikona;
+    const opis = document.createElement('span');
+    const b = document.createElement('b');
+    b.textContent = nazwa;
+    const sm = document.createElement('small');
+    sm.textContent = od === 0 ? 'na start' : 'od ' + killi(od);
+    opis.append(b, sm);
+    const st = document.createElement('em');
+    st.textContent = i < nr ? '✓ zdobyta' : i === nr ? '★ teraz' : 'brakuje ' + killi(od - fragi);
+    li.append(lik, opis, st);
+    lista.append(li);
+  });
+  return nr;
+}
+el('rangi').addEventListener('click', () => {
+  const otworz = el('rangi-lista').hidden;
+  el('rangi-lista').hidden = !otworz;
+  el('rangi').setAttribute('aria-expanded', otworz ? 'true' : 'false');
+});
 function rysujProfil() {
   if (!konto) return;
   el('profil-nick').textContent = konto.nick;
   const s = wczytajStaty();
-  // ranga i ile do następnej
-  const nr = RANGI.reduce((n, [od], i) => (s.fragi >= od ? i : n), 0);
-  el('profil-ranga').textContent = RANGI[nr][1];
+  // ranga, ile do następnej i pasek z kamieniami milowymi
+  const nr = rysujRangi(s.fragi);
+  el('profil-ranga').textContent = RANGI[nr][2] + ' ' + RANGI[nr][1];
   const dalej = RANGI[nr + 1];
   el('ranga-dalej').textContent = dalej
-    ? (dalej[0] - s.fragi) + (dalej[0] - s.fragi === 1 ? ' kill' : ' killi') + ' do: ' + dalej[1]
+    ? killi(dalej[0] - s.fragi) + ' do: ' + dalej[2] + ' ' + dalej[1]
     : 'Najwyższa ranga. Szacun, GOAT.';
   const lista = el('profil-staty');
   lista.replaceChildren();

@@ -220,6 +220,21 @@
           </div>
         </div>
         <ul class="profil-staty" id="profil-staty"></ul>
+        <!-- rangi za kille (4.15): pasek z kamieniami milowymi; stuknięcie rozwija listę wszystkich rang -->
+        <button type="button" class="rangi" id="rangi" aria-expanded="false" aria-controls="rangi-lista">
+          <span class="rangi-naglowek">
+            <b>Rangi za kille</b>
+            <small id="rangi-licznik"></small>
+            <span class="rangi-strzalka" aria-hidden="true">▾</span>
+          </span>
+          <span class="rangi-tor" aria-hidden="true">
+            <span class="rangi-wnetrze">
+              <span class="rangi-wypelnienie" id="rangi-wypelnienie"></span>
+              <span class="rangi-kamienie" id="rangi-kamienie"></span>
+            </span>
+          </span>
+        </button>
+        <ol class="rangi-lista" id="rangi-lista" hidden></ol>
       </section>
 
       <!-- szafa, ranking i osiągnięcia: na telefonie zakładki, na komputerze trzy karty obok siebie (4.13) -->

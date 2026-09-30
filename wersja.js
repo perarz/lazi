@@ -5,8 +5,9 @@
 (function () {
   var historia = [
     {
-      wersja: '4.14.1', data: '2026-09-30', tytul: 'Nalot ogniowy: deszcz ognia z nieba',
+      wersja: '4.14.1', data: '2026-09-30', tytul: 'Deszcz ognia z nieba i pasek rang',
       zmiany: [
+        'W profilu Areny nowy pasek rang za kille: wszystkie 7 rang jako kamienie milowe z ikonami (🐣 → 🐐) i progami, pasek wypełnia się tak daleko, jak zaszedłeś. Stuknij go, a rozwinie się lista rang — co już masz i ile killi brakuje do każdej kolejnej.',
         'Nalot ogniowy nie zrzuca już kanistrów — od razu z nieba leci gęsty deszcz płonącej benzyny (72 krople w wąskiej kolumnie), a kamera jedzie za nim.',
         'Ogień z nalotu pali się dużo dłużej (ok. 6 s po upadku, beczka ok. 2,5 s) i parzy za 5 zamiast 3. Parzy też w locie, więc lepiej nie stać pod deszczem.',
         'Wiatr dalej mocno go znosi: przy lekkim ok. 150 px od celu, przy najmocniejszym ponad 450 px. Ogień z beczek bez zmian.',

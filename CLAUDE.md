@@ -18,7 +18,7 @@ Stos technologiczny:
 - Bez bundlera, bez `package.json` i bez zależności npm. Zwykłe pliki HTML/CSS/JS, gra jako moduły ES,
   zrzutka jako klasyczne skrypty.
 
-Obecna wersja: **4.14.1 „Nalot ogniowy: deszcz ognia z nieba”** (`wersja.js`).
+Obecna wersja: **4.14.1 „Deszcz ognia z nieba i pasek rang”** (`wersja.js`).
 
 ---
 
@@ -551,8 +551,11 @@ Lekcje z kalibracji:
   kolumna i wracają zakładki (`pokazZakladke` przełącza klasę `.schowana`, nie atrybut `hidden` — globalnego
   `[hidden] { display: none !important }` nie da się nadpisać na komputerze). Hangar = karta: okrągły portret
   `#podglad-robala` (`R.rysujPodgladRobala(…, { portret: true })`, rysowany tylko po zmianie koloru/akcesorium/rozmiaru,
-  poświata w kolorze robala przez `--kolor-robala`), nick, ranga + „X killi do: …” (bez paska), GRAJ (bez pulsowania),
-  6 statystyk 3×2. Tło ekranów `--tlo-ekranu` (ciemny grafit z kratką z kropek i lekką łuną u góry — zamiast lawowej
+  poświata w kolorze robala przez `--kolor-robala`), nick, ranga + „X killi do: …”, GRAJ (bez pulsowania),
+  6 statystyk 3×2, a pod nimi (4.14.1, na prośbę użytkownika) **pasek rang** `#rangi` na całą szerokość karty: przycisk z
+  kamieniami milowymi (`RANGI` = [próg, nazwa, ikona], rozłożone równo; wypełnienie = obecna + ułamek drogi do następnej;
+  stany `zdobyta`/`obecna`/`przed`), stuknięcie rozwija `#rangi-lista` (każda ranga: próg, „✓ zdobyta”, „★ teraz”, „brakuje N killi”).
+  Buduje go `rysujRangi(fragi)` w `rysujProfil`; `killi(n)` odmienia kill/kille/killi. Tło ekranów `--tlo-ekranu` (ciemny grafit z kratką z kropek i lekką łuną u góry — zamiast lawowej
   łuny z 1.0, także logowanie i koniec), karty `--karta-tlo` + `--karta-krawedz` (jasna, cienka krawędź zamiast
   pomarańczowych obwódek), pola i zwykłe przyciski z neutralną krawędzią, `.glowny` pełny pomarańczowy gradient.
 - **Ekran Areny w 4.12** (historycznie; siatka `grid-template-areas`: `hangar` na całą szerokość, pod nim `zakladki` | `areny`;
@@ -918,7 +921,7 @@ więcej akcesoriów (np. czapki postaci ze zrzutki), ewentualnie konto także w 
   - **4.12.1** lawa zalewa skrzynki i pułapki, widz widzi wybuch miny w cudzej turze
   - **4.13** bananowa bomba zamiast kasetówki, railgun 45, bez pingów, mapa ekstremalna jak w Wormsach, panel Areny bez zakładek na PC, nowe tło i obramowania
   - **4.14** nalot ogniowy (kanistry z płonącą benzyną, mocno znoszone przez wiatr)
-  - **4.14.1** nalot ogniowy jako gęsty deszcz ognia z nieba, pali się dłużej, parzy za 5
+  - **4.14.1** nalot ogniowy jako gęsty deszcz ognia z nieba, pali się dłużej, parzy za 5; klikalny pasek rang za kille w profilu
 
 ---
 
