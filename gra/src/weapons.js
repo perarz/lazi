@@ -238,7 +238,40 @@ export const WEAPONS = {
     opis: 'Laser przez wszystko — 45 obrażeń każdemu na linii, dziura w każdej skale po drodze'
   },
 
+  napalm: {
+    id: 'napalm',
+    name: 'Nalot ogniowy',
+    key: ';',
+    kind: 'nalot',         // jak nalot, tylko z nieba lecą kanistry z płonącą benzyną (4.14)
+    rakiety: 5,
+    rozstaw: 34,
+    pocisk: 'kanister',
+    bezKorektyWiatru: true, // zwykły nalot poprawia start o wiatr — ten nie, więc wiatr znosi go daleko
+    radius: 0,
+    damage: 0,
+    knockback: 0,
+    fuse: null,
+    bezMocy: true,
+    celowany: true,
+    amunicja: 1,
+    opis: 'Kanistry płonącej benzyny z nieba — uwaga, wiatr mocno je znosi!'
+  },
+
   /* --- pociski pomocnicze --- */
+  kanister: {
+    id: 'kanister',
+    name: 'Kanister',
+    kind: 'pocisk',        // mały wybuch przy kontakcie i rozlana płonąca benzyna
+    speed: 0,
+    gravityFactor: 0.6,
+    windFactor: 1.1,       // ponad 2× mocniej niż rakieta nalotu
+    radius: 18,
+    damage: 10,
+    knockback: 110,
+    fuse: null,
+    ogien: 18,             // ile kropli płonącej benzyny rozlewa (beczka: 14)
+    ukryta: true
+  },
   bananek: {
     id: 'bananek',
     name: 'Banan',
@@ -280,7 +313,7 @@ export const WEAPONS = {
   }
 };
 
-export const WEAPON_ORDER = ['bazooka', 'granat', 'strzelba', 'banan', 'dynamit', 'nalot', 'owca', 'kij', 'teleport', 'salwa', 'wiertlo', 'most', 'swiety', 'lina', 'railgun'];
+export const WEAPON_ORDER = ['bazooka', 'granat', 'strzelba', 'banan', 'dynamit', 'nalot', 'owca', 'kij', 'teleport', 'salwa', 'wiertlo', 'most', 'swiety', 'lina', 'railgun', 'napalm'];
 
 /* Startowy zapas dla broni z limitem — ta sama wartość u każdego klienta.
    zestaw (ustawienia partii): 'pelny' (domyślny: limity, kij tylko ze skrzynek)

@@ -82,7 +82,7 @@ const OGIEN_ZASIEG = 12;           // px w bok od płomienia do robala
 const OGIEN_WYPAL = 48;            // wypalanie gruntu co 0,4 s…
 const OGIEN_WYPAL_MAX = 3;         // …najwyżej tyle razy z jednej kropli
 const OGIEN_WYPAL_R = 6;
-const OGIEN_MAX = 56;
+const OGIEN_MAX = 130;             // 4.14: nalot ogniowy rozlewa 5 × 18 kropli (dawniej 56)
 export const APTECZKA_HP = 35;
 const HP_MAX = 150;
 const INNE_ZAPASY = WEAPON_ORDER.filter((id) => WEAPONS[id].amunicja !== undefined && id !== 'kij');
@@ -567,8 +567,9 @@ export function applyFire(state, action) {
     // Od 4.8 start każdej rakiety liczymy z wysokości celu: ile spada (grawitacja rakiety),
     // tyle zdąży ją znieść ukośny lot i wiatr — więc trafia w punkt także na wysokich
     // szczytach (dawniej stałe 70 px przesunięcia = pudło obok celu stojącego wysoko).
-    const rak = WEAPONS.rakieta;
-    const a = GRAVITY * rak.gravityFactor, aw = state.wind * rak.windFactor;
+    // Nalot ogniowy (4.14) zrzuca kanistry i nie poprawia startu o wiatr — wiatr znosi go daleko.
+    const rak = WEAPONS[weapon.pocisk || 'rakieta'];
+    const a = GRAVITY * rak.gravityFactor, aw = weapon.bezKorektyWiatru ? 0 : state.wind * rak.windFactor;
     for (let i = 0; i < n; i++) {
       // od 4.9 rakiety startują z wysokości 1,5× mapy (pół mapy nad jej górną krawędzią)
       const y0 = -Math.round(state.terrain.h * 0.5) - 40 - i * 22;
@@ -1119,6 +1120,7 @@ function detonate(state, p, index) {
   state.projectiles.splice(index, 1);
   const weapon = WEAPONS[p.weapon];
   explode(state, p.x, p.y, weapon);
+  if (weapon.ogien) rozlejOgien(state, p.x, p.y - 6, 5000 + p.id, weapon.ogien);
   if (weapon.odlamki) {
     for (const [vx, vy] of ODLAMKI_BANANA) {
       spawnProjectile(state, WEAPONS[weapon.odlamki], p.x, p.y - 6, vx, vy, null);
@@ -1412,11 +1414,14 @@ function stepPulapki(state) {
   }
 }
 
-/* Wybuch beczki rozrzuca krople płonącej ropy. */
-function rozlejOgien(state, x, y, id) {
-  for (let i = 0; i < OGIEN_KROPLE.length && state.ogien.length < OGIEN_MAX; i++) {
+/* Wybuch beczki (i kanistra z nalotu ogniowego) rozrzuca krople płonącej ropy.
+   Więcej kropli niż w tabeli = kolejne okrążenia tabeli, każde wolniejsze (bliżej miejsca wybuchu). */
+function rozlejOgien(state, x, y, id, ile = OGIEN_KROPLE.length) {
+  for (let i = 0; i < ile && state.ogien.length < OGIEN_MAX; i++) {
     const los = Math.imul((id | 0) * 31 + i + 1, 0x9e3779b1) >>> 0;
-    const [vx, vy] = OGIEN_KROPLE[i];
+    const [tvx, tvy] = OGIEN_KROPLE[i % OGIEN_KROPLE.length];
+    const zwolnij = i < OGIEN_KROPLE.length ? 1 : 0.55;
+    const vx = tvx * zwolnij, vy = tvy * zwolnij;
     state.ogien.push({
       x, y,
       vx: vx + (los % 61) - 30,

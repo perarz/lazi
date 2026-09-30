@@ -36,7 +36,7 @@ export const ZASTEPCZY_STAN = 4;      // s czekania na stan od autora akcji
 export const START_ZWLOKA = 3;        // s na załadowanie planszy po starcie partii
 export const DOGON_PO = 2;            // s — starszego stanu nie animujemy, tylko do niego skaczemy
 export const ODLICZANIE_S = 5;        // s od chwili, gdy wszyscy dali GOTOWY, do startu partii
-export const WERSJA = 10;             // wersja protokołu lobby (4.2: drużyny i gotowość, 4.3: ustawienia partii, 4.4: lawa, emotki, 4.5: rozmiar mapy, obrót mostu, 4.8: kilka robali na gracza, 4.9: railgun, start gospodarza, 4.10: ogień z beczek, 4.12.1: pułapki i skrzynki toną w rosnącej lawie, 4.13: bananowa bomba, słabszy railgun, nowa mapa ekstremalna)
+export const WERSJA = 11;             // wersja protokołu lobby (4.2: drużyny i gotowość, 4.3: ustawienia partii, 4.4: lawa, emotki, 4.5: rozmiar mapy, obrót mostu, 4.8: kilka robali na gracza, 4.9: railgun, start gospodarza, 4.10: ogień z beczek, 4.12.1: pułapki i skrzynki toną w rosnącej lawie, 4.13: bananowa bomba, słabszy railgun, nowa mapa ekstremalna, 4.14: nalot ogniowy)
 export const MAX_GRACZY = 8;          // w partii; kolejni w lobby oglądają
 
 /* Ucieczka na żywo. */

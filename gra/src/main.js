@@ -103,7 +103,7 @@ let kronika = null;                               // kronika partii (4.11): kill
 
 /* Ikony w kronice eliminacji (4.11). */
 const IKONY_ZABOJSTW = {
-  bazooka: '🚀', granat: '💣', strzelba: '🔫', banan: '🍌', dynamit: '🧨', nalot: '✈️', owca: '🐐',
+  bazooka: '🚀', granat: '💣', strzelba: '🔫', banan: '🍌', dynamit: '🧨', nalot: '✈️', napalm: '🔥', owca: '🐐',
   kij: '⚾', teleport: '✨', salwa: '🚀', wiertlo: '🔩', most: '🌉', swiety: '😇', railgun: '⚡', lina: '🪢'
 };
 
