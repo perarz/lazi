@@ -23,7 +23,7 @@ function turaDla(p, nr, aktId) {
   return p.tura;
 }
 
-const ZABOJCZE_BRONIE = { nalot: 'nalot', dynamit: 'saper', strzelba: 'snajper', banan: 'kasetowka', owca: 'owca' };
+const ZABOJCZE_BRONIE = { nalot: 'nalot', napalm: 'nalot', dynamit: 'saper', strzelba: 'snajper', banan: 'kasetowka', owca: 'owca' };
 
 /* ctx: { nr, aktId, mojeId, fragiWczesniej, gracz? } — fragiWczesniej to eliminacje
    z poprzednich partii (do progów 5 i 25). aktId = gracz z turą; gracz(idRobala) =

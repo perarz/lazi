@@ -507,6 +507,39 @@ test('nalot wymaga celu i zrzuca rakiety', () => {
   assert(cel.hp < 100, 'nalot nie zranil celu');
 });
 
+test('nalot ogniowy: kanistry rozlewaja duzo ognia, a wiatr znosi je daleko (4.14)', () => {
+  const zrzut = (wiatr) => {
+    const st = S.createGame(21, players(2));
+    const t = st.terrain;
+    t.mask.fill(0, 0, 500 * t.w);
+    const cx = 1000;
+    for (let x = cx - 600; x <= cx + 600; x++) for (let y = 500; y < 700; y++) t.mask[y * t.w + x] = 1;
+    st.wind = wiatr;
+    st.weapon = 'napalm';
+    S.ustawCel(st, cx, 500);
+    assert(S.startCharging(st), 'nalot ogniowy nie ruszył');
+    S.releaseFire(st);
+    assert(st.projectiles.length === WEAPONS.napalm.rakiety && st.projectiles.every((p) => p.weapon === 'kanister'), 'kanistrów: ' + st.projectiles.length);
+    const wybuchy = [];
+    let maksOgnia = 0;
+    for (let i = 0; i < 8 / S.DT && st.projectiles.length; i++) {
+      S.step(st);
+      for (const e of st.events) if (e.type === 'wybuch') wybuchy.push(e);
+      st.events.length = 0;
+      maksOgnia = Math.max(maksOgnia, st.ogien.length);
+    }
+    return { srodek: wybuchy.reduce((s, e) => s + e.x, 0) / wybuchy.length, maksOgnia, st };
+  };
+  const cisza = zrzut(0), wieje = zrzut(130);
+  assert(Math.abs(cisza.srodek - 1000) < 20, 'bez wiatru obok celu: ' + cisza.srodek.toFixed(0));
+  assert(cisza.maksOgnia >= 70, 'za mało ognia: ' + cisza.maksOgnia + ' (beczka daje 14)');
+  assert(wieje.srodek - 1000 > 150, 'wiatr za słabo znosi nalot ogniowy: ' + (wieje.srodek - 1000).toFixed(0) + ' px');
+  // ogień dalej jest w stanie tury: odbiorca dostaje go w strzale/pasie
+  const b = S.createGame(21, players(2));
+  S.ustawOgien(b, S.stanOgnia(cisza.st));
+  assert(b.ogien.length === cisza.st.ogien.length, 'ogien nie przechodzi przez siec: ' + b.ogien.length);
+});
+
 test('nalot trafia w cel stojacy wysoko, takze przy wietrze (4.8)', () => {
   for (const [yCelu, wiatr] of [[120, 0], [120, 180], [700, -180]]) {
     const st = S.createGame(21, players(2));

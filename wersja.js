@@ -5,6 +5,15 @@
 (function () {
   var historia = [
     {
+      wersja: '4.14', data: '2026-09-30', tytul: 'Nalot ogniowy',
+      zmiany: [
+        'Nowa broń: Nalot ogniowy (klawisz ; albo ekwipunek → Rakiety, 1 sztuka na partię). Wskazujesz cel, a z nieba spada 5 kanistrów z benzyną — każdy rozlewa morze płonącej ropy, dużo więcej niż beczka. Ogień parzy, podrzuca robale, wypala dołki w ziemi i podpala beczki.',
+        'Haczyk: kanistry są lekkie i wiatr mocno je znosi. Zwykły nalot trafia tam, gdzie wskażesz, a ogniowy przy lekkim wietrze spada ok. 130 px obok, przy mocnym nawet 400 px — patrz na wiatr i celuj z poprawką.',
+        'Eliminacja nalotem ogniowym liczy się do osiągnięcia „Nalot dywanowy”.',
+        'Gra z poprzednią wersją nie wystartuje (znaczek „STARA WERSJA” w lobby) — wystarczy odświeżyć stronę.'
+      ]
+    },
+    {
       wersja: '4.13', data: '2026-09-29', tytul: 'Bananowa bomba, naturalne mapy ekstremalne i nowy panel',
       zmiany: [
         'Bananowa bomba zamiast kasetówki (klawisz 4, 1 sztuka na partię): skacze jak piłka, po 3 s wybucha i rozsypuje 5 bananów, które wybuchają przy pierwszym dotknięciu. Osiągnięcie „Deszcz odłamków” to teraz „Bananowy deszcz”.',

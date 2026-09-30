@@ -1073,6 +1073,24 @@ function drawProjectile(ctx, p) {
     ctx.rotate(Math.atan2(p.vy, p.vx));
     if (weapon.id === 'bananek') {
       rysujBanana(ctx, 1.15);
+    } else if (weapon.id === 'kanister') {
+      // kanister z benzyną (nalot ogniowy, 4.14): czerwona bańka z uchwytem, z tyłu płomyk
+      const t = performance.now() / 1000;
+      ctx.fillStyle = 'rgba(255, 150, 30, 0.8)';
+      ctx.beginPath();
+      ctx.moveTo(-8, -3); ctx.lineTo(-15 - Math.sin(t * 30) * 3, 0); ctx.lineTo(-8, 3);
+      ctx.fill();
+      ctx.fillStyle = '#c4231a';
+      ctx.fillRect(-8, -6, 15, 12);
+      ctx.fillStyle = '#e8453a';
+      ctx.fillRect(-7, -5, 13, 3);
+      ctx.fillStyle = '#2b2b2b';
+      ctx.fillRect(7, -2, 3, 4);
+      ctx.strokeStyle = '#7a120c';
+      ctx.lineWidth = 1.4;
+      ctx.beginPath();
+      ctx.moveTo(-6, -6); ctx.lineTo(-2, -9); ctx.lineTo(2, -9); ctx.lineTo(4, -6);
+      ctx.stroke();
     } else {
       const dl = weapon.id === 'rakieta' ? 14 : weapon.id === 'rakietka' ? 12 : 18;
       ctx.fillStyle = weapon.id === 'rakieta' ? '#c9c2b6' : weapon.id === 'rakietka' ? '#d9c38a' : '#e8e2d8';

@@ -18,7 +18,7 @@ Stos technologiczny:
 - Bez bundlera, bez `package.json` i bez zależności npm. Zwykłe pliki HTML/CSS/JS, gra jako moduły ES,
   zrzutka jako klasyczne skrypty.
 
-Obecna wersja: **4.13 „Bananowa bomba, naturalne mapy ekstremalne i nowy panel”** (`wersja.js`).
+Obecna wersja: **4.14 „Nalot ogniowy”** (`wersja.js`).
 
 ---
 
@@ -229,7 +229,7 @@ podgląd ruchu co 100 ms przez 15 s, strzał i stan po 6,5 KB, ucieczka co 120 m
 - Wdrożenie zmian w kontach: strona (Vercel) i serwer (`arena-aktualizuj`) muszą wejść razem — nowa strona
   ze starym serwerem nie zaloguje (404), stara karta z nowym serwerem nie połączy się (401, trzeba przeładować).
 
-**Otwarte sprawy po przenosinach (wdrożenie 4.1.1 = PR #20; stan na 2026-09-28)**
+**Otwarte sprawy po przenosinach (wdrożenie 4.1.1 = PR #20; stan na 2026-09-30)**
 - Klon na VPS stoi na `master` (potwierdzone przy wdrożeniu 4.9). Druga migracja zrzutki („dogonienie” wpłat
   z chwili przełączenia) — prompt dostał użytkownik; nie wiadomo, czy zrobiona, zapytaj przy okazji.
 - **Usunięcie Upstasha z Vercela** (Storage/Integrations + baza w panelu Upstash) — robi użytkownik.
@@ -238,7 +238,7 @@ podgląd ruchu co 100 ms przez 15 s, strzał i stan po 6,5 KB, ucieczka co 120 m
   `instaluj.sh` z nowym adresem, potem adres w czterech miejscach (wyżej) i wdrożenie.
 - Ostatnie wdrożenia: 4.8 = PR #28 (bez zmian serwera), 4.9 = PR #29 + `arena-aktualizuj` 2026-09-28 (konsola dostawcy).
   4.10 = PR #31 (zmienia serwer — `arena-aktualizuj`, komendy dostał użytkownik). 4.11 i 4.12 = PR #32, bez zmian serwera. 4.12.1 = PR #33, bez zmian serwera.
-  4.13 bez zmian serwera (sama strona).
+  4.13 = PR #34 (2026-09-30), bez zmian serwera (sama strona). 4.14 bez zmian serwera.
 
 ---
 
@@ -493,7 +493,7 @@ Lekcje z kalibracji:
 | `src/render.js`, `src/fx.js` | Grafika (tu wolno trygonometrię i `Math.random`); w `render.js` też kamera, minimapa, nagrobki, miny i beczki, skrzynki, banany (`rysujBanana`), podgląd robala (`rysujPodgladRobala`, `mini` = kafelek akcesorium, `portret` = sam robal na przezroczystym tle do profilu) i scena ekranu ładowania (`rysujSceneLadowania`) |
 | `src/osiagniecia-reguly.js` | Reguły osiągnięć — czyste funkcje. **Zdarzenie `strzal` sim wysyła PRZED skutkami broni** (od 4.11): strzelba, railgun i kij zabijają od razu, a reguły biorą broń tury z `strzal` — gdy szło po `smierc`, „Śrut w plecy” nigdy nie wpadał |
 | `src/kronika.js` | Kronika partii (4.11), czyste funkcje: `nowaKronika(gracze)`, `zdarzenieKroniki(k, e, ctx)` (kille, obrażenia, zgony — raz na robala, własne obrażenia, najlepsza tura; zasługa należy do gracza z turą) zwraca opis eliminacji do kroniki na ekranie, `podsumowanie(k)` = tabela + wyróżnienia (MVP, Strzał partii ≥ 30, Kamikaze ≥ 20, Pływak, Pacyfista) |
-| `test/sim.test.mjs`, `test/protokol.test.mjs` | Testy w Node (100 i 23) |
+| `test/sim.test.mjs`, `test/protokol.test.mjs` | Testy w Node (102 i 23) |
 
 ### Determinizm (święta zasada)
 - Symulacja (`sim.js`, `terrain.js`) używa tylko:
@@ -667,7 +667,7 @@ Lekcje z kalibracji:
 ### Rozgrywka
 - **Sterowanie**:
   - **A/D** ruch, **Spacja** skok, **W/S** lub mysz celowanie, **F/Enter** (przytrzymaj) strzał.
-  - **1–0**, **-**, **=**, **[**, **]**, **\\** wybierają broń (kolejność `WEAPON_ORDER`).
+  - **1–0**, **-**, **=**, **[**, **]**, **\\**, **;** wybierają broń (kolejność `WEAPON_ORDER`; `;` = nalot ogniowy od 4.14).
   - **E** emotki, **R** obrót mostu, **M** cała mapa.
   - **Ekwipunek** (`ekwipunek.js`): przycisk z aktualną bronią na dole HUD-u, **Q** albo **prawy przycisk
     myszy** otwiera siatkę broni w rzędach (Rakiety, Granaty, Na wroga, Sprzęt; nowa broń bez rzędu trafia
@@ -698,7 +698,7 @@ Lekcje z kalibracji:
 | Klawisz | Broń | Rodzaj | Amunicja | Uwagi |
 |---|---|---|---|---|
 | 1 | Bazooka | pocisk | ∞ | wiatr, wybuch przy kontakcie (4.3: prędkość 882, zasięg ×1,5; wiatr ×1,35 u wszystkich) |
-| 2 | Granat | odbijany | ∞ | lont; 4.5: prędkość 820 (kasetówka 790, Święty GOAT 720) |
+| 2 | Granat | odbijany | ∞ | lont; 4.5: prędkość 820 (bananowa bomba 790, Święty GOAT 720) |
 | 3 | Strzelba | hitscan | ∞ | |
 | 4 | Bananowa bomba (id `banan`, od 4.13 zamiast kasetówki) | odbijany | 1 | sprężysta (`restitution` 0,62), lont 3 s, r 48 / dmg 40, potem 5 bananów (`bananek`, ukryta broń `pocisk`, r 38 / dmg 30) z tabeli `ODLAMKI_BANANA`; pole `odlamki` w broni = id pocisku z rozpadu. Osiągnięcie id `kasetowka` zostało (konta na serwerze), teraz „Bananowy deszcz” za `banan` |
 | 5 | Dynamit | podkładany | 2 | lont 6 s, ucieczka |
@@ -711,6 +711,7 @@ Lekcje z kalibracji:
 | = | Most | celowany | 3 | belka 90×7 px, do 260 px od robala, nie na robalu (`powodBrakuMostu`) |
 | [ | Święty GOAT | odbijany | 1 | jak granat, lont 3,5 s, promień 118 (największy), dmg 90, odrzut 480; napis „ALLELUJA!” przy wybuchu r ≥ 100 |
 | \\ | Railgun | railgun | 1 | 4.9: `strzalRailgun` — laser po prostej od `start` (wektor od strzelca) aż za mapę, co 2 px; przebija skałę i każdego robala (poza swoimi w drużynie), 45 obrażeń każdemu raz (do 4.12.1: 75), odrzut 150; zdarzenie `railgun` (x0,y0,x1,y1,trafieni) → `emitLaser` w `fx.js`. **Od 4.10 wypala tunel** (`tunel: 7` = promień) w każdej skale nad lawą: odcinki wejście→wyjście (szczeliny ≤ 12 px sklejone), wycinane po przejściu lasera przez `T.wytnijTunel`; zdarzenie `tunel` → `dodajSadzeTunelu` (przemalowanie + okopcone brzegi) |
+| ; | Nalot ogniowy (id `napalm`, 4.14) | nalot (`pocisk: 'kanister'`) | 1 | jak nalot, tylko 5 kanistrów (`kanister`: ukryty `pocisk`, grawitacja 0,6, **wiatr 1,1** — ponad 2× rakieta, r 18 / dmg 10, `ogien: 18`); `bezKorektyWiatru` = start liczony bez wiatru, więc wiatr znosi zrzut (przy wietrze 40 ok. 135 px, przy 130 ok. 390 px). Kanister w `detonate` → `rozlejOgien(…, ile)` (kolejne okrążenia `OGIEN_KROPLE` wolniejsze ×0,55); razem ok. 90 kropli, `OGIEN_MAX` = 130 (dawniej 56). Kill liczy się do osiągnięcia „nalot” |
 | ] | Lina ninja | lina (`narzedzie`) | 5 | nie strzał: `linaPrzelacz` (OGNIA/F zaczepia i puszcza, SKOK puszcza), `krokLiny` = wahadło (tylko sqrt) |
 
 - **Lina ninja (4.4)**: stan `w.lina = {x, y, dl}` tylko u gracza z turą, jak chodzenie — nie ma go w `stanRobali`,
@@ -735,7 +736,7 @@ Lekcje z kalibracji:
     na gruncie, ≥ 80 px od robali. Są w snapshocie, `stanPoTurze`, strzale i pasie (`stanPulapek`/`ustawPulapki`, pole `l` = lont),
     bo gracz z turą może odpalić minę chodząc, a odbiorca nie symuluje jego chodzenia.
   - `stepPulapki`: spadają jak skrzynki, toną w lawie; mina łapie żywego robala w pobliżu (`MINA_LONT` 1,1 s, zdarzenie `mina`),
-    Pułapka i skrzynka pod lawą (`y > state.lava`) toną w każdym kroku, a przy wzroście lawy od razu (`zatopZalane` w `nextTurn`, 4.12.1, `WERSJA` = 9; 4.13: `WERSJA` = 10 — banan, railgun 45, nowa ekstremalna).
+    Pułapka i skrzynka pod lawą (`y > state.lava`) toną w każdym kroku, a przy wzroście lawy od razu (`zatopZalane` w `nextTurn`, 4.12.1, `WERSJA` = 9; 4.13: `WERSJA` = 10 — banan, railgun 45, nowa ekstremalna; 4.14: `WERSJA` = 11 — nalot ogniowy).
     `explode` i railgun ustawiają lont beczkom (`BECZKA_LONT`) i minom — **bez rekurencji**, więc łańcuch idzie krok po kroku.
     Faza `settle` czeka, aż żaden lont się nie pali.
   - Rysunek `drawPulapka` (dioda miny miga, beczka drży przed wybuchem).
@@ -801,7 +802,7 @@ Lekcje z kalibracji:
   3. W akcjach `strzal`/`pas`, jeśli gracz może to zmienić przed strzałem.
   4. Test „odbiorca = strzelec”.
 
-### Wygląd Areny (stan 4.10)
+### Wygląd Areny (stan 4.13)
 - **Wygląd od 4.9**: robal bez ogonka, skrzynki (`drawSkrzynka`: wojskowa skrzynka z pasem i nabojami, apteczka z uchwytem i plusikami, poświata, spadochron w pasy), lawa z poświatą i bąblami, w tle (`drawTlo`) krwawy księżyc i łuna wulkanu. Tańce z obrotem (`obrot` w `drawWorm`) rysują nick i pasek osobno (`tylkoNapis`).
 - Dźwięki i muzyka: `dzwieki.js` i `muzyka.js` (tabela plików wyżej). **Plików z muzyką nie ma**: z chmurowej sesji
   serwisy z darmową muzyką (freepd, opengameart, incompetech, archive.org, pixabay, FMA, bensound…) są zablokowane
@@ -826,18 +827,20 @@ Lekcje z kalibracji:
 - **Rogi prawdziwego GOATa** (4.10): `rogKozy` (oś Béziera, obrys = oś ± grubość, prążki, połysk) i `uchoKozy` w `czapki.js`;
   dwa rogi z czubka głowy zagięte do tyłu (dalszy ciemniejszy), `wys: 9`. Id `rogi` i osiągnięcie `owca` bez zmian.
 
-### Plan rozwoju (stan na 2026-09-28)
+### Plan rozwoju (stan na 2026-09-30)
 Pierwotny plan „bliżej Worms Armageddon” z 2026-09-25 jest w większości zrobiony: dźwięki i muzyka, nagrobki,
 drużyny, 1–3 robale na gracza, ustawienia partii, lista aren, ranking killi, emotki i tańce, miny i beczki,
-lina ninja, Święty GOAT, railgun, płonąca ropa z beczek (4.10). Użytkownik (2026-09-28) powiedział, że kończą mu się pomysły — przy prośbie
-„co jeszcze” proponuj z listy niżej (pokazana mu 2026-09-28), z rekomendacją i numerami do wyboru.
+lina ninja, Święty GOAT, railgun, płonąca ropa z beczek (4.10), podsumowanie partii i rewanż (4.11), bananowa bomba (4.13),
+nalot ogniowy (4.14, pomysł użytkownika).
+Użytkownikowi kończą się pomysły — przy prośbie „co jeszcze” proponuj z listy niżej, z rekomendacją i numerami do wyboru.
+Zmiany, o które sam prosił, pokazują gust: woli prosto i czytelnie (wyłączył pingi, animację w panelu, poszarpane mapy,
+osłabił railgun) niż „więcej efektów” — przy pomysłach stawiaj na grywalność i klimat Worms, nie na ozdobniki.
 Każda większa rzecz to osobna wersja z testami i zrzutami; nowe dane „online” doklejaj do istniejących zdarzeń.
 
 **Małe i efektowne (bez zmian zasad gry)**
 - **Teksty robali** w dymkach przy trafieniu, śmierci i lawie (`emitTekst` w `fx.js`); z czapką postaci — teksty z `dane.js`.
 - **Powtórka najlepszego strzału** w zwolnionym tempie: `poczatekSnap` + kanoniczna akcja, przeliczone lokalnie.
 - **Szybki czat** z gotowymi tekstami (jak emotki: zdarzenie w logu, `zloz` go nie zna). Slow-mo przy zabiciu.
-- Podgląd wybuchu miny u widzów w czasie cudzej tury (dziś widać go dopiero przy strzale albo pasie) — np. nowy typ w `ruch.e`.
 - **Czapki postaci ze zrzutki** jako akcesoria (rogi Kozaka, opaska PowPowa, karp, kapelusz Nolliego, galea Qubera…) —
   lista id w `AKCESORIA` klienta i serwera (3.1).
 
@@ -850,7 +853,7 @@ Każda większa rzecz to osobna wersja z testami i zrzutami; nowe dane „online
 - **Plecak odrzutowy, spadochron** (ruch lokalny przed strzałem jak lina; w ucieczce nie, bo nagranie RLE tego nie umie).
 - **Skrzynka-pułapka** i skrzynka z losową super bronią. Broń „wybór robala” przy kilku robalach.
 - **Nowe motywy map** (lód, pustynia, rzymskie ruiny, woda zamiast lawy): palety w `render.js`, kształty w `terrain.js`.
-- Przy kolejnych broniach: F1–F4 przełączają broń w rzędzie ekwipunku (`GRUPY`); klawisze cyfr już się kończą.
+- Przy kolejnych broniach: F1–F4 przełączają broń w rzędzie ekwipunku (`GRUPY`); klawisze się skończyły (ostatni `;` zajął nalot ogniowy).
 
 **Większe**
 - **Boty** (użytkownik pytał 2026-09-28, czy się da i czy to ciężkie; dostał odpowiedź z dwoma wariantami, czeka na wybór):
@@ -861,6 +864,11 @@ Każda większa rzecz to osobna wersja z testami i zrzutami; nowe dane „online
 - **Historia partii** w profilu (serwer, konto). Znajomi i zaproszenia.
 - **Zrzutka ↔ Arena**: wygrana w Arenie daje odznakę albo bonus w minigierce, ranking killi na stronie zrzutki.
 - **Nowe minigierki** (np. „Drop z Battle Busa”, „Oblężenie z taranem”) — kalibracja botem (5.4). Wydarzenie sezonu.
+- **Drugi tryb: RTS** (użytkownik rzucił pomysł 2026-09-29, dostał 3 warianty, nie wybrał — wrócił do Areny):
+  A) „Bitwa na liniach” jak Clash Royale (karty jednostek, eliksir, 3–5 min, najlepsze na telefon), B) „mini 0 A.D.”
+  (ekonomia, budynki, fazy, 10–20 min, trudne sterowanie na telefonie), C) polecana hybryda „Oblężenie GOATów”
+  (budynki w gotowych miejscach, obywatelki same pracują, armia jednym ruchem, 8–12 min). Technicznie: ten sam
+  deterministyczny lockstep co Arena (przez serwer lecą tylko rozkazy), limit ~50–80 jednostek na gracza na telefony.
 - **Szlif techniczny**: adres `arena.kacperlazarz.pl` (DNS + `instaluj.sh`), wydajność na słabych telefonach przy
   ogromnej mapie ekstremalnej, favicon i podgląd linku (Open Graph).
 
@@ -905,17 +913,18 @@ więcej akcesoriów (np. czapki postaci ze zrzutki), ewentualnie konto także w 
   - **4.8** 1–3 robale na gracza, wyższa mapa ekstremalna, celny nalot, minimapa i podgląd całej mapy
   - **4.9** railgun, miny i beczki, nagrobki, kamera za pociskiem, pingi (usunięte w 4.13), dźwięki i muzyczka, 5 nowych tańców, okulary i buźka zamiast lamy i kilofa, bez ogonków, nowe skrzynki i tło, start gospodarza bez GOTOWY
   - **4.10** płonąca ropa z beczek (parzy i wypala ziemię), railgun wypala tunel w skale, 7 utworów muzyki zamiast jednej pętli, pusta arena znika od razu, nowe rogi GOATa
-  - **4.12** nowy panel Areny: hangar z żywą sceną, ranga z paskiem, GRAJ (szybka gra), zakładki
   - **4.11** „Arena 5× lepsza”: mocniejsze wybuchy, żywe robale, kronika eliminacji, podsumowanie partii z wyróżnieniami, rewanż jednym przyciskiem; naprawa „Śrut w plecy”
+  - **4.12** nowy panel Areny: hangar z żywą sceną, ranga z paskiem, GRAJ (szybka gra), zakładki
   - **4.12.1** lawa zalewa skrzynki i pułapki, widz widzi wybuch miny w cudzej turze
   - **4.13** bananowa bomba zamiast kasetówki, railgun 45, bez pingów, mapa ekstremalna jak w Wormsach, panel Areny bez zakładek na PC, nowe tło i obramowania
+  - **4.14** nalot ogniowy (kanistry z płonącą benzyną, mocno znoszone przez wiatr)
 
 ---
 
 ## 9. Testy i sprawdzanie
 
 ```
-node gra/test/sim.test.mjs        # symulacja, bronie, determinizm, drużyny, ustawienia, skrzynki, spawny, osiągnięcia, kamera, lina, most obracany, rozmiar mapy, kilka robali, railgun i tunel, miny i beczki, ogień, muzyka, kronika, zalewanie lawą, bananowa bomba, gładka ekstremalna (100)
+node gra/test/sim.test.mjs        # symulacja, bronie, determinizm, drużyny, ustawienia, skrzynki, spawny, osiągnięcia, kamera, lina, most obracany, rozmiar mapy, kilka robali, railgun i tunel, miny i beczki, ogień, muzyka, kronika, zalewanie lawą, bananowa bomba, gładka ekstremalna, nalot ogniowy (102)
 node gra/test/protokol.test.mjs   # protokół: lag, rozłączenia, ucieczka na żywo, lobby, ustawienia, partie 2v2, z własnymi zasadami i z kilkoma robalami, start bez GOTOWY (23, ~35 s)
 cd serwer && npm install && node test.mjs   # serwer na VPS: Arena (10) + konta, pokoje, akcesoria, czapki, puste areny (11) + zrzutka (7)
 ```
