@@ -47,11 +47,13 @@ const IKONY = {
     '<g fill="#3b3a40" stroke="#16151a" stroke-width=".8">' +
     '<ellipse cx="10" cy="20" rx="1.9" ry="3" transform="rotate(-18 10 20)"/><ellipse cx="16.5" cy="24" rx="1.9" ry="3" transform="rotate(-18 16.5 24)"/><ellipse cx="23" cy="27.5" rx="1.9" ry="3" transform="rotate(-18 23 27.5)"/></g>' +
     '<path d="M8.5 16l.8-1.8M15 20l.8-1.8M21.5 23.5l.8-1.8" stroke="#ff8a3a" stroke-width="1.4" stroke-linecap="round"/>',
-  napalm:   // nalot ogniowy (4.14): samolot i spadające płonące kanistry
+  napalm:   // nalot ogniowy (4.14.1): samolot i deszcz płonących kropli
     '<path d="M3 8.5l7-.5 5-4.6 2.2.3-2.9 4.9 7.2-.3 2.5-2.7 1.6.3-1.3 3.9 1.3 3.8-1.6.3-2.5-2.7-7.2-.3 2.9 4.9-2.2.3-5-4.6-7-.6z" fill="#c9cfd6" stroke="#3a4250" stroke-width="1" stroke-linejoin="round"/>' +
-    '<g fill="#c4231a" stroke="#5a0e08" stroke-width=".8"><rect x="8" y="17" width="5" height="6" rx="1"/><rect x="17" y="21" width="5" height="6" rx="1"/></g>' +
-    '<g fill="#ff8a1e"><path d="M10.5 24.5c-2 2.4-1 5 0 5.6 1.4-.8 2.4-3.4 0-5.6z"/><path d="M19.5 28c-1.8 1.6-1.2 3.4-.2 3.8 1.2-.6 1.8-2.4.2-3.8z"/></g>' +
-    '<path d="M26 22c-2 3-1 6 1 7 2-1 3-4-1-7z" fill="#ffd23b" stroke="#ff5a1f" stroke-width=".8"/>',
+    '<g fill="#ff8a1e" stroke="#c4231a" stroke-width=".7">' +
+    '<path d="M8 16c-1.6 2-1 4 0 4.5 1.2-.6 1.8-2.6 0-4.5z"/><path d="M14 19c-1.6 2-1 4 0 4.5 1.2-.6 1.8-2.6 0-4.5z"/>' +
+    '<path d="M20 16.5c-1.6 2-1 4 0 4.5 1.2-.6 1.8-2.6 0-4.5z"/><path d="M11 24c-1.6 2-1 4 0 4.5 1.2-.6 1.8-2.6 0-4.5z"/>' +
+    '<path d="M17.5 25c-1.6 2-1 4 0 4.5 1.2-.6 1.8-2.6 0-4.5z"/><path d="M24 22c-1.6 2-1 4 0 4.5 1.2-.6 1.8-2.6 0-4.5z"/></g>' +
+    '<g fill="#ffd23b"><circle cx="8" cy="19" r=".9"/><circle cx="14" cy="22" r=".9"/><circle cx="20" cy="19.5" r=".9"/><circle cx="11" cy="27" r=".9"/><circle cx="17.5" cy="28" r=".9"/><circle cx="24" cy="25" r=".9"/></g>',
   granat:
     '<ellipse cx="15" cy="19.5" rx="8.4" ry="9.2" fill="#56733d" stroke="#1d2a14" stroke-width="1.4"/>' +
     '<path d="M7.6 16.5h14.8M7.6 22.5h14.8M11 11.6v15.8M19 11.6v15.8" stroke="#2f421f" stroke-width="1.1" opacity=".75"/>' +

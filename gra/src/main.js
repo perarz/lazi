@@ -2178,6 +2178,7 @@ function pociskDoKamery(teraz) {
 /* Kamera za pociskiem (4.9): cel przed pociskiem (wyprzedzenie ~0,3 s lotu), przy dużej
    prędkości lekko się oddala i szybciej dojeżdża; po wybuchu chwilę zostaje na miejscu wybuchu. */
 let kameraWybuch = null;          // { x, y, do (ms), oddal? }
+let sledzeDeszcz = false;         // kamera jedzie za deszczem nalotu ogniowego (4.14.1)
 function ustawKamere(teraz) {
   const st = rg.state;
   const z = bazowyZoom() * zoomGracza;
@@ -2191,6 +2192,17 @@ function ustawKamere(teraz) {
     const oddal = Math.max(0.72, 0.92 - v / 4000);
     R.focusCamera(kamera, p.x + p.vx * wyprzedz, p.y + p.vy * wyprzedz, z * oddal);
     kamera.tempo = 7.5;
+    recznaKameraDo = 0;
+    return;
+  }
+  // deszcz nalotu ogniowego (4.14.1): kamera jedzie za najniższymi spadającymi kroplami
+  const deszcz = st.phase !== 'aim' && st.ogien.filter((f) => f.n && !f.grunt);
+  sledzeDeszcz = !!deszcz && deszcz.length > 8;
+  if (sledzeDeszcz) {
+    let sx = 0, sy = -Infinity;
+    for (const f of deszcz) { sx += f.x; sy = Math.max(sy, f.y); }
+    R.focusCamera(kamera, sx / deszcz.length, sy + 60, z * 0.8);
+    kamera.tempo = 6;
     recznaKameraDo = 0;
     return;
   }
@@ -2216,7 +2228,7 @@ function ustawKamere(teraz) {
    płynny dojazd nie nadąża, więc dociągamy kamerę od razu. */
 function trzymajWKadrze() {
   const st = rg.state;
-  if (performance.now() < recznaKameraDo || sledzony || (kameraWybuch && performance.now() < kameraWybuch.do && rg.state.phase !== 'aim')) return;
+  if (performance.now() < recznaKameraDo || sledzony || sledzeDeszcz || (kameraWybuch && performance.now() < kameraWybuch.do && rg.state.phase !== 'aim')) return;
   const w = S.activeWorm(st);
   if (!w || !w.alive) return;
   const v = w.widok || w;

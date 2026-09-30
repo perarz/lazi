@@ -82,7 +82,16 @@ const OGIEN_ZASIEG = 12;           // px w bok od płomienia do robala
 const OGIEN_WYPAL = 48;            // wypalanie gruntu co 0,4 s…
 const OGIEN_WYPAL_MAX = 3;         // …najwyżej tyle razy z jednej kropli
 const OGIEN_WYPAL_R = 6;
-const OGIEN_MAX = 130;             // 4.14: nalot ogniowy rozlewa 5 × 18 kropli (dawniej 56)
+const OGIEN_MAX = 130;             // 4.14: nalot ogniowy to 72 krople naraz (dawniej 56)
+/* Nalot ogniowy (4.14.1): z nieba od razu leci gęsty deszcz płonącej benzyny (bez kanistrów).
+   Krople nalotu (pole n = 1) mocniej czuje wiatr, lżej spadają, palą się dłużej i parzą mocniej. */
+const NAPALM_KROPLE = 72;
+const NAPALM_SZER = 50;            // ± px wokół celu
+const NAPALM_GRAW = 0.6;           // część grawitacji (jak rakieta nalotu)
+const NAPALM_WIATR = 1.1;          // część wiatru (zwykły ogień 0,25) — znosi cały deszcz
+const NAPALM_PALI = 660;           // kroków palenia po upadku (5,5 s) + rozrzut do 0,75 s
+const NAPALM_DMG = 5;
+const NAPALM_WYPAL_MAX = 1;        // jeden dołek na kroplę — inaczej lista kraterów puchnie
 export const APTECZKA_HP = 35;
 const HP_MAX = 150;
 const INNE_ZAPASY = WEAPON_ORDER.filter((id) => WEAPONS[id].amunicja !== undefined && id !== 'kij');
@@ -198,7 +207,7 @@ export function createGame(seed, players, opcje = {}) {
     nextProjectileId: 1,
     skrzynki: [],              // zrzuty: { id, typ: 'apteczka' | 'zapas', x, y }
     pulapki: [],               // miny i beczki (4.9): { id, typ: 'mina' | 'beczka', x, y, lont (-1 = spokój) }
-    ogien: [],                 // płonąca ropa (4.10): { x, y, vx, vy, t, zycie, wyp, grunt } — tylko w bieżącej turze
+    ogien: [],                 // płonąca ropa (4.10): { x, y, vx, vy, t, zycie, wyp, grunt, n } — tylko w bieżącej turze; n = z nalotu ogniowego
     weapon: 'bazooka',
     power: 0,
     charging: false,
@@ -567,10 +576,10 @@ export function applyFire(state, action) {
     // Od 4.8 start każdej rakiety liczymy z wysokości celu: ile spada (grawitacja rakiety),
     // tyle zdąży ją znieść ukośny lot i wiatr — więc trafia w punkt także na wysokich
     // szczytach (dawniej stałe 70 px przesunięcia = pudło obok celu stojącego wysoko).
-    // Nalot ogniowy (4.14) zrzuca kanistry i nie poprawia startu o wiatr — wiatr znosi go daleko.
-    const rak = WEAPONS[weapon.pocisk || 'rakieta'];
-    const a = GRAVITY * rak.gravityFactor, aw = weapon.bezKorektyWiatru ? 0 : state.wind * rak.windFactor;
-    for (let i = 0; i < n; i++) {
+    const rak = WEAPONS.rakieta;
+    const a = GRAVITY * rak.gravityFactor, aw = state.wind * rak.windFactor;
+    if (weapon.deszczOgnia) deszczOgnia(state, cel, kier);   // nalot ogniowy (4.14.1): same krople ognia
+    else for (let i = 0; i < n; i++) {
       // od 4.9 rakiety startują z wysokości 1,5× mapy (pół mapy nad jej górną krawędzią)
       const y0 = -Math.round(state.terrain.h * 0.5) - 40 - i * 22;
       const dy = Math.max(0, cel.y - y0);
@@ -1120,7 +1129,6 @@ function detonate(state, p, index) {
   state.projectiles.splice(index, 1);
   const weapon = WEAPONS[p.weapon];
   explode(state, p.x, p.y, weapon);
-  if (weapon.ogien) rozlejOgien(state, p.x, p.y - 6, 5000 + p.id, weapon.ogien);
   if (weapon.odlamki) {
     for (const [vx, vy] of ODLAMKI_BANANA) {
       spawnProjectile(state, WEAPONS[weapon.odlamki], p.x, p.y - 6, vx, vy, null);
@@ -1414,14 +1422,11 @@ function stepPulapki(state) {
   }
 }
 
-/* Wybuch beczki (i kanistra z nalotu ogniowego) rozrzuca krople płonącej ropy.
-   Więcej kropli niż w tabeli = kolejne okrążenia tabeli, każde wolniejsze (bliżej miejsca wybuchu). */
-function rozlejOgien(state, x, y, id, ile = OGIEN_KROPLE.length) {
-  for (let i = 0; i < ile && state.ogien.length < OGIEN_MAX; i++) {
+/* Wybuch beczki rozrzuca krople płonącej ropy. */
+function rozlejOgien(state, x, y, id) {
+  for (let i = 0; i < OGIEN_KROPLE.length && state.ogien.length < OGIEN_MAX; i++) {
     const los = Math.imul((id | 0) * 31 + i + 1, 0x9e3779b1) >>> 0;
-    const [tvx, tvy] = OGIEN_KROPLE[i % OGIEN_KROPLE.length];
-    const zwolnij = i < OGIEN_KROPLE.length ? 1 : 0.55;
-    const vx = tvx * zwolnij, vy = tvy * zwolnij;
+    const [vx, vy] = OGIEN_KROPLE[i];
     state.ogien.push({
       x, y,
       vx: vx + (los % 61) - 30,
@@ -1429,7 +1434,33 @@ function rozlejOgien(state, x, y, id, ile = OGIEN_KROPLE.length) {
       t: 0,
       zycie: OGIEN_ZYCIE + (los >>> 16) % 90,
       wyp: 0,               // ile dołków już wypaliła
-      grunt: 0              // 1 = leży na ziemi
+      grunt: 0,             // 1 = leży na ziemi
+      n: 0                  // 1 = kropla nalotu ogniowego (4.14.1)
+    });
+  }
+}
+
+/* Nalot ogniowy (4.14.1): gęsty deszcz płonących kropli spada z nieba nad celem. Start liczony
+   jak przy nalocie (poprawka tylko na ukośny lot, NIE na wiatr), więc wiatr znosi cały deszcz.
+   Rozrzut ze stałych wzorów (Math.imul), fale co kilka kropli, żeby deszcz padał chwilę. */
+function deszczOgnia(state, cel, kier) {
+  const a = GRAVITY * NAPALM_GRAW;
+  for (let i = 0; i < NAPALM_KROPLE && state.ogien.length < OGIEN_MAX; i++) {
+    const los = Math.imul(i * 2654435761 + 97, 0x9e3779b1) >>> 0;
+    const y0 = -Math.round(state.terrain.h * 0.5) - 40 - (i >> 2) * 12 - (los >>> 20) % 10;
+    const dy = Math.max(0, cel.y - y0);
+    const t = (-110 + Math.sqrt(110 * 110 + 2 * a * dy)) / a;
+    const dx = (los % (2 * NAPALM_SZER + 1)) - NAPALM_SZER;
+    state.ogien.push({
+      x: cel.x + dx - kier * 40 * t + 0,
+      y: y0 + 0,
+      vx: kier * 40 + ((los >>> 8) % 21) - 10,
+      vy: 110,
+      t: 0,
+      zycie: 99999,         // w locie nie gaśnie — czas palenia liczy się od upadku
+      wyp: 0,
+      grunt: 0,
+      n: 1
     });
   }
 }
@@ -1447,8 +1478,8 @@ function stepOgien(state) {
     if (f.t >= f.zycie) { state.ogien.splice(i, 1); continue; }
     if (f.grunt && !T.solidAt(t, f.x, f.y + 1)) f.grunt = 0;   // grunt wypalony albo wysadzony — spada
     if (!f.grunt) {
-      f.vx += state.wind * 0.25 * DT;
-      f.vy += GRAVITY * DT;
+      f.vx += state.wind * (f.n ? NAPALM_WIATR : 0.25) * DT;
+      f.vy += GRAVITY * (f.n ? NAPALM_GRAW : 1) * DT;
       const dx = f.vx * DT, dy = f.vy * DT;
       const kroki = Math.max(1, Math.ceil(Math.sqrt(dx * dx + dy * dy)));
       const ix = dx / kroki, iy = dy / kroki;
@@ -1461,6 +1492,8 @@ function stepOgien(state) {
             f.vx = f.vx * 0.5 + 0;
             f.vy = 0;
             f.grunt = 1;
+            // kropla nalotu ogniowego pali się od upadku NAPALM_PALI kroków (+ rozrzut z pozycji)
+            if (f.n && f.zycie > f.t + NAPALM_PALI + 100) f.zycie = f.t + NAPALM_PALI + ((Math.floor(f.x) * 13) & 0x5f);
           } else if (T.solidAt(t, nx, f.y)) {
             f.vx = 0;                                  // ściana z boku — spływa po niej w dół
           } else {
@@ -1493,22 +1526,26 @@ function stepOgien(state) {
     }
     if (f.t % OGIEN_CO === 0) {
       for (const w of state.worms) {
-        if (!w.alive || swoj(state, w) || parzeni.some((p) => p[0] === w)) continue;
-        if (Math.abs(w.x - f.x) < OGIEN_ZASIEG && f.y > w.y - WORM_H - 4 && f.y < w.y + 6) parzeni.push([w, f]);
+        if (!w.alive || swoj(state, w)) continue;
+        if (!(Math.abs(w.x - f.x) < OGIEN_ZASIEG && f.y > w.y - WORM_H - 4 && f.y < w.y + 6)) continue;
+        // raz na takt na robala; ogień z nalotu (mocniejszy) wygrywa z ogniem z beczki
+        const juz = parzeni.find((p) => p[0] === w);
+        if (!juz) parzeni.push([w, f]);
+        else if (f.n && !juz[1].n) juz[1] = f;
       }
       // ogień podpala beczkę, która w nim stoi
       for (const p of state.pulapki) {
         if (p.typ === 'beczka' && p.lont < 0 && Math.abs(p.x - f.x) < 11 && f.y > p.y - 24 && f.y < p.y + 6) p.lont = BECZKA_LONT;
       }
     }
-    if (f.grunt && f.wyp < OGIEN_WYPAL_MAX && f.t % OGIEN_WYPAL === 0) {
+    if (f.grunt && f.wyp < (f.n ? NAPALM_WYPAL_MAX : OGIEN_WYPAL_MAX) && f.t % OGIEN_WYPAL === 0) {
       f.wyp++;
       T.carve(t, f.x, f.y + 2, OGIEN_WYPAL_R);
       state.events.push({ type: 'wypalenie', x: Math.round(f.x), y: Math.round(f.y + 2), r: OGIEN_WYPAL_R });
     }
   }
   for (const [w, f] of parzeni) {
-    damageWorm(state, w, OGIEN_DMG, 'ogien');
+    damageWorm(state, w, f.n ? NAPALM_DMG : OGIEN_DMG, 'ogien');
     if (!w.alive) continue;
     const kier = w.x < f.x ? -1 : w.x > f.x ? 1 : w.facing;
     w.vx = kier * 55;
@@ -1518,14 +1555,14 @@ function stepOgien(state) {
 }
 
 export function stanOgnia(state) {
-  return state.ogien.map((f) => [f.x, f.y, f.vx, f.vy, f.t, f.zycie, f.wyp, f.grunt]);
+  return state.ogien.map((f) => [f.x, f.y, f.vx, f.vy, f.t, f.zycie, f.wyp, f.grunt, f.n ? 1 : 0]);
 }
 
 export function ustawOgien(state, lista) {
   state.ogien = !Array.isArray(lista) ? [] : lista
-    .filter((f) => Array.isArray(f) && f.length === 8 && f.every((v) => typeof v === 'number'))
+    .filter((f) => Array.isArray(f) && (f.length === 8 || f.length === 9) && f.every((v) => typeof v === 'number'))
     .slice(0, OGIEN_MAX)
-    .map((f) => ({ x: f[0] + 0, y: f[1] + 0, vx: f[2] + 0, vy: f[3] + 0, t: f[4] | 0, zycie: f[5] | 0, wyp: f[6] | 0, grunt: f[7] ? 1 : 0 }));
+    .map((f) => ({ x: f[0] + 0, y: f[1] + 0, vx: f[2] + 0, vy: f[3] + 0, t: f[4] | 0, zycie: f[5] | 0, wyp: f[6] | 0, grunt: f[7] ? 1 : 0, n: f[8] ? 1 : 0 }));
 }
 
 export function stanPulapek(state) {

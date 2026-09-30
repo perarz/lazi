@@ -18,7 +18,7 @@ Stos technologiczny:
 - Bez bundlera, bez `package.json` i bez zależności npm. Zwykłe pliki HTML/CSS/JS, gra jako moduły ES,
   zrzutka jako klasyczne skrypty.
 
-Obecna wersja: **4.14 „Nalot ogniowy”** (`wersja.js`).
+Obecna wersja: **4.14.1 „Nalot ogniowy: deszcz ognia z nieba”** (`wersja.js`).
 
 ---
 
@@ -238,7 +238,7 @@ podgląd ruchu co 100 ms przez 15 s, strzał i stan po 6,5 KB, ucieczka co 120 m
   `instaluj.sh` z nowym adresem, potem adres w czterech miejscach (wyżej) i wdrożenie.
 - Ostatnie wdrożenia: 4.8 = PR #28 (bez zmian serwera), 4.9 = PR #29 + `arena-aktualizuj` 2026-09-28 (konsola dostawcy).
   4.10 = PR #31 (zmienia serwer — `arena-aktualizuj`, komendy dostał użytkownik). 4.11 i 4.12 = PR #32, bez zmian serwera. 4.12.1 = PR #33, bez zmian serwera.
-  4.13 = PR #34 (2026-09-30), bez zmian serwera (sama strona). 4.14 bez zmian serwera.
+  4.13 = PR #34 (2026-09-30), bez zmian serwera (sama strona). 4.14 = PR #35, bez zmian serwera. 4.14.1 bez zmian serwera.
 
 ---
 
@@ -711,7 +711,7 @@ Lekcje z kalibracji:
 | = | Most | celowany | 3 | belka 90×7 px, do 260 px od robala, nie na robalu (`powodBrakuMostu`) |
 | [ | Święty GOAT | odbijany | 1 | jak granat, lont 3,5 s, promień 118 (największy), dmg 90, odrzut 480; napis „ALLELUJA!” przy wybuchu r ≥ 100 |
 | \\ | Railgun | railgun | 1 | 4.9: `strzalRailgun` — laser po prostej od `start` (wektor od strzelca) aż za mapę, co 2 px; przebija skałę i każdego robala (poza swoimi w drużynie), 45 obrażeń każdemu raz (do 4.12.1: 75), odrzut 150; zdarzenie `railgun` (x0,y0,x1,y1,trafieni) → `emitLaser` w `fx.js`. **Od 4.10 wypala tunel** (`tunel: 7` = promień) w każdej skale nad lawą: odcinki wejście→wyjście (szczeliny ≤ 12 px sklejone), wycinane po przejściu lasera przez `T.wytnijTunel`; zdarzenie `tunel` → `dodajSadzeTunelu` (przemalowanie + okopcone brzegi) |
-| ; | Nalot ogniowy (id `napalm`, 4.14) | nalot (`pocisk: 'kanister'`) | 1 | jak nalot, tylko 5 kanistrów (`kanister`: ukryty `pocisk`, grawitacja 0,6, **wiatr 1,1** — ponad 2× rakieta, r 18 / dmg 10, `ogien: 18`); `bezKorektyWiatru` = start liczony bez wiatru, więc wiatr znosi zrzut (przy wietrze 40 ok. 135 px, przy 130 ok. 390 px). Kanister w `detonate` → `rozlejOgien(…, ile)` (kolejne okrążenia `OGIEN_KROPLE` wolniejsze ×0,55); razem ok. 90 kropli, `OGIEN_MAX` = 130 (dawniej 56). Kill liczy się do osiągnięcia „nalot” |
+| ; | Nalot ogniowy (id `napalm`, 4.14; od 4.14.1 deszcz ognia) | nalot (`deszczOgnia: true`, `rakiety: 0`) | 1 | bez pocisków: `deszczOgnia` w `applyFire` wkłada od razu `NAPALM_KROPLE` = 72 krople do `state.ogien` z polem **`n: 1`**, nad celem ±`NAPALM_SZER` 50 px, falami co 4 krople (start jak rakiety nalotu, poprawka tylko na ukośny lot, **nie na wiatr**). Krople `n` w `stepOgien`: grawitacja ×0,6, wiatr ×1,1 (zwykłe 0,25), w locie nie gasną (`zycie` 99999), po upadku palą się `NAPALM_PALI` = 660 kroków (5,5 s) + rozrzut, parzą za `NAPALM_DMG` = 5 (zwykłe 3; przy obu rodzajach naraz wygrywa 5), wypalają 1 dołek (`NAPALM_WYPAL_MAX`). Dryf: wiatr 40 → ~150 px, 130 → ~460 px. `stanOgnia` = tablice po 9 liczb (9. = `n`), `ustawOgien` przyjmuje 8 albo 9. Kamera: `sledzeDeszcz` w `ustawKamere` (środek spadających kropli `n`), `trzymajWKadrze` wtedy nie ciągnie do robala. `OGIEN_MAX` = 130. Kill liczy się do osiągnięcia „nalot”. W 4.14 były kanistry (`kanister`) — usunięte |
 | ] | Lina ninja | lina (`narzedzie`) | 5 | nie strzał: `linaPrzelacz` (OGNIA/F zaczepia i puszcza, SKOK puszcza), `krokLiny` = wahadło (tylko sqrt) |
 
 - **Lina ninja (4.4)**: stan `w.lina = {x, y, dl}` tylko u gracza z turą, jak chodzenie — nie ma go w `stanRobali`,
@@ -736,11 +736,11 @@ Lekcje z kalibracji:
     na gruncie, ≥ 80 px od robali. Są w snapshocie, `stanPoTurze`, strzale i pasie (`stanPulapek`/`ustawPulapki`, pole `l` = lont),
     bo gracz z turą może odpalić minę chodząc, a odbiorca nie symuluje jego chodzenia.
   - `stepPulapki`: spadają jak skrzynki, toną w lawie; mina łapie żywego robala w pobliżu (`MINA_LONT` 1,1 s, zdarzenie `mina`),
-    Pułapka i skrzynka pod lawą (`y > state.lava`) toną w każdym kroku, a przy wzroście lawy od razu (`zatopZalane` w `nextTurn`, 4.12.1, `WERSJA` = 9; 4.13: `WERSJA` = 10 — banan, railgun 45, nowa ekstremalna; 4.14: `WERSJA` = 11 — nalot ogniowy).
+    Pułapka i skrzynka pod lawą (`y > state.lava`) toną w każdym kroku, a przy wzroście lawy od razu (`zatopZalane` w `nextTurn`, 4.12.1, `WERSJA` = 9; 4.13: `WERSJA` = 10 — banan, railgun 45, nowa ekstremalna; 4.14: `WERSJA` = 11 — nalot ogniowy; 4.14.1: `WERSJA` = 12 — deszcz ognia).
     `explode` i railgun ustawiają lont beczkom (`BECZKA_LONT`) i minom — **bez rekurencji**, więc łańcuch idzie krok po kroku.
     Faza `settle` czeka, aż żaden lont się nie pali.
   - Rysunek `drawPulapka` (dioda miny miga, beczka drży przed wybuchem).
-- **Płonąca ropa (4.10)** (`state.ogien`: `{x, y, vx, vy, t, zycie, wyp, grunt}`), jak napalm w Worms:
+- **Płonąca ropa (4.10)** (`state.ogien`: `{x, y, vx, vy, t, zycie, wyp, grunt, n}`; `n` = kropla nalotu ogniowego, 4.14.1), jak napalm w Worms:
   - Wybuch beczki (`stepPulapki` → `rozlejOgien`) wyrzuca 14 kropli: prędkości ze stałej tabeli `OGIEN_KROPLE`
     + rozrzut z `Math.imul` id beczki (bez trygonometrii i `Math.random`), życie 2,5–3,25 s, najwyżej `OGIEN_MAX` = 56.
   - `stepOgien`: kropla leci (grawitacja, ¼ wiatru), ląduje (`y = floor − 1`, zostaje połowa `vx`) i płynie po ziemi
@@ -918,6 +918,7 @@ więcej akcesoriów (np. czapki postaci ze zrzutki), ewentualnie konto także w 
   - **4.12.1** lawa zalewa skrzynki i pułapki, widz widzi wybuch miny w cudzej turze
   - **4.13** bananowa bomba zamiast kasetówki, railgun 45, bez pingów, mapa ekstremalna jak w Wormsach, panel Areny bez zakładek na PC, nowe tło i obramowania
   - **4.14** nalot ogniowy (kanistry z płonącą benzyną, mocno znoszone przez wiatr)
+  - **4.14.1** nalot ogniowy jako gęsty deszcz ognia z nieba, pali się dłużej, parzy za 5
 
 ---
 

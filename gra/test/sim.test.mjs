@@ -507,37 +507,51 @@ test('nalot wymaga celu i zrzuca rakiety', () => {
   assert(cel.hp < 100, 'nalot nie zranil celu');
 });
 
-test('nalot ogniowy: kanistry rozlewaja duzo ognia, a wiatr znosi je daleko (4.14)', () => {
-  const zrzut = (wiatr) => {
+test('nalot ogniowy: gesty deszcz ognia z nieba, pali sie dlugo, parzy za 5, wiatr go znosi (4.14.1)', () => {
+  const zrzut = (wiatr, robal) => {
     const st = S.createGame(21, players(2));
     const t = st.terrain;
     t.mask.fill(0, 0, 500 * t.w);
     const cx = 1000;
     for (let x = cx - 600; x <= cx + 600; x++) for (let y = 500; y < 700; y++) t.mask[y * t.w + x] = 1;
+    const cel = st.worms.find((w) => w !== S.activeWorm(st));
+    const strzelec = S.activeWorm(st);
+    strzelec.x = 450; strzelec.y = 500;
+    cel.x = robal ? cx : 1500; cel.y = 500;
     st.wind = wiatr;
     st.weapon = 'napalm';
     S.ustawCel(st, cx, 500);
     assert(S.startCharging(st), 'nalot ogniowy nie ruszył');
     S.releaseFire(st);
-    assert(st.projectiles.length === WEAPONS.napalm.rakiety && st.projectiles.every((p) => p.weapon === 'kanister'), 'kanistrów: ' + st.projectiles.length);
-    const wybuchy = [];
-    let maksOgnia = 0;
-    for (let i = 0; i < 8 / S.DT && st.projectiles.length; i++) {
+    assert(st.projectiles.length === 0 && st.ogien.length >= 70 && st.ogien.every((f) => f.n === 1 && f.y < 0),
+      'od razu deszcz ognia z nieba: kropli ' + st.ogien.length + ', pocisków ' + st.projectiles.length);
+    const upadki = [], parzenia = [];
+    let ostatniOgien = 0;
+    for (let i = 0; i < 14 / S.DT && st.phase !== 'koniec'; i++) {
+      const przed = new Set(st.ogien.filter((f) => f.grunt));
       S.step(st);
-      for (const e of st.events) if (e.type === 'wybuch') wybuchy.push(e);
+      for (const f of st.ogien) if (f.grunt && !przed.has(f)) upadki.push(f.x);
+      for (const e of st.events) if (e.type === 'obrazenia' && e.cause === 'ogien') parzenia.push(e.amount);
       st.events.length = 0;
-      maksOgnia = Math.max(maksOgnia, st.ogien.length);
+      if (st.ogien.length) ostatniOgien = i * S.DT;
     }
-    return { srodek: wybuchy.reduce((s, e) => s + e.x, 0) / wybuchy.length, maksOgnia, st };
+    upadki.sort((a, b) => a - b);
+    return { srodek: upadki[upadki.length >> 1], szer: upadki[upadki.length - 1] - upadki[0], parzenia, ostatniOgien, st };
   };
-  const cisza = zrzut(0), wieje = zrzut(130);
-  assert(Math.abs(cisza.srodek - 1000) < 20, 'bez wiatru obok celu: ' + cisza.srodek.toFixed(0));
-  assert(cisza.maksOgnia >= 70, 'za mało ognia: ' + cisza.maksOgnia + ' (beczka daje 14)');
+  const cisza = zrzut(0, true), wieje = zrzut(130, false);
+  assert(Math.abs(cisza.srodek - 1000) < 30, 'bez wiatru obok celu: ' + cisza.srodek.toFixed(0));
+  assert(cisza.szer < 220, 'deszcz za rzadki (rozrzut ' + cisza.szer.toFixed(0) + ' px)');
+  assert(cisza.parzenia.length > 0 && cisza.parzenia.every((d) => d === 5), 'parzenie za: ' + cisza.parzenia.join(','));
+  assert(cisza.ostatniOgien > 6.5, 'ogień zgasł za szybko: ' + cisza.ostatniOgien.toFixed(1) + ' s');
   assert(wieje.srodek - 1000 > 150, 'wiatr za słabo znosi nalot ogniowy: ' + (wieje.srodek - 1000).toFixed(0) + ' px');
-  // ogień dalej jest w stanie tury: odbiorca dostaje go w strzale/pasie
+  // krople nalotu przechodzą przez sieć ze znacznikiem n (strzał/pas niosą ogień)
+  const a = S.createGame(21, players(2));
+  a.weapon = 'napalm';
+  S.ustawCel(a, 1000, 500);
+  S.startCharging(a); S.releaseFire(a);
   const b = S.createGame(21, players(2));
-  S.ustawOgien(b, S.stanOgnia(cisza.st));
-  assert(b.ogien.length === cisza.st.ogien.length, 'ogien nie przechodzi przez siec: ' + b.ogien.length);
+  S.ustawOgien(b, S.stanOgnia(a));
+  assert(b.ogien.length === a.ogien.length && b.ogien.every((f) => f.n === 1), 'ogien nie przechodzi przez siec: ' + b.ogien.length);
 });
 
 test('nalot trafia w cel stojacy wysoko, takze przy wietrze (4.8)', () => {
